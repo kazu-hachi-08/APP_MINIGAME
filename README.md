@@ -194,6 +194,31 @@ Playable Build
        └── ミニゲーム③
 ```
 
+### 実装・セットアップ手順（Unity Editor）
+
+1. **TitleScene の作成と設定**
+   * `Assets/_Project/Common/Scenes/TitleScene.unity` を作成
+   * `SceneLoader`, `FadeController`, `AudioManager`, `UIManager` を持つマネージャー GameObject を配置（常駐用）
+   * Canvas を作成し、タイトルテキスト、ミニゲーム選択ボタン（`MiniGameSelectButton`）、設定・ポーズボタン等を配置
+2. **GameScene の作成と設定**
+   * `Assets/_Project/Common/Scenes/GameScene.unity` または各ミニゲーム用シーンを作成
+   * `BaseMiniGameManager` を継承した GameManager、UI Canvas（スコア、ポーズダイアログ、リザルトダイアログ）を配置
+3. **Build Settings へのシーン登録**
+   * Unity の `File` > `Build Settings...` を開き、`TitleScene`（Index 0）および各ゲームシーンを `Scenes In Build` に登録
+4. **VS Code でのデバッグ確認**
+   * VS Code で `F5`（Attach to Unity）を実行後、Unity Editor で再生（▶）してブレークポイントでの一時停止・ステップ実行を確認
+
+### 完了条件
+
+```text
+[ ] 共通スクリプト群（Scene/Audio/UI/Input/Core）がエラーなくコンパイルされる
+[ ] TitleScene でタイトルUIが表示され、ミニゲーム選択ボタンが動作する
+[ ] シーン遷移（FadeController によるフェードイン/フェードアウト）が動作する
+[ ] サウンド再生（BGM/SE）の動作確認
+[ ] ポーズダイアログ、リザルトダイアログの表示確認
+[ ] VS Code で F5 デバッグ（ブレークポイント動作）ができる
+```
+
 ---
 
 ## Phase 2以降：ミニゲーム追加

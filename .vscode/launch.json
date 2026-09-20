@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to Unity",
+            "type": "vstuc",
+            "request": "attach"
+        },
+        {
+            "name": "Attach to Unity (Legacy Unity Debugger)",
+            "type": "unity",
+            "request": "attach"
+        }
+    ]
+}
