@@ -197,14 +197,16 @@ Playable Build
 ### 実装・セットアップ手順（Unity Editor）
 
 1. **TitleScene の作成と設定**
-   * `Assets/_Project/Common/Scenes/TitleScene.unity` を作成
-   * `SceneLoader`, `FadeController`, `AudioManager`, `UIManager` を持つマネージャー GameObject を配置（常駐用）
-   * Canvas を作成し、タイトルテキスト、ミニゲーム選択ボタン（`MiniGameSelectButton`）、設定・ポーズボタン等を配置
+   * エディタ拡張 `Assets/_Project/Common/Editor/TitleSceneBuilder.cs` により、Unity 上部メニュー `Tools` > `MiniGame` > `Build Title Scene` からワンクリックで自動構築が可能
+   * `Assets/_Project/Common/Scenes/TitleScene.unity` を生成・設定
+   * `SceneLoader`, `FadeController`, `AudioManager`, `UIManager` を持つマネージャー群 GameObject を配置（常駐用）
+   * Canvas を作成し、タイトルロゴ・サブタイトル、ミニゲーム選択ボタン群（`MiniGameSelectButton`：2Dサッカーゲーム等）、設定ボタン（`SettingsButton`）、終了ボタン（`QuitButton`）、バージョン情報（`VersionText`）を配置
+   * 共通ダイアログ（`CommonDialog`, `PauseDialog`, `ResultDialog`）を配置し `UIManager` とバインド
 2. **GameScene の作成と設定**
    * `Assets/_Project/Common/Scenes/GameScene.unity` または各ミニゲーム用シーンを作成
    * `BaseMiniGameManager` を継承した GameManager、UI Canvas（スコア、ポーズダイアログ、リザルトダイアログ）を配置
 3. **Build Settings へのシーン登録**
-   * Unity の `File` > `Build Settings...` を開き、`TitleScene`（Index 0）および各ゲームシーンを `Scenes In Build` に登録
+   * `TitleScene`（Index 0）を `Scenes In Build`（`ProjectSettings/EditorBuildSettings.asset`）に自動登録済み
 4. **VS Code でのデバッグ確認**
    * VS Code で `F5`（Attach to Unity）を実行後、Unity Editor で再生（▶）してブレークポイントでの一時停止・ステップ実行を確認
 
