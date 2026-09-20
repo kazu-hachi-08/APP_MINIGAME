@@ -1,5 +1,6 @@
 using MiniGame.Common.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MiniGame.Common.Input
 {
@@ -45,27 +46,32 @@ namespace MiniGame.Common.Input
 
         private void Update()
         {
+            var keyboard = Keyboard.current;
+
             if (!_inputEnabled)
             {
                 ResetAllInputs();
                 // ポーズ入力のみ無効化時も受け取れるようにする（ポーズ解除等）
-                IsPauseDown = UnityEngine.Input.GetKeyDown(KeyCode.Escape) || UnityEngine.Input.GetKeyDown(KeyCode.P);
+                IsPauseDown = keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame);
                 return;
             }
 
-            ProcessMoveInput();
-            ProcessActionInputs();
-            ProcessSystemInputs();
+            ProcessMoveInput(keyboard);
+            ProcessActionInputs(keyboard);
+            ProcessSystemInputs(keyboard);
         }
 
-        private void ProcessMoveInput()
+        private void ProcessMoveInput(Keyboard keyboard)
         {
             Vector2 keyboardInput = Vector2.zero;
 
-            if (UnityEngine.Input.GetKey(KeyCode.W) || UnityEngine.Input.GetKey(KeyCode.UpArrow)) keyboardInput.y += 1f;
-            if (UnityEngine.Input.GetKey(KeyCode.S) || UnityEngine.Input.GetKey(KeyCode.DownArrow)) keyboardInput.y -= 1f;
-            if (UnityEngine.Input.GetKey(KeyCode.A) || UnityEngine.Input.GetKey(KeyCode.LeftArrow)) keyboardInput.x -= 1f;
-            if (UnityEngine.Input.GetKey(KeyCode.D) || UnityEngine.Input.GetKey(KeyCode.RightArrow)) keyboardInput.x += 1f;
+            if (keyboard != null)
+            {
+                if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) keyboardInput.y += 1f;
+                if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) keyboardInput.y -= 1f;
+                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) keyboardInput.x -= 1f;
+                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) keyboardInput.x += 1f;
+            }
 
             if (keyboardInput.sqrMagnitude > 1f)
             {
@@ -79,12 +85,12 @@ namespace MiniGame.Common.Input
             MoveVector = Vector2.ClampMagnitude(combined, 1f);
         }
 
-        private void ProcessActionInputs()
+        private void ProcessActionInputs(Keyboard keyboard)
         {
             // Action 1: Jキー / Zキー / Spaceキー / 仮想ボタン1
-            bool key1Down = UnityEngine.Input.GetKeyDown(KeyCode.J) || UnityEngine.Input.GetKeyDown(KeyCode.Z) || UnityEngine.Input.GetKeyDown(KeyCode.Space);
-            bool key1Held = UnityEngine.Input.GetKey(KeyCode.J) || UnityEngine.Input.GetKey(KeyCode.Z) || UnityEngine.Input.GetKey(KeyCode.Space);
-            bool key1Up = UnityEngine.Input.GetKeyUp(KeyCode.J) || UnityEngine.Input.GetKeyUp(KeyCode.Z) || UnityEngine.Input.GetKeyUp(KeyCode.Space);
+            bool key1Down = keyboard != null && (keyboard.jKey.wasPressedThisFrame || keyboard.zKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame);
+            bool key1Held = keyboard != null && (keyboard.jKey.isPressed || keyboard.zKey.isPressed || keyboard.spaceKey.isPressed);
+            bool key1Up = keyboard != null && (keyboard.jKey.wasReleasedThisFrame || keyboard.zKey.wasReleasedThisFrame || keyboard.spaceKey.wasReleasedThisFrame);
 
             bool v1Down = _virtualAction1Button != null && _virtualAction1Button.IsDown;
             bool v1Held = _virtualAction1Button != null && _virtualAction1Button.IsHeld;
@@ -95,9 +101,9 @@ namespace MiniGame.Common.Input
             IsAction1Up = key1Up || v1Up;
 
             // Action 2: Kキー / Xキー / 仮想ボタン2
-            bool key2Down = UnityEngine.Input.GetKeyDown(KeyCode.K) || UnityEngine.Input.GetKeyDown(KeyCode.X);
-            bool key2Held = UnityEngine.Input.GetKey(KeyCode.K) || UnityEngine.Input.GetKey(KeyCode.X);
-            bool key2Up = UnityEngine.Input.GetKeyUp(KeyCode.K) || UnityEngine.Input.GetKeyUp(KeyCode.X);
+            bool key2Down = keyboard != null && (keyboard.kKey.wasPressedThisFrame || keyboard.xKey.wasPressedThisFrame);
+            bool key2Held = keyboard != null && (keyboard.kKey.isPressed || keyboard.xKey.isPressed);
+            bool key2Up = keyboard != null && (keyboard.kKey.wasReleasedThisFrame || keyboard.xKey.wasReleasedThisFrame);
 
             bool v2Down = _virtualAction2Button != null && _virtualAction2Button.IsDown;
             bool v2Held = _virtualAction2Button != null && _virtualAction2Button.IsHeld;
@@ -108,15 +114,15 @@ namespace MiniGame.Common.Input
             IsAction2Up = key2Up || v2Up;
 
             // Action 3: Lキー / Cキー / 仮想ボタン3
-            bool key3Down = UnityEngine.Input.GetKeyDown(KeyCode.L) || UnityEngine.Input.GetKeyDown(KeyCode.C);
+            bool key3Down = keyboard != null && (keyboard.lKey.wasPressedThisFrame || keyboard.cKey.wasPressedThisFrame);
             bool v3Down = _virtualAction3Button != null && _virtualAction3Button.IsDown;
 
             IsAction3Down = key3Down || v3Down;
         }
 
-        private void ProcessSystemInputs()
+        private void ProcessSystemInputs(Keyboard keyboard)
         {
-            IsPauseDown = UnityEngine.Input.GetKeyDown(KeyCode.Escape) || UnityEngine.Input.GetKeyDown(KeyCode.P);
+            IsPauseDown = keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame);
         }
 
         public void RegisterVirtualControls(
