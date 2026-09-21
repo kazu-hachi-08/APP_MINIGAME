@@ -46,6 +46,10 @@ namespace MiniGame.Common.Core
 
         protected virtual void Awake()
         {
+            // Domain Reloadが無効な設定だと、前回Play終了時のフラグが残ったままになるため
+            // 新しいセッション開始（Awake）のたびに必ずリセットする
+            _isApplicationQuitting = false;
+
             if (_instance == null)
             {
                 _instance = this as T;

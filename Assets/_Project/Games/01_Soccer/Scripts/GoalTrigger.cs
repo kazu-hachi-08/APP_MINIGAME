@@ -9,15 +9,16 @@ namespace MiniGame.Soccer
     public class GoalTrigger : MonoBehaviour
     {
         [SerializeField] private SoccerGameManager _gameManager;
+        [SerializeField] private TeamSide _defendingTeam = TeamSide.Away;
 
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.TryGetComponent<Ball>(out _)) return;
+            if (_gameManager == null) return;
 
-            if (_gameManager != null)
-            {
-                _gameManager.OnGoalScored();
-            }
+            // 守っているチームの逆側が得点する
+            TeamSide scoringTeam = _defendingTeam == TeamSide.Home ? TeamSide.Away : TeamSide.Home;
+            _gameManager.OnGoalScored(scoringTeam);
         }
     }
 }
