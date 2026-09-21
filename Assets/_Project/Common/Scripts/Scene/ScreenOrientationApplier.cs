@@ -55,12 +55,13 @@ namespace MiniGame.Common.Scene
 
         private static void SetPortrait()
         {
-            // 上下逆さまは片手持ちで誤爆しやすいため許可しない
+            // 縦しか許可しないならAutoRotationにする意味がなく、
+            // AutoRotationだと横向きで起動した端末が次のセンサー検知まで横のまま残るため固定する
             Screen.autorotateToPortrait = true;
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = false;
             Screen.autorotateToLandscapeRight = false;
-            Screen.orientation = ScreenOrientation.AutoRotation;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
 
         private static void SetLandscape()
