@@ -134,7 +134,7 @@ namespace MiniGame.Soccer.Editor
             ballCollider.radius = 0.25f;
             var ball = ballObj.AddComponent<Ball>();
 
-            // 8. GOAL バナー UI
+            // 8. UI（メッセージバナー＋スコア表示）
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -144,20 +144,37 @@ namespace MiniGame.Soccer.Editor
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
-            var goalTextObj = new GameObject("GoalText");
-            goalTextObj.transform.SetParent(canvasObj.transform, false);
-            var goalRect = goalTextObj.AddComponent<RectTransform>();
-            goalRect.anchorMin = new Vector2(0.5f, 0.5f);
-            goalRect.anchorMax = new Vector2(0.5f, 0.5f);
-            goalRect.pivot = new Vector2(0.5f, 0.5f);
-            goalRect.sizeDelta = new Vector2(900, 220);
-            var goalText = goalTextObj.AddComponent<Text>();
-            goalText.text = "GOAL!";
-            goalText.fontSize = 96;
-            goalText.fontStyle = FontStyle.Bold;
-            goalText.alignment = TextAnchor.MiddleCenter;
-            goalText.color = new Color(1f, 0.85f, 0.1f);
-            goalTextObj.SetActive(false);
+            // GOAL!/KICK OFF! など共通で使う中央メッセージ表示
+            var messageTextObj = new GameObject("MessageText");
+            messageTextObj.transform.SetParent(canvasObj.transform, false);
+            var messageRect = messageTextObj.AddComponent<RectTransform>();
+            messageRect.anchorMin = new Vector2(0.5f, 0.5f);
+            messageRect.anchorMax = new Vector2(0.5f, 0.5f);
+            messageRect.pivot = new Vector2(0.5f, 0.5f);
+            messageRect.sizeDelta = new Vector2(900, 220);
+            var messageText = messageTextObj.AddComponent<Text>();
+            messageText.text = "";
+            messageText.fontSize = 96;
+            messageText.fontStyle = FontStyle.Bold;
+            messageText.alignment = TextAnchor.MiddleCenter;
+            messageText.color = new Color(1f, 0.85f, 0.1f);
+            messageTextObj.SetActive(false);
+
+            // スコア表示（常時表示）
+            var scoreTextObj = new GameObject("ScoreText");
+            scoreTextObj.transform.SetParent(canvasObj.transform, false);
+            var scoreRect = scoreTextObj.AddComponent<RectTransform>();
+            scoreRect.anchorMin = new Vector2(0.5f, 1f);
+            scoreRect.anchorMax = new Vector2(0.5f, 1f);
+            scoreRect.pivot = new Vector2(0.5f, 1f);
+            scoreRect.sizeDelta = new Vector2(400, 80);
+            scoreRect.anchoredPosition = new Vector2(0f, -20f);
+            var scoreText = scoreTextObj.AddComponent<Text>();
+            scoreText.text = "SCORE: 0";
+            scoreText.fontSize = 44;
+            scoreText.fontStyle = FontStyle.Bold;
+            scoreText.alignment = TextAnchor.MiddleCenter;
+            scoreText.color = Color.white;
 
             // 9. SoccerGameManager
             var gameManagerObj = new GameObject("SoccerGameManager");
@@ -169,7 +186,8 @@ namespace MiniGame.Soccer.Editor
             gmSo.FindProperty("_ball").objectReferenceValue = ball;
             gmSo.FindProperty("_playerStartPosition").vector2Value = PlayerStartPosition;
             gmSo.FindProperty("_ballStartPosition").vector2Value = BallStartPosition;
-            gmSo.FindProperty("_goalBanner").objectReferenceValue = goalTextObj;
+            gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
+            gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
             gmSo.ApplyModifiedProperties();
 
             var gtSo = new SerializedObject(goalTrigger);

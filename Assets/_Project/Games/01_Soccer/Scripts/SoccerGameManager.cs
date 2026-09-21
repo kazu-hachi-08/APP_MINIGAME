@@ -2,12 +2,13 @@ using System.Collections;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace MiniGame.Soccer
 {
     /// <summary>
-    /// サッカーゲームのゲームマネージャー（Phase 1: 最小プロトタイプ）
-    /// 選手・ボールの初期化とゴール時の演出/リセットのみを扱う
+    /// サッカーゲームのゲームマネージャー（Phase 4: ゴール・試合状態）
+    /// キックオフ → プレイ → ゴール → リセット → キックオフ、のサイクルと得点表示を管理する
     /// </summary>
     public class SoccerGameManager : BaseMiniGameManager
     {
@@ -17,21 +18,22 @@ namespace MiniGame.Soccer
         [SerializeField] private Vector2 _playerStartPosition;
         [SerializeField] private Vector2 _ballStartPosition;
 
-        [Header("Goal Banner")]
-        [SerializeField] private GameObject _goalBanner;
-        [SerializeField] private float _goalBannerDuration = 1.5f;
+        [Header("UI")]
+        [SerializeField] private Text _messageText;
+        [SerializeField] private Text _scoreText;
 
-        private bool _isGoalSequenceRunning;
+        [Header("Timing")]
+        [SerializeField] private float _kickOffMessageDuration = 1.0f;
+        [SerializeField] private float _goalMessageDuration = 1.5f;
+
+        private int _score;
+        private bool _isSequenceRunning;
 
         protected override void OnGameReady()
         {
-            // Phase 1 はキックオフ演出を持たないため、準備完了後すぐにプレイを開始する
-            StartGame();
-        }
-
-        protected override void OnGameStart()
-        {
             ResetPositions();
+            UpdateScoreText();
+            StartCoroutine(KickOffRoutine());
         }
 
         /// <summary>
@@ -39,35 +41,60 @@ namespace MiniGame.Soccer
         /// </summary>
         public void OnGoalScored()
         {
-            if (!IsPlaying || _isGoalSequenceRunning) return;
-            StartCoroutine(GoalSequenceRoutine());
+            if (!IsPlaying || _isSequenceRunning) return;
+            StartCoroutine(GoalRoutine());
         }
 
-        private IEnumerator GoalSequenceRoutine()
+        private IEnumerator GoalRoutine()
         {
-            _isGoalSequenceRunning = true;
+            _isSequenceRunning = true;
             ChangeState(MiniGameState.Event);
+
+            _score++;
+            UpdateScoreText();
 
             if (AudioManager.HasInstance)
             {
                 AudioManager.Instance.PlaySe(SeId.GoalCheer);
             }
 
-            if (_goalBanner != null)
-            {
-                _goalBanner.SetActive(true);
-            }
-
-            yield return new WaitForSeconds(_goalBannerDuration);
-
-            if (_goalBanner != null)
-            {
-                _goalBanner.SetActive(false);
-            }
+            yield return StartCoroutine(ShowMessageRoutine("GOAL!", _goalMessageDuration));
 
             ResetPositions();
-            ChangeState(MiniGameState.Playing);
-            _isGoalSequenceRunning = false;
+            yield return StartCoroutine(KickOffRoutine());
+
+            _isSequenceRunning = false;
+        }
+
+        private IEnumerator KickOffRoutine()
+        {
+            ChangeState(MiniGameState.Countdown);
+            yield return StartCoroutine(ShowMessageRoutine("KICK OFF!", _kickOffMessageDuration));
+            StartGame();
+        }
+
+        private IEnumerator ShowMessageRoutine(string message, float duration)
+        {
+            if (_messageText != null)
+            {
+                _messageText.text = message;
+                _messageText.gameObject.SetActive(true);
+            }
+
+            yield return new WaitForSeconds(duration);
+
+            if (_messageText != null)
+            {
+                _messageText.gameObject.SetActive(false);
+            }
+        }
+
+        private void UpdateScoreText()
+        {
+            if (_scoreText != null)
+            {
+                _scoreText.text = $"SCORE: {_score}";
+            }
         }
 
         private void ResetPositions()
