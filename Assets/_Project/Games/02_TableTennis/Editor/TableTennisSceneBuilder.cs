@@ -222,8 +222,9 @@ namespace MiniGame.TableTennis.Editor
             canvasObj.AddComponent<GraphicRaycaster>();
 
             // スコアとサーブ権（Phase 8 で正式なHUDへ整理する）
+            // 画面最上部はインカメラのノッチと重なるため、その下まで下げて表示する
             Text scoreText = CreateText(canvasObj.transform, "ScoreText", "", 64,
-                new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(760f, 90f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(760f, 90f),
                 new Color(1f, 1f, 1f));
 
             Text messageText = CreateText(canvasObj.transform, "MessageText", "", 96,
