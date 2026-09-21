@@ -8,7 +8,7 @@ namespace MiniGame.TableTennis
     /// タップ/ドラッグした画面位置をコート座標へ逆変換し、可動範囲内へ収めて追従させる。
     /// 角度は固定（仕様通り）で、打球そのものは PlayerSwing が担当する。
     /// </summary>
-    public class RacketController : MonoBehaviour
+    public class RacketController : MonoBehaviour, ICourtActor
     {
         [SerializeField] private TableLayout _table;
         [SerializeField] private FlickInput _flickInput;

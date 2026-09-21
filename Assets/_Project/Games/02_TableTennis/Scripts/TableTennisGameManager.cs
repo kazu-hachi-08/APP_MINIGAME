@@ -32,13 +32,14 @@ namespace MiniGame.TableTennis
         [SerializeField] private RallyReferee _referee;
         [SerializeField] private ServeController _serve;
         [SerializeField] private NpcController _npc;
+        [SerializeField] private TableTennisAudio _audio;
 
         [Header("UI")]
         [SerializeField] private Text _scoreText;
-        [SerializeField] private Text _messageText;
+        [SerializeField] private HudText _messageHud;
 
-        [Tooltip("フリックから打球・回転・タイミングへの対応を確認するための開発用表示（Phase 8 で整理する）")]
-        [SerializeField] private Text _shotInfoText;
+        [Tooltip("打球結果（タイミングと回転）をプレイヤーへ返すHUD")]
+        [SerializeField] private HudText _shotInfoHud;
 
         [Header("Rule")]
         [SerializeField] private int _pointsToWin = 11;
@@ -51,12 +52,28 @@ namespace MiniGame.TableTennis
         [Tooltip("トスを打ち損ねたときに、やり直すまでの待ち時間")]
         [SerializeField] private float _retossDelay = 0.6f;
 
+        [Tooltip("打球結果のHUDを出しておく時間")]
+        [SerializeField] private float _shotInfoDuration = 1.2f;
+
+        [Tooltip("GAME SET を見せてからリザルトを出すまでの時間")]
+        [SerializeField] private float _gameSetDuration = 1.6f;
+
         private MatchScore _score;
         private RallyPhase _phase = RallyPhase.PointBreak;
+
+        private void Awake()
+        {
+            // Scene を作り直す前でも遊べるよう、SE が未設定なら自前で用意する
+            if (_audio == null)
+            {
+                _audio = gameObject.AddComponent<TableTennisAudio>();
+            }
+        }
 
         private void OnEnable()
         {
             _ball.OnRallyEnded += HandleRallyEnded;
+            _ball.OnBounced += HandleBounced;
             _playerSwing.OnShot += HandleShot;
             _playerSwing.OnMissed += HandleMissed;
             _referee.OnPointDecided += HandlePointDecided;
@@ -66,6 +83,7 @@ namespace MiniGame.TableTennis
         private void OnDisable()
         {
             _ball.OnRallyEnded -= HandleRallyEnded;
+            _ball.OnBounced -= HandleBounced;
             _playerSwing.OnShot -= HandleShot;
             _playerSwing.OnMissed -= HandleMissed;
             _referee.OnPointDecided -= HandlePointDecided;
@@ -76,7 +94,7 @@ namespace MiniGame.TableTennis
         {
             _score = new MatchScore(_pointsToWin, _serveChangeInterval, CourtSide.Player);
             UpdateScoreText();
-            SetShotInfo("フリックして打つ");
+            SetShotInfo("フリックして打つ", 0f);
             StartGame();
             StartCoroutine(NextServeRoutine());
         }
@@ -104,6 +122,7 @@ namespace MiniGame.TableTennis
             SetMessage(server == CourtSide.Player ? "YOUR SERVE" : "NPC SERVE");
             yield return new WaitForSeconds(_serveDelay);
             SetMessage(string.Empty);
+            SetShotInfo(server == CourtSide.Player ? "トスを打つ" : string.Empty, _shotInfoDuration);
 
             if (server == CourtSide.Player)
             {
@@ -116,12 +135,23 @@ namespace MiniGame.TableTennis
                 _phase = RallyPhase.Rallying;
                 _npc.Serve();
                 _referee.BeginRally(CourtSide.Opponent);
-                PlaySe(SeId.Kick);
+                _audio.PlayHit(1f);
             }
+        }
+
+        /// <summary>台に落ちた音は、奥行きが読み取りにくい擬似3Dで距離感の手がかりにもなる</summary>
+        private void HandleBounced(Vector3 contact)
+        {
+            _audio.PlayBounce();
         }
 
         private void HandleRallyEnded(RallyEndReason reason)
         {
+            if (reason == RallyEndReason.Net)
+            {
+                _audio.PlayNet();
+            }
+
             if (!IsPlaying) return;
 
             // トスを打ち損ねただけなので、失点にせずトスをやり直す。
@@ -134,7 +164,7 @@ namespace MiniGame.TableTennis
 
         private IEnumerator RetossRoutine()
         {
-            SetShotInfo("トスをやり直します");
+            SetShotInfo("トスをやり直します", _shotInfoDuration);
             yield return new WaitForSeconds(_retossDelay);
 
             if (_phase == RallyPhase.Serving)
@@ -145,7 +175,7 @@ namespace MiniGame.TableTennis
 
         private void HandleShot(FlickData flick, ShotResult shot)
         {
-            PlaySe(SeId.Kick);
+            _audio.PlayHit(shot.Strength);
 
             if (_phase == RallyPhase.Serving)
             {
@@ -157,19 +187,19 @@ namespace MiniGame.TableTennis
                 _referee.NotifyHit(CourtSide.Player);
             }
 
-            SetShotInfo(BuildShotInfo(flick, shot));
+            SetShotInfo(BuildShotInfo(shot), _shotInfoDuration);
         }
 
         /// <summary>NPCが返球できたら、打球したものとしてラリー判定を継続する</summary>
         private void HandleNpcReturned()
         {
-            PlaySe(SeId.Kick);
+            _audio.PlayHit(0.8f);
             _referee.NotifyHit(CourtSide.Opponent);
         }
 
         private void HandleMissed(SwingJudgement judgement)
         {
-            SetShotInfo($"空振り！ タイミング {TimingLabel(judgement.Timing)}");
+            SetShotInfo($"空振り！　{TimingLabel(judgement.Timing)}", _shotInfoDuration);
         }
 
         private void HandlePointDecided(CourtSide scorer, PointReason reason)
@@ -180,6 +210,7 @@ namespace MiniGame.TableTennis
             _score.AddPoint(scorer);
             UpdateScoreText();
 
+            SetShotInfo(string.Empty, 0f);
             SetMessage($"{ReasonLabel(reason)}\n{scorer.ToLabel()} POINT");
             PlaySe(scorer == CourtSide.Player ? SeId.GoalCheer : SeId.Whistle);
 
@@ -192,20 +223,26 @@ namespace MiniGame.TableTennis
 
             if (_score.IsFinished)
             {
-                FinishMatch();
+                yield return GameSetRoutine();
                 yield break;
             }
 
             yield return NextServeRoutine();
         }
 
-        private void FinishMatch()
+        /// <summary>リザルトの前に勝敗を一拍見せる（リザルトダイアログ自体は共通UIに任せる）</summary>
+        private IEnumerator GameSetRoutine()
         {
-            SetMessage(string.Empty);
             _referee.Stop();
             _ball.Stop();
 
             bool isVictory = _score.Winner == CourtSide.Player;
+            SetMessage(isVictory ? "GAME SET\nYOU WIN" : "GAME SET\nYOU LOSE");
+            PlaySe(isVictory ? SeId.GoalCheer : SeId.Whistle);
+
+            yield return new WaitForSeconds(_gameSetDuration);
+            SetMessage(string.Empty);
+
             FinishGame(
                 isVictory,
                 $"{_score.PlayerPoints} - {_score.OpponentPoints}",
@@ -224,14 +261,11 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>
-        /// フリック方向・速度が打球方向・速度・回転へどう分配されたかを可視化する
+        /// 打球の手応え（タイミングと回転）を、プレイ中に読み取れる短さで返す
         /// </summary>
-        private static string BuildShotInfo(FlickData flick, ShotResult shot)
+        private static string BuildShotInfo(ShotResult shot)
         {
-            return $"FLICK 方向({flick.Direction.x:0.00}, {flick.Direction.y:0.00})  速度 {flick.Speed:0.00} (強さ {shot.Strength:0.00})\n"
-                 + $"打球  前方 {shot.Velocity.z:0.0} m/s  左右 {shot.Velocity.x:+0.0;-0.0;0.0}  打ち上げ {shot.Velocity.y:0.0}\n"
-                 + $"回転  {DescribeSpin(shot.Spin)}  (top {shot.Spin.y:+0.00;-0.00;0.00} / side {shot.Spin.x:+0.00;-0.00;0.00})\n"
-                 + $"タイミング  {TimingLabel(shot.Timing)}  (品質 {shot.Quality:0.00})";
+            return $"{TimingLabel(shot.Timing)}　強さ {shot.Strength * 100f:0}%\n{DescribeSpin(shot.Spin)}";
         }
 
         private static string DescribeSpin(Vector2 spin)
@@ -255,9 +289,9 @@ namespace MiniGame.TableTennis
         {
             switch (timing)
             {
-                case ShotTiming.Early: return "早すぎ";
-                case ShotTiming.Late: return "遅すぎ";
-                default: return "ジャスト";
+                case ShotTiming.Early: return "早すぎ！";
+                case ShotTiming.Late: return "遅すぎ！";
+                default: return "ジャスト！";
             }
         }
 
@@ -281,18 +315,29 @@ namespace MiniGame.TableTennis
 
         private void SetMessage(string message)
         {
-            if (_messageText == null) return;
+            if (_messageHud == null) return;
 
-            _messageText.text = message;
-            _messageText.gameObject.SetActive(!string.IsNullOrEmpty(message));
+            if (string.IsNullOrEmpty(message))
+            {
+                _messageHud.Clear();
+                return;
+            }
+
+            _messageHud.Show(message);
         }
 
-        private void SetShotInfo(string info)
+        /// <summary>holdDuration が0なら、消さずに出しっぱなしにする</summary>
+        private void SetShotInfo(string info, float holdDuration)
         {
-            if (_shotInfoText != null)
+            if (_shotInfoHud == null) return;
+
+            if (string.IsNullOrEmpty(info))
             {
-                _shotInfoText.text = info;
+                _shotInfoHud.Clear();
+                return;
             }
+
+            _shotInfoHud.Show(info, holdDuration);
         }
     }
 }

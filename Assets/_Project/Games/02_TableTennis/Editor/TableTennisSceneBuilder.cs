@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis.Editor
 {
     /// <summary>
-    /// TableTennisScene（Phase 1〜7: 最小プロトタイプ〜NPC・スマートフォン操作）を自動生成するエディタユーティリティ。
+    /// TableTennisScene（Phase 1〜9: 最小プロトタイプ〜UI・演出・ビジュアル置き換え）を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// </summary>
     public static class TableTennisSceneBuilder
@@ -22,12 +22,14 @@ namespace MiniGame.TableTennis.Editor
         private const string SceneDirectory = "Assets/_Project/Games/02_TableTennis/Scenes";
         private const string ScenePath = SceneDirectory + "/TableTennisScene.unity";
 
-        // 仮素材（円・矩形・線）は Unity 組み込みスプライトで済ませ、Phase 9 で差し替える
-        private const string CircleSpritePath = "UI/Skin/Knob.psd";
         private const string SpritesDefaultMaterialPath = "Sprites-Default.mat";
 
+        // 手前にあるものほど大きい値。キャラクターは自分のラケットより後ろに描く
+        private const int NpcCharacterSortingOrder = 3;
         private const int NpcRacketSortingOrder = 5;
         private const int ShadowSortingOrder = 10;
+        private const int BounceSortingOrder = 12;
+        private const int PlayerCharacterSortingOrder = 15;
         private const int BallSortingOrder = 20;
         private const int RacketSortingOrder = 30;
 
@@ -58,8 +60,19 @@ namespace MiniGame.TableTennis.Editor
 
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            Sprite circleSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(CircleSpritePath);
             Material spritesDefault = AssetDatabase.GetBuiltinExtraResource<Material>(SpritesDefaultMaterialPath);
+
+            // Phase 9: 仮素材（円・矩形）を卓球の絵へ置き換える
+            TableTennisArtGenerator.EnsureGenerated();
+            Sprite ballSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.BallName);
+            Sprite shadowSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.ShadowName);
+            Sprite playerRacketSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.PlayerRacketName);
+            Sprite npcRacketSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.NpcRacketName);
+            Sprite playerCharacterSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.PlayerCharacterName);
+            Sprite npcCharacterSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.NpcCharacterName);
+            Sprite tableSurfaceSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.TableSurfaceName);
+            Sprite netSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.NetName);
+            Sprite bounceRingSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.BounceRingName);
 
             // 1. Camera（台の手前から奥を見る擬似3Dの画角に合わせる）
             var cameraObj = new GameObject("Main Camera");
@@ -88,6 +101,9 @@ namespace MiniGame.TableTennis.Editor
             CreateManager<SceneLoader>("SceneLoader", managersRoot.transform);
             var audioManager = CreateManager<AudioManager>("AudioManager", managersRoot.transform);
             audioManager.gameObject.AddComponent<ProceduralSe>(); // 正式なSE素材が入るまでの仮音
+
+            // 卓球固有のSE（打球・バウンド・ネット）は共通の SeId に持たせず、ここで生成して鳴らす
+            var tableTennisAudio = CreateManager<TableTennisAudio>("TableTennisAudio", managersRoot.transform);
             var uiManager = CreateManager<UIManager>("UIManager", managersRoot.transform);
             CreateManager<InputManager>("InputManager", managersRoot.transform);
 
@@ -98,14 +114,15 @@ namespace MiniGame.TableTennis.Editor
             var tvSo = new SerializedObject(tableView);
             tvSo.FindProperty("_table").objectReferenceValue = tableLayout;
             tvSo.FindProperty("_material").objectReferenceValue = spritesDefault;
+            tvSo.FindProperty("_surfaceSprite").objectReferenceValue = tableSurfaceSprite;
+            tvSo.FindProperty("_netSprite").objectReferenceValue = netSprite;
             tvSo.ApplyModifiedProperties();
 
             // 5. ボール（影は奥行きを読み取る手がかりになるので別オブジェクトで用意する）
-            var shadowObj = CreateSpriteObject("BallShadow", circleSprite,
-                new Color(0f, 0f, 0f, 0.35f), ShadowSortingOrder);
+            var shadowObj = CreateSpriteObject("BallShadow", shadowSprite,
+                new Color(0f, 0f, 0f, 0.45f), ShadowSortingOrder);
 
-            var ballObj = CreateSpriteObject("Ball", circleSprite,
-                new Color(1f, 0.95f, 0.75f), BallSortingOrder);
+            var ballObj = CreateSpriteObject("Ball", ballSprite, Color.white, BallSortingOrder);
             var ballMotion = ballObj.AddComponent<BallMotion>();
             var ballView = ballObj.AddComponent<BallView>();
 
@@ -118,7 +135,18 @@ namespace MiniGame.TableTennis.Editor
             bvSo.FindProperty("_ball").objectReferenceValue = ballMotion;
             bvSo.FindProperty("_renderer").objectReferenceValue = ballObj.GetComponent<SpriteRenderer>();
             bvSo.FindProperty("_shadow").objectReferenceValue = shadowObj.transform;
+            bvSo.FindProperty("_shadowRenderer").objectReferenceValue = shadowObj.GetComponent<SpriteRenderer>();
             bvSo.ApplyModifiedProperties();
+
+            // バウンド位置を輪で見せる（着地点が読み取りやすくなる）
+            var bounceObj = CreateSpriteObject("BounceEffect", bounceRingSprite, Color.white, BounceSortingOrder);
+            var bounceEffect = bounceObj.AddComponent<BounceEffect>();
+
+            var bounceSo = new SerializedObject(bounceEffect);
+            bounceSo.FindProperty("_table").objectReferenceValue = tableLayout;
+            bounceSo.FindProperty("_ball").objectReferenceValue = ballMotion;
+            bounceSo.FindProperty("_renderer").objectReferenceValue = bounceObj.GetComponent<SpriteRenderer>();
+            bounceSo.ApplyModifiedProperties();
 
             // 6. 入力（タップでラケット移動 / フリックで打球）
             var playerRigObj = new GameObject("PlayerRig");
@@ -128,9 +156,9 @@ namespace MiniGame.TableTennis.Editor
             var playerSwing = playerRigObj.AddComponent<PlayerSwing>();
 
             // 7. ラケット
-            var racketObj = CreateSpriteObject("Racket", circleSprite,
-                new Color(0.85f, 0.25f, 0.25f), RacketSortingOrder);
+            var racketObj = CreateSpriteObject("Racket", playerRacketSprite, Color.white, RacketSortingOrder);
             var racket = racketObj.AddComponent<RacketController>();
+            var racketSwingView = racketObj.AddComponent<RacketSwingView>();
 
             var rcSo = new SerializedObject(racket);
             rcSo.FindProperty("_table").objectReferenceValue = tableLayout;
@@ -147,9 +175,14 @@ namespace MiniGame.TableTennis.Editor
             psSo.FindProperty("_shotCalculator").objectReferenceValue = shotCalculator;
             psSo.ApplyModifiedProperties();
 
+            var swingViewSo = new SerializedObject(racketSwingView);
+            swingViewSo.FindProperty("_table").objectReferenceValue = tableLayout;
+            swingViewSo.FindProperty("_racket").objectReferenceValue = racket;
+            swingViewSo.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
+            swingViewSo.ApplyModifiedProperties();
+
             // 8. NPC（思考と表示を分け、返球内容は NpcController が決める）
-            var npcRacketObj = CreateSpriteObject("NpcRacket", circleSprite,
-                new Color(0.25f, 0.45f, 0.85f), NpcRacketSortingOrder);
+            var npcRacketObj = CreateSpriteObject("NpcRacket", npcRacketSprite, Color.white, NpcRacketSortingOrder);
             var npc = npcRacketObj.AddComponent<NpcController>();
             var npcView = npcRacketObj.AddComponent<NpcRacketView>();
 
@@ -164,6 +197,14 @@ namespace MiniGame.TableTennis.Editor
             npcViewSo.FindProperty("_npc").objectReferenceValue = npc;
             npcViewSo.FindProperty("_renderer").objectReferenceValue = npcRacketObj.GetComponent<SpriteRenderer>();
             npcViewSo.ApplyModifiedProperties();
+
+            // 8-2. キャラクター（ラケットの左右移動に合わせて立たせるだけの表示）
+            CreateCharacter("NpcCharacter", npcCharacterSprite, NpcCharacterSortingOrder, tableLayout, npc,
+                courtZ: 2.1f, followRatio: 0.8f, displayHeight: 1.45f, baseYOffset: 0f);
+
+            // プレイヤーは背中側。台を隠さないよう、画面下の帯にはみ出させる
+            CreateCharacter("PlayerCharacter", playerCharacterSprite, PlayerCharacterSortingOrder, tableLayout, racket,
+                courtZ: -1.7f, followRatio: 0.5f, displayHeight: 2.6f, baseYOffset: -2.3f);
 
             // 9. UI
             var canvasObj = new GameObject("Canvas");
@@ -184,13 +225,17 @@ namespace MiniGame.TableTennis.Editor
             Text messageText = CreateText(canvasObj.transform, "MessageText", "", 96,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(900f, 220f),
                 new Color(1f, 0.85f, 0.1f));
+            HudText messageHud = messageText.gameObject.AddComponent<HudText>();
             messageText.gameObject.SetActive(false);
 
-            // Phase 3〜4 の確認用。フリックが打球・回転・タイミングへどう変換されたかを常時表示する
-            Text shotInfoText = CreateText(canvasObj.transform, "ShotInfoText", "", 30,
-                new Vector2(0f, 1f), new Vector2(40f, -170f), new Vector2(900f, 200f),
+            // 打球の手応え（タイミング・回転）を画面下に短く返す
+            Text shotInfoText = CreateText(canvasObj.transform, "ShotInfoText", "", 44,
+                new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(900f, 150f),
                 new Color(0.85f, 0.92f, 1f));
-            shotInfoText.alignment = TextAnchor.UpperLeft;
+            HudText shotInfoHud = shotInfoText.gameObject.AddComponent<HudText>();
+
+            BindHudText(messageHud, messageText);
+            BindHudText(shotInfoHud, shotInfoText);
 
             var pauseButtonObj = UIDialogBuilder.CreateButton(canvasObj.transform, "Btn_Pause", "II", 90, 90,
                 new Color(0.15f, 0.17f, 0.22f, 0.8f));
@@ -223,9 +268,10 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_referee").objectReferenceValue = referee;
             gmSo.FindProperty("_serve").objectReferenceValue = serveController;
             gmSo.FindProperty("_npc").objectReferenceValue = npc;
+            gmSo.FindProperty("_audio").objectReferenceValue = tableTennisAudio;
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
-            gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
-            gmSo.FindProperty("_shotInfoText").objectReferenceValue = shotInfoText;
+            gmSo.FindProperty("_messageHud").objectReferenceValue = messageHud;
+            gmSo.FindProperty("_shotInfoHud").objectReferenceValue = shotInfoHud;
             gmSo.ApplyModifiedProperties();
 
             var pauseSo = new SerializedObject(pauseButton);
@@ -246,6 +292,31 @@ namespace MiniGame.TableTennis.Editor
             var obj = new GameObject(name);
             obj.transform.SetParent(parent);
             return obj.AddComponent<T>();
+        }
+
+        /// <summary>ラケットに追従して立つキャラクターを1体作る</summary>
+        private static void CreateCharacter(string name, Sprite sprite, int sortingOrder, TableLayout table,
+            MonoBehaviour actor, float courtZ, float followRatio, float displayHeight, float baseYOffset)
+        {
+            var obj = CreateSpriteObject(name, sprite, Color.white, sortingOrder);
+            var view = obj.AddComponent<CharacterView>();
+
+            var so = new SerializedObject(view);
+            so.FindProperty("_table").objectReferenceValue = table;
+            so.FindProperty("_actorSource").objectReferenceValue = actor;
+            so.FindProperty("_renderer").objectReferenceValue = obj.GetComponent<SpriteRenderer>();
+            so.FindProperty("_courtZ").floatValue = courtZ;
+            so.FindProperty("_followRatio").floatValue = followRatio;
+            so.FindProperty("_displayHeight").floatValue = displayHeight;
+            so.FindProperty("_baseYOffset").floatValue = baseYOffset;
+            so.ApplyModifiedProperties();
+        }
+
+        private static void BindHudText(HudText hudText, Text text)
+        {
+            var so = new SerializedObject(hudText);
+            so.FindProperty("_text").objectReferenceValue = text;
+            so.ApplyModifiedProperties();
         }
 
         private static GameObject CreateSpriteObject(string name, Sprite sprite, Color color, int sortingOrder)

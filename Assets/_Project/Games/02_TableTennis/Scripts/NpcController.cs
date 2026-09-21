@@ -8,7 +8,7 @@ namespace MiniGame.TableTennis
     /// ここではコート座標と返球内容だけを扱い、表示・スイング演出は NpcRacketView に任せる。
     /// 難易度に関わる値はこのコンポーネントにまとめてあり、ここだけで強さを調整できる。
     /// </summary>
-    public class NpcController : MonoBehaviour
+    public class NpcController : MonoBehaviour, ICourtActor
     {
         [Header("References")]
         [SerializeField] private TableLayout _table;
