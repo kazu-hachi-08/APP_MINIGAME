@@ -14,14 +14,14 @@ namespace MiniGame.Soccer.Editor
     {
         public const string SpriteDirectory = "Assets/_Project/Games/01_Soccer/Sprites";
 
-        /// <summary>1ワールド単位あたりのピクセル数（コート14x8単位 = 224x128px）</summary>
+        /// <summary>1ワールド単位あたりのピクセル数（コート22x12単位 = 352x192px）</summary>
         public const int PixelsPerUnit = 16;
 
         public const int PlayerSize = 16;
-        public const int CourtWidth = 14 * PixelsPerUnit;
-        public const int CourtHeight = 8 * PixelsPerUnit;
+        public const int CourtWidth = 22 * PixelsPerUnit;
+        public const int CourtHeight = 12 * PixelsPerUnit;
         public const int GoalWidth = 14;
-        public const int GoalHeight = 3 * PixelsPerUnit + 4; // ゴール枠48px + 上下ポスト
+        public const int GoalHeight = 4 * PixelsPerUnit + 4; // ゴール枠64px + 上下ポスト
 
         /// <summary>選手スプライトの原点は足元に置く（16pxのうち下から1.5px）</summary>
         private static readonly Vector2 PlayerPivot = new Vector2(0.5f, 1.5f / PlayerSize);
@@ -61,10 +61,16 @@ namespace MiniGame.Soccer.Editor
             Debug.Log($"[SoccerArtGenerator] ドット絵素材を生成しました: {SpriteDirectory}");
         }
 
-        /// <summary>素材が未生成なら生成する（SoccerSceneBuilder から呼ばれる）</summary>
+        /// <summary>
+        /// 素材が未生成、またはコート寸法の定数と食い違っていたら生成し直す
+        /// （コートを広げても古いPNGが残り、選手だけコート外に見える事故を防ぐ）
+        /// </summary>
         public static void EnsureGenerated()
         {
-            if (Load("Court") == null)
+            Sprite court = Load("Court");
+            if (court == null ||
+                court.texture.width != CourtWidth ||
+                court.texture.height != CourtHeight)
             {
                 GenerateAll();
             }
@@ -278,13 +284,14 @@ namespace MiniGame.Soccer.Editor
             OutlineRect(c, CourtWidth, CourtHeight, margin, margin,
                 CourtWidth - margin * 2, CourtHeight - margin * 2, thickness, LineColor);
             FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, margin, thickness, CourtHeight - margin * 2, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, 24f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, 34f, thickness, LineColor);
             FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, CourtHeight / 2 - 1, 2, 2, LineColor);
 
-            const int penaltyWidth = 34;
-            const int penaltyHeight = 84;
-            const int goalAreaWidth = 14;
-            const int goalAreaHeight = 46;
+            // コート拡大に合わせて実際のピッチと同じ比率で各エリアも広げる
+            const int penaltyWidth = 54;
+            const int penaltyHeight = 120;
+            const int goalAreaWidth = 22;
+            const int goalAreaHeight = 62;
             for (int side = 0; side < 2; side++)
             {
                 int penaltyX = side == 0 ? margin : CourtWidth - margin - penaltyWidth;
@@ -295,7 +302,7 @@ namespace MiniGame.Soccer.Editor
                 OutlineRect(c, CourtWidth, CourtHeight, goalAreaX, (CourtHeight - goalAreaHeight) / 2,
                     goalAreaWidth, goalAreaHeight, thickness, LineColor);
 
-                int spotX = side == 0 ? margin + 24 : CourtWidth - margin - 24;
+                int spotX = side == 0 ? margin + 36 : CourtWidth - margin - 36;
                 FillRect(c, CourtWidth, CourtHeight, spotX, CourtHeight / 2 - 1, 2, 2, LineColor);
             }
 

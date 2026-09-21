@@ -13,23 +13,23 @@ namespace MiniGame.Soccer
         [SerializeField] private Vector2 _homePosition;
 
         [Header("Movement")]
-        [SerializeField] private float _moveSpeed = 3f;
+        [SerializeField] private float _moveSpeed = 4.5f;
         [SerializeField] private float _arriveThreshold = 0.2f;
 
         [Header("Ball Awareness")]
-        [SerializeField] private float _ballChaseRadius = 3.5f;
+        [SerializeField] private float _ballChaseRadius = 5.5f;
 
         [Header("Attack / Defense")]
-        [SerializeField] private float _attackShiftDistance = 1.5f;
+        [SerializeField] private float _attackShiftDistance = 2.3f;
 
         [Header("Kick")]
         [SerializeField] private float _opponentGoalX;
         [SerializeField] private float _kickRadius = 0.6f;
-        [SerializeField] private float _shootRange = 4.5f;
-        [SerializeField] private float _passRange = 6f;
+        [SerializeField] private float _shootRange = 7f;
+        [SerializeField] private float _passRange = 9f;
         [SerializeField] private float _passAdvantageMargin = 1.5f;
-        [SerializeField] private float _passSpeed = 6f;
-        [SerializeField] private float _shootSpeed = 12f;
+        [SerializeField] private float _passSpeed = 9f;
+        [SerializeField] private float _shootSpeed = 17f;
         [SerializeField] private float _kickCooldown = 1.0f;
 
         private Rigidbody2D _rigidbody;

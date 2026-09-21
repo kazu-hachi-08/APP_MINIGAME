@@ -1,2 +1,0 @@
-C:\MyApp\APP_MINIGAME\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
-C:\MyApp\APP_MINIGAME\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt

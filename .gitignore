@@ -75,3 +75,18 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Unity 6 Android build intermediates (再生成されるので共有不要)
+/.utmp/
+
+# Unity crash recovery scenes (個人環境のクラッシュ痕跡)
+/[Aa]ssets/_[Rr]ecovery/
+/[Aa]ssets/_[Rr]ecovery.meta
+
+# Unity auto-generated solution (new format)
+*.slnx
+
+# iOS builds
+*.ipa
+*.dSYM.zip
+*.dSYM
