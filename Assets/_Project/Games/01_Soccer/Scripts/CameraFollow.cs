@@ -11,7 +11,7 @@ namespace MiniGame.Soccer
         [SerializeField] private float _followSpeed = 8f;
 
         [Header("Field Clamp")]
-        [SerializeField] private Vector2 _fieldHalfExtents = new Vector2(7f, 4f);
+        [SerializeField] private Vector2 _fieldHalfExtents = new Vector2(11f, 6f);
         [SerializeField] private float _margin = 1.5f;
 
         private Camera _camera;

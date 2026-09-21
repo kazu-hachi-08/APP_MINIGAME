@@ -29,9 +29,9 @@ namespace MiniGame.Soccer.Editor
         private const string BallPhysicsMaterialPath = PhysicsDirectory + "/BallBounce.physicsMaterial2D";
 
         // コート寸法（ワールド単位）
-        private const float FieldHalfWidth = 7f;
-        private const float FieldHalfHeight = 4f;
-        private const float GoalHalfHeight = 1.5f;
+        private const float FieldHalfWidth = 11f;
+        private const float FieldHalfHeight = 6f;
+        private const float GoalHalfHeight = 2f;
         private const float WallThickness = 0.3f;
 
         // 切り替え候補（GKを除くHome選手）のうち、キックオフ時に操作する選手のインデックス
@@ -325,17 +325,17 @@ namespace MiniGame.Soccer.Editor
         {
             return new[]
             {
-                new Vector2(-6.5f, 0f),   // GK
-                new Vector2(-4.5f, -3f),  // DF
-                new Vector2(-4.5f, -1f),  // DF
-                new Vector2(-4.5f, 1f),   // DF
-                new Vector2(-4.5f, 3f),   // DF
-                new Vector2(-1.5f, -3f),  // MF
-                new Vector2(-1.5f, -1f),  // MF
-                new Vector2(-1.5f, 1f),   // MF
-                new Vector2(-1.5f, 3f),   // MF
-                new Vector2(-0.7f, 0f),   // FW（人間操作対象。キックオフ地点に最も近い）
-                new Vector2(-2.0f, 2.5f), // FW
+                new Vector2(-10.3f, 0f),   // GK
+                new Vector2(-7.1f, -4.6f), // DF
+                new Vector2(-7.1f, -1.6f), // DF
+                new Vector2(-7.1f, 1.6f),  // DF
+                new Vector2(-7.1f, 4.6f),  // DF
+                new Vector2(-2.3f, -4.6f), // MF
+                new Vector2(-2.3f, -1.6f), // MF
+                new Vector2(-2.3f, 1.6f),  // MF
+                new Vector2(-2.3f, 4.6f),  // MF
+                new Vector2(-1.1f, 0f),    // FW（人間操作対象。キックオフ地点に最も近い）
+                new Vector2(-3.2f, 3.7f),  // FW
             };
         }
 
