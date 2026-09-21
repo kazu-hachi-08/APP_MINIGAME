@@ -5,27 +5,22 @@ namespace MiniGame.TableTennis
 {
     /// <summary>
     /// フリック入力・ラケット・ボールをつなぐ打球処理。
-    /// ボールが打球可能範囲に無ければ、仕様通りフリックを無視する。
+    /// 当たり判定とタイミング判定は SwingTimingJudge、打球計算は ShotCalculator に任せ、
+    /// ここは「フリックを打球として通すかどうか」だけを決める。
     /// </summary>
     public class PlayerSwing : MonoBehaviour
     {
         [SerializeField] private BallMotion _ball;
         [SerializeField] private RacketController _racket;
         [SerializeField] private FlickInput _flickInput;
+        [SerializeField] private SwingTimingJudge _timingJudge;
         [SerializeField] private ShotCalculator _shotCalculator;
 
-        [Header("打球可能範囲 (m)")]
-        [Tooltip("ラケットより手前側で打てる範囲")]
-        [SerializeField] private float _hitRangeNear = 0.2f;
-
-        [Tooltip("ラケットより奥側で打てる範囲")]
-        [SerializeField] private float _hitRangeFar = 0.55f;
-
-        [SerializeField] private float _hitRadiusX = 0.32f;
-        [SerializeField] private float _hitRadiusY = 0.32f;
-
-        /// <summary>打球が成立したときに通知する（HUD表示・SE用）</summary>
+        /// <summary>打球が成立したときに通知する（進行・HUD表示・SE用）</summary>
         public event Action<FlickData, ShotResult> OnShot;
+
+        /// <summary>振ったが当たらなかったときに通知する</summary>
+        public event Action<SwingJudgement> OnMissed;
 
         /// <summary>打球を受け付けるかどうか。ラリー外やポーズ中は false にする</summary>
         public bool CanSwing { get; set; } = true;
@@ -42,33 +37,27 @@ namespace MiniGame.TableTennis
 
         private void HandleFlick(FlickData flick)
         {
-            if (!CanSwing || !IsBallHittable()) return;
+            if (!CanSwing || !_ball.IsFlying) return;
 
-            ShotResult shot = _shotCalculator.Calculate(flick);
+            // 自分から離れていくボール（打ち返した直後など）は打てない。
+            // サーブのトス（奥行き速度0）は打てるよう、0は許容する
+            if (_ball.Velocity.z > 0f) return;
+
+            SwingJudgement judgement = _timingJudge.Judge(_ball.CourtPosition, _racket.CourtPosition);
+
+            // 打球可能範囲に無いフリックは、仕様通り無視する
+            if (judgement.Result == SwingResult.OutOfRange) return;
+
+            if (judgement.Result == SwingResult.Miss)
+            {
+                OnMissed?.Invoke(judgement);
+                return;
+            }
+
+            ShotResult shot = _shotCalculator.Calculate(flick, judgement);
             _ball.Launch(_ball.CourtPosition, shot.Velocity, shot.Spin);
 
             OnShot?.Invoke(flick, shot);
-        }
-
-        /// <summary>
-        /// ボールがラケットの打球可能範囲にあるか。
-        /// 打球タイミングによる補正（早すぎ/遅すぎ）は Phase 4 で追加する。
-        /// </summary>
-        private bool IsBallHittable()
-        {
-            if (!_ball.IsFlying) return false;
-
-            // 自分へ向かってきていないボール（打ち返した直後など）は打てない
-            if (_ball.Velocity.z >= 0f) return false;
-
-            Vector3 ball = _ball.CourtPosition;
-            Vector3 racket = _racket.CourtPosition;
-
-            float depthDifference = ball.z - racket.z;
-            if (depthDifference < -_hitRangeNear || depthDifference > _hitRangeFar) return false;
-
-            return Mathf.Abs(ball.x - racket.x) <= _hitRadiusX
-                && Mathf.Abs(ball.y - racket.y) <= _hitRadiusY;
         }
     }
 }

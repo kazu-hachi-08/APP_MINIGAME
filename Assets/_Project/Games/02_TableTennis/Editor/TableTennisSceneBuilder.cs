@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis.Editor
 {
     /// <summary>
-    /// TableTennisScene（Phase 1〜3: 最小プロトタイプ〜フリック打球）を自動生成するエディタユーティリティ。
+    /// TableTennisScene（Phase 1〜5: 最小プロトタイプ〜ラリー・ルール）を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// </summary>
     public static class TableTennisSceneBuilder
@@ -116,6 +116,7 @@ namespace MiniGame.TableTennis.Editor
             // 6. 入力（タップでラケット移動 / フリックで打球）
             var playerRigObj = new GameObject("PlayerRig");
             var flickInput = playerRigObj.AddComponent<FlickInput>();
+            var timingJudge = playerRigObj.AddComponent<SwingTimingJudge>();
             var shotCalculator = playerRigObj.AddComponent<ShotCalculator>();
             var playerSwing = playerRigObj.AddComponent<PlayerSwing>();
 
@@ -135,6 +136,7 @@ namespace MiniGame.TableTennis.Editor
             psSo.FindProperty("_ball").objectReferenceValue = ballMotion;
             psSo.FindProperty("_racket").objectReferenceValue = racket;
             psSo.FindProperty("_flickInput").objectReferenceValue = flickInput;
+            psSo.FindProperty("_timingJudge").objectReferenceValue = timingJudge;
             psSo.FindProperty("_shotCalculator").objectReferenceValue = shotCalculator;
             psSo.ApplyModifiedProperties();
 
@@ -149,14 +151,19 @@ namespace MiniGame.TableTennis.Editor
             scaler.matchWidthOrHeight = 0.5f;
             canvasObj.AddComponent<GraphicRaycaster>();
 
+            // スコアとサーブ権（Phase 8 で正式なHUDへ整理する）
+            Text scoreText = CreateText(canvasObj.transform, "ScoreText", "", 64,
+                new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(760f, 90f),
+                new Color(1f, 1f, 1f));
+
             Text messageText = CreateText(canvasObj.transform, "MessageText", "", 96,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(900f, 220f),
                 new Color(1f, 0.85f, 0.1f));
             messageText.gameObject.SetActive(false);
 
-            // Phase 3 の確認用。フリックが打球・回転へどう変換されたかを常時表示する
+            // Phase 3〜4 の確認用。フリックが打球・回転・タイミングへどう変換されたかを常時表示する
             Text shotInfoText = CreateText(canvasObj.transform, "ShotInfoText", "", 30,
-                new Vector2(0f, 1f), new Vector2(40f, -40f), new Vector2(900f, 160f),
+                new Vector2(0f, 1f), new Vector2(40f, -170f), new Vector2(900f, 200f),
                 new Color(0.85f, 0.92f, 1f));
             shotInfoText.alignment = TextAnchor.UpperLeft;
 
@@ -172,11 +179,25 @@ namespace MiniGame.TableTennis.Editor
             // 9. GameManager
             var gameManagerObj = new GameObject("TableTennisGameManager");
             var gameManager = gameManagerObj.AddComponent<TableTennisGameManager>();
+            var referee = gameManagerObj.AddComponent<RallyReferee>();
+            var serveController = gameManagerObj.AddComponent<ServeController>();
+
+            var refereeSo = new SerializedObject(referee);
+            refereeSo.FindProperty("_ball").objectReferenceValue = ballMotion;
+            refereeSo.ApplyModifiedProperties();
+
+            var serveSo = new SerializedObject(serveController);
+            serveSo.FindProperty("_ball").objectReferenceValue = ballMotion;
+            serveSo.FindProperty("_racket").objectReferenceValue = racket;
+            serveSo.ApplyModifiedProperties();
 
             var gmSo = new SerializedObject(gameManager);
             gmSo.FindProperty("_gameTitle").stringValue = "2D Table Tennis";
             gmSo.FindProperty("_ball").objectReferenceValue = ballMotion;
             gmSo.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
+            gmSo.FindProperty("_referee").objectReferenceValue = referee;
+            gmSo.FindProperty("_serve").objectReferenceValue = serveController;
+            gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
             gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
             gmSo.FindProperty("_shotInfoText").objectReferenceValue = shotInfoText;
             gmSo.ApplyModifiedProperties();

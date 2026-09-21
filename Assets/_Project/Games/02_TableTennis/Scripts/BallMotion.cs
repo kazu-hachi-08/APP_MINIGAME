@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MiniGame.TableTennis
 {
-    /// <summary>ラリーが終わった理由（Phase 5 で得点処理に接続する）</summary>
+    /// <summary>ラリーが終わった理由。どちらの得点になるかは RallyReferee が決める</summary>
     public enum RallyEndReason
     {
         /// <summary>ネットに当たった</summary>
@@ -35,11 +35,25 @@ namespace MiniGame.TableTennis
         [Tooltip("回転量1のトップスピンが生む下向き加速度")]
         [SerializeField] private float _topSpinAcceleration = 6f;
         [Tooltip("回転量1のサイドスピンが生む横向き加速度")]
-        [SerializeField] private float _sideSpinAcceleration = 5f;
+        [SerializeField] private float _sideSpinAcceleration = 3f;
 
         [Header("Bounce")]
         [SerializeField] private float _bounceRestitution = 0.8f;
         [SerializeField] private float _bounceFriction = 0.95f;
+
+        [Header("Bounce Spin Effect")]
+        [Tooltip("回転量1のトップスピンがバウンド後の前進速度を増やす割合")]
+        [SerializeField] private float _topSpinBounceForward = 0.35f;
+
+        [Tooltip("回転量1のバックスピンがバウンド後の跳ね上がりを増やす割合")]
+        [SerializeField] private float _backSpinBounceHeight = 0.3f;
+
+        [Tooltip("回転量1のサイドスピンがバウンド後に加える横方向速度 (m/s)")]
+        [SerializeField] private float _sideSpinBounceKick = 0.7f;
+
+        [Tooltip("バウンドで残る回転の割合")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _bounceSpinRetention = 0.7f;
 
         [Header("Out Of Play")]
         [Tooltip("この距離だけ台の端を越えたらラリー終了とみなす")]
@@ -139,12 +153,20 @@ namespace MiniGame.TableTennis
             }
 
             CourtPosition = new Vector3(contact.x, 0f, contact.z);
-            Velocity = new Vector3(
-                Velocity.x * _bounceFriction,
-                -Velocity.y * _bounceRestitution,
-                Velocity.z * _bounceFriction);
 
-            // Phase 4 でここに「回転によるバウンド後の変化」を追加する
+            // 回転の効果はここで一度に反映する。
+            // トップスピンは低く伸び、バックスピンは高く跳ねて失速し、サイドスピンは横へ跳ねる
+            float forwardFactor = 1f + Spin.y * _topSpinBounceForward;
+            float heightFactor = 1f - Spin.y * _backSpinBounceHeight;
+
+            Velocity = new Vector3(
+                Velocity.x * _bounceFriction + Spin.x * _sideSpinBounceKick,
+                -Velocity.y * _bounceRestitution * heightFactor,
+                Velocity.z * _bounceFriction * forwardFactor);
+
+            // 台とこすれた分だけ回転は落ちる
+            Spin *= _bounceSpinRetention;
+
             OnBounced?.Invoke(CourtPosition);
             return false;
         }

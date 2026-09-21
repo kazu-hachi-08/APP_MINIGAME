@@ -7,108 +7,206 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis
 {
     /// <summary>
-    /// 卓球ゲームの進行管理（Phase 1〜3 時点）。
-    /// 得点・サーブ・NPC はまだ無いため、ラリーが切れたら仮の球出しでラリーを再開する。
-    /// Phase 5 で得点・サーブへ、Phase 6 で NPC の返球へ置き換える。
+    /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取）。
+    /// ルール判定は RallyReferee、得点とサーブ権は MatchScore に任せ、
+    /// ここは「今どの状態か」と「次に何をするか」だけを見る。
+    /// 相手の返球は Phase 6 の NPC で追加するため、現状は相手側はサーブのみ行う。
     /// </summary>
     public class TableTennisGameManager : BaseMiniGameManager
     {
+        /// <summary>卓球固有のラリー進行状態（共通の MiniGameState とは別に持つ）</summary>
+        private enum RallyPhase
+        {
+            /// <summary>サーブ待ち・トス中</summary>
+            Serving,
+
+            /// <summary>ラリー中</summary>
+            Rallying,
+
+            /// <summary>得点表示中（打球を受け付けない）</summary>
+            PointBreak
+        }
+
         [Header("References")]
         [SerializeField] private BallMotion _ball;
         [SerializeField] private PlayerSwing _playerSwing;
+        [SerializeField] private RallyReferee _referee;
+        [SerializeField] private ServeController _serve;
 
         [Header("UI")]
+        [SerializeField] private Text _scoreText;
         [SerializeField] private Text _messageText;
 
-        [Tooltip("フリック→打球・回転の対応を確認するための開発用表示（Phase 8 で整理する）")]
+        [Tooltip("フリックから打球・回転・タイミングへの対応を確認するための開発用表示（Phase 8 で整理する）")]
         [SerializeField] private Text _shotInfoText;
 
-        [Header("仮の球出し（Phase 5/6 でサーブ・NPCに置き換える）")]
-        [SerializeField] private float _feedDelay = 1.0f;
-        [SerializeField] private float _feedStartZ = 1.2f;
-        [SerializeField] private float _feedHeight = 0.35f;
-        [SerializeField] private float _feedForwardSpeed = 5.5f;
-        [SerializeField] private float _feedUpSpeed = 1.2f;
-        [SerializeField] private float _feedSpreadX = 0.45f;
+        [Header("Rule")]
+        [SerializeField] private int _pointsToWin = 11;
+        [SerializeField] private int _serveChangeInterval = 2;
+
+        [Header("Timing")]
+        [SerializeField] private float _serveDelay = 1.0f;
+        [SerializeField] private float _pointDisplayDuration = 1.4f;
+
+        [Tooltip("トスを打ち損ねたときに、やり直すまでの待ち時間")]
+        [SerializeField] private float _retossDelay = 0.6f;
+
+        private MatchScore _score;
+        private RallyPhase _phase = RallyPhase.PointBreak;
 
         private void OnEnable()
         {
             _ball.OnRallyEnded += HandleRallyEnded;
-            _ball.OnBounced += HandleBounced;
             _playerSwing.OnShot += HandleShot;
+            _playerSwing.OnMissed += HandleMissed;
+            _referee.OnPointDecided += HandlePointDecided;
         }
 
         private void OnDisable()
         {
             _ball.OnRallyEnded -= HandleRallyEnded;
-            _ball.OnBounced -= HandleBounced;
             _playerSwing.OnShot -= HandleShot;
+            _playerSwing.OnMissed -= HandleMissed;
+            _referee.OnPointDecided -= HandlePointDecided;
         }
 
         protected override void OnGameReady()
         {
-            _ball.Stop();
-            SetMessage(string.Empty);
+            _score = new MatchScore(_pointsToWin, _serveChangeInterval, CourtSide.Player);
+            UpdateScoreText();
             SetShotInfo("フリックして打つ");
             StartGame();
-            StartCoroutine(FeedBallRoutine("READY"));
+            StartCoroutine(NextServeRoutine());
         }
 
         protected override void Update()
         {
             base.Update();
 
-            // ポーズ中やラリー間にフリックが打球として通らないようにする
-            _playerSwing.CanSwing = IsPlaying && _ball.IsFlying;
+            // ポーズ中や得点表示中にフリックが打球として通らないようにする
+            _playerSwing.CanSwing = IsPlaying && _phase != RallyPhase.PointBreak && _ball.IsFlying;
         }
 
-        /// <summary>
-        /// 相手側からボールを送り出す。ラリーを続けて操作感を確かめるための暫定処理。
-        /// </summary>
-        private IEnumerator FeedBallRoutine(string message)
+        /// <summary>サーブ権を確認し、プレイヤーならトス、相手なら送り出しでラリーを始める</summary>
+        private IEnumerator NextServeRoutine()
         {
-            SetMessage(message);
-            yield return new WaitForSeconds(_feedDelay);
+            _phase = RallyPhase.PointBreak;
+            _ball.Stop();
+            _referee.Stop();
+
+            CourtSide server = _score.CurrentServer;
+            SetMessage(server == CourtSide.Player ? "YOUR SERVE" : "NPC SERVE");
+            yield return new WaitForSeconds(_serveDelay);
             SetMessage(string.Empty);
 
-            float startX = Random.Range(-_feedSpreadX, _feedSpreadX);
-            _ball.Launch(
-                new Vector3(startX, _feedHeight, _feedStartZ),
-                new Vector3(-startX * 0.5f, _feedUpSpeed, -_feedForwardSpeed),
-                Vector2.zero);
+            if (server == CourtSide.Player)
+            {
+                // トスを打った時点でラリー開始とする（HandleShot）
+                _phase = RallyPhase.Serving;
+                _serve.TossForPlayer();
+            }
+            else
+            {
+                _phase = RallyPhase.Rallying;
+                _serve.ServeByOpponent();
+                _referee.BeginRally(CourtSide.Opponent);
+            }
         }
 
         private void HandleRallyEnded(RallyEndReason reason)
         {
             if (!IsPlaying) return;
 
-            StartCoroutine(FeedBallRoutine(ToMessage(reason)));
-        }
-
-        private static string ToMessage(RallyEndReason reason)
-        {
-            switch (reason)
+            // トスを打ち損ねただけなので、失点にせずトスをやり直す。
+            // ラリー中の失点判定は RallyReferee が行う
+            if (_phase == RallyPhase.Serving)
             {
-                case RallyEndReason.Net: return "NET";
-                case RallyEndReason.OutOfTable: return "OUT";
-                case RallyEndReason.PastPlayer: return "MISS";
-                default: return "RALLY END";
+                StartCoroutine(RetossRoutine());
             }
         }
 
-        private void HandleBounced(Vector3 contact)
+        private IEnumerator RetossRoutine()
         {
-            // Phase 8 でバウンドSEに差し替える
+            SetShotInfo("トスをやり直します");
+            yield return new WaitForSeconds(_retossDelay);
+
+            if (_phase == RallyPhase.Serving)
+            {
+                _serve.TossForPlayer();
+            }
         }
 
         private void HandleShot(FlickData flick, ShotResult shot)
         {
-            if (AudioManager.HasInstance)
+            PlaySe(SeId.Kick);
+
+            if (_phase == RallyPhase.Serving)
             {
-                AudioManager.Instance.PlaySe(SeId.Kick);
+                _phase = RallyPhase.Rallying;
+                _referee.BeginRally(CourtSide.Player);
+            }
+            else
+            {
+                _referee.NotifyHit(CourtSide.Player);
             }
 
             SetShotInfo(BuildShotInfo(flick, shot));
+        }
+
+        private void HandleMissed(SwingJudgement judgement)
+        {
+            SetShotInfo($"空振り！ タイミング {TimingLabel(judgement.Timing)}");
+        }
+
+        private void HandlePointDecided(CourtSide scorer, PointReason reason)
+        {
+            _phase = RallyPhase.PointBreak;
+            _ball.Stop();
+
+            _score.AddPoint(scorer);
+            UpdateScoreText();
+
+            SetMessage($"{ReasonLabel(reason)}\n{scorer.ToLabel()} POINT");
+            PlaySe(scorer == CourtSide.Player ? SeId.GoalCheer : SeId.Whistle);
+
+            StartCoroutine(AfterPointRoutine());
+        }
+
+        private IEnumerator AfterPointRoutine()
+        {
+            yield return new WaitForSeconds(_pointDisplayDuration);
+
+            if (_score.IsFinished)
+            {
+                FinishMatch();
+                yield break;
+            }
+
+            yield return NextServeRoutine();
+        }
+
+        private void FinishMatch()
+        {
+            SetMessage(string.Empty);
+            _referee.Stop();
+            _ball.Stop();
+
+            bool isVictory = _score.Winner == CourtSide.Player;
+            FinishGame(
+                isVictory,
+                $"{_score.PlayerPoints} - {_score.OpponentPoints}",
+                isVictory ? $"{_pointsToWin}点先取！" : "NPCの勝ち");
+        }
+
+        private void UpdateScoreText()
+        {
+            if (_scoreText == null) return;
+
+            // サーブ権がどちらにあるかを ● で示す
+            bool playerServes = _score.CurrentServer == CourtSide.Player;
+            string playerMark = playerServes ? "●" : "  ";
+            string opponentMark = playerServes ? "  " : "●";
+            _scoreText.text = $"{playerMark} YOU {_score.PlayerPoints} - {_score.OpponentPoints} NPC {opponentMark}";
         }
 
         /// <summary>
@@ -116,10 +214,10 @@ namespace MiniGame.TableTennis
         /// </summary>
         private static string BuildShotInfo(FlickData flick, ShotResult shot)
         {
-            string spinLabel = DescribeSpin(shot.Spin);
             return $"FLICK 方向({flick.Direction.x:0.00}, {flick.Direction.y:0.00})  速度 {flick.Speed:0.00} (強さ {shot.Strength:0.00})\n"
                  + $"打球  前方 {shot.Velocity.z:0.0} m/s  左右 {shot.Velocity.x:+0.0;-0.0;0.0}  打ち上げ {shot.Velocity.y:0.0}\n"
-                 + $"回転  {spinLabel}  (top {shot.Spin.y:+0.00;-0.00;0.00} / side {shot.Spin.x:+0.00;-0.00;0.00})";
+                 + $"回転  {DescribeSpin(shot.Spin)}  (top {shot.Spin.y:+0.00;-0.00;0.00} / side {shot.Spin.x:+0.00;-0.00;0.00})\n"
+                 + $"タイミング  {TimingLabel(shot.Timing)}  (品質 {shot.Quality:0.00})";
         }
 
         private static string DescribeSpin(Vector2 spin)
@@ -137,6 +235,34 @@ namespace MiniGame.TableTennis
             if (vertical.Length > 0) return vertical;
             if (horizontal.Length > 0) return horizontal;
             return "ほぼ無回転";
+        }
+
+        private static string TimingLabel(ShotTiming timing)
+        {
+            switch (timing)
+            {
+                case ShotTiming.Early: return "早すぎ";
+                case ShotTiming.Late: return "遅すぎ";
+                default: return "ジャスト";
+            }
+        }
+
+        private static string ReasonLabel(PointReason reason)
+        {
+            switch (reason)
+            {
+                case PointReason.Net: return "NET";
+                case PointReason.Out: return "OUT";
+                default: return "MISS";
+            }
+        }
+
+        private static void PlaySe(SeId id)
+        {
+            if (AudioManager.HasInstance)
+            {
+                AudioManager.Instance.PlaySe(id);
+            }
         }
 
         private void SetMessage(string message)
