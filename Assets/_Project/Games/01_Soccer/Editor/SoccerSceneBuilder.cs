@@ -4,6 +4,7 @@ using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
+using MiniGame.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -14,7 +15,7 @@ using UnityEngine.UI;
 namespace MiniGame.Soccer.Editor
 {
     /// <summary>
-    /// SoccerScene（Phase 7: スマートフォン操作）を自動生成・セットアップするエディタユーティリティ
+    /// SoccerScene（Phase 8: UI・演出）を自動生成・セットアップするエディタユーティリティ
     /// </summary>
     public static class SoccerSceneBuilder
     {
@@ -95,8 +96,10 @@ namespace MiniGame.Soccer.Editor
             // 3. Managers（共通基盤の再利用）
             var managersRoot = new GameObject("--- Managers ---");
             CreateManager<SceneLoader>("SceneLoader", managersRoot.transform);
-            CreateManager<AudioManager>("AudioManager", managersRoot.transform);
-            CreateManager<UIManager>("UIManager", managersRoot.transform);
+            var audioManager = CreateManager<AudioManager>("AudioManager", managersRoot.transform);
+            // SE素材が未用意のため、仮のSEを生成して鳴らす（正式素材を入れたらこのコンポーネントは不要）
+            audioManager.gameObject.AddComponent<ProceduralSe>();
+            var uiManager = CreateManager<UIManager>("UIManager", managersRoot.transform);
             CreateManager<InputManager>("InputManager", managersRoot.transform);
 
             // 4. コート
@@ -216,8 +219,47 @@ namespace MiniGame.Soccer.Editor
             scoreText.alignment = TextAnchor.MiddleCenter;
             scoreText.color = Color.white;
 
+            // 残り試合時間（スコアの直下）
+            var timerTextObj = new GameObject("TimerText");
+            timerTextObj.transform.SetParent(canvasObj.transform, false);
+            var timerRect = timerTextObj.AddComponent<RectTransform>();
+            timerRect.anchorMin = new Vector2(0.5f, 1f);
+            timerRect.anchorMax = new Vector2(0.5f, 1f);
+            timerRect.pivot = new Vector2(0.5f, 1f);
+            timerRect.sizeDelta = new Vector2(300, 60);
+            timerRect.anchoredPosition = new Vector2(0f, -100f);
+            var timerText = timerTextObj.AddComponent<Text>();
+            timerText.text = "2:00";
+            timerText.fontSize = 40;
+            timerText.fontStyle = FontStyle.Bold;
+            timerText.alignment = TextAnchor.MiddleCenter;
+            timerText.color = new Color(1f, 0.95f, 0.8f);
+
+            // ポーズボタン（スマートフォンにはEscキーが無いため画面上に置く）
+            var pauseButtonObj = UIDialogBuilder.CreateButton(canvasObj.transform, "Btn_Pause", "II", 90, 90,
+                new Color(0.15f, 0.17f, 0.22f, 0.8f));
+            SetAnchoredRect(pauseButtonObj.GetComponent<RectTransform>(), new Vector2(1f, 1f),
+                new Vector2(-80f, -70f), new Vector2(90f, 90f));
+            var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
+
             // 11. 仮想コントロール（Phase 7: スマートフォン操作）
             VirtualControls virtualControls = BuildVirtualControls(canvasObj.transform);
+
+            // ゴール時の画面フラッシュ（仮想コントロールより手前、ダイアログより奥に描画する）
+            var goalFlashObj = CreateUIObject("GoalEffect", canvasObj.transform);
+            SetStretchAll(goalFlashObj.GetComponent<RectTransform>());
+            var goalFlashImage = goalFlashObj.AddComponent<Image>();
+            goalFlashImage.color = new Color(1f, 0.95f, 0.5f, 0f);
+            goalFlashImage.raycastTarget = false; // 演出中もタッチ操作を妨げない
+            var goalEffect = goalFlashObj.AddComponent<GoalEffect>();
+
+            var geSo = new SerializedObject(goalEffect);
+            geSo.FindProperty("_flashImage").objectReferenceValue = goalFlashImage;
+            geSo.FindProperty("_punchTarget").objectReferenceValue = messageRect;
+            geSo.ApplyModifiedProperties();
+
+            // 共通ダイアログ（PAUSE / リザルト）。最後に生成して最前面に置く
+            UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
             // 12. PlayerSwitcher（Phase 6: 操作対象の自動/手動切り替え）
             var switcherObj = new GameObject("PlayerSwitcher");
@@ -245,12 +287,18 @@ namespace MiniGame.Soccer.Editor
             gmSo.FindProperty("_ballStartPosition").vector2Value = BallStartPosition;
             gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
+            gmSo.FindProperty("_timerText").objectReferenceValue = timerText;
+            gmSo.FindProperty("_goalEffect").objectReferenceValue = goalEffect;
             // BaseMiniGameManager が Start 時に InputManager へ登録し、キーボードと同じ経路で入力される
             gmSo.FindProperty("_virtualJoystick").objectReferenceValue = virtualControls.Joystick;
             gmSo.FindProperty("_actionButton1").objectReferenceValue = virtualControls.PassButton;
             gmSo.FindProperty("_actionButton2").objectReferenceValue = virtualControls.ShootButton;
             gmSo.FindProperty("_actionButton3").objectReferenceValue = virtualControls.SwitchButton;
             gmSo.ApplyModifiedProperties();
+
+            var pauseSo = new SerializedObject(pauseButton);
+            pauseSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            pauseSo.ApplyModifiedProperties();
 
             // シーンの保存
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -387,6 +435,7 @@ namespace MiniGame.Soccer.Editor
             collider.radius = 0.2f;
 
             template.AddComponent<TeamMember>();
+            template.AddComponent<PlayerAnimator>(); // Phase 8: 走行中の簡易アニメーション
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(template, PlayerPrefabPath);
             Object.DestroyImmediate(template);

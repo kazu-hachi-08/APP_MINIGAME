@@ -1,6 +1,7 @@
 using System.Collections;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
+using MiniGame.Common.Input;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -20,10 +21,16 @@ namespace MiniGame.Soccer
         [Header("UI")]
         [SerializeField] private Text _messageText;
         [SerializeField] private Text _scoreText;
+        [SerializeField] private Text _timerText;
+        [SerializeField] private GoalEffect _goalEffect;
+
+        [Header("Match Time")]
+        [SerializeField] private float _matchDurationSeconds = 120f;
 
         [Header("Timing")]
         [SerializeField] private float _kickOffMessageDuration = 1.0f;
         [SerializeField] private float _goalMessageDuration = 1.5f;
+        [SerializeField] private float _timeUpMessageDuration = 1.5f;
 
         [Header("Stuck Ball Recovery")]
         [SerializeField] private float _stuckSpeedThreshold = 0.15f;
@@ -34,18 +41,76 @@ namespace MiniGame.Soccer
         private int _awayScore;
         private bool _isSequenceRunning;
         private float _stuckTimer;
+        private float _remainingSeconds;
 
         protected override void OnGameReady()
         {
+            _remainingSeconds = _matchDurationSeconds;
             ResetPositions();
             UpdateScoreText();
+            UpdateTimerText();
             StartCoroutine(KickOffRoutine());
         }
 
         protected override void Update()
         {
             base.Update();
+            TickMatchTimer();
             MonitorStuckBall();
+        }
+
+        /// <summary>
+        /// 試合時間のカウントダウン（プレイ中のみ進み、ゴール演出中などは止まる）
+        /// </summary>
+        private void TickMatchTimer()
+        {
+            if (!IsPlaying || _isSequenceRunning) return;
+
+            _remainingSeconds -= Time.deltaTime;
+            if (_remainingSeconds <= 0f)
+            {
+                _remainingSeconds = 0f;
+                StartCoroutine(TimeUpRoutine());
+            }
+
+            UpdateTimerText();
+        }
+
+        private IEnumerator TimeUpRoutine()
+        {
+            _isSequenceRunning = true;
+            ChangeState(MiniGameState.Event);
+
+            if (AudioManager.HasInstance)
+            {
+                AudioManager.Instance.PlaySe(SeId.Whistle);
+            }
+
+            yield return StartCoroutine(ShowMessageRoutine("TIME UP", _timeUpMessageDuration));
+
+            // 勝敗表示とリザルト画面の表示は BaseMiniGameManager に任せる
+            FinishGame(_homeScore > _awayScore, $"HOME {_homeScore} - {_awayScore} AWAY", BuildResultDetail());
+        }
+
+        private string BuildResultDetail()
+        {
+            if (_homeScore > _awayScore) return "勝利！";
+            if (_homeScore < _awayScore) return "敗北...";
+            return "引き分け";
+        }
+
+        protected override void OnGameOver(bool isVictory)
+        {
+            // 試合終了後もボールと選手が動き続けないよう入力とボールを止める
+            if (_ball != null)
+            {
+                _ball.ResetBall(_ball.Position);
+            }
+
+            if (InputManager.HasInstance)
+            {
+                InputManager.Instance.InputEnabled = false;
+            }
         }
 
         /// <summary>
@@ -117,6 +182,11 @@ namespace MiniGame.Soccer
                 AudioManager.Instance.PlaySe(SeId.GoalCheer);
             }
 
+            if (_goalEffect != null)
+            {
+                _goalEffect.Play();
+            }
+
             string scorerLabel = scoringTeam == TeamSide.Home ? "HOME" : "AWAY";
             yield return StartCoroutine(ShowMessageRoutine($"GOAL! ({scorerLabel})", _goalMessageDuration));
 
@@ -129,6 +199,12 @@ namespace MiniGame.Soccer
         private IEnumerator KickOffRoutine()
         {
             ChangeState(MiniGameState.Countdown);
+
+            if (AudioManager.HasInstance)
+            {
+                AudioManager.Instance.PlaySe(SeId.Whistle);
+            }
+
             yield return StartCoroutine(ShowMessageRoutine("KICK OFF!", _kickOffMessageDuration));
             StartGame();
         }
@@ -155,6 +231,15 @@ namespace MiniGame.Soccer
             {
                 _scoreText.text = $"HOME {_homeScore} - {_awayScore} AWAY";
             }
+        }
+
+        private void UpdateTimerText()
+        {
+            if (_timerText == null) return;
+
+            // 残り0.1秒でも「1」と見せたいので切り上げる
+            int totalSeconds = Mathf.CeilToInt(_remainingSeconds);
+            _timerText.text = $"{totalSeconds / 60}:{totalSeconds % 60:00}";
         }
 
         private void ResetPositions()
