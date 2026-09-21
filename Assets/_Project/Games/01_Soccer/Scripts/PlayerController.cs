@@ -11,8 +11,6 @@ namespace MiniGame.Soccer
     {
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 4f;
-        [SerializeField] private float _rotationSpeed = 720f; // 度/秒。向き変更の追従速度
-        [SerializeField] private float _spriteForwardOffsetDegrees = 90f; // 矢印アイコンの正面とFacingDirectionのズレ補正。見た目が合わなければ90度刻みで調整
 
         [Header("Dribble")]
         [SerializeField] private float _dribbleRadius = 0.6f;
@@ -59,17 +57,8 @@ namespace MiniGame.Soccer
             if (moveInput.sqrMagnitude > 0.01f)
             {
                 FacingDirection = moveInput.normalized;
-                RotateTowardsFacing();
                 DribbleBall();
             }
-        }
-
-        private void RotateTowardsFacing()
-        {
-            // 矢印スプライトの正面を移動方向へ向ける
-            float targetAngle = Mathf.Atan2(FacingDirection.y, FacingDirection.x) * Mathf.Rad2Deg + _spriteForwardOffsetDegrees;
-            float newAngle = Mathf.MoveTowardsAngle(_rigidbody.rotation, targetAngle, _rotationSpeed * Time.fixedDeltaTime);
-            _rigidbody.MoveRotation(newAngle);
         }
 
         private void DribbleBall()

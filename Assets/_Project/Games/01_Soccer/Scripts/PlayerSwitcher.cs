@@ -60,7 +60,7 @@ namespace MiniGame.Soccer
 
         private void LateUpdate()
         {
-            // 操作中の選手は回転するため、マーカーは子にせず位置だけ追従させる
+            // マーカーは選手の子にせず、位置だけ追従させる（切り替え時に付け替えずに済む）
             if (_controlMarker == null) return;
 
             Transform current = CurrentPlayer;
@@ -174,11 +174,6 @@ namespace MiniGame.Soccer
             if (player.TryGetComponent<AIPlayerController>(out var ai))
             {
                 ai.enabled = !isControlled;
-            }
-
-            if (player.TryGetComponent<SpriteRenderer>(out var renderer))
-            {
-                renderer.sortingOrder = isControlled ? 2 : 1;
             }
         }
 

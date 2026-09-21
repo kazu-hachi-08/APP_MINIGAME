@@ -44,9 +44,12 @@ namespace MiniGame.Soccer.Editor
         private const float JoystickHandleRange = 110f;
         private const string CircleSpritePath = "UI/Skin/Knob.psd";
 
+        // 描画順。選手とボールは YSortRenderer が毎フレーム決めるため、背景は十分小さい固定値にする
+        private const int CrowdSortingOrder = -1200;
+        private const int CourtSortingOrder = -1000;
+        private const int GoalSortingOrder = -900;
+
         private static readonly Vector2 BallStartPosition = Vector2.zero;
-        private static readonly Color HomeColor = new Color(0.2f, 0.4f, 1f);
-        private static readonly Color AwayColor = new Color(0.9f, 0.25f, 0.25f);
 
         [MenuItem("Tools/MiniGame/Build Soccer Scene", false, 2)]
         public static void BuildSoccerScene()
@@ -68,6 +71,9 @@ namespace MiniGame.Soccer.Editor
         {
             Debug.Log("[SoccerSceneBuilder] SoccerScene の構築を開始します...");
 
+            // ドット絵素材（選手・コート・ゴール等）が未生成なら先に作る
+            SoccerArtGenerator.EnsureGenerated();
+
             if (!Directory.Exists(SceneDirectory))
             {
                 Directory.CreateDirectory(SceneDirectory);
@@ -79,7 +85,7 @@ namespace MiniGame.Soccer.Editor
             var cameraObj = new GameObject("Main Camera");
             var camera = cameraObj.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.05f, 0.07f, 0.06f);
+            camera.backgroundColor = new Color(0.09f, 0.11f, 0.13f); // スタジアムの外周
             camera.orthographic = true;
             camera.orthographicSize = 2.5f;
             cameraObj.transform.position = new Vector3(0f, 0f, -10f);
@@ -102,10 +108,9 @@ namespace MiniGame.Soccer.Editor
             var uiManager = CreateManager<UIManager>("UIManager", managersRoot.transform);
             CreateManager<InputManager>("InputManager", managersRoot.transform);
 
-            // 4. コート
-            var fieldObj = CreateSprite("Field", new Color(0.13f, 0.5f, 0.2f), Vector3.zero,
-                new Vector3(FieldHalfWidth * 2f, FieldHalfHeight * 2f, 1f), "UI/Skin/UISprite.psd");
-            fieldObj.GetComponent<SpriteRenderer>().sortingOrder = -10;
+            // 4. コート（ライン込みの1枚絵。ライン1本ずつをGameObjectにしない）
+            CreateSpriteObject("Court", SoccerArtGenerator.Load("Court"), Vector3.zero, CourtSortingOrder);
+            BuildCrowdStands();
 
             // 5. 上下の壁（ゴールが無い辺はそのまま塞ぐ）
             CreateWall("Wall_Top", new Vector2(0f, FieldHalfHeight + WallThickness / 2f),
@@ -136,7 +141,7 @@ namespace MiniGame.Soccer.Editor
             for (int i = 0; i < homeFormation.Length; i++)
             {
                 bool isGoalkeeper = i == 0;
-                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, HomeColor, homeFormation[i], i, isSwitchCandidate: !isGoalkeeper);
+                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, homeFormation[i], i, isGoalkeeper, isSwitchCandidate: !isGoalkeeper);
 
                 if (!isGoalkeeper)
                 {
@@ -146,7 +151,7 @@ namespace MiniGame.Soccer.Editor
 
             for (int i = 0; i < awayFormation.Length; i++)
             {
-                SpawnFieldPlayer(playerPrefab, TeamSide.Away, AwayColor, awayFormation[i], i, isSwitchCandidate: false);
+                SpawnFieldPlayer(playerPrefab, TeamSide.Away, awayFormation[i], i, isGoalkeeper: i == 0, isSwitchCandidate: false);
             }
 
             GameObject defaultControlledPlayer = switchCandidates[DefaultControlledCandidateIndex];
@@ -158,14 +163,13 @@ namespace MiniGame.Soccer.Editor
             cfSo.ApplyModifiedProperties();
 
             // 操作中の選手を示すマーカー（足元に見せるためボールや選手より奥に描画する）
-            var controlMarker = CreateSprite("ControlMarker", new Color(1f, 0.95f, 0.3f, 0.9f),
-                defaultControlledPlayer.transform.position, new Vector3(0.75f, 0.75f, 1f), "UI/Skin/Knob.psd");
-            controlMarker.GetComponent<SpriteRenderer>().sortingOrder = -1;
+            var controlMarker = CreateSpriteObject("ControlMarker", SoccerArtGenerator.Load("ControlMarker"),
+                defaultControlledPlayer.transform.position, 0);
+            AddYSort(controlMarker, orderOffset: -1); // 同じ位置でも選手より奥に敷く
 
             // 9. ボール
-            var ballObj = CreateSprite("Ball", Color.white, BallStartPosition,
-                new Vector3(0.5f, 0.5f, 1f), "UI/Skin/Knob.psd");
-            ballObj.GetComponent<SpriteRenderer>().sortingOrder = 0;
+            var ballObj = CreateSpriteObject("Ball", SoccerArtGenerator.Load("Ball"), BallStartPosition, 0);
+            AddYSort(ballObj, orderOffset: 1); // 足元のボールが選手に隠れないよう少しだけ手前
             var ballRb = ballObj.AddComponent<Rigidbody2D>();
             ballRb.gravityScale = 0f;
             ballRb.freezeRotation = true;
@@ -357,9 +361,11 @@ namespace MiniGame.Soccer.Editor
         {
             float goalX = sideSign * FieldHalfWidth;
 
-            var goalVisual = CreateSprite($"GoalVisual_{defendingTeam}", new Color(1f, 0.9f, 0.2f, 0.6f),
-                new Vector3(goalX, 0f, 0f), new Vector3(0.4f, GoalHalfHeight * 2f, 1f), "UI/Skin/UISprite.psd");
-            goalVisual.GetComponent<SpriteRenderer>().sortingOrder = -5;
+            // ゴールはゴールラインの外側に置き、右側は同じ絵をX反転して使う
+            float goalDepth = SoccerArtGenerator.GoalWidth / (float)SoccerArtGenerator.PixelsPerUnit;
+            var goalVisual = CreateSpriteObject($"GoalVisual_{defendingTeam}", SoccerArtGenerator.Load("Goal"),
+                new Vector3(goalX + sideSign * goalDepth * 0.5f, 0f, 0f), GoalSortingOrder);
+            goalVisual.GetComponent<SpriteRenderer>().flipX = sideSign > 0f;
 
             float wallSideHeight = FieldHalfHeight - GoalHalfHeight;
             float wallSideCenterY = GoalHalfHeight + wallSideHeight / 2f;
@@ -423,8 +429,7 @@ namespace MiniGame.Soccer.Editor
             }
 
             // テンプレートを一時的に組み立ててPrefab化し、シーンからは削除する
-            var template = CreateSprite("FieldPlayer", Color.white, Vector3.zero,
-                new Vector3(2.0f, 2.0f, 1f), "UI/Skin/DropdownArrow.psd");
+            var template = CreateSpriteObject("FieldPlayer", SoccerArtGenerator.Load("Player_Home_Down_0"), Vector3.zero, 0);
 
             var rigidbody = template.AddComponent<Rigidbody2D>();
             rigidbody.gravityScale = 0f;
@@ -435,7 +440,8 @@ namespace MiniGame.Soccer.Editor
             collider.radius = 0.2f;
 
             template.AddComponent<TeamMember>();
-            template.AddComponent<PlayerAnimator>(); // Phase 8: 走行中の簡易アニメーション
+            AssignPlayerSprites(template.AddComponent<PlayerSpriteAnimator>(), "Home");
+            template.AddComponent<YSortRenderer>();
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(template, PlayerPrefabPath);
             Object.DestroyImmediate(template);
@@ -447,15 +453,16 @@ namespace MiniGame.Soccer.Editor
         /// 選手を1人生成する。切り替え候補の選手にはAIとプレイヤー操作の両方を持たせ、
         /// 実行時に PlayerSwitcher がどちらか一方だけを有効にする
         /// </summary>
-        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Color color, Vector2 position, int formationIndex, bool isSwitchCandidate)
+        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Vector2 position, int formationIndex, bool isGoalkeeper, bool isSwitchCandidate)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             instance.name = $"Player_{team}_{formationIndex:00}";
             instance.transform.position = position;
 
-            var renderer = instance.GetComponent<SpriteRenderer>();
-            renderer.color = color;
-            renderer.sortingOrder = 1;
+            // GKは両チームとも緑のユニフォームにして、フィールドプレイヤーと区別する
+            string teamKey = isGoalkeeper ? "Gk" : team == TeamSide.Home ? "Home" : "Away";
+            AssignPlayerSprites(instance.GetComponent<PlayerSpriteAnimator>(), teamKey);
+            instance.GetComponent<SpriteRenderer>().sprite = SoccerArtGenerator.Load($"Player_{teamKey}_Down_0");
 
             var teamMember = instance.GetComponent<TeamMember>();
             teamMember.SetTeam(team);
@@ -604,15 +611,70 @@ namespace MiniGame.Soccer.Editor
             return obj.AddComponent<T>();
         }
 
-        private static GameObject CreateSprite(string name, Color color, Vector3 position, Vector3 scale, string builtinSpritePath)
+        private static GameObject CreateSpriteObject(string name, Sprite sprite, Vector3 position, int sortingOrder)
         {
             var obj = new GameObject(name);
             obj.transform.position = position;
-            obj.transform.localScale = scale;
             var renderer = obj.AddComponent<SpriteRenderer>();
-            renderer.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(builtinSpritePath);
-            renderer.color = color;
+            renderer.sprite = sprite;
+            renderer.sortingOrder = sortingOrder;
             return obj;
+        }
+
+        private static void AddYSort(GameObject target, int orderOffset)
+        {
+            var ySort = target.AddComponent<YSortRenderer>();
+            var so = new SerializedObject(ySort);
+            so.FindProperty("_orderOffset").intValue = orderOffset;
+            so.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// 方向別（正面・背面・横）×3コマの人型スプライトを割り当てる
+        /// </summary>
+        private static void AssignPlayerSprites(PlayerSpriteAnimator animator, string teamKey)
+        {
+            var so = new SerializedObject(animator);
+            AssignFrames(so, "_downFrames", teamKey, "Down");
+            AssignFrames(so, "_upFrames", teamKey, "Up");
+            AssignFrames(so, "_sideFrames", teamKey, "Side");
+            so.ApplyModifiedProperties();
+        }
+
+        private static void AssignFrames(SerializedObject animatorSo, string propertyName, string teamKey, string direction)
+        {
+            var property = animatorSo.FindProperty(propertyName);
+            property.arraySize = SoccerArtGenerator.FrameCount;
+            for (int i = 0; i < SoccerArtGenerator.FrameCount; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue =
+                    SoccerArtGenerator.Load($"Player_{teamKey}_{direction}_{i}");
+            }
+        }
+
+        /// <summary>
+        /// コート外に観客席のタイルを敷く（雰囲気付けのみ。個別の観客やアニメーションは作らない）
+        /// </summary>
+        private static void BuildCrowdStands()
+        {
+            const float bandDepth = 3f;
+            float standOffsetX = FieldHalfWidth + 1.5f + bandDepth / 2f;
+            float standOffsetY = FieldHalfHeight + bandDepth / 2f;
+            float horizontalWidth = (FieldHalfWidth + 1.5f + bandDepth) * 2f;
+            float verticalHeight = FieldHalfHeight * 2f + bandDepth * 2f;
+
+            CreateCrowdBand("Crowd_Top", new Vector2(0f, standOffsetY), new Vector2(horizontalWidth, bandDepth));
+            CreateCrowdBand("Crowd_Bottom", new Vector2(0f, -standOffsetY), new Vector2(horizontalWidth, bandDepth));
+            CreateCrowdBand("Crowd_Left", new Vector2(-standOffsetX, 0f), new Vector2(bandDepth, verticalHeight));
+            CreateCrowdBand("Crowd_Right", new Vector2(standOffsetX, 0f), new Vector2(bandDepth, verticalHeight));
+        }
+
+        private static void CreateCrowdBand(string name, Vector2 center, Vector2 size)
+        {
+            var obj = CreateSpriteObject(name, SoccerArtGenerator.Load("Crowd"), center, CrowdSortingOrder);
+            var renderer = obj.GetComponent<SpriteRenderer>();
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.size = size;
         }
 
         private static void CreateWall(string name, Vector2 position, Vector2 size)

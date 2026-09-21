@@ -14,7 +14,6 @@ namespace MiniGame.Soccer
 
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 3f;
-        [SerializeField] private float _rotationSpeed = 540f;
         [SerializeField] private float _arriveThreshold = 0.2f;
 
         [Header("Ball Awareness")]
@@ -89,9 +88,7 @@ namespace MiniGame.Soccer
             }
             else
             {
-                Vector2 moveDirection = toTarget.normalized;
-                _rigidbody.linearVelocity = moveDirection * _moveSpeed;
-                RotateTowards(moveDirection);
+                _rigidbody.linearVelocity = toTarget.normalized * _moveSpeed;
             }
 
             TryKickBall();
@@ -223,14 +220,6 @@ namespace MiniGame.Soccer
             }
 
             return found;
-        }
-
-        private void RotateTowards(Vector2 direction)
-        {
-            // 矢印スプライトの正面補正（PlayerControllerと同じ値）
-            float targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + 90f;
-            float newAngle = Mathf.MoveTowardsAngle(_rigidbody.rotation, targetAngle, _rotationSpeed * Time.fixedDeltaTime);
-            _rigidbody.MoveRotation(newAngle);
         }
     }
 }
