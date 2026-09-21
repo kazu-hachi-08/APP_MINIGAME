@@ -103,6 +103,15 @@ namespace MiniGame.TableTennis
         {
             if (!_judging) return;
 
+            // 相手コートに入った時点で打球は成功している。
+            // その後どこへ飛んで終わろうと（返せずに台外へ抜ける・2バウンド目が台の外など）
+            // 失点するのは返せなかった側であり、打った側のミスにはしない
+            if (_bouncesSinceHit >= 1)
+            {
+                Award(_lastHitter, PointReason.NotReturned);
+                return;
+            }
+
             switch (reason)
             {
                 case RallyEndReason.Net:

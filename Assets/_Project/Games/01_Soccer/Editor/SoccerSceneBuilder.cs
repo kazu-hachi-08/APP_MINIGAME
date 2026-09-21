@@ -309,7 +309,7 @@ namespace MiniGame.Soccer.Editor
             Debug.Log($"[SoccerSceneBuilder] SoccerScene が正常に生成・保存されました: {ScenePath}");
 
             RegisterSceneInBuildSettings(ScenePath);
-            ConfigureLandscapeOrientation();
+            ConfigureAllowedOrientations();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -726,13 +726,14 @@ namespace MiniGame.Soccer.Editor
         }
 
         /// <summary>
-        /// 仮想コントロールは横画面前提のレイアウトのため、端末の向きを横向きに固定する
+        /// 実際の画面向きは ScreenOrientationApplier がシーンごとに切り替えるため、
+        /// ここでは端末側で全方向を許可しておく（iOS は許可した向きにしか回転できない）
         /// </summary>
-        private static void ConfigureLandscapeOrientation()
+        private static void ConfigureAllowedOrientations()
         {
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
-            PlayerSettings.allowedAutorotateToPortrait = false;
-            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToPortrait = true;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = true;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
         }
