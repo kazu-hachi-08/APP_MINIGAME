@@ -31,6 +31,9 @@ namespace MiniGame.TableTennis
         private CourtSide _lastHitter;
         private int _bouncesSinceHit;
 
+        /// <summary>サーブが自分のコートに1回バウンドするのを待っている状態</summary>
+        private bool _serveBounceAllowed;
+
         private void OnEnable()
         {
             _ball.OnBounced += HandleBounced;
@@ -48,6 +51,10 @@ namespace MiniGame.TableTennis
         {
             _judging = true;
             NotifyHit(server);
+
+            // 卓球のルール通り、サーブは自分のコートに1回落ちてよい。
+            // 短いサーブがいきなり失点にならないようにするため
+            _serveBounceAllowed = true;
         }
 
         /// <summary>打球が成立したことを伝える（バウンド数がここでリセットされる）</summary>
@@ -55,6 +62,7 @@ namespace MiniGame.TableTennis
         {
             _lastHitter = side;
             _bouncesSinceHit = 0;
+            _serveBounceAllowed = false;
         }
 
         /// <summary>ラリー外（サーブ待ち・得点表示中）では判定しない</summary>
@@ -72,10 +80,17 @@ namespace MiniGame.TableTennis
             // 打った本人のコートに落ちた ＝ 相手コートへ返せていない
             if (bouncedSide == _lastHitter)
             {
+                if (_serveBounceAllowed)
+                {
+                    _serveBounceAllowed = false;
+                    return;
+                }
+
                 Award(_lastHitter.Opposite(), PointReason.Out);
                 return;
             }
 
+            _serveBounceAllowed = false;
             _bouncesSinceHit++;
             if (_bouncesSinceHit >= 2)
             {

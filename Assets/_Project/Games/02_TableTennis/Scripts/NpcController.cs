@@ -50,8 +50,8 @@ namespace MiniGame.TableTennis
 
         [Header("返球")]
         [Tooltip("狙い点までの飛行時間 (秒)。短いほど速い球になる")]
-        [SerializeField] private float _minFlightTime = 0.55f;
-        [SerializeField] private float _maxFlightTime = 0.8f;
+        [SerializeField] private float _minFlightTime = 0.7f;
+        [SerializeField] private float _maxFlightTime = 1.0f;
 
         [Tooltip("狙う奥行きの範囲。台の手前側（マイナス）で指定する")]
         [SerializeField] private float _targetDepthNear = -1.15f;

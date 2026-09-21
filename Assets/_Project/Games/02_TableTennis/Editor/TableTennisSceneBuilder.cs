@@ -167,6 +167,10 @@ namespace MiniGame.TableTennis.Editor
             rcSo.FindProperty("_renderer").objectReferenceValue = racketObj.GetComponent<SpriteRenderer>();
             rcSo.ApplyModifiedProperties();
 
+            var scSo = new SerializedObject(shotCalculator);
+            scSo.FindProperty("_ball").objectReferenceValue = ballMotion;
+            scSo.ApplyModifiedProperties();
+
             var psSo = new SerializedObject(playerSwing);
             psSo.FindProperty("_ball").objectReferenceValue = ballMotion;
             psSo.FindProperty("_racket").objectReferenceValue = racket;

@@ -105,6 +105,7 @@ namespace MiniGame.TableTennis
 
             // ポーズ中や得点表示中にフリックが打球として通らないようにする
             _playerSwing.CanSwing = IsPlaying && _phase != RallyPhase.PointBreak && _ball.IsFlying;
+            _playerSwing.IsServing = _phase == RallyPhase.Serving;
 
             // NPCが動くのはラリー中だけ（サーブ待ちやトス中は構えに戻す）
             _npc.IsActive = IsPlaying && _phase == RallyPhase.Rallying;

@@ -43,6 +43,9 @@ namespace MiniGame.TableTennis
         [Tooltip("Strength が 1.0 になる速度（画面高さ/秒）")]
         [SerializeField] private float _maxFlickSpeed = 3.5f;
 
+        [Tooltip("フリック後、次のフリックを受け付けるまでの時間（秒）。指を離さずに振り直せるようにする")]
+        [SerializeField] private float _refireInterval = 0.12f;
+
         /// <summary>押している間の画面座標（ラケット移動に使う）</summary>
         public event Action<Vector2> OnPointerDragged;
 
@@ -51,6 +54,7 @@ namespace MiniGame.TableTennis
         private readonly List<Sample> _samples = new List<Sample>(16);
         private bool _tracking;
         private bool _flickFired;
+        private float _refireTime;
 
         private void Update()
         {
@@ -72,6 +76,14 @@ namespace MiniGame.TableTennis
             if (pointer.press.isPressed)
             {
                 OnPointerDragged?.Invoke(position);
+
+                // ラケットをボールまで運ぶ動き自体もフリックとして拾われるため、
+                // 一定時間で受け付けを戻さないと「1タッチ1スイング」になり打ち返せなくなる
+                if (_flickFired && Time.unscaledTime >= _refireTime)
+                {
+                    _flickFired = false;
+                    _samples.Clear();
+                }
 
                 _samples.Add(new Sample(position, Time.unscaledTime));
                 TrimOldSamples();
@@ -107,6 +119,7 @@ namespace MiniGame.TableTennis
             if (distance < _minFlickDistance || speed < _flickSpeedThreshold) return;
 
             _flickFired = true;
+            _refireTime = Time.unscaledTime + _refireInterval;
             OnFlicked?.Invoke(new FlickData
             {
                 Direction = delta.normalized,

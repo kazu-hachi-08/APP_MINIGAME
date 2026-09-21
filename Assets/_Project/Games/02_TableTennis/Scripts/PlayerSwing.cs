@@ -16,6 +16,10 @@ namespace MiniGame.TableTennis
         [SerializeField] private SwingTimingJudge _timingJudge;
         [SerializeField] private ShotCalculator _shotCalculator;
 
+        [Header("サーブ")]
+        [Tooltip("サーブ（トスを打つとき）の接触範囲の倍率。トスは一瞬しか打てないため広げて当てやすくする")]
+        [SerializeField] private float _serveRangeScale = 1.8f;
+
         /// <summary>打球が成立したときに通知する（進行・HUD表示・SE用）</summary>
         public event Action<FlickData, ShotResult> OnShot;
 
@@ -24,6 +28,9 @@ namespace MiniGame.TableTennis
 
         /// <summary>打球を受け付けるかどうか。ラリー外やポーズ中は false にする</summary>
         public bool CanSwing { get; set; } = true;
+
+        /// <summary>いまサーブのトスを打つ場面かどうか。true の間だけ接触範囲を広げる</summary>
+        public bool IsServing { get; set; }
 
         private void OnEnable()
         {
@@ -43,7 +50,8 @@ namespace MiniGame.TableTennis
             // サーブのトス（奥行き速度0）は打てるよう、0は許容する
             if (_ball.Velocity.z > 0f) return;
 
-            SwingJudgement judgement = _timingJudge.Judge(_ball.CourtPosition, _racket.CourtPosition);
+            float rangeScale = IsServing ? _serveRangeScale : 1f;
+            SwingJudgement judgement = _timingJudge.Judge(_ball.CourtPosition, _racket.CourtPosition, rangeScale);
 
             // 打球可能範囲に無いフリックは、仕様通り無視する
             if (judgement.Result == SwingResult.OutOfRange) return;
@@ -54,7 +62,7 @@ namespace MiniGame.TableTennis
                 return;
             }
 
-            ShotResult shot = _shotCalculator.Calculate(flick, judgement);
+            ShotResult shot = _shotCalculator.Calculate(flick, judgement, _ball.CourtPosition);
             _ball.Launch(_ball.CourtPosition, shot.Velocity, shot.Spin);
 
             OnShot?.Invoke(flick, shot);

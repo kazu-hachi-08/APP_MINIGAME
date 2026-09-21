@@ -46,13 +46,13 @@ namespace MiniGame.TableTennis
     {
         [Header("接触範囲 (m)")]
         [Tooltip("ラケットより手前側で当たる範囲")]
-        [SerializeField] private float _contactRangeNear = 0.2f;
+        [SerializeField] private float _contactRangeNear = 0.3f;
 
         [Tooltip("ラケットより奥側で当たる範囲")]
-        [SerializeField] private float _contactRangeFar = 0.55f;
+        [SerializeField] private float _contactRangeFar = 0.85f;
 
-        [SerializeField] private float _contactRadiusX = 0.32f;
-        [SerializeField] private float _contactRadiusY = 0.32f;
+        [SerializeField] private float _contactRadiusX = 0.45f;
+        [SerializeField] private float _contactRadiusY = 0.45f;
 
         [Header("空振り範囲")]
         [Tooltip("接触範囲の何倍まで振りにいくか。この外はフリックを無視し、内側なら空振りになる")]
@@ -63,14 +63,17 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _sweetSpotDepth = 0.2f;
 
         [Tooltip("このズレまでは Good 扱いにする")]
-        [SerializeField] private float _goodDepthTolerance = 0.15f;
+        [SerializeField] private float _goodDepthTolerance = 0.25f;
 
         [Tooltip("接触位置がラケット中心からズレたときの品質低下の強さ")]
         [Range(0f, 1f)]
         [SerializeField] private float _offsetPenalty = 0.5f;
 
-        /// <summary>ボールとラケットのコート座標から、打球の成否とタイミングを求める</summary>
-        public SwingJudgement Judge(Vector3 ball, Vector3 racket)
+        /// <summary>
+        /// ボールとラケットのコート座標から、打球の成否とタイミングを求める。
+        /// rangeScale は接触範囲の倍率で、サーブなど当てやすくしたい場面で1より大きくする。
+        /// </summary>
+        public SwingJudgement Judge(Vector3 ball, Vector3 racket, float rangeScale = 1f)
         {
             float depth = ball.z - racket.z;
             float offsetX = Mathf.Abs(ball.x - racket.x);
@@ -78,20 +81,20 @@ namespace MiniGame.TableTennis
 
             var judgement = new SwingJudgement { Timing = JudgeTiming(depth) };
 
-            if (!IsInside(depth, offsetX, offsetY, _swingRangeScale))
+            if (!IsInside(depth, offsetX, offsetY, _swingRangeScale * rangeScale))
             {
                 judgement.Result = SwingResult.OutOfRange;
                 return judgement;
             }
 
-            if (!IsInside(depth, offsetX, offsetY, 1f))
+            if (!IsInside(depth, offsetX, offsetY, rangeScale))
             {
                 judgement.Result = SwingResult.Miss;
                 return judgement;
             }
 
             judgement.Result = SwingResult.Hit;
-            judgement.Quality = CalculateQuality(depth, offsetX, offsetY);
+            judgement.Quality = CalculateQuality(depth, offsetX, offsetY, rangeScale);
             return judgement;
         }
 
@@ -112,17 +115,19 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>スイートスポットで1、接触範囲の端で0になる打球品質</summary>
-        private float CalculateQuality(float depth, float offsetX, float offsetY)
+        private float CalculateQuality(float depth, float offsetX, float offsetY, float rangeScale)
         {
             float error = depth - _sweetSpotDepth;
-            float tolerance = error >= 0f
+            float tolerance = (error >= 0f
                 ? _contactRangeFar - _sweetSpotDepth
-                : _sweetSpotDepth + _contactRangeNear;
+                : _sweetSpotDepth + _contactRangeNear) * rangeScale;
 
             float depthQuality = 1f - Mathf.Clamp01(Mathf.Abs(error) / Mathf.Max(0.0001f, tolerance));
 
             // 芯を外すほど品質を下げる。奥行きのズレほどは効かせない
-            float offsetRatio = Mathf.Clamp01(Mathf.Max(offsetX / _contactRadiusX, offsetY / _contactRadiusY));
+            float offsetRatio = Mathf.Clamp01(Mathf.Max(
+                offsetX / (_contactRadiusX * rangeScale),
+                offsetY / (_contactRadiusY * rangeScale)));
             return Mathf.Clamp01(depthQuality * (1f - _offsetPenalty * offsetRatio));
         }
     }

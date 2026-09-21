@@ -19,7 +19,7 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _tossStartHeight = 0.1f;
 
         [Tooltip("トスの初速。大きいほど高く上がり、打てる時間が長くなる")]
-        [SerializeField] private float _tossUpSpeed = 3.2f;
+        [SerializeField] private float _tossUpSpeed = 4.0f;
 
         /// <summary>プレイヤーが打てる位置へボールをトスする</summary>
         public void TossForPlayer()
