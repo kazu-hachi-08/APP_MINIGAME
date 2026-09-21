@@ -325,6 +325,14 @@ namespace MiniGame.Common.Audio
         }
 
         /// <summary>
+        /// 指定SEが登録済みか（仮素材の自動生成が正式素材を上書きしないよう判定に使う）
+        /// </summary>
+        public bool HasSe(SeId id)
+        {
+            return _seDict.ContainsKey(id);
+        }
+
+        /// <summary>
         /// ランタイムでのSEデータ登録用ヘルパー
         /// </summary>
         public void RegisterSe(SeId id, AudioClip clip, float volume = 1f)

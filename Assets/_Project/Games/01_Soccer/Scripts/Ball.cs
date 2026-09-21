@@ -1,3 +1,4 @@
+using MiniGame.Common.Audio;
 using UnityEngine;
 
 namespace MiniGame.Soccer
@@ -8,6 +9,13 @@ namespace MiniGame.Soccer
     [RequireComponent(typeof(Rigidbody2D))]
     public class Ball : MonoBehaviour
     {
+        // パス・シュートで別々のSE素材を用意せず、ピッチだけ変えて蹴り分けを表現する
+        private const float PassSePitch = 1.2f;
+        private const float ShootSePitch = 0.85f;
+
+        [Header("Kick SE")]
+        [SerializeField] private float _shootSpeedThreshold = 9f;
+
         private Rigidbody2D _rigidbody;
 
         public Vector2 Position => _rigidbody.position;
@@ -43,6 +51,18 @@ namespace MiniGame.Soccer
         {
             if (direction.sqrMagnitude < 0.0001f) return;
             _rigidbody.linearVelocity = direction.normalized * speed;
+            PlayKickSe(speed);
+        }
+
+        /// <summary>
+        /// プレイヤー・AIどちらのキックもこのクラスを通るため、SEはここ1箇所で鳴らす
+        /// </summary>
+        private void PlayKickSe(float speed)
+        {
+            if (!AudioManager.HasInstance) return;
+
+            float pitch = speed >= _shootSpeedThreshold ? ShootSePitch : PassSePitch;
+            AudioManager.Instance.PlaySe(SeId.Kick, pitch);
         }
     }
 }

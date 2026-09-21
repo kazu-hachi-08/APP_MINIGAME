@@ -1,17 +1,21 @@
+using System.Collections.Generic;
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
+using MiniGame.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace MiniGame.Soccer.Editor
 {
     /// <summary>
-    /// SoccerScene（Phase 5: 11 vs 11）を自動生成・セットアップするエディタユーティリティ
+    /// SoccerScene（Phase 8: UI・演出）を自動生成・セットアップするエディタユーティリティ
     /// </summary>
     public static class SoccerSceneBuilder
     {
@@ -30,12 +34,22 @@ namespace MiniGame.Soccer.Editor
         private const float GoalHalfHeight = 1.5f;
         private const float WallThickness = 0.3f;
 
-        // フォーメーション上、人間が操作する選手のインデックス（Home側FWの1人目）
-        private const int HumanControlledIndex = 9;
+        // 切り替え候補（GKを除くHome選手）のうち、キックオフ時に操作する選手のインデックス
+        // GKはゴールを空けないよう切り替え候補から外すため、フォーメーション配列より1つ手前になる
+        private const int DefaultControlledCandidateIndex = 8;
+
+        // 仮想コントロールのレイアウト（Canvas参照解像度 1920x1080 基準）
+        private const float JoystickBackgroundSize = 300f;
+        private const float JoystickHandleSize = 130f;
+        private const float JoystickHandleRange = 110f;
+        private const string CircleSpritePath = "UI/Skin/Knob.psd";
+
+        // 描画順。選手とボールは YSortRenderer が毎フレーム決めるため、背景は十分小さい固定値にする
+        private const int CrowdSortingOrder = -1200;
+        private const int CourtSortingOrder = -1000;
+        private const int GoalSortingOrder = -900;
 
         private static readonly Vector2 BallStartPosition = Vector2.zero;
-        private static readonly Color HomeColor = new Color(0.2f, 0.4f, 1f);
-        private static readonly Color AwayColor = new Color(0.9f, 0.25f, 0.25f);
 
         [MenuItem("Tools/MiniGame/Build Soccer Scene", false, 2)]
         public static void BuildSoccerScene()
@@ -57,6 +71,9 @@ namespace MiniGame.Soccer.Editor
         {
             Debug.Log("[SoccerSceneBuilder] SoccerScene の構築を開始します...");
 
+            // ドット絵素材（選手・コート・ゴール等）が未生成なら先に作る
+            SoccerArtGenerator.EnsureGenerated();
+
             if (!Directory.Exists(SceneDirectory))
             {
                 Directory.CreateDirectory(SceneDirectory);
@@ -68,7 +85,7 @@ namespace MiniGame.Soccer.Editor
             var cameraObj = new GameObject("Main Camera");
             var camera = cameraObj.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.05f, 0.07f, 0.06f);
+            camera.backgroundColor = new Color(0.09f, 0.11f, 0.13f); // スタジアムの外周
             camera.orthographic = true;
             camera.orthographicSize = 2.5f;
             cameraObj.transform.position = new Vector3(0f, 0f, -10f);
@@ -76,19 +93,26 @@ namespace MiniGame.Soccer.Editor
             cameraObj.tag = "MainCamera";
             var cameraFollow = cameraObj.AddComponent<CameraFollow>();
 
-            // 2. Managers（共通基盤の再利用）
+            // 2. EventSystem（仮想ジョイスティック/ボタンのタッチ入力に必須）
+            var eventSystemObj = new GameObject("EventSystem");
+            eventSystemObj.AddComponent<EventSystem>();
+            var inputModule = eventSystemObj.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
+
+            // 3. Managers（共通基盤の再利用）
             var managersRoot = new GameObject("--- Managers ---");
             CreateManager<SceneLoader>("SceneLoader", managersRoot.transform);
-            CreateManager<AudioManager>("AudioManager", managersRoot.transform);
-            CreateManager<UIManager>("UIManager", managersRoot.transform);
+            var audioManager = CreateManager<AudioManager>("AudioManager", managersRoot.transform);
+            // SE素材が未用意のため、仮のSEを生成して鳴らす（正式素材を入れたらこのコンポーネントは不要）
+            audioManager.gameObject.AddComponent<ProceduralSe>();
+            var uiManager = CreateManager<UIManager>("UIManager", managersRoot.transform);
             CreateManager<InputManager>("InputManager", managersRoot.transform);
 
-            // 3. コート
-            var fieldObj = CreateSprite("Field", new Color(0.13f, 0.5f, 0.2f), Vector3.zero,
-                new Vector3(FieldHalfWidth * 2f, FieldHalfHeight * 2f, 1f), "UI/Skin/UISprite.psd");
-            fieldObj.GetComponent<SpriteRenderer>().sortingOrder = -10;
+            // 4. コート（ライン込みの1枚絵。ライン1本ずつをGameObjectにしない）
+            CreateSpriteObject("Court", SoccerArtGenerator.Load("Court"), Vector3.zero, CourtSortingOrder);
+            BuildCrowdStands();
 
-            // 4. 上下の壁（ゴールが無い辺はそのまま塞ぐ）
+            // 5. 上下の壁（ゴールが無い辺はそのまま塞ぐ）
             CreateWall("Wall_Top", new Vector2(0f, FieldHalfHeight + WallThickness / 2f),
                 new Vector2(FieldHalfWidth * 2f + WallThickness * 2f, WallThickness));
             CreateWall("Wall_Bottom", new Vector2(0f, -FieldHalfHeight - WallThickness / 2f),
@@ -97,50 +121,55 @@ namespace MiniGame.Soccer.Editor
             // 四隅の面取り（直角のポケットにボールが挟まって硬直するのを防ぐ）
             CreateCornerChamfers();
 
-            // 5. SoccerGameManager（ゴールセンサーからの参照解決のため先に生成しておく）
+            // 6. SoccerGameManager（ゴールセンサーからの参照解決のため先に生成しておく）
             var gameManagerObj = new GameObject("SoccerGameManager");
             var gameManager = gameManagerObj.AddComponent<SoccerGameManager>();
 
-            // 6. 左右のゴール（Home = 左を守り右へ攻める / Away = 右を守り左へ攻める）
+            // 7. 左右のゴール（Home = 左を守り右へ攻める / Away = 右を守り左へ攻める）
             BuildGoal(sideSign: -1f, defendingTeam: TeamSide.Home, gameManager: gameManager);
             BuildGoal(sideSign: 1f, defendingTeam: TeamSide.Away, gameManager: gameManager);
 
-            // 7. 選手（選手PrefabからHome/Away 11人ずつ、11 vs 11で配置）
+            // 8. 選手（選手PrefabからHome/Away 11人ずつ、11 vs 11で配置）
             GameObject playerPrefab = CreateOrLoadPlayerPrefab();
 
             Vector2[] homeFormation = BuildHomeFormation();
             Vector2[] awayFormation = MirrorFormationX(homeFormation);
 
-            Rigidbody2D humanPlayerRb = null;
-            Vector2 humanStartPosition = Vector2.zero;
+            // GK（インデックス0）以外のHome選手が操作切り替えの候補になる
+            var switchCandidates = new List<GameObject>();
 
             for (int i = 0; i < homeFormation.Length; i++)
             {
-                bool isHuman = i == HumanControlledIndex;
-                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, HomeColor, homeFormation[i], isHuman);
+                bool isGoalkeeper = i == 0;
+                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, homeFormation[i], i, isGoalkeeper, isSwitchCandidate: !isGoalkeeper);
 
-                if (isHuman)
+                if (!isGoalkeeper)
                 {
-                    humanPlayerRb = playerObj.GetComponent<Rigidbody2D>();
-                    humanStartPosition = homeFormation[i];
+                    switchCandidates.Add(playerObj);
                 }
             }
 
             for (int i = 0; i < awayFormation.Length; i++)
             {
-                SpawnFieldPlayer(playerPrefab, TeamSide.Away, AwayColor, awayFormation[i], isHuman: false);
+                SpawnFieldPlayer(playerPrefab, TeamSide.Away, awayFormation[i], i, isGoalkeeper: i == 0, isSwitchCandidate: false);
             }
 
-            // カメラの追従対象を人間操作選手に設定
+            GameObject defaultControlledPlayer = switchCandidates[DefaultControlledCandidateIndex];
+
+            // カメラの追従対象を初期操作選手に設定し、以降は PlayerSwitcher が切り替える
             var cfSo = new SerializedObject(cameraFollow);
-            cfSo.FindProperty("_target").objectReferenceValue = humanPlayerRb != null ? humanPlayerRb.transform : null;
+            cfSo.FindProperty("_target").objectReferenceValue = defaultControlledPlayer.transform;
             cfSo.FindProperty("_fieldHalfExtents").vector2Value = new Vector2(FieldHalfWidth, FieldHalfHeight);
             cfSo.ApplyModifiedProperties();
 
-            // 8. ボール
-            var ballObj = CreateSprite("Ball", Color.white, BallStartPosition,
-                new Vector3(0.5f, 0.5f, 1f), "UI/Skin/Knob.psd");
-            ballObj.GetComponent<SpriteRenderer>().sortingOrder = 0;
+            // 操作中の選手を示すマーカー（足元に見せるためボールや選手より奥に描画する）
+            var controlMarker = CreateSpriteObject("ControlMarker", SoccerArtGenerator.Load("ControlMarker"),
+                defaultControlledPlayer.transform.position, 0);
+            AddYSort(controlMarker, orderOffset: -1); // 同じ位置でも選手より奥に敷く
+
+            // 9. ボール
+            var ballObj = CreateSpriteObject("Ball", SoccerArtGenerator.Load("Ball"), BallStartPosition, 0);
+            AddYSort(ballObj, orderOffset: 1); // 足元のボールが選手に隠れないよう少しだけ手前
             var ballRb = ballObj.AddComponent<Rigidbody2D>();
             ballRb.gravityScale = 0f;
             ballRb.freezeRotation = true;
@@ -151,7 +180,7 @@ namespace MiniGame.Soccer.Editor
             ballCollider.sharedMaterial = CreateOrLoadBallPhysicsMaterial();
             var ball = ballObj.AddComponent<Ball>();
 
-            // 9. UI（メッセージバナー＋スコア表示）
+            // 10. UI（メッセージバナー＋スコア表示）
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -160,6 +189,7 @@ namespace MiniGame.Soccer.Editor
             scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+            canvasObj.AddComponent<GraphicRaycaster>(); // タッチ操作のUI判定に必須
 
             // GOAL!/KICK OFF! など共通で使う中央メッセージ表示
             var messageTextObj = new GameObject("MessageText");
@@ -193,22 +223,93 @@ namespace MiniGame.Soccer.Editor
             scoreText.alignment = TextAnchor.MiddleCenter;
             scoreText.color = Color.white;
 
-            // 10. SoccerGameManager の残りの参照を確定
+            // 残り試合時間（スコアの直下）
+            var timerTextObj = new GameObject("TimerText");
+            timerTextObj.transform.SetParent(canvasObj.transform, false);
+            var timerRect = timerTextObj.AddComponent<RectTransform>();
+            timerRect.anchorMin = new Vector2(0.5f, 1f);
+            timerRect.anchorMax = new Vector2(0.5f, 1f);
+            timerRect.pivot = new Vector2(0.5f, 1f);
+            timerRect.sizeDelta = new Vector2(300, 60);
+            timerRect.anchoredPosition = new Vector2(0f, -100f);
+            var timerText = timerTextObj.AddComponent<Text>();
+            timerText.text = "2:00";
+            timerText.fontSize = 40;
+            timerText.fontStyle = FontStyle.Bold;
+            timerText.alignment = TextAnchor.MiddleCenter;
+            timerText.color = new Color(1f, 0.95f, 0.8f);
+
+            // ポーズボタン（スマートフォンにはEscキーが無いため画面上に置く）
+            var pauseButtonObj = UIDialogBuilder.CreateButton(canvasObj.transform, "Btn_Pause", "II", 90, 90,
+                new Color(0.15f, 0.17f, 0.22f, 0.8f));
+            SetAnchoredRect(pauseButtonObj.GetComponent<RectTransform>(), new Vector2(1f, 1f),
+                new Vector2(-80f, -70f), new Vector2(90f, 90f));
+            var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
+
+            // 11. 仮想コントロール（Phase 7: スマートフォン操作）
+            VirtualControls virtualControls = BuildVirtualControls(canvasObj.transform);
+
+            // ゴール時の画面フラッシュ（仮想コントロールより手前、ダイアログより奥に描画する）
+            var goalFlashObj = CreateUIObject("GoalEffect", canvasObj.transform);
+            SetStretchAll(goalFlashObj.GetComponent<RectTransform>());
+            var goalFlashImage = goalFlashObj.AddComponent<Image>();
+            goalFlashImage.color = new Color(1f, 0.95f, 0.5f, 0f);
+            goalFlashImage.raycastTarget = false; // 演出中もタッチ操作を妨げない
+            var goalEffect = goalFlashObj.AddComponent<GoalEffect>();
+
+            var geSo = new SerializedObject(goalEffect);
+            geSo.FindProperty("_flashImage").objectReferenceValue = goalFlashImage;
+            geSo.FindProperty("_punchTarget").objectReferenceValue = messageRect;
+            geSo.ApplyModifiedProperties();
+
+            // 共通ダイアログ（PAUSE / リザルト）。最後に生成して最前面に置く
+            UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
+
+            // 12. PlayerSwitcher（Phase 6: 操作対象の自動/手動切り替え）
+            var switcherObj = new GameObject("PlayerSwitcher");
+            var playerSwitcher = switcherObj.AddComponent<PlayerSwitcher>();
+
+            var psSo = new SerializedObject(playerSwitcher);
+            var candidatesProp = psSo.FindProperty("_candidates");
+            candidatesProp.arraySize = switchCandidates.Count;
+            for (int i = 0; i < switchCandidates.Count; i++)
+            {
+                candidatesProp.GetArrayElementAtIndex(i).objectReferenceValue = switchCandidates[i];
+            }
+            psSo.FindProperty("_ball").objectReferenceValue = ball;
+            psSo.FindProperty("_cameraFollow").objectReferenceValue = cameraFollow;
+            psSo.FindProperty("_controlMarker").objectReferenceValue = controlMarker.transform;
+            psSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            psSo.FindProperty("_defaultIndex").intValue = DefaultControlledCandidateIndex;
+            psSo.ApplyModifiedProperties();
+
+            // 13. SoccerGameManager の残りの参照を確定
             var gmSo = new SerializedObject(gameManager);
             gmSo.FindProperty("_gameTitle").stringValue = "2D Soccer";
-            gmSo.FindProperty("_playerRigidbody").objectReferenceValue = humanPlayerRb;
             gmSo.FindProperty("_ball").objectReferenceValue = ball;
-            gmSo.FindProperty("_playerStartPosition").vector2Value = humanStartPosition;
+            gmSo.FindProperty("_playerSwitcher").objectReferenceValue = playerSwitcher;
             gmSo.FindProperty("_ballStartPosition").vector2Value = BallStartPosition;
             gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
+            gmSo.FindProperty("_timerText").objectReferenceValue = timerText;
+            gmSo.FindProperty("_goalEffect").objectReferenceValue = goalEffect;
+            // BaseMiniGameManager が Start 時に InputManager へ登録し、キーボードと同じ経路で入力される
+            gmSo.FindProperty("_virtualJoystick").objectReferenceValue = virtualControls.Joystick;
+            gmSo.FindProperty("_actionButton1").objectReferenceValue = virtualControls.PassButton;
+            gmSo.FindProperty("_actionButton2").objectReferenceValue = virtualControls.ShootButton;
+            gmSo.FindProperty("_actionButton3").objectReferenceValue = virtualControls.SwitchButton;
             gmSo.ApplyModifiedProperties();
+
+            var pauseSo = new SerializedObject(pauseButton);
+            pauseSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            pauseSo.ApplyModifiedProperties();
 
             // シーンの保存
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[SoccerSceneBuilder] SoccerScene が正常に生成・保存されました: {ScenePath}");
 
             RegisterSceneInBuildSettings(ScenePath);
+            ConfigureLandscapeOrientation();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -260,9 +361,11 @@ namespace MiniGame.Soccer.Editor
         {
             float goalX = sideSign * FieldHalfWidth;
 
-            var goalVisual = CreateSprite($"GoalVisual_{defendingTeam}", new Color(1f, 0.9f, 0.2f, 0.6f),
-                new Vector3(goalX, 0f, 0f), new Vector3(0.4f, GoalHalfHeight * 2f, 1f), "UI/Skin/UISprite.psd");
-            goalVisual.GetComponent<SpriteRenderer>().sortingOrder = -5;
+            // ゴールはゴールラインの外側に置き、右側は同じ絵をX反転して使う
+            float goalDepth = SoccerArtGenerator.GoalWidth / (float)SoccerArtGenerator.PixelsPerUnit;
+            var goalVisual = CreateSpriteObject($"GoalVisual_{defendingTeam}", SoccerArtGenerator.Load("Goal"),
+                new Vector3(goalX + sideSign * goalDepth * 0.5f, 0f, 0f), GoalSortingOrder);
+            goalVisual.GetComponent<SpriteRenderer>().flipX = sideSign > 0f;
 
             float wallSideHeight = FieldHalfHeight - GoalHalfHeight;
             float wallSideCenterY = GoalHalfHeight + wallSideHeight / 2f;
@@ -326,8 +429,7 @@ namespace MiniGame.Soccer.Editor
             }
 
             // テンプレートを一時的に組み立ててPrefab化し、シーンからは削除する
-            var template = CreateSprite("FieldPlayer", Color.white, Vector3.zero,
-                new Vector3(2.0f, 2.0f, 1f), "UI/Skin/DropdownArrow.psd");
+            var template = CreateSpriteObject("FieldPlayer", SoccerArtGenerator.Load("Player_Home_Down_0"), Vector3.zero, 0);
 
             var rigidbody = template.AddComponent<Rigidbody2D>();
             rigidbody.gravityScale = 0f;
@@ -338,6 +440,8 @@ namespace MiniGame.Soccer.Editor
             collider.radius = 0.2f;
 
             template.AddComponent<TeamMember>();
+            AssignPlayerSprites(template.AddComponent<PlayerSpriteAnimator>(), "Home");
+            template.AddComponent<YSortRenderer>();
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(template, PlayerPrefabPath);
             Object.DestroyImmediate(template);
@@ -345,34 +449,159 @@ namespace MiniGame.Soccer.Editor
             return prefabAsset;
         }
 
-        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Color color, Vector2 position, bool isHuman)
+        /// <summary>
+        /// 選手を1人生成する。切り替え候補の選手にはAIとプレイヤー操作の両方を持たせ、
+        /// 実行時に PlayerSwitcher がどちらか一方だけを有効にする
+        /// </summary>
+        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Vector2 position, int formationIndex, bool isGoalkeeper, bool isSwitchCandidate)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            instance.name = isHuman ? "Player_Human" : $"Player_{team}_{position}";
+            instance.name = $"Player_{team}_{formationIndex:00}";
             instance.transform.position = position;
 
-            var renderer = instance.GetComponent<SpriteRenderer>();
-            renderer.color = color;
-            renderer.sortingOrder = isHuman ? 2 : 1;
+            // GKは両チームとも緑のユニフォームにして、フィールドプレイヤーと区別する
+            string teamKey = isGoalkeeper ? "Gk" : team == TeamSide.Home ? "Home" : "Away";
+            AssignPlayerSprites(instance.GetComponent<PlayerSpriteAnimator>(), teamKey);
+            instance.GetComponent<SpriteRenderer>().sprite = SoccerArtGenerator.Load($"Player_{teamKey}_Down_0");
 
             var teamMember = instance.GetComponent<TeamMember>();
             teamMember.SetTeam(team);
 
-            if (isHuman)
+            var ai = instance.AddComponent<AIPlayerController>();
+            float attackDirection = team == TeamSide.Home ? 1f : -1f;
+            var so = new SerializedObject(ai);
+            so.FindProperty("_homePosition").vector2Value = position;
+            so.FindProperty("_opponentGoalX").floatValue = attackDirection * FieldHalfWidth;
+            so.ApplyModifiedProperties();
+
+            // 切り替え候補のプレイヤー操作は初期状態では無効にしておく
+            if (isSwitchCandidate)
             {
-                instance.AddComponent<PlayerController>();
-            }
-            else
-            {
-                var ai = instance.AddComponent<AIPlayerController>();
-                float attackDirection = team == TeamSide.Home ? 1f : -1f;
-                var so = new SerializedObject(ai);
-                so.FindProperty("_homePosition").vector2Value = position;
-                so.FindProperty("_opponentGoalX").floatValue = attackDirection * FieldHalfWidth;
-                so.ApplyModifiedProperties();
+                var playerController = instance.AddComponent<PlayerController>();
+                playerController.enabled = false;
             }
 
             return instance;
+        }
+
+        /// <summary>
+        /// 生成した仮想コントロール一式（SoccerGameManager への参照設定用）
+        /// </summary>
+        private struct VirtualControls
+        {
+            public VirtualJoystick Joystick;
+            public VirtualButton PassButton;
+            public VirtualButton ShootButton;
+            public VirtualButton SwitchButton;
+        }
+
+        /// <summary>
+        /// スマートフォン操作用の仮想コントロールを生成する（左: ジョイスティック / 右: パス・シュート・切り替え）
+        /// PC確認時もそのまま表示し、マウスでタッチ操作を検証できるようにする
+        /// </summary>
+        private static VirtualControls BuildVirtualControls(Transform canvas)
+        {
+            var root = CreateUIObject("VirtualControls", canvas);
+            SetStretchAll(root.GetComponent<RectTransform>());
+
+            return new VirtualControls
+            {
+                Joystick = CreateVirtualJoystick(root.transform, new Vector2(280f, 280f)),
+                // 右手親指の可動域に合わせ、使用頻度の高いシュートを手前、切り替えを上側に置く
+                ShootButton = CreateVirtualButton(root.transform, "Btn_Shoot", "SHOOT",
+                    new Vector2(-220f, 240f), 190f, new Color(0.9f, 0.3f, 0.2f, 0.65f)),
+                PassButton = CreateVirtualButton(root.transform, "Btn_Pass", "PASS",
+                    new Vector2(-450f, 150f), 160f, new Color(0.2f, 0.55f, 0.95f, 0.65f)),
+                SwitchButton = CreateVirtualButton(root.transform, "Btn_Switch", "SWITCH",
+                    new Vector2(-200f, 500f), 140f, new Color(0.35f, 0.4f, 0.48f, 0.65f)),
+            };
+        }
+
+        private static VirtualJoystick CreateVirtualJoystick(Transform parent, Vector2 anchoredPosition)
+        {
+            var joystickObj = CreateUIObject("VirtualJoystick", parent);
+            var backgroundRect = joystickObj.GetComponent<RectTransform>();
+            SetAnchoredRect(backgroundRect, new Vector2(0f, 0f), anchoredPosition,
+                new Vector2(JoystickBackgroundSize, JoystickBackgroundSize));
+
+            var backgroundImage = joystickObj.AddComponent<Image>();
+            backgroundImage.sprite = GetBuiltinSprite(CircleSpritePath);
+            backgroundImage.color = new Color(1f, 1f, 1f, 0.25f);
+
+            var handleObj = CreateUIObject("Handle", joystickObj.transform);
+            var handleRect = handleObj.GetComponent<RectTransform>();
+            SetAnchoredRect(handleRect, new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(JoystickHandleSize, JoystickHandleSize));
+
+            var handleImage = handleObj.AddComponent<Image>();
+            handleImage.sprite = GetBuiltinSprite(CircleSpritePath);
+            handleImage.color = new Color(1f, 1f, 1f, 0.6f);
+            handleImage.raycastTarget = false; // 指の下を動くハンドルがドラッグ判定を奪わないようにする
+
+            var joystick = joystickObj.AddComponent<VirtualJoystick>();
+            var so = new SerializedObject(joystick);
+            so.FindProperty("_background").objectReferenceValue = backgroundRect;
+            so.FindProperty("_handle").objectReferenceValue = handleRect;
+            so.FindProperty("_handleRange").floatValue = JoystickHandleRange;
+            so.ApplyModifiedProperties();
+
+            return joystick;
+        }
+
+        private static VirtualButton CreateVirtualButton(Transform parent, string name, string label,
+            Vector2 anchoredPosition, float size, Color color)
+        {
+            var buttonObj = CreateUIObject(name, parent);
+            // 画面右下を基準に配置し、解像度が変わっても親指との位置関係を保つ
+            SetAnchoredRect(buttonObj.GetComponent<RectTransform>(), new Vector2(1f, 0f), anchoredPosition,
+                new Vector2(size, size));
+
+            var image = buttonObj.AddComponent<Image>();
+            image.sprite = GetBuiltinSprite(CircleSpritePath);
+            image.color = color;
+
+            var labelObj = CreateUIObject("Label", buttonObj.transform);
+            SetStretchAll(labelObj.GetComponent<RectTransform>());
+            var text = labelObj.AddComponent<Text>();
+            text.text = label;
+            text.fontSize = 32;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+            text.raycastTarget = false;
+
+            return buttonObj.AddComponent<VirtualButton>();
+        }
+
+        private static GameObject CreateUIObject(string name, Transform parent)
+        {
+            var obj = new GameObject(name);
+            obj.transform.SetParent(parent, false);
+            obj.AddComponent<RectTransform>();
+            return obj;
+        }
+
+        private static void SetStretchAll(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+        }
+
+        private static void SetAnchoredRect(RectTransform rect, Vector2 anchor, Vector2 anchoredPosition, Vector2 size)
+        {
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = anchoredPosition;
+        }
+
+        private static Sprite GetBuiltinSprite(string path)
+        {
+            return AssetDatabase.GetBuiltinExtraResource<Sprite>(path);
         }
 
         private static T CreateManager<T>(string name, Transform parent) where T : Component
@@ -382,15 +611,70 @@ namespace MiniGame.Soccer.Editor
             return obj.AddComponent<T>();
         }
 
-        private static GameObject CreateSprite(string name, Color color, Vector3 position, Vector3 scale, string builtinSpritePath)
+        private static GameObject CreateSpriteObject(string name, Sprite sprite, Vector3 position, int sortingOrder)
         {
             var obj = new GameObject(name);
             obj.transform.position = position;
-            obj.transform.localScale = scale;
             var renderer = obj.AddComponent<SpriteRenderer>();
-            renderer.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(builtinSpritePath);
-            renderer.color = color;
+            renderer.sprite = sprite;
+            renderer.sortingOrder = sortingOrder;
             return obj;
+        }
+
+        private static void AddYSort(GameObject target, int orderOffset)
+        {
+            var ySort = target.AddComponent<YSortRenderer>();
+            var so = new SerializedObject(ySort);
+            so.FindProperty("_orderOffset").intValue = orderOffset;
+            so.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// 方向別（正面・背面・横）×3コマの人型スプライトを割り当てる
+        /// </summary>
+        private static void AssignPlayerSprites(PlayerSpriteAnimator animator, string teamKey)
+        {
+            var so = new SerializedObject(animator);
+            AssignFrames(so, "_downFrames", teamKey, "Down");
+            AssignFrames(so, "_upFrames", teamKey, "Up");
+            AssignFrames(so, "_sideFrames", teamKey, "Side");
+            so.ApplyModifiedProperties();
+        }
+
+        private static void AssignFrames(SerializedObject animatorSo, string propertyName, string teamKey, string direction)
+        {
+            var property = animatorSo.FindProperty(propertyName);
+            property.arraySize = SoccerArtGenerator.FrameCount;
+            for (int i = 0; i < SoccerArtGenerator.FrameCount; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue =
+                    SoccerArtGenerator.Load($"Player_{teamKey}_{direction}_{i}");
+            }
+        }
+
+        /// <summary>
+        /// コート外に観客席のタイルを敷く（雰囲気付けのみ。個別の観客やアニメーションは作らない）
+        /// </summary>
+        private static void BuildCrowdStands()
+        {
+            const float bandDepth = 3f;
+            float standOffsetX = FieldHalfWidth + 1.5f + bandDepth / 2f;
+            float standOffsetY = FieldHalfHeight + bandDepth / 2f;
+            float horizontalWidth = (FieldHalfWidth + 1.5f + bandDepth) * 2f;
+            float verticalHeight = FieldHalfHeight * 2f + bandDepth * 2f;
+
+            CreateCrowdBand("Crowd_Top", new Vector2(0f, standOffsetY), new Vector2(horizontalWidth, bandDepth));
+            CreateCrowdBand("Crowd_Bottom", new Vector2(0f, -standOffsetY), new Vector2(horizontalWidth, bandDepth));
+            CreateCrowdBand("Crowd_Left", new Vector2(-standOffsetX, 0f), new Vector2(bandDepth, verticalHeight));
+            CreateCrowdBand("Crowd_Right", new Vector2(standOffsetX, 0f), new Vector2(bandDepth, verticalHeight));
+        }
+
+        private static void CreateCrowdBand(string name, Vector2 center, Vector2 size)
+        {
+            var obj = CreateSpriteObject(name, SoccerArtGenerator.Load("Crowd"), center, CrowdSortingOrder);
+            var renderer = obj.GetComponent<SpriteRenderer>();
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.size = size;
         }
 
         private static void CreateWall(string name, Vector2 position, Vector2 size)
@@ -439,6 +723,18 @@ namespace MiniGame.Soccer.Editor
             obj.transform.rotation = Quaternion.Euler(0f, 0f, angle);
             var collider = obj.AddComponent<BoxCollider2D>();
             collider.size = new Vector2(diff.magnitude, thickness);
+        }
+
+        /// <summary>
+        /// 仮想コントロールは横画面前提のレイアウトのため、端末の向きを横向きに固定する
+        /// </summary>
+        private static void ConfigureLandscapeOrientation()
+        {
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
         }
 
         private static void RegisterSceneInBuildSettings(string scenePath)
