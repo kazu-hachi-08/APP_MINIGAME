@@ -81,7 +81,9 @@ namespace MiniGame.TableTennis.Editor
             camera.backgroundColor = new Color(0.07f, 0.08f, 0.11f);
             camera.orthographic = true;
             camera.orthographicSize = 4.5f;
-            cameraObj.transform.position = new Vector3(0f, -0.5f, -10f);
+            // 画面上部のHUD（スコア・打球結果）と台・キャラクターが重ならないよう、
+            // カメラを上げて描画全体をHUDの下へ落とす
+            cameraObj.transform.position = new Vector3(0f, 0.6f, -10f);
             cameraObj.AddComponent<AudioListener>();
             cameraObj.tag = "MainCamera";
 
@@ -233,9 +235,10 @@ namespace MiniGame.TableTennis.Editor
             HudText messageHud = messageText.gameObject.AddComponent<HudText>();
             messageText.gameObject.SetActive(false);
 
-            // 打球の手応え（タイミング・回転）を画面下に短く返す
+            // 打球の手応え（タイミング・回転）はスコアのすぐ下に返す。
+            // 画面下は自分の操作（ラケット・指）で隠れて読めないため
             Text shotInfoText = CreateText(canvasObj.transform, "ShotInfoText", "", 44,
-                new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(900f, 150f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -290f), new Vector2(900f, 150f),
                 new Color(0.85f, 0.92f, 1f));
             HudText shotInfoHud = shotInfoText.gameObject.AddComponent<HudText>();
 
