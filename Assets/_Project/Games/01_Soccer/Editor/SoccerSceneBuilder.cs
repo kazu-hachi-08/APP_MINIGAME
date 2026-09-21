@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
@@ -11,7 +12,7 @@ using UnityEngine.UI;
 namespace MiniGame.Soccer.Editor
 {
     /// <summary>
-    /// SoccerScene（Phase 5: 11 vs 11）を自動生成・セットアップするエディタユーティリティ
+    /// SoccerScene（Phase 6: 選手切り替え）を自動生成・セットアップするエディタユーティリティ
     /// </summary>
     public static class SoccerSceneBuilder
     {
@@ -30,8 +31,9 @@ namespace MiniGame.Soccer.Editor
         private const float GoalHalfHeight = 1.5f;
         private const float WallThickness = 0.3f;
 
-        // フォーメーション上、人間が操作する選手のインデックス（Home側FWの1人目）
-        private const int HumanControlledIndex = 9;
+        // 切り替え候補（GKを除くHome選手）のうち、キックオフ時に操作する選手のインデックス
+        // GKはゴールを空けないよう切り替え候補から外すため、フォーメーション配列より1つ手前になる
+        private const int DefaultControlledCandidateIndex = 8;
 
         private static readonly Vector2 BallStartPosition = Vector2.zero;
         private static readonly Color HomeColor = new Color(0.2f, 0.4f, 1f);
@@ -111,31 +113,37 @@ namespace MiniGame.Soccer.Editor
             Vector2[] homeFormation = BuildHomeFormation();
             Vector2[] awayFormation = MirrorFormationX(homeFormation);
 
-            Rigidbody2D humanPlayerRb = null;
-            Vector2 humanStartPosition = Vector2.zero;
+            // GK（インデックス0）以外のHome選手が操作切り替えの候補になる
+            var switchCandidates = new List<GameObject>();
 
             for (int i = 0; i < homeFormation.Length; i++)
             {
-                bool isHuman = i == HumanControlledIndex;
-                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, HomeColor, homeFormation[i], isHuman);
+                bool isGoalkeeper = i == 0;
+                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, HomeColor, homeFormation[i], i, isSwitchCandidate: !isGoalkeeper);
 
-                if (isHuman)
+                if (!isGoalkeeper)
                 {
-                    humanPlayerRb = playerObj.GetComponent<Rigidbody2D>();
-                    humanStartPosition = homeFormation[i];
+                    switchCandidates.Add(playerObj);
                 }
             }
 
             for (int i = 0; i < awayFormation.Length; i++)
             {
-                SpawnFieldPlayer(playerPrefab, TeamSide.Away, AwayColor, awayFormation[i], isHuman: false);
+                SpawnFieldPlayer(playerPrefab, TeamSide.Away, AwayColor, awayFormation[i], i, isSwitchCandidate: false);
             }
 
-            // カメラの追従対象を人間操作選手に設定
+            GameObject defaultControlledPlayer = switchCandidates[DefaultControlledCandidateIndex];
+
+            // カメラの追従対象を初期操作選手に設定し、以降は PlayerSwitcher が切り替える
             var cfSo = new SerializedObject(cameraFollow);
-            cfSo.FindProperty("_target").objectReferenceValue = humanPlayerRb != null ? humanPlayerRb.transform : null;
+            cfSo.FindProperty("_target").objectReferenceValue = defaultControlledPlayer.transform;
             cfSo.FindProperty("_fieldHalfExtents").vector2Value = new Vector2(FieldHalfWidth, FieldHalfHeight);
             cfSo.ApplyModifiedProperties();
+
+            // 操作中の選手を示すマーカー（足元に見せるためボールや選手より奥に描画する）
+            var controlMarker = CreateSprite("ControlMarker", new Color(1f, 0.95f, 0.3f, 0.9f),
+                defaultControlledPlayer.transform.position, new Vector3(0.75f, 0.75f, 1f), "UI/Skin/Knob.psd");
+            controlMarker.GetComponent<SpriteRenderer>().sortingOrder = -1;
 
             // 8. ボール
             var ballObj = CreateSprite("Ball", Color.white, BallStartPosition,
@@ -193,12 +201,29 @@ namespace MiniGame.Soccer.Editor
             scoreText.alignment = TextAnchor.MiddleCenter;
             scoreText.color = Color.white;
 
-            // 10. SoccerGameManager の残りの参照を確定
+            // 10. PlayerSwitcher（Phase 6: 操作対象の自動/手動切り替え）
+            var switcherObj = new GameObject("PlayerSwitcher");
+            var playerSwitcher = switcherObj.AddComponent<PlayerSwitcher>();
+
+            var psSo = new SerializedObject(playerSwitcher);
+            var candidatesProp = psSo.FindProperty("_candidates");
+            candidatesProp.arraySize = switchCandidates.Count;
+            for (int i = 0; i < switchCandidates.Count; i++)
+            {
+                candidatesProp.GetArrayElementAtIndex(i).objectReferenceValue = switchCandidates[i];
+            }
+            psSo.FindProperty("_ball").objectReferenceValue = ball;
+            psSo.FindProperty("_cameraFollow").objectReferenceValue = cameraFollow;
+            psSo.FindProperty("_controlMarker").objectReferenceValue = controlMarker.transform;
+            psSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            psSo.FindProperty("_defaultIndex").intValue = DefaultControlledCandidateIndex;
+            psSo.ApplyModifiedProperties();
+
+            // 11. SoccerGameManager の残りの参照を確定
             var gmSo = new SerializedObject(gameManager);
             gmSo.FindProperty("_gameTitle").stringValue = "2D Soccer";
-            gmSo.FindProperty("_playerRigidbody").objectReferenceValue = humanPlayerRb;
             gmSo.FindProperty("_ball").objectReferenceValue = ball;
-            gmSo.FindProperty("_playerStartPosition").vector2Value = humanStartPosition;
+            gmSo.FindProperty("_playerSwitcher").objectReferenceValue = playerSwitcher;
             gmSo.FindProperty("_ballStartPosition").vector2Value = BallStartPosition;
             gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
@@ -345,31 +370,35 @@ namespace MiniGame.Soccer.Editor
             return prefabAsset;
         }
 
-        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Color color, Vector2 position, bool isHuman)
+        /// <summary>
+        /// 選手を1人生成する。切り替え候補の選手にはAIとプレイヤー操作の両方を持たせ、
+        /// 実行時に PlayerSwitcher がどちらか一方だけを有効にする
+        /// </summary>
+        private static GameObject SpawnFieldPlayer(GameObject prefab, TeamSide team, Color color, Vector2 position, int formationIndex, bool isSwitchCandidate)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            instance.name = isHuman ? "Player_Human" : $"Player_{team}_{position}";
+            instance.name = $"Player_{team}_{formationIndex:00}";
             instance.transform.position = position;
 
             var renderer = instance.GetComponent<SpriteRenderer>();
             renderer.color = color;
-            renderer.sortingOrder = isHuman ? 2 : 1;
+            renderer.sortingOrder = 1;
 
             var teamMember = instance.GetComponent<TeamMember>();
             teamMember.SetTeam(team);
 
-            if (isHuman)
+            var ai = instance.AddComponent<AIPlayerController>();
+            float attackDirection = team == TeamSide.Home ? 1f : -1f;
+            var so = new SerializedObject(ai);
+            so.FindProperty("_homePosition").vector2Value = position;
+            so.FindProperty("_opponentGoalX").floatValue = attackDirection * FieldHalfWidth;
+            so.ApplyModifiedProperties();
+
+            // 切り替え候補のプレイヤー操作は初期状態では無効にしておく
+            if (isSwitchCandidate)
             {
-                instance.AddComponent<PlayerController>();
-            }
-            else
-            {
-                var ai = instance.AddComponent<AIPlayerController>();
-                float attackDirection = team == TeamSide.Home ? 1f : -1f;
-                var so = new SerializedObject(ai);
-                so.FindProperty("_homePosition").vector2Value = position;
-                so.FindProperty("_opponentGoalX").floatValue = attackDirection * FieldHalfWidth;
-                so.ApplyModifiedProperties();
+                var playerController = instance.AddComponent<PlayerController>();
+                playerController.enabled = false;
             }
 
             return instance;

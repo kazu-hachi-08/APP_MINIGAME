@@ -13,9 +13,8 @@ namespace MiniGame.Soccer
     public class SoccerGameManager : BaseMiniGameManager
     {
         [Header("Soccer References")]
-        [SerializeField] private Rigidbody2D _playerRigidbody;
         [SerializeField] private Ball _ball;
-        [SerializeField] private Vector2 _playerStartPosition;
+        [SerializeField] private PlayerSwitcher _playerSwitcher;
         [SerializeField] private Vector2 _ballStartPosition;
 
         [Header("UI")]
@@ -160,12 +159,6 @@ namespace MiniGame.Soccer
 
         private void ResetPositions()
         {
-            if (_playerRigidbody != null)
-            {
-                _playerRigidbody.linearVelocity = Vector2.zero;
-                _playerRigidbody.position = _playerStartPosition;
-            }
-
             if (_ball != null)
             {
                 _ball.ResetBall(_ballStartPosition);
@@ -176,6 +169,12 @@ namespace MiniGame.Soccer
             foreach (var ai in aiPlayers)
             {
                 ai.ResetToHomePosition();
+            }
+
+            // 操作対象をキックオフ時の選手へ戻す（Phase 6: 選手切り替え）
+            if (_playerSwitcher != null)
+            {
+                _playerSwitcher.ResetPlayers();
             }
         }
     }
