@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis.Editor
 {
     /// <summary>
-    /// TableTennisScene（Phase 1〜5: 最小プロトタイプ〜ラリー・ルール）を自動生成するエディタユーティリティ。
+    /// TableTennisScene（Phase 1〜7: 最小プロトタイプ〜NPC・スマートフォン操作）を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// </summary>
     public static class TableTennisSceneBuilder
@@ -26,6 +26,7 @@ namespace MiniGame.TableTennis.Editor
         private const string CircleSpritePath = "UI/Skin/Knob.psd";
         private const string SpritesDefaultMaterialPath = "Sprites-Default.mat";
 
+        private const int NpcRacketSortingOrder = 5;
         private const int ShadowSortingOrder = 10;
         private const int BallSortingOrder = 20;
         private const int RacketSortingOrder = 30;
@@ -70,6 +71,12 @@ namespace MiniGame.TableTennis.Editor
             cameraObj.transform.position = new Vector3(0f, -0.5f, -10f);
             cameraObj.AddComponent<AudioListener>();
             cameraObj.tag = "MainCamera";
+
+            // 縦長のスマートフォンでもラケットの可動範囲が切れないようにする
+            var cameraFitter = cameraObj.AddComponent<CameraFitter>();
+            var fitterSo = new SerializedObject(cameraFitter);
+            fitterSo.FindProperty("_camera").objectReferenceValue = camera;
+            fitterSo.ApplyModifiedProperties();
 
             // 2. EventSystem（UIのタッチ判定に必須）
             var eventSystemObj = new GameObject("EventSystem");
@@ -140,7 +147,25 @@ namespace MiniGame.TableTennis.Editor
             psSo.FindProperty("_shotCalculator").objectReferenceValue = shotCalculator;
             psSo.ApplyModifiedProperties();
 
-            // 8. UI
+            // 8. NPC（思考と表示を分け、返球内容は NpcController が決める）
+            var npcRacketObj = CreateSpriteObject("NpcRacket", circleSprite,
+                new Color(0.25f, 0.45f, 0.85f), NpcRacketSortingOrder);
+            var npc = npcRacketObj.AddComponent<NpcController>();
+            var npcView = npcRacketObj.AddComponent<NpcRacketView>();
+
+            var npcSo = new SerializedObject(npc);
+            npcSo.FindProperty("_table").objectReferenceValue = tableLayout;
+            npcSo.FindProperty("_ball").objectReferenceValue = ballMotion;
+            npcSo.FindProperty("_playerRacket").objectReferenceValue = racket;
+            npcSo.ApplyModifiedProperties();
+
+            var npcViewSo = new SerializedObject(npcView);
+            npcViewSo.FindProperty("_table").objectReferenceValue = tableLayout;
+            npcViewSo.FindProperty("_npc").objectReferenceValue = npc;
+            npcViewSo.FindProperty("_renderer").objectReferenceValue = npcRacketObj.GetComponent<SpriteRenderer>();
+            npcViewSo.ApplyModifiedProperties();
+
+            // 9. UI
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -176,7 +201,7 @@ namespace MiniGame.TableTennis.Editor
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
-            // 9. GameManager
+            // 10. GameManager
             var gameManagerObj = new GameObject("TableTennisGameManager");
             var gameManager = gameManagerObj.AddComponent<TableTennisGameManager>();
             var referee = gameManagerObj.AddComponent<RallyReferee>();
@@ -197,6 +222,7 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
             gmSo.FindProperty("_referee").objectReferenceValue = referee;
             gmSo.FindProperty("_serve").objectReferenceValue = serveController;
+            gmSo.FindProperty("_npc").objectReferenceValue = npc;
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
             gmSo.FindProperty("_messageText").objectReferenceValue = messageText;
             gmSo.FindProperty("_shotInfoText").objectReferenceValue = shotInfoText;

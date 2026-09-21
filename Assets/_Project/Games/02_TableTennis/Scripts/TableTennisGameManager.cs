@@ -8,9 +8,8 @@ namespace MiniGame.TableTennis
 {
     /// <summary>
     /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取）。
-    /// ルール判定は RallyReferee、得点とサーブ権は MatchScore に任せ、
+    /// ルール判定は RallyReferee、得点とサーブ権は MatchScore、相手の打球は NpcController に任せ、
     /// ここは「今どの状態か」と「次に何をするか」だけを見る。
-    /// 相手の返球は Phase 6 の NPC で追加するため、現状は相手側はサーブのみ行う。
     /// </summary>
     public class TableTennisGameManager : BaseMiniGameManager
     {
@@ -32,6 +31,7 @@ namespace MiniGame.TableTennis
         [SerializeField] private PlayerSwing _playerSwing;
         [SerializeField] private RallyReferee _referee;
         [SerializeField] private ServeController _serve;
+        [SerializeField] private NpcController _npc;
 
         [Header("UI")]
         [SerializeField] private Text _scoreText;
@@ -60,6 +60,7 @@ namespace MiniGame.TableTennis
             _playerSwing.OnShot += HandleShot;
             _playerSwing.OnMissed += HandleMissed;
             _referee.OnPointDecided += HandlePointDecided;
+            _npc.OnReturned += HandleNpcReturned;
         }
 
         private void OnDisable()
@@ -68,6 +69,7 @@ namespace MiniGame.TableTennis
             _playerSwing.OnShot -= HandleShot;
             _playerSwing.OnMissed -= HandleMissed;
             _referee.OnPointDecided -= HandlePointDecided;
+            _npc.OnReturned -= HandleNpcReturned;
         }
 
         protected override void OnGameReady()
@@ -85,6 +87,9 @@ namespace MiniGame.TableTennis
 
             // ポーズ中や得点表示中にフリックが打球として通らないようにする
             _playerSwing.CanSwing = IsPlaying && _phase != RallyPhase.PointBreak && _ball.IsFlying;
+
+            // NPCが動くのはラリー中だけ（サーブ待ちやトス中は構えに戻す）
+            _npc.IsActive = IsPlaying && _phase == RallyPhase.Rallying;
         }
 
         /// <summary>サーブ権を確認し、プレイヤーならトス、相手なら送り出しでラリーを始める</summary>
@@ -93,6 +98,7 @@ namespace MiniGame.TableTennis
             _phase = RallyPhase.PointBreak;
             _ball.Stop();
             _referee.Stop();
+            _npc.ResetForRally();
 
             CourtSide server = _score.CurrentServer;
             SetMessage(server == CourtSide.Player ? "YOUR SERVE" : "NPC SERVE");
@@ -108,8 +114,9 @@ namespace MiniGame.TableTennis
             else
             {
                 _phase = RallyPhase.Rallying;
-                _serve.ServeByOpponent();
+                _npc.Serve();
                 _referee.BeginRally(CourtSide.Opponent);
+                PlaySe(SeId.Kick);
             }
         }
 
@@ -151,6 +158,13 @@ namespace MiniGame.TableTennis
             }
 
             SetShotInfo(BuildShotInfo(flick, shot));
+        }
+
+        /// <summary>NPCが返球できたら、打球したものとしてラリー判定を継続する</summary>
+        private void HandleNpcReturned()
+        {
+            PlaySe(SeId.Kick);
+            _referee.NotifyHit(CourtSide.Opponent);
         }
 
         private void HandleMissed(SwingJudgement judgement)

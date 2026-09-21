@@ -54,7 +54,7 @@ namespace MiniGame.TableTennis
 
         private void Update()
         {
-            var pointer = Pointer.current;
+            Pointer pointer = ResolvePointer();
             if (pointer == null) return;
 
             Vector2 position = pointer.position.ReadValue();
@@ -62,7 +62,7 @@ namespace MiniGame.TableTennis
             if (pointer.press.wasPressedThisFrame)
             {
                 // ポーズボタン等のUI操作をフリックとして拾わない
-                _tracking = !IsPointerOverUI();
+                _tracking = !IsPointerOverUI(pointer);
                 _flickFired = false;
                 _samples.Clear();
             }
@@ -125,9 +125,31 @@ namespace MiniGame.TableTennis
             }
         }
 
-        private static bool IsPointerOverUI()
+        /// <summary>
+        /// 触られている間はタッチを優先する。
+        /// Touchscreen は常に主タッチ（最初の指）を返すため、2本目の指でラケットが飛ぶことがない。
+        /// PCでの検証時はマウスがそのまま使える。
+        /// </summary>
+        private static Pointer ResolvePointer()
         {
-            return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            Touchscreen touchscreen = Touchscreen.current;
+            bool touching = touchscreen != null
+                && (touchscreen.press.isPressed || touchscreen.press.wasReleasedThisFrame);
+
+            return touching ? touchscreen : Pointer.current;
+        }
+
+        private static bool IsPointerOverUI(Pointer pointer)
+        {
+            if (EventSystem.current == null) return false;
+
+            // タッチは指のIDを渡さないと正しく判定できない（引数なしだと直前のポインタを見てしまう）
+            if (pointer is Touchscreen touchscreen)
+            {
+                return EventSystem.current.IsPointerOverGameObject(touchscreen.primaryTouch.touchId.ReadValue());
+            }
+
+            return EventSystem.current.IsPointerOverGameObject();
         }
 
         private readonly struct Sample

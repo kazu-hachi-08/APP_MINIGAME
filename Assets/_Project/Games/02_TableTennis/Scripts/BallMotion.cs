@@ -25,6 +25,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class BallMotion : MonoBehaviour
     {
+        /// <summary>初速の逆算で0除算にならないようにする最小の飛行時間</summary>
+        private const float MinSolveTime = 0.05f;
+
         [SerializeField] private TableLayout _table;
 
         [Header("Flight")]
@@ -98,14 +101,7 @@ namespace MiniGame.TableTennis
             float deltaTime = Time.fixedDeltaTime;
             Vector3 previous = CourtPosition;
 
-            // 回転は「一定の加速度」として効かせる。速度との連成を省くことで、
-            // プレイヤーから見て回転の強さと曲がり方の対応が分かりやすくなる
-            var acceleration = new Vector3(
-                Spin.x * _sideSpinAcceleration,
-                -_gravity - Spin.y * _topSpinAcceleration,
-                0f);
-
-            Velocity += acceleration * deltaTime;
+            Velocity += AccelerationFor(Spin) * deltaTime;
             Velocity *= Mathf.Max(0f, 1f - _airDrag * deltaTime);
             CourtPosition += Velocity * deltaTime;
 
@@ -188,6 +184,50 @@ namespace MiniGame.TableTennis
             IsFlying = false;
             Velocity = Vector3.zero;
             OnRallyEnded?.Invoke(reason);
+        }
+
+        /// <summary>
+        /// 指定の飛行時間で target（狙い点）へ届く初速を求める。
+        /// NPCが狙い通りの返球をできるよう、飛行モデルを持つこのクラス自身が逆算を提供する。
+        /// 空気抵抗は厳密に解かず、水平方向の失速分を見込む近似にとどめている。
+        /// </summary>
+        public Vector3 SolveLaunchVelocity(Vector3 from, Vector3 target, float flightTime, Vector2 spin)
+        {
+            float time = Mathf.Max(MinSolveTime, flightTime);
+            float dragCompensation = 1f + _airDrag * time * 0.5f;
+            Vector3 acceleration = AccelerationFor(spin);
+
+            return new Vector3(
+                ((target.x - from.x) / time - 0.5f * acceleration.x * time) * dragCompensation,
+                (target.y - from.y) / time - 0.5f * acceleration.y * time,
+                ((target.z - from.z) / time) * dragCompensation);
+        }
+
+        /// <summary>
+        /// その初速で飛ばしたとき、奥行き z を通過する瞬間の高さ。ネットを越えるかの確認に使う。
+        /// z へ向かっていない場合は判定できないため float.MaxValue を返す。
+        /// </summary>
+        public float PredictHeightAt(Vector3 from, Vector3 velocity, Vector2 spin, float z)
+        {
+            if (Mathf.Approximately(velocity.z, 0f)) return float.MaxValue;
+
+            float time = (z - from.z) / velocity.z;
+            if (time <= 0f) return float.MaxValue;
+
+            Vector3 acceleration = AccelerationFor(spin);
+            return from.y + velocity.y * time + 0.5f * acceleration.y * time * time;
+        }
+
+        /// <summary>
+        /// 回転から決まる加速度。飛行中は一定として扱うことで、
+        /// プレイヤーから見て回転の強さと曲がり方の対応が分かりやすくなる。
+        /// </summary>
+        private Vector3 AccelerationFor(Vector2 spin)
+        {
+            return new Vector3(
+                spin.x * _sideSpinAcceleration,
+                -_gravity - spin.y * _topSpinAcceleration,
+                0f);
         }
     }
 }

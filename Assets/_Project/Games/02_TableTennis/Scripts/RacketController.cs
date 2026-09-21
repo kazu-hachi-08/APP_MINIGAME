@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MiniGame.TableTennis
 {
@@ -28,6 +29,10 @@ namespace MiniGame.TableTennis
 
         [Tooltip("手前端にいるときの表示直径（ワールド単位）")]
         [SerializeField] private float _displaySizeAtNear = 0.85f;
+
+        [Header("Touch")]
+        [Tooltip("タッチ操作時、指でラケットとボールが隠れないよう指より上へずらす量（画面高さ比）")]
+        [SerializeField] private float _touchOffsetRatio = 0.06f;
 
         public float RacketZ => _racketZ;
 
@@ -72,6 +77,11 @@ namespace MiniGame.TableTennis
         /// <summary>タップ/ドラッグ位置へラケットの目標位置を移す</summary>
         public void MoveToScreenPoint(Vector2 screenPoint)
         {
+            if (IsTouching())
+            {
+                screenPoint.y += Screen.height * _touchOffsetRatio;
+            }
+
             Vector3 world = _camera.ScreenToWorldPoint(new Vector3(screenPoint.x, screenPoint.y, 0f));
             Vector3 court = _table.Unproject(world, _racketZ);
 
@@ -86,6 +96,12 @@ namespace MiniGame.TableTennis
             float t = 1f - Mathf.Exp(-_followSpeed * Time.deltaTime);
             _current = Vector2.Lerp(_current, _target, t);
             ApplyView();
+        }
+
+        /// <summary>指で操作中かどうか（PCのマウス操作ではオフセットを掛けない）</summary>
+        private static bool IsTouching()
+        {
+            return Touchscreen.current != null && Touchscreen.current.press.isPressed;
         }
 
         private void ApplyView()
