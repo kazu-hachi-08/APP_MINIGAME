@@ -10,6 +10,8 @@ namespace MiniGame.Soccer
     {
         private Rigidbody2D _rigidbody;
 
+        public Vector2 Position => _rigidbody.position;
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
@@ -23,6 +25,14 @@ namespace MiniGame.Soccer
             _rigidbody.linearVelocity = Vector2.zero;
             _rigidbody.angularVelocity = 0f;
             _rigidbody.position = position;
+        }
+
+        /// <summary>
+        /// ドリブルやキックなど、外部からボールに力を加える
+        /// </summary>
+        public void ApplyForce(Vector2 force, ForceMode2D mode = ForceMode2D.Force)
+        {
+            _rigidbody.AddForce(force, mode);
         }
     }
 }

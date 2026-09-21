@@ -119,6 +119,14 @@ namespace MiniGame.Soccer.Editor
             playerCollider.radius = 0.4f;
             playerObj.AddComponent<PlayerController>();
 
+            // 向きインジケーター（方向転換の視認用）
+            var facingIndicatorObj = CreateSprite("FacingIndicator", Color.white, Vector3.zero,
+                new Vector3(0.18f, 0.35f, 1f), "UI/Skin/UISprite.psd");
+            facingIndicatorObj.transform.SetParent(playerObj.transform, false);
+            facingIndicatorObj.transform.localPosition = new Vector3(0f, 0.35f, 0f);
+            facingIndicatorObj.transform.localRotation = Quaternion.identity;
+            facingIndicatorObj.GetComponent<SpriteRenderer>().sortingOrder = 2;
+
             // 7. ボール
             var ballObj = CreateSprite("Ball", Color.white, BallStartPosition,
                 new Vector3(0.5f, 0.5f, 1f), "UI/Skin/Knob.psd");
