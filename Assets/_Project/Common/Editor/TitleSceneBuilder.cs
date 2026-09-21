@@ -175,14 +175,14 @@ namespace MiniGame.Editor
                 baseColor: new Color(0.12f, 0.45f, 0.85f)
             );
 
-            // ミニゲームボタン②：今後追加
+            // ミニゲームボタン②：2D卓球
             CreateGameSelectButton(
                 menuContainerObj.transform,
-                buttonName: "Btn_Game_MiniGame2",
-                gameTitle: "🔒 ミニゲーム ② (Coming Soon)",
-                targetScene: "",
-                isPlayable: false,
-                baseColor: new Color(0.2f, 0.22f, 0.28f)
+                buttonName: "Btn_Game_TableTennis",
+                gameTitle: "🏓 2D 卓球ゲーム",
+                targetScene: SceneNames.TableTennis,
+                isPlayable: true,
+                baseColor: new Color(0.85f, 0.35f, 0.15f)
             );
 
             // ミニゲームボタン③：今後追加
