@@ -64,6 +64,17 @@ namespace MiniGame.TableTennis
         public float Quality;
 
         public ShotType Type;
+
+        /// <summary>サーブかどうか。true のときは Velocity ではなくサーブ用の2段階発射で飛ばす</summary>
+        public bool IsServe;
+
+        /// <summary>サーブで自陣に1バウンドさせる狙い点</summary>
+        public Vector3 ServeBouncePoint;
+
+        /// <summary>自陣バウンド後に向け直す、本来の相手コートの狙い点</summary>
+        public Vector3 ServeTarget;
+
+        public float ServeForwardSpeed;
     }
 
     /// <summary>
@@ -153,12 +164,17 @@ namespace MiniGame.TableTennis
         [Tooltip("狙い点に乗る奥行きの誤差 (m)。大きく外すと台外になる")]
         [SerializeField] private float _worstDepthError = 0.35f;
 
+        [Header("サーブ")]
+        [Tooltip("実際の卓球と同じく、サーブは自分のコートに1回バウンドさせる。ネットからこの距離だけ自陣側の地点を1バウンド目の狙い点にする")]
+        [SerializeField] private float _serveOwnBounceDepth = 0.6f;
+
         /// <summary>
         /// フリックと打球タイミングから打球結果を求める。
         /// 縦フリックと打点の高さがショット種別を、横フリックがコースとサイドスピンを決める。
-        /// from は打点（ボールの現在位置）。
+        /// from は打点（ボールの現在位置）。isServe が true のときは、相手コートへ直接ではなく
+        /// 自陣への1バウンドを経由してから狙い点へ向かうサーブとして扱う。
         /// </summary>
-        public ShotResult Calculate(FlickData flick, SwingJudgement judgement, Vector3 from)
+        public ShotResult Calculate(FlickData flick, SwingJudgement judgement, Vector3 from, bool isServe = false)
         {
             ShotType type = SelectType(flick, from.y);
             ShotProfile profile = ProfileFor(type);
@@ -183,6 +199,26 @@ namespace MiniGame.TableTennis
                     _minLandingDepth,
                     Mathf.Lerp(profile.LandingDepthNear, profile.LandingDepthFar, strength)
                         + UnityEngine.Random.Range(-_worstDepthError, _worstDepthError) * error));
+
+            if (isServe)
+            {
+                // サーブは相手コートへ直接ではなく、まず自陣への1バウンドを狙う。
+                // 実際の向け直しは BallMotion.LaunchServe が1バウンド目の直後に行う
+                var ownBounce = new Vector3(target.x, 0f, -_serveOwnBounceDepth);
+
+                return new ShotResult
+                {
+                    Spin = spin,
+                    Strength = strength,
+                    Timing = judgement.Timing,
+                    Quality = quality,
+                    Type = type,
+                    IsServe = true,
+                    ServeBouncePoint = ownBounce,
+                    ServeTarget = target,
+                    ServeForwardSpeed = forward
+                };
+            }
 
             // 前方への速度で飛行時間が決まり、その時間で狙い点へ落ちる初速を逆算する。
             // 種別ごとに前方速度が違うので、カットやロブは自然と山なりの軌道になる

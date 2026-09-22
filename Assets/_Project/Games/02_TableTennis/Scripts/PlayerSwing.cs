@@ -151,8 +151,16 @@ namespace MiniGame.TableTennis
         {
             _swinging = false;
 
-            ShotResult shot = _shotCalculator.Calculate(_swingFlick, judgement, _ball.CourtPosition);
-            _ball.Launch(_ball.CourtPosition, shot.Velocity, shot.Spin);
+            ShotResult shot = _shotCalculator.Calculate(_swingFlick, judgement, _ball.CourtPosition, IsServing);
+
+            if (shot.IsServe)
+            {
+                _ball.LaunchServe(_ball.CourtPosition, shot.ServeBouncePoint, shot.ServeTarget, shot.Spin, shot.ServeForwardSpeed);
+            }
+            else
+            {
+                _ball.Launch(_ball.CourtPosition, shot.Velocity, shot.Spin);
+            }
 
             OnShot?.Invoke(_swingFlick, shot);
         }

@@ -80,6 +80,9 @@ namespace MiniGame.TableTennis
         [Range(0f, 1f)]
         [SerializeField] private float _serveSpinScale = 0.5f;
 
+        [Tooltip("実際の卓球と同じく、サーブは自分のコートに1回バウンドさせる。台の奥端からこの距離だけ手前を1バウンド目の狙い点にする")]
+        [SerializeField] private float _serveOwnBounceDepth = 0.6f;
+
         [Header("軌道")]
         [Tooltip("ネット上端からどれだけ余裕を持って越えさせるか (m)")]
         [SerializeField] private float _netClearance = 0.08f;
@@ -149,7 +152,13 @@ namespace MiniGame.TableTennis
             var from = new Vector3(_x, _serveHeight, _hitZ);
             Vector2 spin = PickSpin() * _serveSpinScale;
 
-            _ball.Launch(from, SolveShot(from, spin, PickFlightTime()), spin);
+            // 実際の卓球と同じく、まず自陣への1バウンドを狙い、相手コートへは
+            // その直後（BallMotion.LaunchServe）に向け直す
+            Vector3 target = PickTarget();
+            float forwardSpeed = Mathf.Abs(target.z - from.z) / Mathf.Max(0.1f, PickFlightTime());
+            var ownBounce = new Vector3(_x, 0f, _table.HalfLength - _serveOwnBounceDepth);
+
+            _ball.LaunchServe(from, ownBounce, target, spin, forwardSpeed);
             OnSwing?.Invoke();
         }
 
