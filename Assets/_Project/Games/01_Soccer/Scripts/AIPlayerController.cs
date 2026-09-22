@@ -22,6 +22,14 @@ namespace MiniGame.Soccer
         [Header("Attack / Defense")]
         [SerializeField] private float _attackShiftDistance = 2.3f;
 
+        [Header("Ball Follow Weight (non-chaser players)")]
+        [SerializeField] private float _minFollowWeight = 0.15f; // 自陣寄りの選手の追従割合
+        [SerializeField] private float _maxFollowWeight = 0.5f;  // 前線の選手の追従割合
+
+        [Header("Goalkeeper")]
+        [SerializeField] private float _gkOwnGoalThreshold = 1.5f; // 基準ポジションがこの距離以内なら自陣ゴール前＝GKとみなす
+        [SerializeField] private float _gkLateralRange = 1.6f;     // GKがボールに合わせて動ける範囲（基準ポジション中心）
+
         [Header("Kick")]
         [SerializeField] private float _opponentGoalX;
         [SerializeField] private float _kickRadius = 0.6f;
@@ -37,6 +45,7 @@ namespace MiniGame.Soccer
         private Ball _ball;
         private SoccerGameManager _gameManager;
         private float _kickCooldownTimer;
+        private bool _isGoalkeeper;
 
         private void Awake()
         {
@@ -48,6 +57,11 @@ namespace MiniGame.Soccer
         {
             _ball = Object.FindFirstObjectByType<Ball>();
             _gameManager = Object.FindFirstObjectByType<SoccerGameManager>();
+
+            // GK判定用の専用フラグはシーン側に持たせず、基準ポジションと自陣ゴールの距離から都度導出する。
+            // こうすることでシーン再生成（Build Soccer Scene）に依存せず、既存シーンのままでもGK専用挙動が有効になる。
+            float ownGoalX = -_opponentGoalX;
+            _isGoalkeeper = Mathf.Abs(_homePosition.x - ownGoalX) <= _gkOwnGoalThreshold;
         }
 
         public void SetHomePosition(Vector2 position)
@@ -100,6 +114,11 @@ namespace MiniGame.Soccer
             // （全員がボールへ殺到してスクラム状態になり、プレイヤーが触れなくなるのを防ぐ）
             bool canChaseBall = _ball != null && _gameManager != null && _gameManager.IsPlaying;
 
+            if (_isGoalkeeper)
+            {
+                return ComputeGoalkeeperTarget(canChaseBall);
+            }
+
             if (canChaseBall)
             {
                 float myDistance = Vector2.Distance(_rigidbody.position, _ball.Position);
@@ -111,12 +130,49 @@ namespace MiniGame.Soccer
 
             // 自チームが攻めている（ボールが攻撃方向側にある）間は基準位置を少し前へシフトする
             Vector2 basePosition = _homePosition;
-            if (canChaseBall && _teamMember != null && _ball.Position.x * _teamMember.AttackDirection > 0f)
+            if (canChaseBall && _teamMember != null)
             {
-                basePosition += Vector2.right * (_teamMember.AttackDirection * _attackShiftDistance);
+                if (_ball.Position.x * _teamMember.AttackDirection > 0f)
+                {
+                    basePosition += Vector2.right * (_teamMember.AttackDirection * _attackShiftDistance);
+                }
+
+                // ボールを追いかける1人以外も、役割（前線ほど強め）に応じてボール方向へ少しずつ引っ張られる。
+                // これにより「ボールに一番近い1人以外は棒立ち」に見えていた見た目を解消する
+                basePosition += (_ball.Position - basePosition) * ComputeFollowWeight();
             }
 
             return basePosition;
+        }
+
+        /// <summary>
+        /// 基準ポジションが自陣ゴールに近いほど大きい重みを返す前提で、
+        /// 前線の選手ほどボールへ強く反応し、自陣寄りの選手は大きく崩れないようにする
+        /// </summary>
+        private float ComputeFollowWeight()
+        {
+            float fieldHalfWidth = Mathf.Abs(_opponentGoalX);
+            if (fieldHalfWidth <= 0f) return _minFollowWeight;
+
+            float attackDirection = _teamMember != null ? _teamMember.AttackDirection : 1f;
+            float advancement = _homePosition.x * attackDirection; // 自陣ゴール寄り=負、相手ゴール寄り=正
+            float normalizedAdvancement = Mathf.InverseLerp(-fieldHalfWidth, fieldHalfWidth, advancement);
+
+            return Mathf.Lerp(_minFollowWeight, _maxFollowWeight, normalizedAdvancement);
+        }
+
+        /// <summary>
+        /// GKは自陣ゴールライン上のX座標を維持し、ボールのYに合わせて可動範囲内だけ左右（上下）に動く
+        /// </summary>
+        private Vector2 ComputeGoalkeeperTarget(bool canChaseBall)
+        {
+            if (!canChaseBall)
+            {
+                return _homePosition;
+            }
+
+            float clampedY = Mathf.Clamp(_ball.Position.y, _homePosition.y - _gkLateralRange, _homePosition.y + _gkLateralRange);
+            return new Vector2(_homePosition.x, clampedY);
         }
 
         /// <summary>
