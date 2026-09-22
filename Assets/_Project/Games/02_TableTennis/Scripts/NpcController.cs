@@ -92,7 +92,7 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _stepInHeight = 0.12f;
 
         [Header("難易度")]
-        [Tooltip("試合開始前の難易度選択で決まる強さ (1〜5)。docs/TABLE_TENNIS_SPEC.md 17.3 参照")]
+        [Tooltip("試合開始前の難易度選択で決まる強さ (1〜5)。")]
         [Range(NpcDifficultyTable.MinLevel, NpcDifficultyTable.MaxLevel)]
         [SerializeField] private int _difficultyLevel = 3;
 

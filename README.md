@@ -2,8 +2,8 @@
 
 ## ミニゲーム一覧
 
-- [2Dサッカーゲーム](docs/SOCCER_SPEC.md)
-- [2D卓球ゲーム](docs/TABLE_TENNIS_SPEC.md)
+- [2Dサッカーゲーム](Docs/SOCCER_SPEC.md)
+- [2D卓球ゲーム](Docs/TABLE_TENNIS_SPEC.md)
 
 ---
 

@@ -299,7 +299,7 @@ namespace MiniGame.TableTennis.Editor
             AssetDatabase.Refresh();
         }
 
-        /// <summary>試合開始前に5段階の難易度を選ばせるパネル（docs/TABLE_TENNIS_SPEC.md 17.3, 18章）</summary>
+        /// <summary>試合開始前に5段階の難易度を選ばせるパネル</summary>
         private static DifficultySelectPanel CreateDifficultySelectPanel(Transform canvas)
         {
             var panelObj = UIDialogBuilder.CreateUIObject("DifficultySelectPanel", canvas);

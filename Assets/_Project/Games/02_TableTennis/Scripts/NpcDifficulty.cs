@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.TableTennis
 {
     /// <summary>
-    /// 難易度ごとのNPC強さ。docs/TABLE_TENNIS_SPEC.md 17.3 の表と一致させてある。
+    /// 難易度ごとのNPC強さ。
     /// </summary>
     public struct NpcDifficultyStats
     {
