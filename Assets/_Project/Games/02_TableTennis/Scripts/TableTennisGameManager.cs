@@ -33,6 +33,7 @@ namespace MiniGame.TableTennis
         [SerializeField] private ServeController _serve;
         [SerializeField] private NpcController _npc;
         [SerializeField] private TableTennisAudio _audio;
+        [SerializeField] private DifficultySelectPanel _difficultyPanel;
 
         [Header("UI")]
         [SerializeField] private Text _scoreText;
@@ -57,6 +58,10 @@ namespace MiniGame.TableTennis
 
         [Tooltip("GAME SET を見せてからリザルトを出すまでの時間")]
         [SerializeField] private float _gameSetDuration = 1.6f;
+
+        [Tooltip("難易度選択パネルが無いとき（テストシーンなど）のデフォルト難易度")]
+        [Range(NpcDifficultyTable.MinLevel, NpcDifficultyTable.MaxLevel)]
+        [SerializeField] private int _fallbackDifficulty = 3;
 
         private MatchScore _score;
         private RallyPhase _phase = RallyPhase.PointBreak;
@@ -95,6 +100,21 @@ namespace MiniGame.TableTennis
             _score = new MatchScore(_pointsToWin, _serveChangeInterval, CourtSide.Player);
             UpdateScoreText();
             SetShotInfo("フリックして打つ（上:ドライブ 下:カット）", 0f);
+
+            if (_difficultyPanel != null)
+            {
+                _difficultyPanel.Show(HandleDifficultySelected);
+            }
+            else
+            {
+                HandleDifficultySelected(_fallbackDifficulty);
+            }
+        }
+
+        /// <summary>難易度選択後に試合を始める。選択自体は Ready 状態のうちに行う</summary>
+        private void HandleDifficultySelected(int level)
+        {
+            _npc.SetDifficulty(level);
             StartGame();
             StartCoroutine(NextServeRoutine());
         }

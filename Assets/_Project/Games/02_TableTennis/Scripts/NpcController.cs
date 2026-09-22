@@ -27,19 +27,15 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _minHeight = 0f;
         [SerializeField] private float _maxHeight = 1.4f;
 
-        [Header("難易度パラメータ")]
+        [Header("難易度パラメータ（難易度3=標準としての基準値。実際の値は難易度テーブルで倍率補正する）")]
         [Tooltip("ラケットの移動速度 (m/s)。小さいほど左右に振られると追いつけない")]
-        [SerializeField] private float _moveSpeed = 2.2f;
+        [SerializeField] private float _moveSpeed = 2.6f;
 
         [Tooltip("打点で当てられる左右のズレ (m)。小さいほどシビア")]
-        [SerializeField] private float _reachX = 0.35f;
+        [SerializeField] private float _reachX = 0.42f;
 
         [Tooltip("追い始めるまでの反応の遅れ (秒)")]
-        [SerializeField] private float _reactionDelay = 0.12f;
-
-        [Tooltip("追いつけていても返球をミスする確率")]
-        [Range(0f, 1f)]
-        [SerializeField] private float _missChance = 0.08f;
+        [SerializeField] private float _reactionDelay = 0.1f;
 
         [Tooltip("狙い点に乗る左右の誤差 (m)。大きいほどコースが甘くなる")]
         [SerializeField] private float _aimError = 0.18f;
@@ -94,6 +90,19 @@ namespace MiniGame.TableTennis
 
         [Tooltip("2バウンド目に入りそうな高さ。ここまで落ちたら打点を待たずに踏み込んで打つ")]
         [SerializeField] private float _stepInHeight = 0.12f;
+
+        [Header("難易度")]
+        [Tooltip("試合開始前の難易度選択で決まる強さ (1〜5)。docs/TABLE_TENNIS_SPEC.md 17.3 参照")]
+        [Range(NpcDifficultyTable.MinLevel, NpcDifficultyTable.MaxLevel)]
+        [SerializeField] private int _difficultyLevel = 3;
+
+        private NpcDifficultyStats Difficulty => NpcDifficultyTable.Get(_difficultyLevel);
+
+        /// <summary>難易度選択パネルから、試合開始前に一度だけ呼ばれる想定</summary>
+        public void SetDifficulty(int level)
+        {
+            _difficultyLevel = Mathf.Clamp(level, NpcDifficultyTable.MinLevel, NpcDifficultyTable.MaxLevel);
+        }
 
         /// <summary>打球・移動の受け付け。ラリー外やポーズ中は false にする</summary>
         public bool IsActive { get; set; }
@@ -174,16 +183,19 @@ namespace MiniGame.TableTennis
 
             _incoming = true;
             _swung = false;
-            _reactionTimer = _reactionDelay;
-            _willReturn = CanReach(contact) && UnityEngine.Random.value >= _missChance;
+            _reactionTimer = _reactionDelay * Difficulty.ReactionMultiplier;
+            _willReturn = CanReach(contact) && UnityEngine.Random.value < Difficulty.SuccessRate;
         }
 
-        /// <summary>バウンド地点から打点までに、横移動が間に合うかどうか</summary>
+        /// <summary>バウンド地点から打点までに、横移動が間に合うかどうか。追従速度・反応・届く範囲は難易度で補正する</summary>
         private bool CanReach(Vector3 contact)
         {
+            var difficulty = Difficulty;
             float travelTime = (_hitZ - contact.z) / Mathf.Max(0.1f, _ball.Velocity.z);
             float predictedX = contact.x + _ball.Velocity.x * travelTime;
-            float movableDistance = _moveSpeed * Mathf.Max(0f, travelTime - _reactionDelay) + _reachX;
+            float reactionDelay = _reactionDelay * difficulty.ReactionMultiplier;
+            float movableDistance = (_moveSpeed * difficulty.MoveSpeedMultiplier) * Mathf.Max(0f, travelTime - reactionDelay)
+                                     + (_reachX * difficulty.ReachMultiplier);
 
             return Mathf.Abs(predictedX - _x) <= movableDistance;
         }
@@ -220,7 +232,7 @@ namespace MiniGame.TableTennis
 
         private void MoveTowards(float targetX, float targetY)
         {
-            float step = _moveSpeed * Time.deltaTime;
+            float step = _moveSpeed * Difficulty.MoveSpeedMultiplier * Time.deltaTime;
             _x = Mathf.MoveTowards(_x, Mathf.Clamp(targetX, -_rangeX, _rangeX), step);
             _y = Mathf.MoveTowards(_y, Mathf.Clamp(targetY, _minHeight, _maxHeight), step);
         }
@@ -241,17 +253,23 @@ namespace MiniGame.TableTennis
 
             Vector3 ball = _ball.CourtPosition;
 
-            // 追いつけていなければ空振り。2バウンドや打ち抜けとして RallyReferee が失点にする
-            if (Mathf.Abs(ball.x - _x) > _reachX) return;
+            // 追いつけていなければ空振り。2バウンドや打ち抜けとして RallyReferee が失点にする。
+            // このときは _incoming を残したままにし、次のサーブ（ResetForRally）まで再評価しない
+            if (Mathf.Abs(ball.x - _x) > _reachX * Difficulty.ReachMultiplier) return;
+
+            // 打ち返せたので、ラリーが続く限り次にNPC側でバウンドするボールを新規に評価できるようにする。
+            // ここを戻し忘れると、1本目を返した後は _incoming が立ちっぱなしになり、
+            // 2本目以降は HandleBounced が何もしなくなって「一度返したら二度と反応しない」バグになる
+            _incoming = false;
 
             // 高い打点は叩く。そうしないとプレイヤーのロブやカットの高い返球に対して
             // 山なりの返球しかできず、一方的に打ち込まれ続けてしまう
             bool smash = ball.y >= _smashHeight;
 
             Vector2 spin = smash
-                ? new Vector2(UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin), _smashTopSpin)
+                ? new Vector2(UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin), _smashTopSpin) * Difficulty.SpinMultiplier
                 : PickSpin();
-            float flightTime = smash ? _smashFlightTime : PickFlightTime();
+            float flightTime = smash ? _smashFlightTime / Difficulty.SpeedMultiplier : PickFlightTime();
 
             _ball.Launch(ball, SolveShot(ball, spin, flightTime), spin);
             OnReturned?.Invoke();
@@ -296,14 +314,14 @@ namespace MiniGame.TableTennis
 
         private float PickFlightTime()
         {
-            return UnityEngine.Random.Range(_minFlightTime, _maxFlightTime);
+            return UnityEngine.Random.Range(_minFlightTime, _maxFlightTime) / Difficulty.SpeedMultiplier;
         }
 
         private Vector2 PickSpin()
         {
             return new Vector2(
                 UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin),
-                UnityEngine.Random.Range(_minTopSpin, _maxTopSpin));
+                UnityEngine.Random.Range(_minTopSpin, _maxTopSpin)) * Difficulty.SpinMultiplier;
         }
     }
 }
