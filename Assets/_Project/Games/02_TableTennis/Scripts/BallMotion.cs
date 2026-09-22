@@ -28,6 +28,12 @@ namespace MiniGame.TableTennis
         /// <summary>初速の逆算で0除算にならないようにする最小の飛行時間</summary>
         private const float MinSolveTime = 0.05f;
 
+        /// <summary>
+        /// 下向き加速度の下限。強いバックスピン（カット）でも
+        /// ボールが浮いたまま飛び続けないようにするための安全値。
+        /// </summary>
+        private const float MinFallAcceleration = 1.5f;
+
         [SerializeField] private TableLayout _table;
 
         [Header("Flight")]
@@ -77,6 +83,12 @@ namespace MiniGame.TableTennis
 
         public event Action<RallyEndReason> OnRallyEnded;
 
+        /// <summary>サーブの1バウンド目を待っている間、本来の狙い点へ向け直すための情報</summary>
+        private bool _awaitingServeBounce;
+        private Vector3 _serveTarget;
+        private Vector2 _serveSpin;
+        private float _serveForwardSpeed;
+
         /// <summary>指定の位置・速度・回転でボールを発射する</summary>
         public void Launch(Vector3 courtPosition, Vector3 velocity, Vector2 spin)
         {
@@ -86,12 +98,30 @@ namespace MiniGame.TableTennis
             IsFlying = true;
         }
 
+        /// <summary>
+        /// サーブ専用の発射。実際の卓球と同じく、自分のコートに1回バウンドしてから
+        /// 相手コートへ向かうよう、まず自陣の着地点だけを狙って飛ばし、
+        /// その1バウンド目の直後（CheckBounce）に本来の狙い点へ向け直す。
+        /// </summary>
+        public void LaunchServe(Vector3 from, Vector3 ownBouncePoint, Vector3 finalTarget, Vector2 spin, float forwardSpeed)
+        {
+            float speed = Mathf.Max(0.1f, forwardSpeed);
+            float firstLegTime = Mathf.Abs(ownBouncePoint.z - from.z) / speed;
+            Launch(from, SolveLaunchVelocity(from, ownBouncePoint, firstLegTime, spin), spin);
+
+            _awaitingServeBounce = true;
+            _serveTarget = finalTarget;
+            _serveSpin = spin;
+            _serveForwardSpeed = speed;
+        }
+
         /// <summary>その場で止める（ラリー間の待機用）</summary>
         public void Stop()
         {
             Velocity = Vector3.zero;
             Spin = Vector2.zero;
             IsFlying = false;
+            _awaitingServeBounce = false;
         }
 
         private void FixedUpdate()
@@ -164,6 +194,16 @@ namespace MiniGame.TableTennis
             Spin *= _bounceSpinRetention;
 
             OnBounced?.Invoke(CourtPosition);
+
+            // サーブの1バウンド目。ここから本来の狙い点（相手コート）へ向け直す
+            if (_awaitingServeBounce)
+            {
+                _awaitingServeBounce = false;
+                float secondLegTime = Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed;
+                Velocity = SolveLaunchVelocity(CourtPosition, _serveTarget, secondLegTime, _serveSpin);
+                Spin = _serveSpin;
+            }
+
             return false;
         }
 
@@ -226,7 +266,7 @@ namespace MiniGame.TableTennis
         {
             return new Vector3(
                 spin.x * _sideSpinAcceleration,
-                -_gravity - spin.y * _topSpinAcceleration,
+                Mathf.Min(-MinFallAcceleration, -_gravity - spin.y * _topSpinAcceleration),
                 0f);
         }
     }
