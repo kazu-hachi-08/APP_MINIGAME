@@ -281,6 +281,7 @@ namespace MiniGame.TableTennis.Editor
             var serveSo = new SerializedObject(serveController);
             serveSo.FindProperty("_ball").objectReferenceValue = ballMotion;
             serveSo.FindProperty("_racket").objectReferenceValue = racket;
+            serveSo.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
             serveSo.ApplyModifiedProperties();
 
             var gmSo = new SerializedObject(gameManager);

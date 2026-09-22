@@ -11,6 +11,7 @@ namespace MiniGame.TableTennis
     {
         [SerializeField] private BallMotion _ball;
         [SerializeField] private RacketController _racket;
+        [SerializeField] private PlayerSwing _playerSwing;
 
         [Header("プレイヤーの自動トス")]
         [Tooltip("ラケットより奥にトスする距離。打ち頃の位置に上がるようにする")]
@@ -29,6 +30,16 @@ namespace MiniGame.TableTennis
                 new Vector3(racket.x, _tossStartHeight, racket.z + _tossDepthOffset),
                 new Vector3(0f, _tossUpSpeed, 0f),
                 Vector2.zero);
+        }
+
+        // トスは左右に飛ばないため、フリックの振り出しでラケットが動いた分だけ
+        // ボールから離れて空振りになってしまう。打たれるまではボールをラケットへ追従させる。
+        private void Update()
+        {
+            if (_playerSwing.IsServing && _ball.IsFlying)
+            {
+                _ball.FollowX(_racket.CourtPosition.x);
+            }
         }
     }
 }

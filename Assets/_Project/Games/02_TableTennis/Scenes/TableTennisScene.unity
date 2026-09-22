@@ -919,7 +919,7 @@ MonoBehaviour:
   _worstSpinScale: 0.25
   _worstCourseError: 0.45
   _worstDepthError: 0.35
-  _serveOwnBounceDepth: 0.6
+  _serveOwnBounceDepth: 0.9
 --- !u!114 &177554079
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5827,6 +5827,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.ServeController
   _ball: {fileID: 1954718412}
   _racket: {fileID: 2034156333}
+  _playerSwing: {fileID: 177554077}
   _tossDepthOffset: 0.2
   _tossStartHeight: 0.1
   _tossUpSpeed: 4
