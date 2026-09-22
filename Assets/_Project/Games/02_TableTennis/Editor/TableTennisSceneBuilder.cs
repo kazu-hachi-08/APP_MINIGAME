@@ -25,6 +25,8 @@ namespace MiniGame.TableTennis.Editor
         private const string SpritesDefaultMaterialPath = "Sprites-Default.mat";
 
         // 手前にあるものほど大きい値。キャラクターは自分のラケットより後ろに描く
+        // TableView側の台パーツが-130〜-50を使っているため、それより奥に置く
+        private const int BackgroundSortingOrder = -200;
         private const int NpcCharacterSortingOrder = 3;
         private const int NpcRacketSortingOrder = 5;
         private const int ShadowSortingOrder = 10;
@@ -73,12 +75,14 @@ namespace MiniGame.TableTennis.Editor
             Sprite tableSurfaceSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.TableSurfaceName);
             Sprite netSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.NetName);
             Sprite bounceRingSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.BounceRingName);
+            Sprite backgroundSprite = TableTennisArtGenerator.Load(TableTennisArtGenerator.BackgroundName);
 
             // 1. Camera（台の手前から奥を見る擬似3Dの画角に合わせる）
             var cameraObj = new GameObject("Main Camera");
             var camera = cameraObj.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.07f, 0.08f, 0.11f);
+            // 背景スプライトが常に画面を覆うが、リサイズが追いつくまでの隙間用に壁の色に合わせておく
+            camera.backgroundColor = new Color32(30, 34, 46, 255);
             camera.orthographic = true;
             camera.orthographicSize = 4.5f;
             // 画面上部のHUD（スコア・打球結果）と台・キャラクターが重ならないよう、
@@ -92,6 +96,13 @@ namespace MiniGame.TableTennis.Editor
             var fitterSo = new SerializedObject(cameraFitter);
             fitterSo.FindProperty("_camera").objectReferenceValue = camera;
             fitterSo.ApplyModifiedProperties();
+
+            // 1.5 背景（体育館の壁と床。カメラの表示範囲いっぱいに常に引き伸ばす）
+            var backgroundObj = CreateSpriteObject("Background", backgroundSprite, Color.white, BackgroundSortingOrder);
+            var backgroundView = backgroundObj.AddComponent<BackgroundView>();
+            var bgSo = new SerializedObject(backgroundView);
+            bgSo.FindProperty("_camera").objectReferenceValue = camera;
+            bgSo.ApplyModifiedProperties();
 
             // 2. EventSystem（UIのタッチ判定に必須）
             var eventSystemObj = new GameObject("EventSystem");
