@@ -25,7 +25,7 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _rangeX = 1.1f;
         [SerializeField] private float _readyHeight = 0.25f;
         [SerializeField] private float _minHeight = 0f;
-        [SerializeField] private float _maxHeight = 0.8f;
+        [SerializeField] private float _maxHeight = 1.4f;
 
         [Header("難易度パラメータ")]
         [Tooltip("ラケットの移動速度 (m/s)。小さいほど左右に振られると追いつけない")]
@@ -59,6 +59,14 @@ namespace MiniGame.TableTennis
 
         [Tooltip("ランダムに散らす左右の幅 (m)")]
         [SerializeField] private float _targetSpreadX = 0.55f;
+
+        [Tooltip("この高さ以上の打点なら叩く。プレイヤーのロブや高い返球を打ち返せるようにする")]
+        [SerializeField] private float _smashHeight = 0.55f;
+
+        [Tooltip("スマッシュの飛行時間 (秒)。通常の返球より短くして速く低い球にする")]
+        [SerializeField] private float _smashFlightTime = 0.45f;
+
+        [SerializeField] private float _smashTopSpin = 1f;
 
         [SerializeField] private float _minTopSpin = -0.3f;
         [SerializeField] private float _maxTopSpin = 0.7f;
@@ -141,7 +149,7 @@ namespace MiniGame.TableTennis
             var from = new Vector3(_x, _serveHeight, _hitZ);
             Vector2 spin = PickSpin() * _serveSpinScale;
 
-            _ball.Launch(from, SolveShot(from, spin), spin);
+            _ball.Launch(from, SolveShot(from, spin, PickFlightTime()), spin);
             OnSwing?.Invoke();
         }
 
@@ -227,16 +235,23 @@ namespace MiniGame.TableTennis
             // 追いつけていなければ空振り。2バウンドや打ち抜けとして RallyReferee が失点にする
             if (Mathf.Abs(ball.x - _x) > _reachX) return;
 
-            Vector2 spin = PickSpin();
-            _ball.Launch(ball, SolveShot(ball, spin), spin);
+            // 高い打点は叩く。そうしないとプレイヤーのロブやカットの高い返球に対して
+            // 山なりの返球しかできず、一方的に打ち込まれ続けてしまう
+            bool smash = ball.y >= _smashHeight;
+
+            Vector2 spin = smash
+                ? new Vector2(UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin), _smashTopSpin)
+                : PickSpin();
+            float flightTime = smash ? _smashFlightTime : PickFlightTime();
+
+            _ball.Launch(ball, SolveShot(ball, spin, flightTime), spin);
             OnReturned?.Invoke();
         }
 
         /// <summary>狙い点へ落とす初速を求める。ネットに掛かる軌道なら山なりにして取り直す</summary>
-        private Vector3 SolveShot(Vector3 from, Vector2 spin)
+        private Vector3 SolveShot(Vector3 from, Vector2 spin, float flightTime)
         {
             Vector3 target = PickTarget();
-            float flightTime = UnityEngine.Random.Range(_minFlightTime, _maxFlightTime);
             Vector3 velocity = _ball.SolveLaunchVelocity(from, target, flightTime, spin);
 
             for (int i = 0; i < _netRetryCount; i++)
@@ -268,6 +283,11 @@ namespace MiniGame.TableTennis
                 Mathf.Clamp(x, -limit, limit),
                 0f,
                 UnityEngine.Random.Range(_targetDepthNear, _targetDepthFar));
+        }
+
+        private float PickFlightTime()
+        {
+            return UnityEngine.Random.Range(_minFlightTime, _maxFlightTime);
         }
 
         private Vector2 PickSpin()

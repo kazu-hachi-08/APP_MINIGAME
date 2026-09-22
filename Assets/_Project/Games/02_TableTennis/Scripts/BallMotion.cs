@@ -28,6 +28,12 @@ namespace MiniGame.TableTennis
         /// <summary>初速の逆算で0除算にならないようにする最小の飛行時間</summary>
         private const float MinSolveTime = 0.05f;
 
+        /// <summary>
+        /// 下向き加速度の下限。強いバックスピン（カット）でも
+        /// ボールが浮いたまま飛び続けないようにするための安全値。
+        /// </summary>
+        private const float MinFallAcceleration = 1.5f;
+
         [SerializeField] private TableLayout _table;
 
         [Header("Flight")]
@@ -226,7 +232,7 @@ namespace MiniGame.TableTennis
         {
             return new Vector3(
                 spin.x * _sideSpinAcceleration,
-                -_gravity - spin.y * _topSpinAcceleration,
+                Mathf.Min(-MinFallAcceleration, -_gravity - spin.y * _topSpinAcceleration),
                 0f);
         }
     }

@@ -46,13 +46,13 @@ namespace MiniGame.TableTennis
     {
         [Header("接触範囲 (m)")]
         [Tooltip("ラケットより手前側で当たる範囲")]
-        [SerializeField] private float _contactRangeNear = 0.3f;
+        [SerializeField] private float _contactRangeNear = 0.45f;
 
         [Tooltip("ラケットより奥側で当たる範囲")]
         [SerializeField] private float _contactRangeFar = 0.85f;
 
         [SerializeField] private float _contactRadiusX = 0.45f;
-        [SerializeField] private float _contactRadiusY = 0.45f;
+        [SerializeField] private float _contactRadiusY = 0.6f;
 
         [Header("空振り範囲")]
         [Tooltip("接触範囲の何倍まで振りにいくか。この外はフリックを無視し、内側なら空振りになる")]

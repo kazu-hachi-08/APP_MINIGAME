@@ -94,7 +94,7 @@ namespace MiniGame.TableTennis
         {
             _score = new MatchScore(_pointsToWin, _serveChangeInterval, CourtSide.Player);
             UpdateScoreText();
-            SetShotInfo("フリックして打つ", 0f);
+            SetShotInfo("フリックして打つ（上:ドライブ 下:カット）", 0f);
             StartGame();
             StartCoroutine(NextServeRoutine());
         }
@@ -266,7 +266,7 @@ namespace MiniGame.TableTennis
         /// </summary>
         private static string BuildShotInfo(ShotResult shot)
         {
-            return $"{TimingLabel(shot.Timing)}　強さ {shot.Strength * 100f:0}%\n{DescribeSpin(shot.Spin)}";
+            return $"{ShotTypeLabel(shot.Type)}　{TimingLabel(shot.Timing)}　{shot.Strength * 100f:0}%\n{DescribeSpin(shot.Spin)}";
         }
 
         private static string DescribeSpin(Vector2 spin)
@@ -284,6 +284,22 @@ namespace MiniGame.TableTennis
             if (vertical.Length > 0) return vertical;
             if (horizontal.Length > 0) return horizontal;
             return "ほぼ無回転";
+        }
+
+        /// <summary>
+        /// どの種別で打てたかを毎打球返す。
+        /// 種別は打点の高さとフリック方向から自動で決まるため、
+        /// これを見せないとプレイヤーが打ち分けを覚えられない。
+        /// </summary>
+        private static string ShotTypeLabel(ShotType type)
+        {
+            switch (type)
+            {
+                case ShotType.Smash: return "スマッシュ";
+                case ShotType.Chop: return "カット";
+                case ShotType.Lob: return "ロブ";
+                default: return "ドライブ";
+            }
         }
 
         private static string TimingLabel(ShotTiming timing)

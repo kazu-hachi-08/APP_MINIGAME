@@ -22,7 +22,7 @@ namespace MiniGame.TableTennis
         [Header("Move Range (m)")]
         [SerializeField] private float _rangeX = 1.1f;
         [SerializeField] private float _minHeight = -0.15f;
-        [SerializeField] private float _maxHeight = 0.9f;
+        [SerializeField] private float _maxHeight = 1.35f;
 
         [Tooltip("指の位置へ追いつく速さ。大きいほど機敏になる")]
         [SerializeField] private float _followSpeed = 30f;
