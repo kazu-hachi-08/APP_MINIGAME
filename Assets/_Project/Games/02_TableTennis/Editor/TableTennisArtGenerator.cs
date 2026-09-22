@@ -26,6 +26,7 @@ namespace MiniGame.TableTennis.Editor
         public const string TableSurfaceName = "TableSurface";
         public const string NetName = "Net";
         public const string BounceRingName = "BounceRing";
+        public const string BackgroundName = "Background";
 
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
 
@@ -55,6 +56,9 @@ namespace MiniGame.TableTennis.Editor
             SaveSprite(NetName, BuildNet(), 32, 32, SpriteAlignment.Center, repeat: true);
 
             SaveSprite(BounceRingName, BuildBounceRing(), 32, 32, SpriteAlignment.Center, repeat: false);
+
+            // 背景は画面いっぱいに引き伸ばして使うので繰り返し不要
+            SaveSprite(BackgroundName, BuildBackground(), 48, 80, SpriteAlignment.Center, repeat: false);
 
             AssetDatabase.Refresh();
             Debug.Log($"[TableTennisArtGenerator] 卓球の素材を生成しました: {SpriteDirectory}");
@@ -251,6 +255,62 @@ namespace MiniGame.TableTennis.Editor
             const int size = 32;
             var pixels = NewCanvas(size, size);
             OutlineCircle(pixels, size, size, 16, 16, 15f, 2, new Color32(255, 255, 255, 220));
+            return pixels;
+        }
+
+        // ------------------------------------------------------------------
+        // 背景（体育館の壁と床。実寸ではなくBackgroundViewで画面全体に引き伸ばして使う）
+        // ------------------------------------------------------------------
+        private static Color32[] BuildBackground()
+        {
+            const int width = 48;
+            const int height = 80;
+            var pixels = NewCanvas(width, height);
+
+            var wallTop = new Color32(30, 34, 46, 255);
+            var wallBottom = new Color32(46, 52, 68, 255);
+            var wallLine = new Color32(58, 64, 82, 255);
+            var floorColor = new Color32(64, 46, 34, 255);
+            var baseboard = new Color32(20, 22, 30, 255);
+
+            // 壁と床の境目のy座標（左上原点）。台の奥に壁、手前に床があるように見せる
+            int floorTop = Mathf.RoundToInt(height * 0.62f);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Color32 color;
+                    if (y < floorTop)
+                    {
+                        float t = y / (float)floorTop;
+                        color = Lerp(wallTop, wallBottom, t);
+
+                        // 一定間隔の縦ラインで体育館の壁パネルらしさを出す
+                        if (x % 12 == 0)
+                        {
+                            color = wallLine;
+                        }
+                    }
+                    else if (y < floorTop + 2)
+                    {
+                        color = baseboard;
+                    }
+                    else
+                    {
+                        // 単色べた塗りに見えないよう座標由来のノイズでムラを作る
+                        int noise = (Hash(x, y) % 7) - 3;
+                        color = new Color32(
+                            (byte)Mathf.Clamp(floorColor.r + noise, 0, 255),
+                            (byte)Mathf.Clamp(floorColor.g + noise, 0, 255),
+                            (byte)Mathf.Clamp(floorColor.b + noise, 0, 255),
+                            255);
+                    }
+
+                    SetPixel(pixels, width, height, x, y, color);
+                }
+            }
+
             return pixels;
         }
 

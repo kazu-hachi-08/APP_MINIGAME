@@ -115,6 +115,15 @@ namespace MiniGame.TableTennis
             _serveForwardSpeed = speed;
         }
 
+        /// <summary>
+        /// 奥行き・高さ・速度はそのままに、左右位置だけ上書きする。
+        /// サーブのトス中、ラケットの動きにボールを追従させて空振りを防ぐために使う。
+        /// </summary>
+        public void FollowX(float x)
+        {
+            CourtPosition = new Vector3(x, CourtPosition.y, CourtPosition.z);
+        }
+
         /// <summary>その場で止める（ラリー間の待機用）</summary>
         public void Stop()
         {
