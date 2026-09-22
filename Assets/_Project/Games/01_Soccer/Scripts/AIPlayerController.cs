@@ -46,6 +46,8 @@ namespace MiniGame.Soccer
         private SoccerGameManager _gameManager;
         private float _kickCooldownTimer;
         private bool _isGoalkeeper;
+        // タックルでよろけている間はTackleReactionが移動・キックを止める
+        private bool _movementSuppressed;
 
         private void Awake()
         {
@@ -78,6 +80,14 @@ namespace MiniGame.Soccer
         }
 
         /// <summary>
+        /// タックルでよろけている間など、外部コンポーネントが移動を止めたい間だけ抑制する
+        /// </summary>
+        public void SetMovementSuppressed(bool suppressed)
+        {
+            _movementSuppressed = suppressed;
+        }
+
+        /// <summary>
         /// ゴール後などに基準ポジションへ戻す
         /// </summary>
         public void ResetToHomePosition()
@@ -91,6 +101,12 @@ namespace MiniGame.Soccer
             if (_kickCooldownTimer > 0f)
             {
                 _kickCooldownTimer -= Time.fixedDeltaTime;
+            }
+
+            if (_movementSuppressed)
+            {
+                _rigidbody.linearVelocity = Vector2.zero;
+                return;
             }
 
             Vector2 targetPosition = ComputeTargetPosition();

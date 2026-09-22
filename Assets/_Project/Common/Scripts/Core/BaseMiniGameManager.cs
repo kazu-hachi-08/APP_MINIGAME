@@ -23,6 +23,7 @@ namespace MiniGame.Common.Core
         [SerializeField] private VirtualButton _actionButton1;
         [SerializeField] private VirtualButton _actionButton2;
         [SerializeField] private VirtualButton _actionButton3;
+        [SerializeField] private VirtualButton _actionButton4;
 
         public string GameTitle => _gameTitle;
         public MiniGameState CurrentState { get; private set; } = MiniGameState.Ready;
@@ -69,7 +70,8 @@ namespace MiniGame.Common.Core
                     _virtualJoystick,
                     _actionButton1,
                     _actionButton2,
-                    _actionButton3
+                    _actionButton3,
+                    _actionButton4
                 );
             }
         }
