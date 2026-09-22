@@ -254,6 +254,9 @@ namespace MiniGame.TableTennis.Editor
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
+            // 試合開始前の難易度選択（さらに最前面。ダイアログより後に生成する）
+            var difficultyPanel = CreateDifficultySelectPanel(canvasObj.transform);
+
             // 10. GameManager
             var gameManagerObj = new GameObject("TableTennisGameManager");
             var gameManager = gameManagerObj.AddComponent<TableTennisGameManager>();
@@ -280,6 +283,7 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
             gmSo.FindProperty("_messageHud").objectReferenceValue = messageHud;
             gmSo.FindProperty("_shotInfoHud").objectReferenceValue = shotInfoHud;
+            gmSo.FindProperty("_difficultyPanel").objectReferenceValue = difficultyPanel;
             gmSo.ApplyModifiedProperties();
 
             var pauseSo = new SerializedObject(pauseButton);
@@ -293,6 +297,72 @@ namespace MiniGame.TableTennis.Editor
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+        }
+
+        /// <summary>試合開始前に5段階の難易度を選ばせるパネル（docs/TABLE_TENNIS_SPEC.md 17.3, 18章）</summary>
+        private static DifficultySelectPanel CreateDifficultySelectPanel(Transform canvas)
+        {
+            var panelObj = UIDialogBuilder.CreateUIObject("DifficultySelectPanel", canvas);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+            var bg = panelObj.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.75f);
+
+            var boxObj = UIDialogBuilder.CreateUIObject("Panel", panelObj.transform);
+            var boxRect = boxObj.GetComponent<RectTransform>();
+            boxRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boxRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boxRect.pivot = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(860, 360);
+            var boxImg = boxObj.AddComponent<Image>();
+            boxImg.color = new Color(0.12f, 0.14f, 0.18f);
+
+            var titleObj = UIDialogBuilder.CreateUIObject("TitleText", boxObj.transform);
+            var titleRect = titleObj.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0f, 0.72f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.offsetMin = Vector2.zero;
+            titleRect.offsetMax = Vector2.zero;
+            var titleText = titleObj.AddComponent<Text>();
+            titleText.text = "難易度を選んでください";
+            titleText.fontSize = 30;
+            titleText.fontStyle = FontStyle.Bold;
+            titleText.alignment = TextAnchor.MiddleCenter;
+            titleText.color = Color.white;
+
+            var btnAreaObj = UIDialogBuilder.CreateUIObject("ButtonArea", boxObj.transform);
+            var btnAreaRect = btnAreaObj.GetComponent<RectTransform>();
+            btnAreaRect.anchorMin = new Vector2(0.04f, 0.15f);
+            btnAreaRect.anchorMax = new Vector2(0.96f, 0.68f);
+            btnAreaRect.offsetMin = Vector2.zero;
+            btnAreaRect.offsetMax = Vector2.zero;
+            var layout = btnAreaObj.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 16;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+
+            string[] labels = { "Lv.1\nやさしい", "Lv.2", "Lv.3\nふつう", "Lv.4", "Lv.5\nむずかしい" };
+            var levelButtons = new Button[labels.Length];
+            for (int i = 0; i < labels.Length; i++)
+            {
+                var btnObj = UIDialogBuilder.CreateButton(btnAreaObj.transform, $"Btn_Level{i + 1}", labels[i], 140, 96,
+                    i == 2 ? new Color(0.18f, 0.55f, 0.9f) : new Color(0.3f, 0.33f, 0.4f));
+                btnObj.GetComponentInChildren<Text>().fontSize = 20;
+                levelButtons[i] = btnObj.GetComponent<Button>();
+            }
+
+            var panel = panelObj.AddComponent<DifficultySelectPanel>();
+            var so = new SerializedObject(panel);
+            var buttonsProp = so.FindProperty("_levelButtons");
+            buttonsProp.arraySize = levelButtons.Length;
+            for (int i = 0; i < levelButtons.Length; i++)
+            {
+                buttonsProp.GetArrayElementAtIndex(i).objectReferenceValue = levelButtons[i];
+            }
+            so.ApplyModifiedProperties();
+
+            panelObj.SetActive(false);
+            return panel;
         }
 
         private static T CreateManager<T>(string name, Transform parent) where T : Component
