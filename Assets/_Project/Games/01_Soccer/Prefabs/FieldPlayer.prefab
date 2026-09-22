@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 6402744820834826419}
   - component: {fileID: 3571800249393780260}
   - component: {fileID: 8258692697614339289}
+  - component: {fileID: 131337781152583872}
   m_Layer: 0
   m_Name: FieldPlayer
   m_TagString: Untagged
@@ -212,3 +213,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Soccer.YSortRenderer
   _orderOffset: 0
+--- !u!114 &131337781152583872
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8657048301497050293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6980b3247e2f19449b0194d89e04df2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Soccer.TackleReaction
+  _staggerDuration: 0.5
+  _fallenRotationZ: 90
+  _fallenScaleY: 0.5

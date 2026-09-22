@@ -14,6 +14,7 @@ namespace MiniGame.Common.Input
         [SerializeField] private VirtualButton _virtualAction1Button;
         [SerializeField] private VirtualButton _virtualAction2Button;
         [SerializeField] private VirtualButton _virtualAction3Button;
+        [SerializeField] private VirtualButton _virtualAction4Button;
 
         [Header("Settings")]
         [SerializeField] private bool _inputEnabled = true;
@@ -42,6 +43,7 @@ namespace MiniGame.Common.Input
         public bool IsAction2Up { get; private set; }
 
         public bool IsAction3Down { get; private set; }
+        public bool IsAction4Down { get; private set; }
         public bool IsPauseDown { get; private set; }
 
         private void Update()
@@ -118,6 +120,12 @@ namespace MiniGame.Common.Input
             bool v3Down = _virtualAction3Button != null && _virtualAction3Button.IsDown;
 
             IsAction3Down = key3Down || v3Down;
+
+            // Action 4: 左Shiftキー / 仮想ボタン4（スライディングタックル用）
+            bool key4Down = keyboard != null && keyboard.leftShiftKey.wasPressedThisFrame;
+            bool v4Down = _virtualAction4Button != null && _virtualAction4Button.IsDown;
+
+            IsAction4Down = key4Down || v4Down;
         }
 
         private void ProcessSystemInputs(Keyboard keyboard)
@@ -129,12 +137,14 @@ namespace MiniGame.Common.Input
             VirtualJoystick joystick,
             VirtualButton btn1 = null,
             VirtualButton btn2 = null,
-            VirtualButton btn3 = null)
+            VirtualButton btn3 = null,
+            VirtualButton btn4 = null)
         {
             _virtualJoystick = joystick;
             _virtualAction1Button = btn1;
             _virtualAction2Button = btn2;
             _virtualAction3Button = btn3;
+            _virtualAction4Button = btn4;
         }
 
         public void UnregisterVirtualControls()
@@ -143,6 +153,7 @@ namespace MiniGame.Common.Input
             _virtualAction1Button = null;
             _virtualAction2Button = null;
             _virtualAction3Button = null;
+            _virtualAction4Button = null;
         }
 
         private void ResetAllInputs()
@@ -155,12 +166,14 @@ namespace MiniGame.Common.Input
             IsAction2Held = false;
             IsAction2Up = false;
             IsAction3Down = false;
+            IsAction4Down = false;
             IsPauseDown = false;
 
             if (_virtualJoystick != null) _virtualJoystick.ResetInput();
             if (_virtualAction1Button != null) _virtualAction1Button.ResetButton();
             if (_virtualAction2Button != null) _virtualAction2Button.ResetButton();
             if (_virtualAction3Button != null) _virtualAction3Button.ResetButton();
+            if (_virtualAction4Button != null) _virtualAction4Button.ResetButton();
         }
     }
 }

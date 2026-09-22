@@ -171,6 +171,12 @@ namespace MiniGame.Soccer
                 playerController.enabled = isControlled;
             }
 
+            // SlidingTackleはPlayerControllerと同じ選手にのみ付与されており、操作権と連動させる
+            if (player.TryGetComponent<SlidingTackle>(out var slidingTackle))
+            {
+                slidingTackle.enabled = isControlled;
+            }
+
             if (player.TryGetComponent<AIPlayerController>(out var ai))
             {
                 ai.enabled = !isControlled;

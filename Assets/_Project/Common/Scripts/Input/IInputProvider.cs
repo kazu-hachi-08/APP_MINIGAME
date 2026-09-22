@@ -31,6 +31,9 @@ namespace MiniGame.Common.Input
         /// <summary>Action 3（例：選手手動切り替え / ダッシュ）押下瞬間</summary>
         bool IsAction3Down { get; }
 
+        /// <summary>Action 4（例：スライディングタックル）押下瞬間</summary>
+        bool IsAction4Down { get; }
+
         /// <summary>ポーズボタン押下瞬間</summary>
         bool IsPauseDown { get; }
     }

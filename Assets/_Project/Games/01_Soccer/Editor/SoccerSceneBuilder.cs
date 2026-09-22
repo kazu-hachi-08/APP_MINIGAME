@@ -298,6 +298,7 @@ namespace MiniGame.Soccer.Editor
             gmSo.FindProperty("_actionButton1").objectReferenceValue = virtualControls.PassButton;
             gmSo.FindProperty("_actionButton2").objectReferenceValue = virtualControls.ShootButton;
             gmSo.FindProperty("_actionButton3").objectReferenceValue = virtualControls.SwitchButton;
+            gmSo.FindProperty("_actionButton4").objectReferenceValue = virtualControls.TackleButton;
             gmSo.ApplyModifiedProperties();
 
             var pauseSo = new SerializedObject(pauseButton);
@@ -442,6 +443,8 @@ namespace MiniGame.Soccer.Editor
             template.AddComponent<TeamMember>();
             AssignPlayerSprites(template.AddComponent<PlayerSpriteAnimator>(), "Home");
             template.AddComponent<YSortRenderer>();
+            // タックルで倒される演出はどの選手（AI/操作対象）にも起こり得るため、全員に付与する
+            template.AddComponent<TackleReaction>();
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(template, PlayerPrefabPath);
             Object.DestroyImmediate(template);
@@ -479,6 +482,9 @@ namespace MiniGame.Soccer.Editor
             {
                 var playerController = instance.AddComponent<PlayerController>();
                 playerController.enabled = false;
+
+                var slidingTackle = instance.AddComponent<SlidingTackle>();
+                slidingTackle.enabled = false;
             }
 
             return instance;
@@ -493,6 +499,7 @@ namespace MiniGame.Soccer.Editor
             public VirtualButton PassButton;
             public VirtualButton ShootButton;
             public VirtualButton SwitchButton;
+            public VirtualButton TackleButton;
         }
 
         /// <summary>
@@ -514,6 +521,9 @@ namespace MiniGame.Soccer.Editor
                     new Vector2(-450f, 150f), 160f, new Color(0.2f, 0.55f, 0.95f, 0.65f)),
                 SwitchButton = CreateVirtualButton(root.transform, "Btn_Switch", "SWITCH",
                     new Vector2(-200f, 500f), 140f, new Color(0.35f, 0.4f, 0.48f, 0.65f)),
+                // 他3ボタンと重ならない左上の位置に配置
+                TackleButton = CreateVirtualButton(root.transform, "Btn_Tackle", "TACKLE",
+                    new Vector2(-450f, 420f), 150f, new Color(0.3f, 0.75f, 0.35f, 0.65f)),
             };
         }
 

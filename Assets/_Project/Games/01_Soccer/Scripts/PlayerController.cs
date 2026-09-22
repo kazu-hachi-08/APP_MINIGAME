@@ -29,13 +29,26 @@ namespace MiniGame.Soccer
         /// <summary>選手が現在向いている方向（キック方向として使用）</summary>
         public Vector2 FacingDirection { get; private set; } = Vector2.up;
 
+        // スライディングタックル中はSlidingTackle側がRigidbodyの速度を制御するため、
+        // 通常の移動・キック処理をここで止める（同一フレームでの上書き合戦を防ぐ）
+        private bool _movementSuppressed;
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
         }
 
+        /// <summary>
+        /// タックル中など、外部コンポーネントが移動を制御する間だけ通常の移動・キックを止める
+        /// </summary>
+        public void SetMovementSuppressed(bool suppressed)
+        {
+            _movementSuppressed = suppressed;
+        }
+
         private void Update()
         {
+            if (_movementSuppressed) return;
             if (!InputManager.HasInstance) return;
 
             // Action1 = パス（弱いキック）、Action2 = シュート（強いキック）
@@ -51,6 +64,12 @@ namespace MiniGame.Soccer
 
         private void FixedUpdate()
         {
+            if (_movementSuppressed)
+            {
+                _rigidbody.linearVelocity = Vector2.zero;
+                return;
+            }
+
             Vector2 moveInput = InputManager.HasInstance ? InputManager.Instance.MoveVector : Vector2.zero;
             _rigidbody.linearVelocity = moveInput * _moveSpeed;
 
