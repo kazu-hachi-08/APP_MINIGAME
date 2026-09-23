@@ -21,6 +21,9 @@ namespace MiniGame.Soccer
         private float _timer;
         private bool _isStaggered;
 
+        /// <summary>オンライン対戦でゲスト端末にも転倒を見せるため、状態を外から読めるようにする</summary>
+        public bool IsStaggered => _isStaggered;
+
         private void Awake()
         {
             _playerController = GetComponent<PlayerController>();

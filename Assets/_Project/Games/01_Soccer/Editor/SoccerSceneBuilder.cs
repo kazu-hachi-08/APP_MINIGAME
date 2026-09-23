@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
+using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
 using MiniGame.Editor;
@@ -35,7 +36,8 @@ namespace MiniGame.Soccer.Editor
         private const float WallThickness = 0.3f;
         private const float GoalPocketDepth = 1.0f; // ゴール判定センサー(ポケット)の奥行き
 
-        // 切り替え候補（GKを除くHome選手）のうち、キックオフ時に操作する選手のインデックス
+        // 切り替え候補（GKを除く各チームの選手）のうち、キックオフ時に操作する選手のインデックス
+        // AWAYはHOMEをX反転した配置なので、同じ番号がキックオフ地点に最も近いFWになる
         // GKはゴールを空けないよう切り替え候補から外すため、フォーメーション配列より1つ手前になる
         private const int DefaultControlledCandidateIndex = 8;
 
@@ -136,13 +138,19 @@ namespace MiniGame.Soccer.Editor
             Vector2[] homeFormation = BuildHomeFormation();
             Vector2[] awayFormation = MirrorFormationX(homeFormation);
 
-            // GK（インデックス0）以外のHome選手が操作切り替えの候補になる
+            // GK（インデックス0）以外が操作切り替えの候補になる。
+            // AWAY側の候補はオンライン対戦でゲストが操作するときだけ使う（CPU戦では常にAI）
             var switchCandidates = new List<GameObject>();
+            var awaySwitchCandidates = new List<GameObject>();
+
+            // オンライン同期で両端末の選手を番号で対応付けるため、HOME → AWAY の順で全員を記録する
+            var allPlayers = new List<TeamMember>();
 
             for (int i = 0; i < homeFormation.Length; i++)
             {
                 bool isGoalkeeper = i == 0;
                 var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Home, homeFormation[i], i, isGoalkeeper, isSwitchCandidate: !isGoalkeeper);
+                allPlayers.Add(playerObj.GetComponent<TeamMember>());
 
                 if (!isGoalkeeper)
                 {
@@ -152,7 +160,14 @@ namespace MiniGame.Soccer.Editor
 
             for (int i = 0; i < awayFormation.Length; i++)
             {
-                SpawnFieldPlayer(playerPrefab, TeamSide.Away, awayFormation[i], i, isGoalkeeper: i == 0, isSwitchCandidate: false);
+                bool isGoalkeeper = i == 0;
+                var playerObj = SpawnFieldPlayer(playerPrefab, TeamSide.Away, awayFormation[i], i, isGoalkeeper, isSwitchCandidate: !isGoalkeeper);
+                allPlayers.Add(playerObj.GetComponent<TeamMember>());
+
+                if (!isGoalkeeper)
+                {
+                    awaySwitchCandidates.Add(playerObj);
+                }
             }
 
             GameObject defaultControlledPlayer = switchCandidates[DefaultControlledCandidateIndex];
@@ -266,6 +281,16 @@ namespace MiniGame.Soccer.Editor
             // 共通ダイアログ（PAUSE / リザルト）。最後に生成して最前面に置く
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
+            // オンライン対戦（接続・同期）。NetworkManager は OnlineSession が実行時に作るので Scene には置かない
+            var onlineObj = new GameObject("Online");
+            var onlineSession = onlineObj.AddComponent<OnlineSession>();
+            var onlineLink = onlineObj.AddComponent<SoccerOnlineLink>();
+            var guestView = onlineObj.AddComponent<SoccerGuestView>();
+            var remoteInput = onlineObj.AddComponent<RemoteInputProvider>();
+
+            // 対戦モード選択は試合前に最初に出すので、ダイアログよりさらに手前に置く
+            var modeSelectPanel = ModeSelectPanelBuilder.Create(canvasObj.transform, onlineSession, "CPUと対戦");
+
             // 12. PlayerSwitcher（Phase 6: 操作対象の自動/手動切り替え）
             var switcherObj = new GameObject("PlayerSwitcher");
             var playerSwitcher = switcherObj.AddComponent<PlayerSwitcher>();
@@ -284,6 +309,49 @@ namespace MiniGame.Soccer.Editor
             psSo.FindProperty("_defaultIndex").intValue = DefaultControlledCandidateIndex;
             psSo.ApplyModifiedProperties();
 
+            // AWAY側の切り替え。オンライン対戦のホストでだけ有効にし、ゲストの入力で動かす
+            // （カメラとマーカーはゲスト端末側で SoccerGuestView が動かすので持たせない）
+            var awaySwitcherObj = new GameObject("PlayerSwitcher_Away");
+            var awaySwitcher = awaySwitcherObj.AddComponent<PlayerSwitcher>();
+            awaySwitcher.enabled = false;
+
+            var awaySo = new SerializedObject(awaySwitcher);
+            var awayCandidatesProp = awaySo.FindProperty("_candidates");
+            awayCandidatesProp.arraySize = awaySwitchCandidates.Count;
+            for (int i = 0; i < awaySwitchCandidates.Count; i++)
+            {
+                awayCandidatesProp.GetArrayElementAtIndex(i).objectReferenceValue = awaySwitchCandidates[i];
+            }
+            awaySo.FindProperty("_ball").objectReferenceValue = ball;
+            awaySo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            awaySo.FindProperty("_defaultIndex").intValue = DefaultControlledCandidateIndex;
+            awaySo.ApplyModifiedProperties();
+
+            var linkSo = new SerializedObject(onlineLink);
+            var playersProp = linkSo.FindProperty("_players");
+            playersProp.arraySize = allPlayers.Count;
+            for (int i = 0; i < allPlayers.Count; i++)
+            {
+                playersProp.GetArrayElementAtIndex(i).objectReferenceValue = allPlayers[i];
+            }
+            linkSo.FindProperty("_ball").objectReferenceValue = ball;
+            linkSo.FindProperty("_homeSwitcher").objectReferenceValue = playerSwitcher;
+            linkSo.FindProperty("_awaySwitcher").objectReferenceValue = awaySwitcher;
+            linkSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            linkSo.FindProperty("_remoteInput").objectReferenceValue = remoteInput;
+            linkSo.ApplyModifiedProperties();
+
+            var guestSo = new SerializedObject(guestView);
+            guestSo.FindProperty("_link").objectReferenceValue = onlineLink;
+            guestSo.FindProperty("_ball").objectReferenceValue = ball;
+            var switchersProp = guestSo.FindProperty("_switchers");
+            switchersProp.arraySize = 2;
+            switchersProp.GetArrayElementAtIndex(0).objectReferenceValue = playerSwitcher;
+            switchersProp.GetArrayElementAtIndex(1).objectReferenceValue = awaySwitcher;
+            guestSo.FindProperty("_cameraFollow").objectReferenceValue = cameraFollow;
+            guestSo.FindProperty("_controlMarker").objectReferenceValue = controlMarker.transform;
+            guestSo.ApplyModifiedProperties();
+
             // 13. SoccerGameManager の残りの参照を確定
             var gmSo = new SerializedObject(gameManager);
             gmSo.FindProperty("_gameTitle").stringValue = "2D Soccer";
@@ -294,6 +362,12 @@ namespace MiniGame.Soccer.Editor
             gmSo.FindProperty("_scoreText").objectReferenceValue = scoreText;
             gmSo.FindProperty("_timerText").objectReferenceValue = timerText;
             gmSo.FindProperty("_goalEffect").objectReferenceValue = goalEffect;
+            gmSo.FindProperty("_modeSelectPanel").objectReferenceValue = modeSelectPanel;
+            gmSo.FindProperty("_onlineSession").objectReferenceValue = onlineSession;
+            gmSo.FindProperty("_onlineLink").objectReferenceValue = onlineLink;
+            gmSo.FindProperty("_guestView").objectReferenceValue = guestView;
+            gmSo.FindProperty("_awaySwitcher").objectReferenceValue = awaySwitcher;
+            gmSo.FindProperty("_remoteInput").objectReferenceValue = remoteInput;
             // BaseMiniGameManager が Start 時に InputManager へ登録し、キーボードと同じ経路で入力される
             gmSo.FindProperty("_virtualJoystick").objectReferenceValue = virtualControls.Joystick;
             gmSo.FindProperty("_actionButton1").objectReferenceValue = virtualControls.PassButton;

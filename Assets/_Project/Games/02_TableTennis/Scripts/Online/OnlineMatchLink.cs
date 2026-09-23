@@ -1,4 +1,5 @@
 using System;
+using MiniGame.Common.Online;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -129,26 +130,9 @@ namespace MiniGame.TableTennis
 
         private void Send(string messageName, FastBufferWriter writer, NetworkDelivery delivery)
         {
-            if (!_active || !TryGetPeerId(out ulong peerId)) return;
+            if (!_active || !OnlineSession.TryGetPeerId(out ulong peerId)) return;
 
             Network.CustomMessagingManager.SendNamedMessage(messageName, peerId, writer, delivery);
-        }
-
-        /// <summary>1対1なので、ホストから見た相手は唯一の接続クライアント、クライアントから見た相手はホスト</summary>
-        private static bool TryGetPeerId(out ulong peerId)
-        {
-            peerId = NetworkManager.ServerClientId;
-            if (!Network.IsServer) return true;
-
-            foreach (ulong id in Network.ConnectedClientsIds)
-            {
-                if (id == Network.LocalClientId) continue;
-
-                peerId = id;
-                return true;
-            }
-
-            return false;
         }
 
         // ---- 受信 ----

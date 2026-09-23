@@ -7,7 +7,8 @@ namespace MiniGame.Soccer
     /// <summary>
     /// 操作対象選手の切り替え（Phase 6）
     /// ボールに最も近い自チーム選手へ自動で操作を移し、それ以外の選手はAIに任せる。
-    /// Action3（L / C / 仮想ボタン3）で手動切り替えも行える
+    /// Action3（L / C / 仮想ボタン3）で手動切り替えも行える。
+    /// チームごとに1つ置く。AWAY側はオンライン対戦のホスト端末でだけ有効にし、相手の入力で動かす
     /// </summary>
     public class PlayerSwitcher : MonoBehaviour
     {
@@ -27,12 +28,30 @@ namespace MiniGame.Soccer
         private int _currentIndex = -1;
         private float _evaluateTimer;
         private float _cooldownTimer;
+        private IInputProvider _input;
+
+        private IInputProvider Input => _input ?? (InputManager.HasInstance ? InputManager.Instance : null);
 
         public Transform CurrentPlayer => IsValidIndex(_currentIndex) ? _candidates[_currentIndex].transform : null;
 
         private void Start()
         {
             SelectPlayer(_defaultIndex);
+        }
+
+        /// <summary>
+        /// 操作入力の出どころを差し替える（オンライン対戦でAWAYを相手端末の入力で動かすため）
+        /// </summary>
+        public void SetInput(IInputProvider input)
+        {
+            _input = input;
+
+            foreach (var candidate in _candidates)
+            {
+                if (candidate == null) continue;
+                if (candidate.TryGetComponent<PlayerController>(out var playerController)) playerController.SetInput(input);
+                if (candidate.TryGetComponent<SlidingTackle>(out var slidingTackle)) slidingTackle.SetInput(input);
+            }
         }
 
         private void Update()
@@ -44,7 +63,8 @@ namespace MiniGame.Soccer
 
             if (_gameManager != null && !_gameManager.IsPlaying) return;
 
-            if (InputManager.HasInstance && InputManager.Instance.IsAction3Down)
+            var input = Input;
+            if (input != null && input.IsAction3Down)
             {
                 SwitchManually();
                 return;

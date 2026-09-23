@@ -32,6 +32,11 @@ namespace MiniGame.Soccer
         private Ball _heldBall;
         private float _regrabTimer;
 
+        // オンライン対戦ではホスト端末がAWAY選手も動かすため、入力元を差し替えられるようにする（未設定なら端末の入力）
+        private IInputProvider _input;
+
+        private IInputProvider Input => _input ?? (InputManager.HasInstance ? InputManager.Instance : null);
+
         /// <summary>選手が現在向いている方向（キック方向として使用）</summary>
         public Vector2 FacingDirection { get; private set; } = Vector2.up;
 
@@ -52,6 +57,11 @@ namespace MiniGame.Soccer
             ReleaseBall();
         }
 
+        public void SetInput(IInputProvider input)
+        {
+            _input = input;
+        }
+
         /// <summary>
         /// タックル中など、外部コンポーネントが移動を制御する間だけ通常の移動・キックを止める
         /// </summary>
@@ -64,14 +74,16 @@ namespace MiniGame.Soccer
         private void Update()
         {
             if (_movementSuppressed) return;
-            if (!InputManager.HasInstance) return;
+
+            var input = Input;
+            if (input == null) return;
 
             // Action1 = パス（弱いキック）、Action2 = シュート（強いキック）
-            if (InputManager.Instance.IsAction1Down)
+            if (input.IsAction1Down)
             {
                 TryKick(_passSpeed);
             }
-            else if (InputManager.Instance.IsAction2Down)
+            else if (input.IsAction2Down)
             {
                 TryKick(_shootSpeed);
             }
@@ -85,7 +97,8 @@ namespace MiniGame.Soccer
                 return;
             }
 
-            Vector2 moveInput = InputManager.HasInstance ? InputManager.Instance.MoveVector : Vector2.zero;
+            var input = Input;
+            Vector2 moveInput = input != null ? input.MoveVector : Vector2.zero;
             _rigidbody.linearVelocity = moveInput * _moveSpeed;
 
             if (moveInput.sqrMagnitude > 0.01f)
