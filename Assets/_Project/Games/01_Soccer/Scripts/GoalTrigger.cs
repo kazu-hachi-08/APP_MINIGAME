@@ -10,11 +10,17 @@ namespace MiniGame.Soccer
     {
         [SerializeField] private SoccerGameManager _gameManager;
         [SerializeField] private TeamSide _defendingTeam = TeamSide.Away;
+        [SerializeField] private GoalReaction _goalReaction;
 
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.TryGetComponent<Ball>(out _)) return;
             if (_gameManager == null) return;
+
+            if (_goalReaction != null)
+            {
+                _goalReaction.Play();
+            }
 
             // 守っているチームの逆側が得点する
             TeamSide scoringTeam = _defendingTeam == TeamSide.Home ? TeamSide.Away : TeamSide.Home;

@@ -33,6 +33,7 @@ namespace MiniGame.Soccer.Editor
         private const float FieldHalfHeight = 9f;
         private const float GoalHalfHeight = 2f;
         private const float WallThickness = 0.3f;
+        private const float GoalPocketDepth = 1.0f; // ゴール判定センサー(ポケット)の奥行き
 
         // 切り替え候補（GKを除くHome選手）のうち、キックオフ時に操作する選手のインデックス
         // GKはゴールを空けないよう切り替え候補から外すため、フォーメーション配列より1つ手前になる
@@ -367,27 +368,33 @@ namespace MiniGame.Soccer.Editor
             var goalVisual = CreateSpriteObject($"GoalVisual_{defendingTeam}", SoccerArtGenerator.Load("Goal"),
                 new Vector3(goalX + sideSign * goalDepth * 0.5f, 0f, 0f), GoalSortingOrder);
             goalVisual.GetComponent<SpriteRenderer>().flipX = sideSign > 0f;
+            var goalReaction = goalVisual.AddComponent<GoalReaction>();
 
             float wallSideHeight = FieldHalfHeight - GoalHalfHeight;
             float wallSideCenterY = GoalHalfHeight + wallSideHeight / 2f;
-            float wallX = sideSign * (FieldHalfWidth + WallThickness / 2f);
-            CreateWall($"Wall_{defendingTeam}_Upper", new Vector2(wallX, wallSideCenterY), new Vector2(WallThickness, wallSideHeight));
-            CreateWall($"Wall_{defendingTeam}_Lower", new Vector2(wallX, -wallSideCenterY), new Vector2(WallThickness, wallSideHeight));
+            // ゴール判定センサーの奥行き(GoalPocketDepth)全体を塞ぐ。
+            // 以前はWallThickness分しか奥行きがなく、ポスト脇の未カバー領域からボールが
+            // 回り込んでゴール扱いになってしまっていた
+            float wallSideDepth = GoalPocketDepth + WallThickness;
+            float wallX = sideSign * (FieldHalfWidth + wallSideDepth / 2f);
+            CreateWall($"Wall_{defendingTeam}_Upper", new Vector2(wallX, wallSideCenterY), new Vector2(wallSideDepth, wallSideHeight));
+            CreateWall($"Wall_{defendingTeam}_Lower", new Vector2(wallX, -wallSideCenterY), new Vector2(wallSideDepth, wallSideHeight));
 
-            float backWallX = sideSign * (FieldHalfWidth + 1.0f);
+            float backWallX = sideSign * (FieldHalfWidth + GoalPocketDepth);
             CreateWall($"Wall_{defendingTeam}_GoalBack", new Vector2(backWallX, 0f),
                 new Vector2(WallThickness, GoalHalfHeight * 2f + WallThickness * 2f));
 
             var goalSensorObj = new GameObject($"GoalSensor_{defendingTeam}");
             var goalCollider = goalSensorObj.AddComponent<BoxCollider2D>();
             goalCollider.isTrigger = true;
-            goalCollider.size = new Vector2(1.0f, GoalHalfHeight * 2f);
-            goalSensorObj.transform.position = new Vector3(sideSign * (FieldHalfWidth + 0.5f), 0f, 0f);
+            goalCollider.size = new Vector2(GoalPocketDepth, GoalHalfHeight * 2f);
+            goalSensorObj.transform.position = new Vector3(sideSign * (FieldHalfWidth + GoalPocketDepth / 2f), 0f, 0f);
             var goalTrigger = goalSensorObj.AddComponent<GoalTrigger>();
 
             var gtSo = new SerializedObject(goalTrigger);
             gtSo.FindProperty("_defendingTeam").enumValueIndex = (int)defendingTeam;
             gtSo.FindProperty("_gameManager").objectReferenceValue = gameManager;
+            gtSo.FindProperty("_goalReaction").objectReferenceValue = goalReaction;
             gtSo.ApplyModifiedProperties();
         }
 
