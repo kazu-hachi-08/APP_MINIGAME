@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Soccer
 {
     /// <summary>
-    /// ボールの物理挙動とリセット処理（Phase 1: 選手との接触で押し出されるのみ）
+    /// ボールの物理挙動・ドリブル保持・リセット処理
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class Ball : MonoBehaviour
@@ -14,9 +14,11 @@ namespace MiniGame.Soccer
         private const float ShootSePitch = 0.85f;
 
         [Header("Kick SE")]
-        [SerializeField] private float _shootSpeedThreshold = 13f;
+        [SerializeField] private float _shootSpeedThreshold = 10f;
 
         private Rigidbody2D _rigidbody;
+        private Collider2D _collider;
+        private Collider2D _holder;
 
         public Vector2 Position => _rigidbody.position;
         public Vector2 Velocity => _rigidbody.linearVelocity;
@@ -24,6 +26,7 @@ namespace MiniGame.Soccer
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
+            _collider = GetComponent<Collider2D>();
         }
 
         /// <summary>
@@ -31,17 +34,43 @@ namespace MiniGame.Soccer
         /// </summary>
         public void ResetBall(Vector2 position)
         {
+            Release();
             _rigidbody.linearVelocity = Vector2.zero;
             _rigidbody.angularVelocity = 0f;
             _rigidbody.position = position;
         }
 
-        /// <summary>
-        /// ドリブルなど、外部からボールに力を加える
-        /// </summary>
-        public void ApplyForce(Vector2 force, ForceMode2D mode = ForceMode2D.Force)
+        public bool IsHeldBy(Collider2D holder)
         {
-            _rigidbody.AddForce(force, mode);
+            return holder != null && _holder == holder;
+        }
+
+        /// <summary>
+        /// ドリブルの保持を開始する。保持者の体に当たって弾かれると足元に留まらないため、保持中だけ衝突を切る
+        /// </summary>
+        public void Hold(Collider2D holder)
+        {
+            if (_holder == holder) return;
+
+            Release();
+            _holder = holder;
+            Physics2D.IgnoreCollision(_collider, _holder, true);
+        }
+
+        public void Release()
+        {
+            if (_holder == null) return;
+
+            Physics2D.IgnoreCollision(_collider, _holder, false);
+            _holder = null;
+        }
+
+        /// <summary>
+        /// 保持中に足元の目標位置へ運ぶ。位置を直接書き換えず速度で動かし、壁との衝突判定を残す
+        /// </summary>
+        public void MoveHeldTo(Vector2 targetPosition)
+        {
+            _rigidbody.linearVelocity = (targetPosition - _rigidbody.position) / Time.fixedDeltaTime;
         }
 
         /// <summary>
@@ -50,6 +79,7 @@ namespace MiniGame.Soccer
         public void Kick(Vector2 direction, float speed)
         {
             if (direction.sqrMagnitude < 0.0001f) return;
+            Release(); // 誰が蹴っても保持は解除される（AIが蹴った＝奪われた扱い）
             _rigidbody.linearVelocity = direction.normalized * speed;
             PlayKickSe(speed);
         }

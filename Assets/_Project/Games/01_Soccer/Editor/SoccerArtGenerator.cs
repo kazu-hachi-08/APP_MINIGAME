@@ -14,12 +14,12 @@ namespace MiniGame.Soccer.Editor
     {
         public const string SpriteDirectory = "Assets/_Project/Games/01_Soccer/Sprites";
 
-        /// <summary>1ワールド単位あたりのピクセル数（コート22x12単位 = 352x192px）</summary>
+        /// <summary>1ワールド単位あたりのピクセル数（コート33x18単位 = 528x288px）</summary>
         public const int PixelsPerUnit = 16;
 
         public const int PlayerSize = 16;
-        public const int CourtWidth = 22 * PixelsPerUnit;
-        public const int CourtHeight = 12 * PixelsPerUnit;
+        public const int CourtWidth = 33 * PixelsPerUnit;
+        public const int CourtHeight = 18 * PixelsPerUnit;
         public const int GoalWidth = 14;
         public const int GoalHeight = 4 * PixelsPerUnit + 4; // ゴール枠64px + 上下ポスト
 
@@ -284,14 +284,14 @@ namespace MiniGame.Soccer.Editor
             OutlineRect(c, CourtWidth, CourtHeight, margin, margin,
                 CourtWidth - margin * 2, CourtHeight - margin * 2, thickness, LineColor);
             FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, margin, thickness, CourtHeight - margin * 2, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, 34f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, 50f, thickness, LineColor);
             FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, CourtHeight / 2 - 1, 2, 2, LineColor);
 
             // コート拡大に合わせて実際のピッチと同じ比率で各エリアも広げる
-            const int penaltyWidth = 54;
-            const int penaltyHeight = 120;
-            const int goalAreaWidth = 22;
-            const int goalAreaHeight = 62;
+            const int penaltyWidth = 80;
+            const int penaltyHeight = 180;
+            const int goalAreaWidth = 32;
+            const int goalAreaHeight = 92;
             for (int side = 0; side < 2; side++)
             {
                 int penaltyX = side == 0 ? margin : CourtWidth - margin - penaltyWidth;
@@ -302,15 +302,15 @@ namespace MiniGame.Soccer.Editor
                 OutlineRect(c, CourtWidth, CourtHeight, goalAreaX, (CourtHeight - goalAreaHeight) / 2,
                     goalAreaWidth, goalAreaHeight, thickness, LineColor);
 
-                int spotX = side == 0 ? margin + 36 : CourtWidth - margin - 36;
+                int spotX = side == 0 ? margin + 54 : CourtWidth - margin - 54;
                 FillRect(c, CourtWidth, CourtHeight, spotX, CourtHeight / 2 - 1, 2, 2, LineColor);
             }
 
             // コーナーアーク（外周より外は最後に塗り潰すので円のまま描いてよい）
-            OutlineCircle(c, CourtWidth, CourtHeight, margin, margin, 7f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, margin, 7f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, margin, CourtHeight - margin, 7f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, CourtHeight - margin, 7f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, margin, margin, 10f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, margin, 10f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, margin, CourtHeight - margin, 10f, thickness, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, CourtHeight - margin, 10f, thickness, LineColor);
 
             FillRect(c, CourtWidth, CourtHeight, 0, 0, margin, CourtHeight, OutsideColor);
             FillRect(c, CourtWidth, CourtHeight, CourtWidth - margin, 0, margin, CourtHeight, OutsideColor);
