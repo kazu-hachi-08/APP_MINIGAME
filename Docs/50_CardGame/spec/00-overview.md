@@ -43,5 +43,37 @@
 | 04-screens.md | 画面フローと各画面の要素 |
 | 05-online.md | オンライン対戦の仕組み |
 | 06-roadmap.md | 開発フェーズと現在地 |
+| 07-draft.md | ドラフト |
 
 仕様書は日本語で書く。「【要確認】」はオーナーの判断待ちの項目。
+
+## 開発ルール
+
+Git 運用・ブランチ・コミットはプロジェクト共通の `CLAUDE.md` に従う。ここにはカードゲーム固有のルールだけを置く。
+
+### 鉄則
+
+1. **仕様が先**: ルール・カード効果・画面の変更は、必ず `Docs/50_CardGame/spec/` を先に更新してから実装する。仕様書と実装が食い違ったら仕様書側が正。
+2. **Core は Unity を知らない**: `Assets/_Project/Games/50_CardGame/Core/`(asmdef `CardGame.Core`)に `UnityEngine` を一切参照させない。Core は決定論的(seed 付き RNG、順序依存のないコレクションを使わない)。オンライン対戦のロックステップ同期(ADR-0002)がこれに依存するため。
+3. **Core はテストで確かめる**: ルール・カード効果は Unity に載せる前にテストで検証する。移植元のテストプロジェクト(`CardGame.Core.Tests`)は本リポジトリには未移植。
+4. **カードはデータ**: カード効果は `02-card-effects.md` の効果DSLで表現し、C# にカード固有ロジックを書かない。DSL で表現できない効果は、まず DSL の拡張を仕様に提案する。
+5. **スコープを守る**: `06-roadmap.md` の現在フェーズ外の機能は勝手に足さない。提案は歓迎、実装は合意後。
+6. **実機で触れる形にする**: 凝った演出より動くことを優先する。
+
+### コーディング規約
+
+- 識別子は英語、コメントとドキュメントは日本語
+- Core: `namespace CardGame.Core.*`。public API には `///` ドキュメントコメント(日本語)
+- Nullable 有効、`var` は型が自明なときのみ。各ファイル冒頭に `#nullable enable`
+- Unity の C# は 9.0 相当。`record` / file-scoped namespace / `init` 以外の新機能は使わない
+- MonoBehaviour は薄く。ロジックは Core に、表示だけ Unity に
+- テスト名: `メソッド_条件_期待結果` の形式(例: `Attack_WardExists_MustTargetWard`)
+
+### Unity 側の作法
+
+- UI は `Ui` ヘルパー(`Scripts/UI/Ui.cs`)でコード構築する。シーン・プレハブを手で編集しない(差分が読めず、2人開発でコンフリクトしやすいため)
+- 画面確認用の起動オプション(`Scripts/App/DevAutoplay.cs`):
+  - `-autoplay`(AI 観戦) / `-autoplay-human`(人間操作の模擬) / `-shots <dir>`(スクリーンショット保存)
+  - `-preview-cards ID,ID`(カードの 3 サイズ表示) / `-preview-list`(カード一覧画面) / `-preview-draft`(ドラフトの一連の流れ)
+  - `-online-host` / `-online-guest`(`-online-draft` を足すとドラフトのデッキで接続)
+- 画像・音・フォントの生成ツールは `Tools/CardGame/README.md` を参照

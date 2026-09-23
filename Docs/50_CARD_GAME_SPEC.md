@@ -40,7 +40,8 @@
 - [2026-09-22: 第 1 回バランス調整](50_CardGame/playtest/2026-09-22-balance-pass1.md)
 - [2026-09-23: 竜の卵の作り直し](50_CardGame/playtest/2026-09-23-dragon-egg.md)
 
-### AI開発ガイド（移植元）
+### 開発ルール・ツール
 
-- [CARDGAME_CLAUDE.md](50_CardGame/CARDGAME_CLAUDE.md)
-  - 移植元プロジェクト用のガイドのため、Git運用・リポジトリ構成などは本プロジェクトの `CLAUDE.md` を優先する
+- [開発ルール（鉄則・コーディング規約・Unity側の作法）](50_CardGame/spec/00-overview.md#開発ルール)
+- [用語（日本語とコードの対応）](50_CardGame/spec/01-rules.md#日本語とコードの対応)
+- [素材生成ツール（画像・音・フォント）](../Tools/CardGame/README.md)
