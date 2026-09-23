@@ -7,16 +7,16 @@ using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
 
-namespace MiniGame.TableTennis
+namespace MiniGame.Common.Online
 {
     /// <summary>
     /// オンライン対戦の接続だけを担当する（部屋を作る／参加コードで入る／抜ける）。
     /// 通信経路は Unity Relay に任せ、NAT越えやIP入力をプレイヤーにさせない。
-    /// 試合中にやり取りする内容は OnlineMatchLink が扱う。
+    /// 試合中にやり取りする内容は各ミニゲームの通信クラス（卓球: OnlineMatchLink / サッカー: SoccerOnlineLink）が扱う。
     /// </summary>
     public class OnlineSession : MonoBehaviour
     {
-        /// <summary>卓球は1対1なので部屋の定員は2人で固定</summary>
+        /// <summary>どのミニゲームも1対1なので部屋の定員は2人で固定</summary>
         private const int MaxPlayers = 2;
 
         /// <summary>接続完了（相手が揃った）。引数は自分がホストかどうか</summary>
@@ -73,6 +73,25 @@ namespace MiniGame.TableTennis
         private void OnDestroy()
         {
             Leave();
+        }
+
+        /// <summary>1対1なので、ホストから見た相手は唯一の接続クライアント、クライアントから見た相手はホスト</summary>
+        public static bool TryGetPeerId(out ulong peerId)
+        {
+            var network = NetworkManager.Singleton;
+            peerId = NetworkManager.ServerClientId;
+            if (network == null) return false;
+            if (!network.IsServer) return true;
+
+            foreach (ulong id in network.ConnectedClientsIds)
+            {
+                if (id == network.LocalClientId) continue;
+
+                peerId = id;
+                return true;
+            }
+
+            return false;
         }
 
         private async Task PrepareAsync()

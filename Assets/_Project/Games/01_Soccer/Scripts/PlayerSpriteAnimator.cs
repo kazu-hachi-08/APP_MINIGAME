@@ -24,6 +24,10 @@ namespace MiniGame.Soccer
         private float _frameTimer;
         private int _runFrame;
 
+        // オンライン対戦のゲスト端末は物理を動かさないため、Rigidbodyの速度の代わりに届いた速度で向きとコマを決める
+        private bool _useExternalVelocity;
+        private Vector2 _externalVelocity;
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
@@ -31,9 +35,15 @@ namespace MiniGame.Soccer
             _currentFrames = _downFrames;
         }
 
+        public void SetExternalVelocity(Vector2 velocity)
+        {
+            _useExternalVelocity = true;
+            _externalVelocity = velocity;
+        }
+
         private void Update()
         {
-            Vector2 velocity = _rigidbody.linearVelocity;
+            Vector2 velocity = _useExternalVelocity ? _externalVelocity : _rigidbody.linearVelocity;
             bool isMoving = velocity.sqrMagnitude > _movingSpeedThreshold * _movingSpeedThreshold;
 
             if (isMoving)

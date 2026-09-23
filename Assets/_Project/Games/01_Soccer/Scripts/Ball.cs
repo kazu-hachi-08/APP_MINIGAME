@@ -1,3 +1,4 @@
+using System;
 using MiniGame.Common.Audio;
 using UnityEngine;
 
@@ -22,6 +23,9 @@ namespace MiniGame.Soccer
 
         public Vector2 Position => _rigidbody.position;
         public Vector2 Velocity => _rigidbody.linearVelocity;
+
+        /// <summary>蹴られた（引数はキック速度）。オンライン対戦でキック音を相手端末にも鳴らすために使う</summary>
+        public event Action<float> OnKicked;
 
         private void Awake()
         {
@@ -82,12 +86,13 @@ namespace MiniGame.Soccer
             Release(); // 誰が蹴っても保持は解除される（AIが蹴った＝奪われた扱い）
             _rigidbody.linearVelocity = direction.normalized * speed;
             PlayKickSe(speed);
+            OnKicked?.Invoke(speed);
         }
 
         /// <summary>
         /// プレイヤー・AIどちらのキックもこのクラスを通るため、SEはここ1箇所で鳴らす
         /// </summary>
-        private void PlayKickSe(float speed)
+        public void PlayKickSe(float speed)
         {
             if (!AudioManager.HasInstance) return;
 

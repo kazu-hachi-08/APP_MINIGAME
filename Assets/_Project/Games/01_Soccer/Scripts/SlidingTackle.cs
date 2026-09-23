@@ -43,6 +43,16 @@ namespace MiniGame.Soccer
         private Vector2 _dashDirection;
         private bool _hasKnockedThisTackle;
 
+        // PlayerController と同じく、オンライン対戦ではホストがAWAY選手を相手の入力で動かすため差し替え可能にする
+        private IInputProvider _input;
+
+        private IInputProvider Input => _input ?? (InputManager.HasInstance ? InputManager.Instance : null);
+
+        public void SetInput(IInputProvider input)
+        {
+            _input = input;
+        }
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
@@ -60,7 +70,8 @@ namespace MiniGame.Soccer
         private void Update()
         {
             if (_state != State.Ready) return;
-            if (!InputManager.HasInstance || !InputManager.Instance.IsAction4Down) return;
+            var input = Input;
+            if (input == null || !input.IsAction4Down) return;
 
             StartDash();
         }
@@ -102,7 +113,8 @@ namespace MiniGame.Soccer
 
         private void TickRecovery()
         {
-            Vector2 moveInput = InputManager.HasInstance ? InputManager.Instance.MoveVector : Vector2.zero;
+            var input = Input;
+            Vector2 moveInput = input != null ? input.MoveVector : Vector2.zero;
             _rigidbody.linearVelocity = moveInput * _recoverySpeed;
 
             _timer -= Time.fixedDeltaTime;

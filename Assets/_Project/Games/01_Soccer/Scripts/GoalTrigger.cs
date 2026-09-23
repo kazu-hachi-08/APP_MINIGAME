@@ -12,15 +12,23 @@ namespace MiniGame.Soccer
         [SerializeField] private TeamSide _defendingTeam = TeamSide.Away;
         [SerializeField] private GoalReaction _goalReaction;
 
+        public TeamSide DefendingTeam => _defendingTeam;
+
+        /// <summary>オンライン対戦のゲスト端末では判定せず、ホストからのゴール通知で揺れ演出だけ再生する</summary>
+        public void PlayReaction()
+        {
+            if (_goalReaction != null)
+            {
+                _goalReaction.Play();
+            }
+        }
+
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.TryGetComponent<Ball>(out _)) return;
             if (_gameManager == null) return;
 
-            if (_goalReaction != null)
-            {
-                _goalReaction.Play();
-            }
+            PlayReaction();
 
             // 守っているチームの逆側が得点する
             TeamSide scoringTeam = _defendingTeam == TeamSide.Home ? TeamSide.Away : TeamSide.Home;

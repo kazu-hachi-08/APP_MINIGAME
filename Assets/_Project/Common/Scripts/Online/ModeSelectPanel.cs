@@ -2,10 +2,10 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace MiniGame.TableTennis
+namespace MiniGame.Common.Online
 {
     /// <summary>
-    /// 試合前に「NPCと対戦」か「オンライン対戦（部屋を作る／コードで参加）」かを選ばせるパネル。
+    /// 試合前に「コンピュータと対戦」か「オンライン対戦（部屋を作る／コードで参加）」かを選ばせるパネル。
     /// オンラインを選んだ場合は、相手と接続できるまでここで待たせる。
     /// </summary>
     public class ModeSelectPanel : MonoBehaviour
