@@ -1,0 +1,92 @@
+[
+  { "id": "G001", "name": "竜の卵", "class": "Dragon", "type": "Follower", "cost": 2, "attack": 0, "health": 3,
+    "effects": [
+      { "trigger": "TurnStart", "actions": [ { "type": "Destroy", "target": "Self" } ] },
+      { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T007", "count": 1 } ] } ],
+    "text": "自分のターン開始時、このフォロワーを破壊する。\nラストワード: 子竜(2/2)を1体出す。",
+    "flavor": "割れるまでは、ただの石。" },
+
+  { "id": "G002", "name": "竜人の斥候", "class": "Dragon", "type": "Follower", "cost": 2, "attack": 2, "health": 1,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "G003", "name": "竜の巫女", "class": "Dragon", "type": "Follower", "cost": 2, "attack": 1, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "RampPP", "amount": 1 } ] } ],
+    "text": "ファンファーレ: 最大PPを+1する。" },
+
+  { "id": "G004", "name": "竜人の戦士", "class": "Dragon", "type": "Follower", "cost": 3, "attack": 3, "health": 3,
+    "text": "",
+    "flavor": "竜の血を引く者は、恐れを知らない。" },
+
+  { "id": "G005", "name": "火竜の子", "class": "Dragon", "type": "Follower", "cost": 3, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Damage", "target": "AllEnemyFollowers", "amount": 1 } ] } ],
+    "text": "ファンファーレ: 相手のフォロワー全てに1ダメージ。" },
+
+  { "id": "G006", "name": "竜騎兵", "class": "Dragon", "type": "Follower", "cost": 4, "attack": 3, "health": 4,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Damage", "target": "SelectEnemy", "amount": 2 } ] } ],
+    "text": "ファンファーレ: 相手のリーダーかフォロワー1体に2ダメージ。" },
+
+  { "id": "G007", "name": "疾風竜", "class": "Dragon", "type": "Follower", "cost": 5, "attack": 4, "health": 3,
+    "keywords": ["Storm"],
+    "text": "疾走" },
+
+  { "id": "G008", "name": "岩竜", "class": "Dragon", "type": "Follower", "cost": 5, "attack": 3, "health": 6,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "G009", "name": "雷竜", "class": "Dragon", "type": "Follower", "cost": 6, "attack": 5, "health": 5,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Damage", "target": "SelectEnemyFollower", "amount": 3 } ] } ],
+    "text": "ファンファーレ: 相手のフォロワー1体に3ダメージ。" },
+
+  { "id": "G010", "name": "炎竜", "class": "Dragon", "type": "Follower", "cost": 7, "attack": 5, "health": 6,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Damage", "target": "AllEnemyFollowers", "amount": 2 } ] } ],
+    "text": "ファンファーレ: 相手のフォロワー全てに2ダメージ。" },
+
+  { "id": "G011", "name": "古竜", "class": "Dragon", "type": "Follower", "cost": 8, "attack": 7, "health": 7,
+    "keywords": ["Storm"],
+    "text": "疾走" },
+
+  { "id": "G012", "name": "竜王", "class": "Dragon", "type": "Follower", "cost": 9, "attack": 8, "health": 8,
+    "keywords": ["Storm"],
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Damage", "target": "AllEnemyFollowers", "amount": 3 } ] } ],
+    "text": "疾走\nファンファーレ: 相手のフォロワー全てに3ダメージ。",
+    "flavor": "空が翳るとき、王が来る。" },
+
+  { "id": "G013", "name": "卵の守り手", "class": "Dragon", "type": "Follower", "cost": 3, "attack": 1, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "G001", "count": 1 } ] } ],
+    "text": "ファンファーレ: 竜の卵(0/3)を1体出す。" },
+
+  { "id": "G014", "name": "竜人の長", "class": "Dragon", "type": "Follower", "cost": 4, "attack": 2, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 0 } ] } ],
+    "text": "ファンファーレ: 自分のフォロワー全てを+1/+0する。" },
+
+  { "id": "G015", "name": "竜の息吹", "class": "Dragon", "type": "Spell", "cost": 4,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Damage", "target": "AllEnemyFollowers", "amount": 2 } ] } ],
+    "text": "相手のフォロワー全てに2ダメージ。" },
+
+  { "id": "G016", "name": "灼熱のブレス", "class": "Dragon", "type": "Spell", "cost": 5,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Damage", "target": "SelectEnemy", "amount": 3 },
+      { "type": "Damage", "target": "AllEnemyFollowers", "amount": 1 } ] } ],
+    "text": "相手のリーダーかフォロワー1体に3ダメージ。その後、相手のフォロワー全てに1ダメージ。" },
+
+  { "id": "G017", "name": "竜の財宝", "class": "Dragon", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "RampPP", "amount": 1 },
+      { "type": "Draw", "count": 1 } ] } ],
+    "text": "最大PPを+1する。カードを1枚引く。" },
+
+  { "id": "G018", "name": "孵化", "class": "Dragon", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Summon", "cardId": "T007", "count": 2 } ] } ],
+    "text": "子竜(2/2)を2体出す。" },
+
+  { "id": "G019", "name": "竜の裁き", "class": "Dragon", "type": "Spell", "cost": 7,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Destroy", "target": "SelectEnemyFollower" },
+      { "type": "Damage", "target": "EnemyLeader", "amount": 3 } ] } ],
+    "text": "相手のフォロワー1体を破壊する。相手のリーダーに3ダメージ。" },
+
+  { "id": "G020", "name": "竜の巣", "class": "Dragon", "type": "Amulet", "cost": 3, "countdown": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T007", "count": 2 } ] } ],
+    "text": "カウントダウン 3\nラストワード: 子竜(2/2)を2体出す。" }
+]

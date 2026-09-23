@@ -2,8 +2,9 @@
 
 ## ミニゲーム一覧
 
-- [2Dサッカーゲーム](Docs/SOCCER_SPEC.md)
-- [2D卓球ゲーム](Docs/TABLE_TENNIS_SPEC.md)
+- [2Dサッカーゲーム](Docs/01_SOCCER_SPEC.md)
+- [2D卓球ゲーム](Docs/02_TABLE_TENNIS_SPEC.md)
+- [デジタルカードゲーム（THE CHAOS Ⅱ）](Docs/50_CARD_GAME_SPEC.md)
 
 ---
 

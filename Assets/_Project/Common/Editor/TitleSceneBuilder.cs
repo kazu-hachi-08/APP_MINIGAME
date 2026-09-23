@@ -185,14 +185,14 @@ namespace MiniGame.Editor
                 baseColor: new Color(0.85f, 0.35f, 0.15f)
             );
 
-            // ミニゲームボタン③：今後追加
+            // ミニゲームボタン③：カードゲーム
             CreateGameSelectButton(
                 menuContainerObj.transform,
-                buttonName: "Btn_Game_MiniGame3",
-                gameTitle: "🔒 ミニゲーム ③ (Coming Soon)",
-                targetScene: "",
-                isPlayable: false,
-                baseColor: new Color(0.2f, 0.22f, 0.28f)
+                buttonName: "Btn_Game_CardGame",
+                gameTitle: "🃏 カードゲーム",
+                targetScene: SceneNames.CardGame,
+                isPlayable: true,
+                baseColor: new Color(0.45f, 0.2f, 0.55f)
             );
 
             // 4.4 フッターバー

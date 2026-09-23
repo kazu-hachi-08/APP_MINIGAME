@@ -1,0 +1,65 @@
+[
+  { "id": "N001", "name": "見習い剣士", "class": "Neutral", "type": "Follower", "cost": 1, "attack": 1, "health": 1,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Draw", "count": 1 } ] } ],
+    "text": "ファンファーレ: カードを1枚引く。",
+    "flavor": "剣を握って三日目。" },
+
+  { "id": "N002", "name": "森の番人", "class": "Neutral", "type": "Follower", "cost": 2, "attack": 1, "health": 3,
+    "keywords": ["Ward"],
+    "text": "守護",
+    "flavor": "森に入る者は、まず彼に挨拶をする。" },
+
+  { "id": "N003", "name": "石つぶて", "class": "Neutral", "type": "Spell", "cost": 1,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Damage", "target": "SelectEnemyFollower", "amount": 1 } ] } ],
+    "text": "相手のフォロワー1体に1ダメージ。" },
+
+  { "id": "N004", "name": "旅の吟遊詩人", "class": "Neutral", "type": "Follower", "cost": 3, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Draw", "count": 1 } ] } ],
+    "text": "ラストワード: カードを1枚引く。",
+    "flavor": "最後の歌は、いつも次の物語の始まりだった。" },
+
+  { "id": "N005", "name": "軍旗", "class": "Neutral", "type": "Amulet", "cost": 2, "countdown": 2,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 1 } ] } ],
+    "text": "カウントダウン 2\nラストワード: 自分のフォロワー全てを+1/+1する。" },
+
+  { "id": "N006", "name": "狼の群れ", "class": "Neutral", "type": "Follower", "cost": 4, "attack": 2, "health": 2,
+    "keywords": ["Rush"],
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T001", "count": 1 } ] } ],
+    "text": "突進\nファンファーレ: 狼(2/2)を1体出す。" },
+
+  { "id": "N007", "name": "傭兵", "class": "Neutral", "type": "Follower", "cost": 2, "attack": 2, "health": 2,
+    "text": "",
+    "flavor": "金額次第で、どちらの側にもつく。" },
+
+  { "id": "N008", "name": "石の巨人", "class": "Neutral", "type": "Follower", "cost": 5, "attack": 4, "health": 6,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "N009", "name": "村の治療師", "class": "Neutral", "type": "Follower", "cost": 3, "attack": 2, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Heal", "target": "AllyLeader", "amount": 3 } ] } ],
+    "text": "ファンファーレ: 自分のリーダーを3回復。" },
+
+  { "id": "N010", "name": "遍歴の戦士", "class": "Neutral", "type": "Follower", "cost": 4, "attack": 4, "health": 4,
+    "text": "",
+    "flavor": "名を訊ねても、答えは返ってこない。" },
+
+  { "id": "N011", "name": "老賢者", "class": "Neutral", "type": "Follower", "cost": 6, "attack": 4, "health": 5,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Draw", "count": 2 } ] } ],
+    "text": "ファンファーレ: カードを2枚引く。" },
+
+  { "id": "N012", "name": "山の古竜", "class": "Neutral", "type": "Follower", "cost": 7, "attack": 7, "health": 7,
+    "text": "",
+    "flavor": "山そのものが動いた、と村人は言った。" },
+
+  { "id": "N013", "name": "突撃兵", "class": "Neutral", "type": "Follower", "cost": 3, "attack": 3, "health": 2,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "N014", "name": "祈りの祭壇", "class": "Neutral", "type": "Amulet", "cost": 3, "countdown": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Heal", "target": "AllyLeader", "amount": 5 } ] } ],
+    "text": "カウントダウン 3\nラストワード: 自分のリーダーを5回復。" },
+
+  { "id": "N015", "name": "偵察隊の報告", "class": "Neutral", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Draw", "count": 2 } ] } ],
+    "text": "カードを2枚引く。" }
+]
