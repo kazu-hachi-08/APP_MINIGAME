@@ -133,11 +133,28 @@ namespace MiniGame.TableTennis
             _awaitingServeBounce = false;
         }
 
+        /// <summary>
+        /// 飛行を指定秒数ぶん一気に進める。
+        /// オンライン対戦で相手の打球が届くまでの通信遅延ぶん、ボールを本来の位置へ追いつかせるために使う。
+        /// </summary>
+        public void FastForward(float seconds)
+        {
+            float step = Time.fixedDeltaTime;
+            for (float t = 0f; t < seconds && IsFlying; t += step)
+            {
+                Step(step);
+            }
+        }
+
         private void FixedUpdate()
         {
             if (!IsFlying) return;
 
-            float deltaTime = Time.fixedDeltaTime;
+            Step(Time.fixedDeltaTime);
+        }
+
+        private void Step(float deltaTime)
+        {
             Vector3 previous = CourtPosition;
 
             Velocity += AccelerationFor(Spin) * deltaTime;

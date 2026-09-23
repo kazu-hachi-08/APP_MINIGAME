@@ -27,6 +27,13 @@ namespace MiniGame.TableTennis
 
         public event Action<CourtSide, PointReason> OnPointDecided;
 
+        /// <summary>
+        /// true のとき、自分が最後に打った球の結果は判定しない（オンライン対戦用）。
+        /// 通信遅延で両端末の見え方がズレても判定が食い違わないよう、
+        /// 「球を受ける側の端末」だけが得点を決め、相手へ通知するルールにしている。
+        /// </summary>
+        public bool IgnoreOwnShotOutcome { get; set; }
+
         private bool _judging;
         private CourtSide _lastHitter;
         private int _bouncesSinceHit;
@@ -141,6 +148,9 @@ namespace MiniGame.TableTennis
 
         private void Award(CourtSide scorer, PointReason reason)
         {
+            // 判定を止めずに見送る。相手の返球が届けば NotifyHit で判定がそのまま続く
+            if (IgnoreOwnShotOutcome && _lastHitter == CourtSide.Player) return;
+
             _judging = false;
             OnPointDecided?.Invoke(scorer, reason);
         }

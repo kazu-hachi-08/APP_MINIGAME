@@ -216,7 +216,7 @@ namespace MiniGame.TableTennis.Editor
             npcViewSo.ApplyModifiedProperties();
 
             // 8-2. キャラクター（ラケットの左右移動に合わせて立たせるだけの表示）
-            CreateCharacter("NpcCharacter", npcCharacterSprite, NpcCharacterSortingOrder, tableLayout, npc,
+            CharacterView npcCharacter = CreateCharacter("NpcCharacter", npcCharacterSprite, NpcCharacterSortingOrder, tableLayout, npc,
                 courtZ: 2.1f, followRatio: 0.8f, displayHeight: 1.45f, baseYOffset: 0f);
 
             // プレイヤーは背中側。台を隠さないよう、画面下の帯にはみ出させる
@@ -268,6 +268,26 @@ namespace MiniGame.TableTennis.Editor
             // 試合開始前の難易度選択（さらに最前面。ダイアログより後に生成する）
             var difficultyPanel = CreateDifficultySelectPanel(canvasObj.transform);
 
+            // 9-2. オンライン対戦（接続・メッセージ送受信・相手ラケットの表示）
+            // NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
+            var onlineObj = new GameObject("Online");
+            var onlineSession = onlineObj.AddComponent<OnlineSession>();
+            var onlineLink = onlineObj.AddComponent<OnlineMatchLink>();
+            var remoteOpponent = onlineObj.AddComponent<RemoteOpponent>();
+
+            var linkSo = new SerializedObject(onlineLink);
+            linkSo.FindProperty("_racket").objectReferenceValue = racket;
+            linkSo.ApplyModifiedProperties();
+
+            var remoteSo = new SerializedObject(remoteOpponent);
+            remoteSo.FindProperty("_link").objectReferenceValue = onlineLink;
+            remoteSo.FindProperty("_racketView").objectReferenceValue = npcView;
+            remoteSo.FindProperty("_characterView").objectReferenceValue = npcCharacter;
+            remoteSo.ApplyModifiedProperties();
+
+            // 対戦モード選択は試合前に最初に出すので最前面に置く
+            var modeSelectPanel = CreateModeSelectPanel(canvasObj.transform, onlineSession);
+
             // 10. GameManager
             var gameManagerObj = new GameObject("TableTennisGameManager");
             var gameManager = gameManagerObj.AddComponent<TableTennisGameManager>();
@@ -296,6 +316,10 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_messageHud").objectReferenceValue = messageHud;
             gmSo.FindProperty("_shotInfoHud").objectReferenceValue = shotInfoHud;
             gmSo.FindProperty("_difficultyPanel").objectReferenceValue = difficultyPanel;
+            gmSo.FindProperty("_modeSelectPanel").objectReferenceValue = modeSelectPanel;
+            gmSo.FindProperty("_onlineSession").objectReferenceValue = onlineSession;
+            gmSo.FindProperty("_onlineLink").objectReferenceValue = onlineLink;
+            gmSo.FindProperty("_remoteOpponent").objectReferenceValue = remoteOpponent;
             gmSo.ApplyModifiedProperties();
 
             var pauseSo = new SerializedObject(pauseButton);
@@ -384,8 +408,115 @@ namespace MiniGame.TableTennis.Editor
             return obj.AddComponent<T>();
         }
 
+        /// <summary>
+        /// 試合前に「NPCと対戦／部屋を作る／コードで参加」を選ばせるパネル。
+        /// オンラインを選んだら、同じパネル内で接続待ち（参加コード表示）に切り替える。
+        /// </summary>
+        private static ModeSelectPanel CreateModeSelectPanel(Transform canvas, OnlineSession session)
+        {
+            var panelObj = UIDialogBuilder.CreateUIObject("ModeSelectPanel", canvas);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+            panelObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
+
+            var boxObj = UIDialogBuilder.CreateUIObject("Panel", panelObj.transform);
+            SetAnchoredRect(boxObj.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(860f, 520f));
+            boxObj.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.18f);
+
+            // メニュー（モード選択）
+            var menuObj = UIDialogBuilder.CreateUIObject("Menu", boxObj.transform);
+            UIDialogBuilder.SetStretchAll(menuObj.GetComponent<RectTransform>());
+
+            CreatePanelText(menuObj.transform, "TitleText", "対戦モードを選んでください", 30, new Vector2(0f, 200f), new Vector2(800f, 60f));
+
+            var npcButton = CreatePanelButton(menuObj.transform, "Btn_Npc", "NPCと対戦", new Vector2(-190f, 80f),
+                new Vector2(340f, 110f), new Color(0.18f, 0.55f, 0.9f));
+            var hostButton = CreatePanelButton(menuObj.transform, "Btn_Host", "部屋を作る", new Vector2(190f, 80f),
+                new Vector2(340f, 110f), new Color(0.2f, 0.62f, 0.4f));
+
+            CreatePanelText(menuObj.transform, "JoinLabel", "参加コードで入る", 22, new Vector2(0f, -40f), new Vector2(800f, 40f));
+            var codeInput = CreateCodeInput(menuObj.transform, new Vector2(-150f, -120f), new Vector2(400f, 90f));
+            var joinButton = CreatePanelButton(menuObj.transform, "Btn_Join", "参加する", new Vector2(230f, -120f),
+                new Vector2(240f, 90f), new Color(0.3f, 0.33f, 0.4f));
+
+            // 接続待ち
+            var waitingObj = UIDialogBuilder.CreateUIObject("Waiting", boxObj.transform);
+            UIDialogBuilder.SetStretchAll(waitingObj.GetComponent<RectTransform>());
+
+            Text statusText = CreatePanelText(waitingObj.transform, "StatusText", "", 30, new Vector2(0f, 60f), new Vector2(800f, 300f));
+            var cancelButton = CreatePanelButton(waitingObj.transform, "Btn_Cancel", "キャンセル", new Vector2(0f, -180f),
+                new Vector2(300f, 90f), new Color(0.3f, 0.33f, 0.4f));
+            waitingObj.SetActive(false);
+
+            var panel = panelObj.AddComponent<ModeSelectPanel>();
+            var so = new SerializedObject(panel);
+            so.FindProperty("_session").objectReferenceValue = session;
+            so.FindProperty("_menuGroup").objectReferenceValue = menuObj;
+            so.FindProperty("_npcButton").objectReferenceValue = npcButton;
+            so.FindProperty("_hostButton").objectReferenceValue = hostButton;
+            so.FindProperty("_joinButton").objectReferenceValue = joinButton;
+            so.FindProperty("_codeInput").objectReferenceValue = codeInput;
+            so.FindProperty("_waitingGroup").objectReferenceValue = waitingObj;
+            so.FindProperty("_statusText").objectReferenceValue = statusText;
+            so.FindProperty("_cancelButton").objectReferenceValue = cancelButton;
+            so.ApplyModifiedProperties();
+
+            panelObj.SetActive(false);
+            return panel;
+        }
+
+        private static Button CreatePanelButton(Transform parent, string name, string label, Vector2 position, Vector2 size, Color color)
+        {
+            var obj = UIDialogBuilder.CreateButton(parent, name, label, size.x, size.y, color);
+            SetAnchoredRect(obj.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), position, size);
+            obj.GetComponentInChildren<Text>().fontSize = 30;
+            return obj.GetComponent<Button>();
+        }
+
+        private static Text CreatePanelText(Transform parent, string name, string content, int fontSize, Vector2 position, Vector2 size)
+        {
+            Text text = CreateText(parent, name, content, fontSize, new Vector2(0.5f, 0.5f), position, size, Color.white);
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            return text;
+        }
+
+        /// <summary>参加コードの入力欄（Relayの参加コードは英数字のみ）</summary>
+        private static InputField CreateCodeInput(Transform parent, Vector2 position, Vector2 size)
+        {
+            var obj = UIDialogBuilder.CreateUIObject("CodeInput", parent);
+            SetAnchoredRect(obj.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), position, size);
+            obj.AddComponent<Image>().color = Color.white;
+
+            Text placeholder = CreateInputText(obj.transform, "Placeholder", "コードを入力", new Color(0.5f, 0.5f, 0.5f));
+            Text text = CreateInputText(obj.transform, "Text", "", Color.black);
+            text.supportRichText = false;
+
+            var input = obj.AddComponent<InputField>();
+            input.textComponent = text;
+            input.placeholder = placeholder;
+            input.characterValidation = InputField.CharacterValidation.Alphanumeric;
+            input.characterLimit = 12;
+            return input;
+        }
+
+        private static Text CreateInputText(Transform parent, string name, string content, Color color)
+        {
+            var obj = UIDialogBuilder.CreateUIObject(name, parent);
+            var rect = obj.GetComponent<RectTransform>();
+            UIDialogBuilder.SetStretchAll(rect);
+            rect.offsetMin = new Vector2(16f, 8f);
+            rect.offsetMax = new Vector2(-16f, -8f);
+
+            var text = obj.AddComponent<Text>();
+            text.text = content;
+            text.fontSize = 36;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = color;
+            return text;
+        }
+
         /// <summary>ラケットに追従して立つキャラクターを1体作る</summary>
-        private static void CreateCharacter(string name, Sprite sprite, int sortingOrder, TableLayout table,
+        private static CharacterView CreateCharacter(string name, Sprite sprite, int sortingOrder, TableLayout table,
             MonoBehaviour actor, float courtZ, float followRatio, float displayHeight, float baseYOffset)
         {
             var obj = CreateSpriteObject(name, sprite, Color.white, sortingOrder);
@@ -400,6 +531,7 @@ namespace MiniGame.TableTennis.Editor
             so.FindProperty("_displayHeight").floatValue = displayHeight;
             so.FindProperty("_baseYOffset").floatValue = baseYOffset;
             so.ApplyModifiedProperties();
+            return view;
         }
 
         private static void BindHudText(HudText hudText, Text text)

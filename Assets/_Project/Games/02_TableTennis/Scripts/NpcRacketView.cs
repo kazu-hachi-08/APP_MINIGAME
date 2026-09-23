@@ -28,6 +28,14 @@ namespace MiniGame.TableTennis
         /// <summary>負の値なら再生していない</summary>
         private float _swingTime = -1f;
 
+        /// <summary>表示する相手。既定はNPCで、オンライン対戦時は SetSource で差し替える</summary>
+        private IOpponentRacket _source;
+
+        private void Awake()
+        {
+            _source = _npc;
+        }
+
         private void Start()
         {
             if (_renderer != null && _renderer.sprite != null)
@@ -38,12 +46,20 @@ namespace MiniGame.TableTennis
 
         private void OnEnable()
         {
-            _npc.OnSwing += PlaySwing;
+            _source.OnSwing += PlaySwing;
         }
 
         private void OnDisable()
         {
-            _npc.OnSwing -= PlaySwing;
+            _source.OnSwing -= PlaySwing;
+        }
+
+        /// <summary>表示する相手を差し替える（オンライン対戦の開始時に呼ぶ）</summary>
+        public void SetSource(IOpponentRacket source)
+        {
+            _source.OnSwing -= PlaySwing;
+            _source = source;
+            _source.OnSwing += PlaySwing;
         }
 
         private void PlaySwing()
@@ -53,7 +69,7 @@ namespace MiniGame.TableTennis
 
         private void LateUpdate()
         {
-            Vector3 court = _npc.CourtPosition;
+            Vector3 court = _source.CourtPosition;
             float depthScale = _table.ScaleAt(court.z) / _table.NearScale;
             float size = _displaySizeAtNear * depthScale / _spriteUnitSize;
 
