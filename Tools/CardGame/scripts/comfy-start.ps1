@@ -1,6 +1,6 @@
 ﻿# ローカルの ComfyUI(D:\tools\ComfyUI_windows_portable)をバックグラウンドで起動する。
-# 使い方: powershell -File scripts/comfy-start.ps1 [-Stop]
-# 起動後は http://127.0.0.1:8188 で API が使える(Tools/ArtGen の --provider local)。
+# 使い方: powershell -File Tools/CardGame/scripts/comfy-start.ps1 [-Stop]
+# 起動後は http://127.0.0.1:8188 で API が使える(Tools/CardGame/ArtGen の --provider local)。
 param([switch]$Stop)
 
 $root = "D:\tools\ComfyUI_windows_portable"

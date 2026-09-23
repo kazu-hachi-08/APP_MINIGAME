@@ -1,0 +1,15 @@
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\bin~\Debug\net10.0\AudioGen.exe
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\bin~\Debug\net10.0\AudioGen.deps.json
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\bin~\Debug\net10.0\AudioGen.runtimeconfig.json
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\bin~\Debug\net10.0\AudioGen.dll
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\bin~\Debug\net10.0\AudioGen.pdb
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.GeneratedMSBuildEditorConfig.editorconfig
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.AssemblyInfoInputs.cache
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.AssemblyInfo.cs
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.csproj.CoreCompileInputs.cache
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.sourcelink.json
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.dll
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\refint\AudioGen.dll
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.pdb
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\AudioGen.genruntimeconfig.cache
+C:\MyApp\APP_MINIGAME\Tools\CardGame\AudioGen\obj~\Debug\net10.0\ref\AudioGen.dll

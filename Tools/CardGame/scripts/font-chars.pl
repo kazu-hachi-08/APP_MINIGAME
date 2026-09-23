@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# 画面に出る文字を集める(scripts/subset-font.sh から使う)。
-#   perl scripts/font-chars.pl <出力ファイル>
+# 画面に出る文字を集める(Tools/CardGame/scripts/subset-font.sh から、リポジトリのルートで使う)。
+#   perl Tools/CardGame/scripts/font-chars.pl <出力ファイル>
 # - C# の文字列リテラル("..." と $"..."。コメントは除く)
 # - カード / デッキの JSON(名前・効果・フレーバー)
 # - ASCII と、よく使う記号・全角英数(動的に組み立てる文字列用)
@@ -13,7 +13,7 @@ use open qw(:std :encoding(UTF-8));
 my %c;
 # --names: カード名に出る文字だけ(カード名用の書体。かな・英数も足す)
 if (grep { $_ eq "--names" } @ARGV) {
-    for my $f (glob("Core/CardGame.Core/Data/Resources/cards/*.json")) {
+    for my $f (glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/cards/*.json")) {
         open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
         local $/; my $t = <$fh>;
         while ($t =~ /"name":\s*"([^"]*)"/g) { $c{$_} = 1 for split //, $1 }
@@ -25,7 +25,7 @@ if (grep { $_ eq "--names" } @ARGV) {
     printf STDERR "カード名の文字数 %d\n", scalar @all;
     exit 0;
 }
-my @cs = (glob("Unity/Assets/Scripts/*/*.cs"), glob("Core/CardGame.Core/*/*.cs"));
+my @cs = (glob("Assets/_Project/Games/50_CardGame/Scripts/*/*.cs"), glob("Assets/_Project/Games/50_CardGame/Core/*/*.cs"));
 for my $f (@cs) {
     open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
     while (my $line = <$fh>) {
@@ -33,7 +33,7 @@ for my $f (@cs) {
         while ($line =~ /"((?:[^"\\]|\\.)*)"/g) { $c{$_} = 1 for split //, $1 }
     }
 }
-for my $f (glob("Core/CardGame.Core/Data/Resources/cards/*.json"), glob("Core/CardGame.Core/Data/Resources/decks/*.json")) {
+for my $f (glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/cards/*.json"), glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/decks/*.json")) {
     open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
     local $/; my $t = <$fh>;
     $c{$_} = 1 for split //, $t;
