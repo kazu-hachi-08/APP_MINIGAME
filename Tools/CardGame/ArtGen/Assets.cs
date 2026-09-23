@@ -4,9 +4,9 @@ using System.Drawing.Imaging;
 
 /// <summary>
 /// カード以外の画像素材(机の背景・カード枠)を Unity 用に整える。
-///   dotnet run --project Tools/ArtGen -- table <入力画像>            → Resources/Field/table.jpg(2048×1024)
-///   dotnet run --project Tools/ArtGen -- table --generate            → pollinations で仮の机を生成して同上
-///   dotnet run --project Tools/ArtGen -- frame <入力画像> <class>    → Resources/Frames/frame_<class>.png(512×732、中央と外側の黒を透過)
+///   dotnet run --project Tools/CardGame/ArtGen -- table <入力画像>            → Resources/Field/table.jpg(2048×1024)
+///   dotnet run --project Tools/CardGame/ArtGen -- table --generate            → pollinations で仮の机を生成して同上
+///   dotnet run --project Tools/CardGame/ArtGen -- frame <入力画像> <class>    → Resources/Frames/frame_<class>.png(512×732、中央と外側の黒を透過)
 /// </summary>
 static class AssetTools
 {
@@ -21,7 +21,7 @@ static class AssetTools
         {
             case "table":
             {
-                var outPath = Path.Combine(repoRoot, "Unity", "Assets", "Resources", "Field", "table.jpg");
+                var outPath = Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources", "Field", "table.jpg");
                 Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
                 byte[] input;
                 if (args.Contains("--generate"))
@@ -42,7 +42,7 @@ static class AssetTools
             {
                 if (args.Count < 3 || !File.Exists(args[1])) { Console.Error.WriteLine("使い方: frame <入力画像> <neutral|knight|mage|necromancer|druid|dragon>"); return 2; }
                 var cls = args[2].ToLowerInvariant();
-                var outPath = Path.Combine(repoRoot, "Unity", "Assets", "Resources", "Frames", $"frame_{cls}.png");
+                var outPath = Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources", "Frames", $"frame_{cls}.png");
                 Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
                 int threshold = int.TryParse(Opt(args, "--threshold"), out var th) ? th : 40;
                 await File.WriteAllBytesAsync(outPath, ToFrame(await File.ReadAllBytesAsync(args[1]), threshold));
@@ -53,7 +53,7 @@ static class AssetTools
             {
                 // バッジ(数値の土台)。--generate で候補を生成(--gem ruby|emerald|sapphire、--style N、--seed N)、
                 // または <入力画像> を整形(円形に切り抜き、--recolor emerald|sapphire で赤い宝石の色を変える)。--out DIR、--name NAME
-                var outDir = Opt(args, "--out") ?? Path.Combine(repoRoot, "Unity", "Assets", "Resources", "Badges");
+                var outDir = Opt(args, "--out") ?? Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources", "Badges");
                 Directory.CreateDirectory(outDir);
                 byte[] input;
                 string name;
@@ -97,11 +97,11 @@ static class AssetTools
             case "assets":
             {
                 // assets.json に並べた UI 素材をローカル ComfyUI でまとめて生成する。
-                //   dotnet run --project Tools/ArtGen -- assets [--only Frames/frame_knight,...] [--force] [--out DIR] [--seed-offset N]
+                //   dotnet run --project Tools/CardGame/ArtGen -- assets [--only Frames/frame_knight,...] [--force] [--out DIR] [--seed-offset N]
                 if (!await ComfyLocal.IsUpAsync(http)) { Console.Error.WriteLine("ComfyUI が起動していない。scripts/comfy-start.ps1 で起動する"); return 2; }
-                var specPath = Path.Combine(repoRoot, "Tools", "ArtGen", "assets.json");
+                var specPath = Path.Combine(repoRoot, "Tools", "CardGame", "ArtGen", "assets.json");
                 var spec = Newtonsoft.Json.Linq.JObject.Parse(await File.ReadAllTextAsync(specPath));
-                var baseDir = Opt(args, "--out") ?? Path.Combine(repoRoot, "Unity", "Assets", "Resources");
+                var baseDir = Opt(args, "--out") ?? Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources");
                 var only = Opt(args, "--only")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 bool force = args.Contains("--force");
                 int seedOffset = int.TryParse(Opt(args, "--seed-offset"), out var so2) ? so2 : 0;

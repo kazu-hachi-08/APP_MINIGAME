@@ -2,10 +2,8 @@
 
 カードゲーム(`Assets/_Project/Games/50_CardGame/`)の画像・音・フォントを作るツール。移植元プロジェクトから持ってきたもの。
 
-> **注意: 出力先・入力先のパスが移植元の構成のまま**
-> 各ツールは移植元の `Unity/Assets/Resources/...` や `Tools/ArtGen/...` を参照しており、本リポジトリでは動かない。
-> 実際の素材の置き場所は `Assets/_Project/Games/50_CardGame/Resources/`。使う前にパスを直すこと。
-> また、リポジトリのルート判定は `CLAUDE.md` の有無で行っている(`FindRepoRoot`)。
+> 入出力のパスは本リポジトリの構成に合わせてある(素材は `Assets/_Project/Games/50_CardGame/Resources/`、設定 JSON は `Tools/CardGame/ArtGen/`)。
+> コマンドはリポジトリのルートで実行する。ルート判定は `CLAUDE.md` の有無で行っている(`FindRepoRoot`)。
 
 ## 画像生成(ArtGen / ローカル ComfyUI)
 
@@ -13,6 +11,8 @@
   - `DreamShaperXL_Turbo_v2_1.safetensors`(ハースストーン風。カードイラスト・リーダー・HsParts。8 手順・CFG 2)
   - `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors`(写実寄り。旧イラストと一部の UI 素材)
 - 起動 / 停止: `powershell -ExecutionPolicy Bypass -File Tools/CardGame/scripts/comfy-start.ps1 [-Stop]`(http://127.0.0.1:8188、ローカルのみ)
+- ComfyUI Desktop 版(Intel Arc の PC など)の場合: アプリでローカルのインストールを起動すれば同じく 8188 で待ち受ける(`comfy-start.ps1` は使わない)。
+  モデルは `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\models\checkpoints\` に置く
 - カード生成: `dotnet run --project Tools/CardGame/ArtGen -- --provider local --only K010 --force`
   - 既定はハースストーン風。SDXL 832×1216 → 512×1024 JPEG
   - 入力のプロンプトは `Docs/50_CardGame/art/card-art-prompts.csv`

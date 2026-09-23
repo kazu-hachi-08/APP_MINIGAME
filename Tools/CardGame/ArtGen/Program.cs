@@ -4,10 +4,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 // カードイラストを Gemini の画像生成 API で一括生成する開発ツール。
-//   dotnet run --project Tools/ArtGen -- [--style real|hs] [--provider gemini|pollinations|local] [--only K001,K002] [--limit N] [--force] [--dry-run] [--model NAME] [--out DIR] [--seed-offset N]
+//   dotnet run --project Tools/CardGame/ArtGen --[--style real|hs] [--provider gemini|pollinations|local] [--only K001,K002] [--limit N] [--force] [--dry-run] [--model NAME] [--out DIR] [--seed-offset N]
 //   素材の変換(机の背景・カード枠)は Assets.cs を参照
 // - 入力: Docs/50_CardGame/art/card-art-prompts.csv(`dotnet run --project Core/CardGame.Cli -- art` で生成)
-// - 出力: Unity/Assets/Resources/CardArt/<ID>.png(既にあるものはスキップ。--force で上書き)
+// - 出力: Assets/_Project/Games/50_CardGame/Resources/CardArt/<ID>.jpg(既にあるものはスキップ。--force で上書き)
 // - API キーは環境変数 GEMINI_API_KEY から読む(リポジトリには置かない)
 
 var args_ = Environment.GetCommandLineArgs().Skip(1).ToList();
@@ -22,7 +22,7 @@ if (args_.Count > 0 && (args_[0] == "table" || args_[0] == "frame" || args_[0] =
     return await AssetTools.RunAsync(args_, repoRoot, assetHttp);
 }
 var csvPath = Path.Combine(repoRoot, "Docs", "50_CardGame", "art", "card-art-prompts.csv");
-var outDir = Opt("--out") ?? Path.Combine(repoRoot, "Unity", "Assets", "Resources", "CardArt"); // --out で別フォルダに(見本出し用)
+var outDir = Opt("--out") ?? Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources", "CardArt"); // --out で別フォルダに(見本出し用)
 Directory.CreateDirectory(outDir);
 
 var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
@@ -34,15 +34,15 @@ if (provider == "gemini" && string.IsNullOrWhiteSpace(apiKey) && !dryRun)
     return 2;
 }
 int seedOffset = int.TryParse(Opt("--seed-offset"), out var so) ? so : 0;
-// 検品で選び直したカードのシード(Tools/ArtGen/seed-overrides.json: { "N001": 100 }。--seed-offset を指定したときはそちらが優先)
-var seedOverridesPath = Path.Combine(repoRoot, "Tools", "ArtGen", "seed-overrides.json");
+// 検品で選び直したカードのシード(Tools/CardGame/ArtGen/seed-overrides.json: { "N001": 100 }。--seed-offset を指定したときはそちらが優先)
+var seedOverridesPath = Path.Combine(repoRoot, "Tools", "CardGame", "ArtGen", "seed-overrides.json");
 var seedOverrides = File.Exists(seedOverridesPath)
     ? Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(seedOverridesPath))!
     : new Dictionary<string, int>();
 int SeedOffsetFor(string id) => Opt("--seed-offset") == null && seedOverrides.TryGetValue(id, out var o) ? o : seedOffset;
 ComfyLocal.Style = Opt("--style") ?? "hs";     // hs(ハースストーン風、既定) | real(旧い写実寄り。art-archive/ 用)
 if (ComfyLocal.Style == "hs") ComfyLocal.UseTurbo();   // ハースストーン風はイラスト寄りのモデルで描く
-var subjects = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(Path.Combine(repoRoot, "Tools", "ArtGen", "subjects.json")))!;
+var subjects = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(Path.Combine(repoRoot, "Tools", "CardGame", "ArtGen", "subjects.json")))!;
 
 var model = Opt("--model") ?? "gemini-2.5-flash-image";
 var only = Opt("--only")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
