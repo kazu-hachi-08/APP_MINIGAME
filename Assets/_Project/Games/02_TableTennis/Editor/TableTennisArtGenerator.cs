@@ -28,6 +28,25 @@ namespace MiniGame.TableTennis.Editor
         public const string BounceRingName = "BounceRing";
         public const string BackgroundName = "Background";
 
+        // 選手・ラケット選択（§25）。選手はシャツの色、ラケットはラバーの色で見分ける
+        public const string KazukiName = "Character_Kazuki";
+        public const string KokiniwaName = "Character_Kokiniwa";
+        public const string YokozunaName = "Character_Yokozuna";
+        public const string BackSuffix = "_Back";
+        public const string FrontSuffix = "_Front";
+
+        public const string StandardRacketName = "Racket_Standard";
+        public const string PowerRacketName = "Racket_Power";
+        public const string TechniqueRacketName = "Racket_Technique";
+
+        private static readonly Color32 KazukiShirt = new Color32(214, 84, 76, 255);
+        private static readonly Color32 KokiniwaShirt = new Color32(64, 168, 110, 255);
+        private static readonly Color32 YokozunaShirt = new Color32(150, 88, 196, 255);
+
+        private static readonly Color32 StandardRubber = new Color32(206, 62, 58, 255);
+        private static readonly Color32 PowerRubber = new Color32(40, 40, 48, 255);
+        private static readonly Color32 TechniqueRubber = new Color32(52, 110, 200, 255);
+
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
 
         [MenuItem("Tools/MiniGame/Generate Table Tennis Art", false, 4)]
@@ -51,6 +70,14 @@ namespace MiniGame.TableTennis.Editor
             SaveSprite(NpcCharacterName, BuildCharacter(back: false, shirt: new Color32(70, 118, 208, 255)),
                 48, 64, SpriteAlignment.BottomCenter, repeat: false);
 
+            SaveCharacterPair(KazukiName, KazukiShirt);
+            SaveCharacterPair(KokiniwaName, KokiniwaShirt);
+            SaveCharacterPair(YokozunaName, YokozunaShirt);
+
+            SaveSprite(StandardRacketName, BuildRacket(StandardRubber), 40, 48, SpriteAlignment.Center, repeat: false);
+            SaveSprite(PowerRacketName, BuildRacket(PowerRubber), 40, 48, SpriteAlignment.Center, repeat: false);
+            SaveSprite(TechniqueRacketName, BuildRacket(TechniqueRubber), 40, 48, SpriteAlignment.Center, repeat: false);
+
             // 台とネットはメッシュへ貼るので繰り返し可能にする
             SaveSprite(TableSurfaceName, BuildTableSurface(), 64, 64, SpriteAlignment.Center, repeat: true);
             SaveSprite(NetName, BuildNet(), 32, 32, SpriteAlignment.Center, repeat: true);
@@ -67,10 +94,20 @@ namespace MiniGame.TableTennis.Editor
         /// <summary>素材が未生成なら生成する（TableTennisSceneBuilder から呼ばれる）</summary>
         public static void EnsureGenerated()
         {
-            if (Load(BallName) == null)
+            // 後から追加した素材（選手・ラケット）が無い既存環境でも作り直されるよう、両方を確認する
+            if (Load(BallName) == null || Load(TechniqueRacketName) == null)
             {
                 GenerateAll();
             }
+        }
+
+        /// <summary>1人の選手につき、手前用（背中）と奥用（正面）の2枚を作る</summary>
+        private static void SaveCharacterPair(string name, Color32 shirt)
+        {
+            SaveSprite(name + BackSuffix, BuildCharacter(back: true, shirt: shirt), 48, 64,
+                SpriteAlignment.BottomCenter, repeat: false);
+            SaveSprite(name + FrontSuffix, BuildCharacter(back: false, shirt: shirt), 48, 64,
+                SpriteAlignment.BottomCenter, repeat: false);
         }
 
         public static Sprite Load(string spriteName)

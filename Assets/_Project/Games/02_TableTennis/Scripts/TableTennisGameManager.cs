@@ -36,6 +36,11 @@ namespace MiniGame.TableTennis
         [SerializeField] private TableTennisAudio _audio;
         [SerializeField] private DifficultySelectPanel _difficultyPanel;
 
+        [Header("選手・ラケット選択（未設定なら全てスタンダード）")]
+        [SerializeField] private LoadoutSelectPanel _loadoutPanel;
+        [SerializeField] private LoadoutApplier _loadoutApplier;
+        [SerializeField] private LoadoutCatalog _loadoutCatalog;
+
         [Header("Online（未設定ならNPC戦のみ）")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
@@ -73,6 +78,11 @@ namespace MiniGame.TableTennis
         private MatchScore _score;
         private RallyPhase _phase = RallyPhase.PointBreak;
         private bool _isOnline;
+        private bool _isHost;
+
+        /// <summary>オンラインで、自分の選択が済んだか / 相手の選択が届いたか。両方そろってから試合を始める</summary>
+        private bool _localLoadoutReady;
+        private bool _peerLoadoutReady;
 
         private string OpponentLabel => _isOnline ? "RIVAL" : "NPC";
 
@@ -98,6 +108,7 @@ namespace MiniGame.TableTennis
             {
                 _onlineLink.OnShotReceived += HandleRemoteShot;
                 _onlineLink.OnPointReceived += HandleRemotePoint;
+                _onlineLink.OnLoadoutReceived += HandleRemoteLoadout;
             }
 
             if (_onlineSession != null)
@@ -119,6 +130,7 @@ namespace MiniGame.TableTennis
             {
                 _onlineLink.OnShotReceived -= HandleRemoteShot;
                 _onlineLink.OnPointReceived -= HandleRemotePoint;
+                _onlineLink.OnLoadoutReceived -= HandleRemoteLoadout;
             }
 
             if (_onlineSession != null)
@@ -135,12 +147,29 @@ namespace MiniGame.TableTennis
 
             if (_modeSelectPanel != null)
             {
-                _modeSelectPanel.Show(ShowDifficultySelect, StartOnlineMatch);
+                _modeSelectPanel.Show(ShowNpcLoadoutSelect, HandleOnlineConnected);
             }
             else
             {
-                ShowDifficultySelect();
+                ShowNpcLoadoutSelect();
             }
+        }
+
+        /// <summary>NPC戦は自分とNPCの両方の選手・ラケットを選んでから難易度選択へ進む</summary>
+        private void ShowNpcLoadoutSelect()
+        {
+            if (_loadoutPanel == null)
+            {
+                ShowDifficultySelect();
+                return;
+            }
+
+            _loadoutPanel.Show(true, (player, opponent) =>
+            {
+                _loadoutApplier.ApplyPlayer(player);
+                _loadoutApplier.ApplyNpc(opponent);
+                ShowDifficultySelect();
+            });
         }
 
         private void ShowDifficultySelect()
@@ -164,12 +193,13 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>
-        /// 相手と接続できたらオンライン対戦を始める。
-        /// 両端末とも自分を手前（Player）として扱い、最初のサーブはホストにする。
+        /// 相手と接続できたら、通信を始めてから自分の選手・ラケットを選ばせる。
+        /// 選択中にも相手の選択が届くよう、先に通信を開始しておく。
         /// </summary>
-        private void StartOnlineMatch(bool isHost)
+        private void HandleOnlineConnected(bool isHost)
         {
             _isOnline = true;
+            _isHost = isHost;
 
             // 相手の打球は相手端末から届くので、NPCの思考は止めて表示だけリモートへ渡す
             _npc.enabled = false;
@@ -177,7 +207,51 @@ namespace MiniGame.TableTennis
             _referee.IgnoreOwnShotOutcome = true;
             _onlineLink.Begin();
 
-            _score = new MatchScore(_pointsToWin, _serveChangeInterval, isHost ? CourtSide.Player : CourtSide.Opponent);
+            if (_loadoutPanel == null)
+            {
+                _localLoadoutReady = true;
+                _peerLoadoutReady = true;
+                TryStartOnlineMatch();
+                return;
+            }
+
+            _loadoutPanel.Show(false, (player, _) =>
+            {
+                _loadoutApplier.ApplyPlayer(player);
+                _onlineLink.SendLoadout(_loadoutCatalog.IndexOf(player.Character), _loadoutCatalog.IndexOf(player.Racket));
+                _localLoadoutReady = true;
+
+                if (!_peerLoadoutReady)
+                {
+                    SetMessage("相手の選択を待っています");
+                }
+
+                TryStartOnlineMatch();
+            });
+        }
+
+        /// <summary>相手の選択は見た目にだけ反映する（能力は相手端末で打球に反映済みで届く）</summary>
+        private void HandleRemoteLoadout(int characterIndex, int racketIndex)
+        {
+            if (!_isOnline || _peerLoadoutReady) return;
+
+            _loadoutApplier.ApplyOpponentLook(_loadoutCatalog.Get(characterIndex, racketIndex));
+            _peerLoadoutReady = true;
+            TryStartOnlineMatch();
+        }
+
+        /// <summary>
+        /// 両端末の選択がそろってから試合を始める。
+        /// 片方だけ先に始めると、選択中の相手にサーブが飛んでいってしまうため。
+        /// 両端末とも自分を手前（Player）として扱い、最初のサーブはホストにする。
+        /// </summary>
+        private void TryStartOnlineMatch()
+        {
+            if (!_localLoadoutReady || !_peerLoadoutReady) return;
+            if (CurrentState != MiniGameState.Ready) return;
+
+            SetMessage(string.Empty);
+            _score = new MatchScore(_pointsToWin, _serveChangeInterval, _isHost ? CourtSide.Player : CourtSide.Opponent);
             UpdateScoreText();
 
             StartGame();
@@ -350,6 +424,13 @@ namespace MiniGame.TableTennis
             if (!_isOnline || CurrentState == MiniGameState.Result) return;
 
             StopAllCoroutines();
+
+            // 選択中に切れた場合、最前面の選択パネルがリザルトを隠さないよう閉じる
+            if (_loadoutPanel != null)
+            {
+                _loadoutPanel.Hide();
+            }
+
             _phase = RallyPhase.PointBreak;
             _ball.Stop();
             _referee.Stop();

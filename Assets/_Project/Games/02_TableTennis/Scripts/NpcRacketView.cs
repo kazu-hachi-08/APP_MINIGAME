@@ -38,6 +38,20 @@ namespace MiniGame.TableTennis
 
         private void Start()
         {
+            UpdateSpriteUnitSize();
+        }
+
+        /// <summary>選んだラケットの見た目に差し替える</summary>
+        public void SetSprite(Sprite sprite)
+        {
+            if (_renderer == null || sprite == null) return;
+
+            _renderer.sprite = sprite;
+            UpdateSpriteUnitSize();
+        }
+
+        private void UpdateSpriteUnitSize()
+        {
             if (_renderer != null && _renderer.sprite != null)
             {
                 _spriteUnitSize = Mathf.Max(0.0001f, _renderer.sprite.bounds.size.x);

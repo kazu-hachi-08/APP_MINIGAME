@@ -42,6 +42,9 @@ namespace MiniGame.TableTennis
         private Vector2 _target;
         private float _spriteUnitSize = 1f;
 
+        /// <summary>選手の能力による追従速度の倍率</summary>
+        private float _followSpeedMultiplier = 1f;
+
         private void Awake()
         {
             _current = new Vector2(0f, 0.25f);
@@ -50,12 +53,31 @@ namespace MiniGame.TableTennis
 
         private void Start()
         {
+            UpdateSpriteUnitSize();
+            ApplyView();
+        }
+
+        /// <summary>選んだ選手の能力を反映する（試合開始前に呼ぶ）</summary>
+        public void SetFollowSpeedMultiplier(float multiplier)
+        {
+            _followSpeedMultiplier = multiplier;
+        }
+
+        /// <summary>選んだラケットの見た目に差し替える</summary>
+        public void SetSprite(Sprite sprite)
+        {
+            if (_renderer == null || sprite == null) return;
+
+            _renderer.sprite = sprite;
+            UpdateSpriteUnitSize();
+        }
+
+        private void UpdateSpriteUnitSize()
+        {
             if (_renderer != null && _renderer.sprite != null)
             {
                 _spriteUnitSize = Mathf.Max(0.0001f, _renderer.sprite.bounds.size.x);
             }
-
-            ApplyView();
         }
 
         private void OnEnable()
@@ -93,7 +115,7 @@ namespace MiniGame.TableTennis
         private void Update()
         {
             // フレームレートに依存しない指数補間で目標位置へ寄せる
-            float t = 1f - Mathf.Exp(-_followSpeed * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-_followSpeed * _followSpeedMultiplier * Time.deltaTime);
             _current = Vector2.Lerp(_current, _target, t);
             ApplyView();
         }

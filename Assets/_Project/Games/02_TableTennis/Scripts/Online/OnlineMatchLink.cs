@@ -35,6 +35,7 @@ namespace MiniGame.TableTennis
         private const string ShotMessage = "tt.shot";
         private const string PointMessage = "tt.point";
         private const string RacketMessage = "tt.racket";
+        private const string LoadoutMessage = "tt.loadout";
 
         /// <summary>1メッセージの最大バイト数。打球メッセージ（約80バイト）が収まる大きさ</summary>
         private const int MessageBufferSize = 128;
@@ -55,6 +56,9 @@ namespace MiniGame.TableTennis
         /// <summary>相手のラケット位置（自分視点へ反転済み）</summary>
         public event Action<Vector3> OnRacketReceived;
 
+        /// <summary>相手が選んだ選手・ラケット（LoadoutCatalog の番号）</summary>
+        public event Action<int, int> OnLoadoutReceived;
+
         private bool _active;
         private float _racketSendTimer;
 
@@ -67,6 +71,7 @@ namespace MiniGame.TableTennis
             messaging.RegisterNamedMessageHandler(ShotMessage, ReceiveShot);
             messaging.RegisterNamedMessageHandler(PointMessage, ReceivePoint);
             messaging.RegisterNamedMessageHandler(RacketMessage, ReceiveRacket);
+            messaging.RegisterNamedMessageHandler(LoadoutMessage, ReceiveLoadout);
             _active = true;
         }
 
@@ -80,6 +85,7 @@ namespace MiniGame.TableTennis
             messaging.UnregisterNamedMessageHandler(ShotMessage);
             messaging.UnregisterNamedMessageHandler(PointMessage);
             messaging.UnregisterNamedMessageHandler(RacketMessage);
+            messaging.UnregisterNamedMessageHandler(LoadoutMessage);
         }
 
         private void Update()
@@ -117,6 +123,18 @@ namespace MiniGame.TableTennis
             writer.WriteValueSafe((int)scorer.Opposite());
             writer.WriteValueSafe((int)reason);
             Send(PointMessage, writer, NetworkDelivery.ReliableSequenced);
+        }
+
+        /// <summary>
+        /// 自分が選んだ選手・ラケットを送る。相手端末では見た目にだけ使う
+        /// （能力は打った側の端末で発射条件に反映済みのため）
+        /// </summary>
+        public void SendLoadout(int characterIndex, int racketIndex)
+        {
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            writer.WriteValueSafe(characterIndex);
+            writer.WriteValueSafe(racketIndex);
+            Send(LoadoutMessage, writer, NetworkDelivery.Reliable);
         }
 
         private void SendRacket(Vector3 courtPosition)
@@ -167,6 +185,13 @@ namespace MiniGame.TableTennis
         {
             reader.ReadValueSafe(out Vector3 position);
             OnRacketReceived?.Invoke(position);
+        }
+
+        private void ReceiveLoadout(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out int characterIndex);
+            reader.ReadValueSafe(out int racketIndex);
+            OnLoadoutReceived?.Invoke(characterIndex, racketIndex);
         }
 
         // ---- 座標の反転 ----

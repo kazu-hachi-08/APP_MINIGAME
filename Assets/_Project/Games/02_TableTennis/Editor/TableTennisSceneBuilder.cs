@@ -221,7 +221,7 @@ namespace MiniGame.TableTennis.Editor
                 courtZ: 2.1f, followRatio: 0.8f, displayHeight: 1.45f, baseYOffset: 0f);
 
             // プレイヤーは背中側。台を隠さないよう、画面下の帯にはみ出させる
-            CreateCharacter("PlayerCharacter", playerCharacterSprite, PlayerCharacterSortingOrder, tableLayout, racket,
+            CharacterView playerCharacter = CreateCharacter("PlayerCharacter", playerCharacterSprite, PlayerCharacterSortingOrder, tableLayout, racket,
                 courtZ: -1.7f, followRatio: 0.5f, displayHeight: 2.6f, baseYOffset: -2.3f);
 
             // 9. UI
@@ -269,6 +269,10 @@ namespace MiniGame.TableTennis.Editor
             // 試合開始前の難易度選択（さらに最前面。ダイアログより後に生成する）
             var difficultyPanel = CreateDifficultySelectPanel(canvasObj.transform);
 
+            // 選手・ラケット選択（§25）。データは未生成なら初期値で作る
+            LoadoutCatalog loadoutCatalog = TableTennisLoadoutGenerator.EnsureGenerated();
+            var loadoutPanel = CreateLoadoutSelectPanel(canvasObj.transform, loadoutCatalog);
+
             // 9-2. オンライン対戦（接続・メッセージ送受信・相手ラケットの表示）
             // NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
             var onlineObj = new GameObject("Online");
@@ -294,6 +298,17 @@ namespace MiniGame.TableTennis.Editor
             var gameManager = gameManagerObj.AddComponent<TableTennisGameManager>();
             var referee = gameManagerObj.AddComponent<RallyReferee>();
             var serveController = gameManagerObj.AddComponent<ServeController>();
+            var loadoutApplier = gameManagerObj.AddComponent<LoadoutApplier>();
+
+            var applierSo = new SerializedObject(loadoutApplier);
+            applierSo.FindProperty("_playerRacket").objectReferenceValue = racket;
+            applierSo.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
+            applierSo.FindProperty("_shotCalculator").objectReferenceValue = shotCalculator;
+            applierSo.FindProperty("_playerCharacter").objectReferenceValue = playerCharacter;
+            applierSo.FindProperty("_npc").objectReferenceValue = npc;
+            applierSo.FindProperty("_opponentRacketView").objectReferenceValue = npcView;
+            applierSo.FindProperty("_opponentCharacter").objectReferenceValue = npcCharacter;
+            applierSo.ApplyModifiedProperties();
 
             var refereeSo = new SerializedObject(referee);
             refereeSo.FindProperty("_ball").objectReferenceValue = ballMotion;
@@ -317,6 +332,9 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_messageHud").objectReferenceValue = messageHud;
             gmSo.FindProperty("_shotInfoHud").objectReferenceValue = shotInfoHud;
             gmSo.FindProperty("_difficultyPanel").objectReferenceValue = difficultyPanel;
+            gmSo.FindProperty("_loadoutPanel").objectReferenceValue = loadoutPanel;
+            gmSo.FindProperty("_loadoutApplier").objectReferenceValue = loadoutApplier;
+            gmSo.FindProperty("_loadoutCatalog").objectReferenceValue = loadoutCatalog;
             gmSo.FindProperty("_modeSelectPanel").objectReferenceValue = modeSelectPanel;
             gmSo.FindProperty("_onlineSession").objectReferenceValue = onlineSession;
             gmSo.FindProperty("_onlineLink").objectReferenceValue = onlineLink;
@@ -400,6 +418,136 @@ namespace MiniGame.TableTennis.Editor
 
             panelObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>
+        /// 選手とラケットを1画面で選ぶパネル（§25.6）。
+        /// 相手欄を隠したときに箱が縮むよう、全要素を LayoutElement で並べて ContentSizeFitter で高さを決める。
+        /// ボタンの文言は実行時にカタログから付ける
+        /// </summary>
+        private static LoadoutSelectPanel CreateLoadoutSelectPanel(Transform canvas, LoadoutCatalog catalog)
+        {
+            const float boxWidth = 900f;
+            const float characterButtonHeight = 100f;
+            const float racketButtonHeight = 76f;
+
+            var panelObj = UIDialogBuilder.CreateUIObject("LoadoutSelectPanel", canvas);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+            panelObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
+
+            var boxObj = UIDialogBuilder.CreateUIObject("Panel", panelObj.transform);
+            var boxRect = boxObj.GetComponent<RectTransform>();
+            boxRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boxRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boxRect.pivot = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(boxWidth, 0f);
+            boxObj.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.18f);
+            AddVerticalLayout(boxObj, new RectOffset(24, 24, 24, 24));
+            boxObj.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            CreateLayoutLabel(boxObj.transform, "TitleText", "選手とラケットを選んでください", 30, 56f);
+
+            CreateLayoutLabel(boxObj.transform, "PlayerLabel", "あなた", 24, 40f);
+            Button[] playerCharacterButtons = CreateChoiceRow(boxObj.transform, "PlayerCharacterRow",
+                catalog.Characters.Length, characterButtonHeight);
+            Button[] playerRacketButtons = CreateChoiceRow(boxObj.transform, "PlayerRacketRow",
+                catalog.Rackets.Length, racketButtonHeight);
+
+            var opponentGroup = UIDialogBuilder.CreateUIObject("OpponentGroup", boxObj.transform);
+            AddVerticalLayout(opponentGroup, new RectOffset(0, 0, 0, 0));
+            CreateLayoutLabel(opponentGroup.transform, "OpponentLabel", "相手（NPC）", 24, 40f);
+            Button[] opponentCharacterButtons = CreateChoiceRow(opponentGroup.transform, "OpponentCharacterRow",
+                catalog.Characters.Length, characterButtonHeight);
+            Button[] opponentRacketButtons = CreateChoiceRow(opponentGroup.transform, "OpponentRacketRow",
+                catalog.Rackets.Length, racketButtonHeight);
+
+            var decideObj = UIDialogBuilder.CreateButton(boxObj.transform, "Btn_Decide", "決定", 320, 90,
+                new Color(0.2f, 0.65f, 0.35f));
+            decideObj.GetComponentInChildren<Text>().fontSize = 30;
+            AddLayoutElement(decideObj, 320f, 90f);
+
+            var panel = panelObj.AddComponent<LoadoutSelectPanel>();
+            var so = new SerializedObject(panel);
+            so.FindProperty("_catalog").objectReferenceValue = catalog;
+            SetRowButtons(so, "_playerCharacterRow", playerCharacterButtons);
+            SetRowButtons(so, "_playerRacketRow", playerRacketButtons);
+            SetRowButtons(so, "_opponentCharacterRow", opponentCharacterButtons);
+            SetRowButtons(so, "_opponentRacketRow", opponentRacketButtons);
+            so.FindProperty("_opponentGroup").objectReferenceValue = opponentGroup;
+            so.FindProperty("_decideButton").objectReferenceValue = decideObj.GetComponent<Button>();
+            so.ApplyModifiedProperties();
+
+            panelObj.SetActive(false);
+            return panel;
+        }
+
+        private static void AddVerticalLayout(GameObject obj, RectOffset padding)
+        {
+            var layout = obj.AddComponent<VerticalLayoutGroup>();
+            layout.padding = padding;
+            layout.spacing = 12;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+        }
+
+        private static void CreateLayoutLabel(Transform parent, string name, string content, int fontSize, float height)
+        {
+            var obj = UIDialogBuilder.CreateUIObject(name, parent);
+            var text = obj.AddComponent<Text>();
+            text.text = content;
+            text.fontSize = fontSize;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            AddLayoutElement(obj, 820f, height);
+        }
+
+        /// <summary>選択肢のボタンを横一列に並べる。並び順がカタログの番号になる</summary>
+        private static Button[] CreateChoiceRow(Transform parent, string name, int count, float buttonHeight)
+        {
+            const float buttonWidth = 260f;
+
+            var rowObj = UIDialogBuilder.CreateUIObject(name, parent);
+            var layout = rowObj.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 16;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            var buttons = new Button[count];
+            for (int i = 0; i < count; i++)
+            {
+                var btnObj = UIDialogBuilder.CreateButton(rowObj.transform, $"Btn_{i}", "", buttonWidth, buttonHeight,
+                    new Color(0.3f, 0.33f, 0.4f));
+                btnObj.GetComponentInChildren<Text>().fontSize = 24;
+                AddLayoutElement(btnObj, buttonWidth, buttonHeight);
+                buttons[i] = btnObj.GetComponent<Button>();
+            }
+
+            return buttons;
+        }
+
+        private static void AddLayoutElement(GameObject obj, float width, float height)
+        {
+            var element = obj.AddComponent<LayoutElement>();
+            element.preferredWidth = width;
+            element.preferredHeight = height;
+        }
+
+        private static void SetRowButtons(SerializedObject so, string rowName, Button[] buttons)
+        {
+            var buttonsProp = so.FindProperty(rowName).FindPropertyRelative("Buttons");
+            buttonsProp.arraySize = buttons.Length;
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                buttonsProp.GetArrayElementAtIndex(i).objectReferenceValue = buttons[i];
+            }
         }
 
         private static T CreateManager<T>(string name, Transform parent) where T : Component

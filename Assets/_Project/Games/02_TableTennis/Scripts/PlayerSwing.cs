@@ -52,6 +52,19 @@ namespace MiniGame.TableTennis
 
         private SwingJudgement _nearestJudgement;
 
+        /// <summary>選手の能力による倍率（接触範囲・スイング時間）</summary>
+        private float _reachMultiplier = 1f;
+        private float _swingDurationMultiplier = 1f;
+
+        private float SwingDuration => _swingDuration * _swingDurationMultiplier;
+
+        /// <summary>選んだ選手の能力を反映する（試合開始前に呼ぶ）</summary>
+        public void SetCharacterMultipliers(float reach, float swingDuration)
+        {
+            _reachMultiplier = reach;
+            _swingDurationMultiplier = swingDuration;
+        }
+
         private void OnEnable()
         {
             _flickInput.OnFlicked += HandleFlick;
@@ -71,7 +84,7 @@ namespace MiniGame.TableTennis
 
             _swingFlick = flick;
             _swinging = true;
-            _swingEndTime = Time.time + _swingDuration;
+            _swingEndTime = Time.time + SwingDuration;
             _reachedSwingRange = false;
 
             // すでに打点へ来ているなら、振り終わりを待たずその場で当てる
@@ -137,13 +150,13 @@ namespace MiniGame.TableTennis
         {
             if (Judge(_ball.CourtPosition).Result != SwingResult.OutOfRange) return true;
 
-            Vector3 predicted = _ball.CourtPosition + _ball.Velocity * _swingDuration;
+            Vector3 predicted = _ball.CourtPosition + _ball.Velocity * SwingDuration;
             return Judge(predicted).Result != SwingResult.OutOfRange;
         }
 
         private SwingJudgement Judge(Vector3 ballPosition)
         {
-            float rangeScale = IsServing ? _serveRangeScale : 1f;
+            float rangeScale = (IsServing ? _serveRangeScale : 1f) * _reachMultiplier;
             return _timingJudge.Judge(ballPosition, _racket.CourtPosition, rangeScale);
         }
 

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0913523594c7ff143972fbd3173de033, type: 3}
+  m_Name: LoadoutCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.LoadoutCatalog
+  Characters:
+  - {fileID: 11400000, guid: 3ed13e3bc8106d94fb939c6e03e4af55, type: 2}
+  - {fileID: 11400000, guid: 1f2bbc7192d0a4a47afbeda32aee20b5, type: 2}
+  - {fileID: 11400000, guid: 88fc71c9a0d95394aa526b5028402088, type: 2}
+  Rackets:
+  - {fileID: 11400000, guid: 4b2ef87fb099b1f4eb7bc2b6e2b33797, type: 2}
+  - {fileID: 11400000, guid: e90f7ebfb71821c448d49a6da3c51a8d, type: 2}
+  - {fileID: 11400000, guid: 2ccbaa424abb8f14199550ec2e9ffdb4, type: 2}

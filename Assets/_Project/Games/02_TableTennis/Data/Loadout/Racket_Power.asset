@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db2bb8dc0d4fe5346a9c321abe89ff5d, type: 3}
+  m_Name: Racket_Power
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.RacketData
+  Style: 1
+  Sprite: {fileID: 21300000, guid: 845cc53f35628e04498102054b81864f, type: 3}
+  SpeedMultiplier: 1.15
+  SpinMultiplier: 0.8
+  ErrorMultiplier: 1.2
