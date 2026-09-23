@@ -1,0 +1,96 @@
+[
+  { "id": "U001", "name": "骸骨兵", "class": "Necromancer", "type": "Follower", "cost": 1, "attack": 1, "health": 1,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T004", "count": 1 } ] } ],
+    "text": "ラストワード: 骸骨(1/1)を1体出す。",
+    "flavor": "何度倒しても、骨は立ち上がる。" },
+
+  { "id": "U002", "name": "腐肉喰らい", "class": "Necromancer", "type": "Follower", "cost": 2, "attack": 2, "health": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Draw", "count": 1 } ] } ],
+    "text": "ラストワード: カードを1枚引く。" },
+
+  { "id": "U003", "name": "怨念の亡者", "class": "Necromancer", "type": "Follower", "cost": 2, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Damage", "target": "EnemyLeader", "amount": 1 } ] } ],
+    "text": "ラストワード: 相手のリーダーに1ダメージ。" },
+
+  { "id": "U004", "name": "死霊の蝙蝠", "class": "Necromancer", "type": "Follower", "cost": 2, "attack": 2, "health": 2,
+    "keywords": ["Drain"],
+    "text": "ドレイン" },
+
+  { "id": "U005", "name": "屍人形師", "class": "Necromancer", "type": "Follower", "cost": 3, "attack": 2, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T004", "count": 2 } ] } ],
+    "text": "ファンファーレ: 骸骨(1/1)を2体出す。" },
+
+  { "id": "U006", "name": "骨の巨人", "class": "Necromancer", "type": "Follower", "cost": 4, "attack": 3, "health": 5,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T004", "count": 2 } ] } ],
+    "text": "ラストワード: 骸骨(1/1)を2体出す。" },
+
+  { "id": "U007", "name": "死神の使い", "class": "Necromancer", "type": "Follower", "cost": 4, "attack": 3, "health": 3,
+    "keywords": ["Bane"],
+    "text": "必殺" },
+
+  { "id": "U008", "name": "血の契約", "class": "Necromancer", "type": "Spell", "cost": 2,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Damage", "target": "AllyLeader", "amount": 1 },
+      { "type": "Draw", "count": 2 } ] } ],
+    "text": "自分のリーダーに1ダメージ。カードを2枚引く。" },
+
+  { "id": "U009", "name": "屍術師", "class": "Necromancer", "type": "Follower", "cost": 4, "attack": 3, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [
+      { "type": "Destroy", "target": "SelectAllyFollower" },
+      { "type": "Buff", "target": "Self", "attack": 3, "health": 3 } ] } ],
+    "text": "ファンファーレ: 自分の他のフォロワー1体を破壊し、自身を+3/+3する。" },
+
+  { "id": "U010", "name": "亡霊騎士", "class": "Necromancer", "type": "Follower", "cost": 5, "attack": 4, "health": 3,
+    "keywords": ["Storm"],
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T004", "count": 1 } ] } ],
+    "text": "疾走\nラストワード: 骸骨(1/1)を1体出す。" },
+
+  { "id": "U011", "name": "死者の王", "class": "Necromancer", "type": "Follower", "cost": 6, "attack": 5, "health": 5,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T005", "count": 2 } ] } ],
+    "text": "ファンファーレ: ゾンビ(2/2)を2体出す。" },
+
+  { "id": "U012", "name": "不死の騎士", "class": "Necromancer", "type": "Follower", "cost": 6, "attack": 4, "health": 5,
+    "keywords": ["Ward"],
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T005", "count": 1 } ] } ],
+    "text": "守護\nラストワード: ゾンビ(2/2)を1体出す。" },
+
+  { "id": "U013", "name": "悪霊", "class": "Necromancer", "type": "Follower", "cost": 1, "attack": 2, "health": 1,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Damage", "target": "RandomEnemyFollower", "amount": 1 } ] } ],
+    "text": "ラストワード: ランダムな相手のフォロワー1体に1ダメージ。" },
+
+  { "id": "U014", "name": "魂喰らい", "class": "Necromancer", "type": "Follower", "cost": 3, "attack": 3, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [
+      { "type": "Destroy", "target": "SelectAllyFollower" },
+      { "type": "Draw", "count": 2 } ] } ],
+    "text": "ファンファーレ: 自分の他のフォロワー1体を破壊し、カードを2枚引く。" },
+
+  { "id": "U015", "name": "冥府の番犬", "class": "Necromancer", "type": "Follower", "cost": 4, "attack": 4, "health": 3,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "U016", "name": "骸骨召喚", "class": "Necromancer", "type": "Spell", "cost": 1,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Summon", "cardId": "T004", "count": 2 } ] } ],
+    "text": "骸骨(1/1)を2体出す。" },
+
+  { "id": "U017", "name": "爆裂する屍", "class": "Necromancer", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Destroy", "target": "SelectAllyFollower" },
+      { "type": "Damage", "target": "AllEnemyFollowers", "amount": 3 } ] } ],
+    "text": "自分のフォロワー1体を破壊し、相手のフォロワー全てに3ダメージ。" },
+
+  { "id": "U018", "name": "魂の吸収", "class": "Necromancer", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Damage", "target": "SelectEnemyFollower", "amount": 2 },
+      { "type": "Heal", "target": "AllyLeader", "amount": 2 } ] } ],
+    "text": "相手のフォロワー1体に2ダメージ。自分のリーダーを2回復。" },
+
+  { "id": "U019", "name": "死の宣告", "class": "Necromancer", "type": "Spell", "cost": 4,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Destroy", "target": "SelectEnemyFollower" },
+      { "type": "Damage", "target": "AllyLeader", "amount": 1 } ] } ],
+    "text": "相手のフォロワー1体を破壊する。自分のリーダーに1ダメージ。" },
+
+  { "id": "U020", "name": "呪いの祭壇", "class": "Necromancer", "type": "Amulet", "cost": 3, "countdown": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Damage", "target": "EnemyLeader", "amount": 3 } ] } ],
+    "text": "カウントダウン 3\nラストワード: 相手のリーダーに3ダメージ。" }
+]

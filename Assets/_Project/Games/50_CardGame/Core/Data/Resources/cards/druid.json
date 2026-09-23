@@ -1,0 +1,92 @@
+[
+  { "id": "D001", "name": "森の妖精", "class": "Druid", "type": "Follower", "cost": 1, "attack": 1, "health": 1,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Heal", "target": "AllyLeader", "amount": 2 } ] } ],
+    "text": "ファンファーレ: 自分のリーダーを2回復。" },
+
+  { "id": "D002", "name": "蔦の番人", "class": "Druid", "type": "Follower", "cost": 2, "attack": 1, "health": 4,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "D003", "name": "森の案内人", "class": "Druid", "type": "Follower", "cost": 2, "attack": 1, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "RampPP", "amount": 1 } ] } ],
+    "text": "ファンファーレ: 最大PPを+1する。",
+    "flavor": "森は、進む者にだけ道を開く。" },
+
+  { "id": "D004", "name": "樹皮の癒し手", "class": "Druid", "type": "Follower", "cost": 3, "attack": 2, "health": 3,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "SelectAllyFollower", "attack": 0, "health": 3 } ] } ],
+    "text": "ファンファーレ: 自分の他のフォロワー1体を+0/+3する。" },
+
+  { "id": "D005", "name": "猪突する猪", "class": "Druid", "type": "Follower", "cost": 3, "attack": 3, "health": 2,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "D006", "name": "古木の精", "class": "Druid", "type": "Follower", "cost": 4, "attack": 2, "health": 5,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "D007", "name": "森の狩人", "class": "Druid", "type": "Follower", "cost": 4, "attack": 3, "health": 4,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Draw", "count": 1 } ] } ],
+    "text": "ファンファーレ: カードを1枚引く。" },
+
+  { "id": "D008", "name": "大樹の守り手", "class": "Druid", "type": "Follower", "cost": 5, "attack": 3, "health": 6,
+    "keywords": ["Ward"],
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Heal", "target": "AllyLeader", "amount": 2 } ] } ],
+    "text": "守護\nファンファーレ: 自分のリーダーを2回復。" },
+
+  { "id": "D009", "name": "森の賢者", "class": "Druid", "type": "Follower", "cost": 5, "attack": 3, "health": 4,
+    "effects": [ { "trigger": "Fanfare", "actions": [
+      { "type": "RampPP", "amount": 1 },
+      { "type": "Draw", "count": 1 } ] } ],
+    "text": "ファンファーレ: 最大PPを+1する。カードを1枚引く。" },
+
+  { "id": "D010", "name": "巨大熊", "class": "Druid", "type": "Follower", "cost": 6, "attack": 6, "health": 6,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "D011", "name": "世界樹の化身", "class": "Druid", "type": "Follower", "cost": 8, "attack": 8, "health": 8,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Heal", "target": "AllyLeader", "amount": 5 } ] } ],
+    "text": "ファンファーレ: 自分のリーダーを5回復。",
+    "flavor": "根は大地を抱き、枝は空を支える。" },
+
+  { "id": "D012", "name": "森の女王", "class": "Druid", "type": "Follower", "cost": 7, "attack": 5, "health": 5,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 2, "health": 2 } ] } ],
+    "text": "ファンファーレ: 自分のフォロワー全てを+2/+2する。" },
+
+  { "id": "D013", "name": "種を撒く者", "class": "Druid", "type": "Follower", "cost": 2, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T006", "count": 1 } ] } ],
+    "text": "ラストワード: 妖精(1/1)を1体出す。" },
+
+  { "id": "D014", "name": "蜂の群れ", "class": "Druid", "type": "Follower", "cost": 3, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T006", "count": 2 } ] } ],
+    "text": "ファンファーレ: 妖精(1/1)を2体出す。" },
+
+  { "id": "D015", "name": "自然の恵み", "class": "Druid", "type": "Spell", "cost": 2,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "RampPP", "amount": 1 } ] } ],
+    "text": "最大PPを+1する。" },
+
+  { "id": "D016", "name": "根の締めつけ", "class": "Druid", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Damage", "target": "SelectEnemyFollower", "amount": 4 } ] } ],
+    "text": "相手のフォロワー1体に4ダメージ。" },
+
+  { "id": "D017", "name": "成長", "class": "Druid", "type": "Spell", "cost": 1,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Buff", "target": "SelectAllyFollower", "attack": 2, "health": 2 } ] } ],
+    "text": "自分のフォロワー1体を+2/+2する。" },
+
+  { "id": "D018", "name": "生命の息吹", "class": "Druid", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Heal", "target": "AllyLeader", "amount": 6 },
+      { "type": "Draw", "count": 1 } ] } ],
+    "text": "自分のリーダーを6回復。カードを1枚引く。" },
+
+  { "id": "D019", "name": "森の目覚め", "class": "Druid", "type": "Spell", "cost": 5,
+    "effects": [ { "trigger": "Spell", "actions": [
+      { "type": "Summon", "cardId": "T006", "count": 3 },
+      { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 1 } ] } ],
+    "text": "妖精(1/1)を3体出す。その後、自分のフォロワー全てを+1/+1する。" },
+
+  { "id": "D020", "name": "豊穣の祭壇", "class": "Druid", "type": "Amulet", "cost": 3, "countdown": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [
+      { "type": "RampPP", "amount": 1 },
+      { "type": "Draw", "count": 1 } ] } ],
+    "text": "カウントダウン 3\nラストワード: 最大PPを+1する。カードを1枚引く。" }
+]

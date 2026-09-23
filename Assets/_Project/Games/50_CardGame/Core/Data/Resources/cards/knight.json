@@ -1,0 +1,83 @@
+[
+  { "id": "K001", "name": "見習い従者", "class": "Knight", "type": "Follower", "cost": 1, "attack": 1, "health": 1,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T002", "count": 1 } ] } ],
+    "text": "ファンファーレ: 兵士(1/1)を1体出す。" },
+
+  { "id": "K002", "name": "盾持ちの兵", "class": "Knight", "type": "Follower", "cost": 1, "attack": 1, "health": 2,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "K003", "name": "王国の剣士", "class": "Knight", "type": "Follower", "cost": 2, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "SelectAllyFollower", "attack": 1, "health": 0 } ] } ],
+    "text": "ファンファーレ: 自分の他のフォロワー1体を+1/+0する。" },
+
+  { "id": "K004", "name": "槍騎兵", "class": "Knight", "type": "Follower", "cost": 2, "attack": 2, "health": 1,
+    "keywords": ["Rush"],
+    "text": "突進" },
+
+  { "id": "K005", "name": "白銀の盾兵", "class": "Knight", "type": "Follower", "cost": 3, "attack": 2, "health": 4,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "K006", "name": "旗手", "class": "Knight", "type": "Follower", "cost": 3, "attack": 2, "health": 2,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 0 } ] } ],
+    "text": "ファンファーレ: 自分のフォロワー全てを+1/+0する。" },
+
+  { "id": "K007", "name": "騎馬隊長", "class": "Knight", "type": "Follower", "cost": 4, "attack": 3, "health": 3,
+    "keywords": ["Rush"],
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T002", "count": 1 } ] } ],
+    "text": "突進\nファンファーレ: 兵士(1/1)を1体出す。" },
+
+  { "id": "K008", "name": "王国の聖騎士", "class": "Knight", "type": "Follower", "cost": 4, "attack": 3, "health": 4,
+    "keywords": ["Drain"],
+    "text": "ドレイン" },
+
+  { "id": "K009", "name": "城壁の守り手", "class": "Knight", "type": "Follower", "cost": 5, "attack": 3, "health": 6,
+    "keywords": ["Ward"],
+    "text": "守護" },
+
+  { "id": "K010", "name": "竜騎士", "class": "Knight", "type": "Follower", "cost": 5, "attack": 4, "health": 4,
+    "keywords": ["Storm"],
+    "text": "疾走" },
+
+  { "id": "K011", "name": "軍団長", "class": "Knight", "type": "Follower", "cost": 6, "attack": 4, "health": 4,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T002", "count": 2 } ] } ],
+    "text": "ファンファーレ: 兵士(1/1)を2体出す。" },
+
+  { "id": "K012", "name": "王国の英雄", "class": "Knight", "type": "Follower", "cost": 7, "attack": 6, "health": 6,
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 1 } ] } ],
+    "text": "ファンファーレ: 自分のフォロワー全てを+1/+1する。" },
+
+  { "id": "K013", "name": "竜殺しの狩人", "class": "Knight", "type": "Follower", "cost": 3, "attack": 2, "health": 2,
+    "keywords": ["Bane"],
+    "text": "必殺" },
+
+  { "id": "K014", "name": "国王", "class": "Knight", "type": "Follower", "cost": 8, "attack": 6, "health": 6,
+    "keywords": ["Ward"],
+    "effects": [ { "trigger": "Fanfare", "actions": [ { "type": "Summon", "cardId": "T002", "count": 2 } ] } ],
+    "text": "守護\nファンファーレ: 兵士(1/1)を2体出す。" },
+
+  { "id": "K015", "name": "突撃命令", "class": "Knight", "type": "Spell", "cost": 1,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Buff", "target": "SelectAllyFollower", "attack": 2, "health": 0 } ] } ],
+    "text": "自分のフォロワー1体を+2/+0する。" },
+
+  { "id": "K016", "name": "鼓舞", "class": "Knight", "type": "Spell", "cost": 2,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 1, "health": 1 } ] } ],
+    "text": "自分のフォロワー全てを+1/+1する。" },
+
+  { "id": "K017", "name": "槍投げ", "class": "Knight", "type": "Spell", "cost": 2,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Damage", "target": "SelectEnemyFollower", "amount": 2 } ] } ],
+    "text": "相手のフォロワー1体に2ダメージ。" },
+
+  { "id": "K018", "name": "援軍", "class": "Knight", "type": "Spell", "cost": 3,
+    "effects": [ { "trigger": "Spell", "actions": [ { "type": "Summon", "cardId": "T002", "count": 3 } ] } ],
+    "text": "兵士(1/1)を3体出す。" },
+
+  { "id": "K019", "name": "訓練場", "class": "Knight", "type": "Amulet", "cost": 2, "countdown": 2,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Summon", "cardId": "T002", "count": 2 } ] } ],
+    "text": "カウントダウン 2\nラストワード: 兵士(1/1)を2体出す。" },
+
+  { "id": "K020", "name": "守護の紋章", "class": "Knight", "type": "Amulet", "cost": 4, "countdown": 3,
+    "effects": [ { "trigger": "LastWords", "actions": [ { "type": "Buff", "target": "AllAllyFollowers", "attack": 2, "health": 2 } ] } ],
+    "text": "カウントダウン 3\nラストワード: 自分のフォロワー全てを+2/+2する。" }
+]

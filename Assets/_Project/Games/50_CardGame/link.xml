@@ -1,0 +1,5 @@
+<!-- コード削減(Managed Stripping)で消されると困るもの。JSON の読み込みは反射で型を作るので丸ごと残す -->
+<linker>
+  <assembly fullname="CardGame.Core" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>
