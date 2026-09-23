@@ -6,7 +6,7 @@ using CardGame.Core.State;
 
 namespace CardGame.Core.Engine
 {
-    /// <summary>開始・マリガン・ターン進行・ドロー(docs/spec/01-rules.md「ゲームの流れ」)。</summary>
+    /// <summary>開始・マリガン・ターン進行・ドロー(Docs/50_CardGame/spec/01-rules.md「ゲームの流れ」)。</summary>
     public sealed partial class GameEngine
     {
         private void SetupGame(DeckDefinition deck0, DeckDefinition deck1, int? firstPlayer)

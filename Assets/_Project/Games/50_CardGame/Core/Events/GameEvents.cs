@@ -4,7 +4,7 @@ using CardGame.Core.State;
 namespace CardGame.Core.Events
 {
     /// <summary>
-    /// Core が状態変化を通知するイベント。Unity 側はこれを見て演出する(docs/spec/05-online.md)。
+    /// Core が状態変化を通知するイベント。Unity 側はこれを見て演出する(Docs/50_CardGame/spec/05-online.md)。
     /// 各イベントは発生時点の情報を保持し、状態オブジェクトへの参照は持たない(後から読んでも意味が変わらない)。
     /// </summary>
     public abstract class GameEvent

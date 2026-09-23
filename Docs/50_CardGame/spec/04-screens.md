@@ -135,7 +135,7 @@
   手続き生成のカボション宝石(攻撃=赤 / 体力=緑 / コスト=水色)を敷き、数字を載せる。リム画像が無ければ金属リングにフォールバック。
   差し替えは `dotnet run --project Tools/ArtGen -- badge <画像> --hole 0.62 --name badge_rim`
 - カードの質感(段階 1、2026-09-22): イラストの内縁に落ち影(額縁風)、名前帯は暗い鋼 + 上下の金線 + 金文字、効果欄は羊皮紙 + インク色の文字(種類ラベルは暗い赤)。
-  段階 2 で名前帯・効果欄を Gemini 製の銘板 / 羊皮紙画像に、枠を枠 A に置き換える(`docs/art/gemini-requests.md`)
+  段階 2 で名前帯・効果欄を Gemini 製の銘板 / 羊皮紙画像に、枠を枠 A に置き換える(`Docs/50_CardGame/art/gemini-requests.md`)
 - カードの質感(段階 2、2026-09-22): 枠はクラス別の装飾枠画像(`Resources/Frames/frame_<class>`)、名前帯は鋼の銘板(`Plates/plate_name`)、効果欄は羊皮紙(`Plates/plate_text`)。
   枠画像は Tools/ArtGen が「開口部を一定の位置(横 8.5〜91.5%、縦 7〜93%)に揃える」ように正規化するので、CardView は固定の余白で中身を置く。
   場のカードにはキーワードのアイコン(`Keywords/kw_<keyword>`)を右上に縦並び。デッキ選択とカード一覧のクラス絞り込みにクラス紋章(`Emblems/emblem_<class>`)。

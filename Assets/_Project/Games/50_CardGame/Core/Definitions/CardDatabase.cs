@@ -9,7 +9,7 @@ using Newtonsoft.Json.Converters;
 namespace CardGame.Core.Definitions
 {
     /// <summary>
-    /// 全カード定義の辞書。JSON(docs/spec/02-card-effects.md の形式)から読み込む。
+    /// 全カード定義の辞書。JSON(Docs/50_CardGame/spec/02-card-effects.md の形式)から読み込む。
     /// </summary>
     public sealed class CardDatabase
     {

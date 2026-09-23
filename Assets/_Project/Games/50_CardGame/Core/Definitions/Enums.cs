@@ -21,7 +21,7 @@ namespace CardGame.Core.Definitions
         Amulet,
     }
 
-    /// <summary>キーワード能力(docs/spec/02-card-effects.md)。</summary>
+    /// <summary>キーワード能力(Docs/50_CardGame/spec/02-card-effects.md)。</summary>
     public enum Keyword
     {
         /// <summary>守護: 相手はこのフォロワー以外を攻撃できない。</summary>

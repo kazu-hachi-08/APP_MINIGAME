@@ -87,7 +87,7 @@ Gemini(Web)で画像を作ってもらい、ファイルを Claude に渡すと�
 
 ### C5. ★ 主要カードのイラスト高品質化(任意)
 全 122 枚は多いので、**各クラスの看板カード 1〜2 枚**(7 コスト前後のフォロワー)だけ Gemini で描き直す案。
-プロンプトは `docs/art/card-art-prompts.md` に全カード分あり(ID で検索)。2:3 縦長、主役は上半分に。
+プロンプトは `Docs/50_CardGame/art/card-art-prompts.md` に全カード分あり(ID で検索)。2:3 縦長、主役は上半分に。
 渡された画像は `Unity/Assets/Resources/CardArt/<ID>.jpg` として同じ処理で取り込む。
 
 ---

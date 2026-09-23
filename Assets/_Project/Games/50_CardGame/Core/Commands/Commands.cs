@@ -5,7 +5,7 @@ using CardGame.Core.State;
 namespace CardGame.Core.Commands
 {
     /// <summary>
-    /// プレイヤーの操作。ローカル / AI / オンラインのいずれもこの型で GameEngine に渡す(docs/spec/05-online.md)。
+    /// プレイヤーの操作。ローカル / AI / オンラインのいずれもこの型で GameEngine に渡す(Docs/50_CardGame/spec/05-online.md)。
     /// </summary>
     public abstract class GameCommand
     {

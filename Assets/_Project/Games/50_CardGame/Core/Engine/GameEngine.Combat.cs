@@ -7,7 +7,7 @@ using CardGame.Core.State;
 
 namespace CardGame.Core.Engine
 {
-    /// <summary>攻撃と戦闘ダメージ(docs/spec/01-rules.md「戦闘」)。</summary>
+    /// <summary>攻撃と戦闘ダメージ(Docs/50_CardGame/spec/01-rules.md「戦闘」)。</summary>
     public sealed partial class GameEngine
     {
         /// <summary>このフォロワーが今攻撃を宣言できるか(対象の有無は含まない)。可能なら null。</summary>

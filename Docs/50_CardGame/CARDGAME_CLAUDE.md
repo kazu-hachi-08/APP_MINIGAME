@@ -13,8 +13,8 @@
 
 ```
 CLAUDE.md            このファイル
-docs/spec/           仕様書(日本語)。実装より先に更新する
-docs/adr/            設計判断の記録(Architecture Decision Records)
+Docs/50_CardGame/spec/  仕様書(日本語)。実装より先に更新する
+Docs/50_CardGame/adr/   設計判断の記録(Architecture Decision Records)
 Core/                純粋 C# のゲームエンジン(Unity 非依存、netstandard2.1)
   CardGame.Core/       ルール・状態・効果解決・AI
   CardGame.Core.Tests/ NUnit テスト(dotnet test で実行)
@@ -26,11 +26,11 @@ Unity/               Unity プロジェクト(6000.6.x)。Core を参照する
 
 ## 鉄則
 
-1. **仕様が先**: ルール・カード効果・画面の変更は、必ず `docs/spec/` を先に更新してから実装する。仕様書と実装が食い違ったら仕様書側が正。
+1. **仕様が先**: ルール・カード効果・画面の変更は、必ず `Docs/50_CardGame/spec/` を先に更新してから実装する。仕様書と実装が食い違ったら仕様書側が正。
 2. **Core は Unity を知らない**: `Core/` に `UnityEngine` を一切参照させない。Core は決定論的(seed 付き RNG、順序依存のないコレクションを使わない)。
 3. **Core にはテストを付ける**: ルール・カード効果は `Core/CardGame.Core.Tests/` で検証してから Unity に載せる。`dotnet test Core` が通らない状態でコミットしない。
-4. **カードはデータ**: カード効果は `docs/spec/02-card-effects.md` の効果DSLで表現し、C# にカード固有ロジックを書かない。DSL で表現できない効果は、まず DSL の拡張を仕様に提案する。
-5. **スコープを守る**: `docs/spec/06-roadmap.md` の現在フェーズ外の機能は勝手に足さない。提案は歓迎、実装は合意後。
+4. **カードはデータ**: カード効果は `Docs/50_CardGame/spec/02-card-effects.md` の効果DSLで表現し、C# にカード固有ロジックを書かない。DSL で表現できない効果は、まず DSL の拡張を仕様に提案する。
+5. **スコープを守る**: `Docs/50_CardGame/spec/06-roadmap.md` の現在フェーズ外の機能は勝手に足さない。提案は歓迎、実装は合意後。
 6. **オーナーが触れる形にする**: フェーズ3以降は「実機で触れるビルド」を出すことを優先。凝った演出より動くこと。
 
 ## コーディング規約
@@ -70,7 +70,7 @@ dotnet run --project Core/CardGame.Cli -- selfplay --games 100
 
 ## 現在のフェーズ
 
-`docs/spec/06-roadmap.md` を参照。作業開始時に必ず確認する。
+`Docs/50_CardGame/spec/06-roadmap.md` を参照。作業開始時に必ず確認する。
 
 ## 用語(日本語 ↔ コード)
 

@@ -4,7 +4,7 @@ using CardGame.Core.Definitions;
 
 namespace CardGame.Core.State
 {
-    /// <summary>ゲーム全体の定数(docs/spec/01-rules.md「基本パラメータ」)。</summary>
+    /// <summary>ゲーム全体の定数(Docs/50_CardGame/spec/01-rules.md「基本パラメータ」)。</summary>
     public static class GameRules
     {
         public const int LeaderMaxHp = 20;

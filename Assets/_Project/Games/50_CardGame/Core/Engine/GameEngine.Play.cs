@@ -7,7 +7,7 @@ using CardGame.Core.State;
 
 namespace CardGame.Core.Engine
 {
-    /// <summary>カードのプレイ(docs/spec/01-rules.md「カードのプレイ」、02「対象選択のルール」)。</summary>
+    /// <summary>カードのプレイ(Docs/50_CardGame/spec/01-rules.md「カードのプレイ」、02「対象選択のルール」)。</summary>
     public sealed partial class GameEngine
     {
         /// <summary>手札のカードがプレイ可能か。可能なら null、不可なら理由。対象の妥当性は含まない。</summary>

@@ -6,7 +6,7 @@ using CardGame.Core.Definitions;
 namespace CardGame.Unity.Battle
 {
     /// <summary>
-    /// キーワード・トリガーの説明文(docs/spec/02-card-effects.md と一致させる)。
+    /// キーワード・トリガーの説明文(Docs/50_CardGame/spec/02-card-effects.md と一致させる)。
     /// 拡大表示とツールチップで使う。
     /// </summary>
     public static class KeywordHelp

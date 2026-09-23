@@ -26,7 +26,7 @@ namespace CardGame.Core.Engine
         }
     }
 
-    /// <summary>効果解決(docs/spec/02-card-effects.md「アクション」「対象」「解決順序」)。</summary>
+    /// <summary>効果解決(Docs/50_CardGame/spec/02-card-effects.md「アクション」「対象」「解決順序」)。</summary>
     public sealed partial class GameEngine
     {
         /// <summary>
