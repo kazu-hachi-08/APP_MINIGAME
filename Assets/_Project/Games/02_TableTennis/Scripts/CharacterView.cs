@@ -50,6 +50,12 @@ namespace MiniGame.TableTennis
             ApplyScale();
         }
 
+        /// <summary>追従するラケットを差し替える（オンライン対戦の開始時に呼ぶ）</summary>
+        public void SetActor(ICourtActor actor)
+        {
+            _actor = actor;
+        }
+
         private void LateUpdate()
         {
             if (_actor == null) return;
