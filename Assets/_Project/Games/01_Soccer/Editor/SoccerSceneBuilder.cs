@@ -29,8 +29,8 @@ namespace MiniGame.Soccer.Editor
         private const string BallPhysicsMaterialPath = PhysicsDirectory + "/BallBounce.physicsMaterial2D";
 
         // コート寸法（ワールド単位）
-        private const float FieldHalfWidth = 11f;
-        private const float FieldHalfHeight = 6f;
+        private const float FieldHalfWidth = 16.5f;
+        private const float FieldHalfHeight = 9f;
         private const float GoalHalfHeight = 2f;
         private const float WallThickness = 0.3f;
 
@@ -87,7 +87,7 @@ namespace MiniGame.Soccer.Editor
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.09f, 0.11f, 0.13f); // スタジアムの外周
             camera.orthographic = true;
-            camera.orthographicSize = 2.5f;
+            camera.orthographicSize = 3.5f;
             cameraObj.transform.position = new Vector3(0f, 0f, -10f);
             cameraObj.AddComponent<AudioListener>();
             cameraObj.tag = "MainCamera";
@@ -326,17 +326,17 @@ namespace MiniGame.Soccer.Editor
         {
             return new[]
             {
-                new Vector2(-10.3f, 0f),   // GK
-                new Vector2(-7.1f, -4.6f), // DF
-                new Vector2(-7.1f, -1.6f), // DF
-                new Vector2(-7.1f, 1.6f),  // DF
-                new Vector2(-7.1f, 4.6f),  // DF
-                new Vector2(-2.3f, -4.6f), // MF
-                new Vector2(-2.3f, -1.6f), // MF
-                new Vector2(-2.3f, 1.6f),  // MF
-                new Vector2(-2.3f, 4.6f),  // MF
+                new Vector2(-15.8f, 0f),   // GK
+                new Vector2(-10.7f, -6.9f), // DF
+                new Vector2(-10.7f, -2.4f), // DF
+                new Vector2(-10.7f, 2.4f),  // DF
+                new Vector2(-10.7f, 6.9f),  // DF
+                new Vector2(-3.5f, -6.9f), // MF
+                new Vector2(-3.5f, -2.4f), // MF
+                new Vector2(-3.5f, 2.4f),  // MF
+                new Vector2(-3.5f, 6.9f),  // MF
                 new Vector2(-1.1f, 0f),    // FW（人間操作対象。キックオフ地点に最も近い）
-                new Vector2(-3.2f, 3.7f),  // FW
+                new Vector2(-4.8f, 5.6f),  // FW
             };
         }
 

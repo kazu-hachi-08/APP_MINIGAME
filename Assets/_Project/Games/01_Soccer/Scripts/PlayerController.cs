@@ -10,7 +10,7 @@ namespace MiniGame.Soccer
     public class PlayerController : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float _moveSpeed = 5.5f;
+        [SerializeField] private float _moveSpeed = 4.5f;
 
         [Header("Dribble")]
         [SerializeField] private float _dribbleRadius = 0.6f;     // この距離以内のボールを保持する
@@ -21,8 +21,8 @@ namespace MiniGame.Soccer
 
         [Header("Kick")]
         [SerializeField] private float _kickRadius = 0.7f;
-        [SerializeField] private float _passSpeed = 9f;
-        [SerializeField] private float _shootSpeed = 17f;
+        [SerializeField] private float _passSpeed = 7f;
+        [SerializeField] private float _shootSpeed = 12f;
 
         [SerializeField] private LayerMask _ballLayerMask = ~0;
 

@@ -20,7 +20,7 @@ namespace MiniGame.Soccer
         }
 
         [Header("Dash")]
-        [SerializeField] private float _dashSpeed = 9f;
+        [SerializeField] private float _dashSpeed = 7f;
         [SerializeField] private float _dashDuration = 0.25f;
 
         [Header("Recovery (硬直)")]

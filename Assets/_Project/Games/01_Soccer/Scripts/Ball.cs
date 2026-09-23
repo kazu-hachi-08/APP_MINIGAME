@@ -14,7 +14,7 @@ namespace MiniGame.Soccer
         private const float ShootSePitch = 0.85f;
 
         [Header("Kick SE")]
-        [SerializeField] private float _shootSpeedThreshold = 13f;
+        [SerializeField] private float _shootSpeedThreshold = 10f;
 
         private Rigidbody2D _rigidbody;
         private Collider2D _collider;
