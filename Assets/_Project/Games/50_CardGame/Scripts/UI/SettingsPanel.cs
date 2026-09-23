@@ -30,16 +30,36 @@ namespace CardGame.Unity.UI
             rowY -= 130;
 
             // 全画面(ブラウザ・PC 用)
+            Text? fsLabel = null;
             var fsBtn = FantasyUi.ParchmentButton(t, "Fullscreen", 60, rowY, (w - 160) / 2, 76,
-                Screen.fullScreen ? "全画面を解除" : "全画面にする", () => { Screen.fullScreen = !Screen.fullScreen; }, 24);
-            var fsLabel = fsBtn.GetComponentInChildren<Text>();
-            fsBtn.onClick.AddListener(() => fsLabel.text = Screen.fullScreen ? "全画面を解除" : "全画面にする");
+                FullscreenLabel(Screen.fullScreen), () => fsLabel!.text = FullscreenLabel(ToggleFullscreen()), 24);
+            fsLabel = fsBtn.GetComponentInChildren<Text>();
 
             FantasyUi.ParchmentButton(t, "TestSound", 60 + (w - 160) / 2 + 40, rowY, (w - 160) / 2, 76,
                 "音を試す", () => Audio.Play(Audio.Awakening, 1f, 0f), 24);
 
             return panel;
         }
+
+        private const int WindowedWidth = 1280;
+        private const int WindowedHeight = 720;
+
+        /// <summary>
+        /// 全画面の ON/OFF。解除時に Screen.fullScreen=false だけだと
+        /// モニタ解像度のままウィンドウ化され、タスクバーが隠れたままになるため固定サイズに戻す。
+        /// </summary>
+        /// <returns>切り替え後に全画面かどうか。反映はフレーム末なので Screen.fullScreen はまだ古い値を返す。</returns>
+        private static bool ToggleFullscreen()
+        {
+            bool toFullscreen = !Screen.fullScreen;
+            if (toFullscreen)
+                Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow);
+            else
+                Screen.SetResolution(WindowedWidth, WindowedHeight, FullScreenMode.Windowed);
+            return toFullscreen;
+        }
+
+        private static string FullscreenLabel(bool isFullscreen) => isFullscreen ? "全画面を解除" : "全画面にする";
 
         /// <summary>ラベル + スライダー + 数値(%)の 1 行。</summary>
         private static void Volume(Transform parent, string name, float x, float y, float w, string label, float value, System.Action<float> onChanged)
