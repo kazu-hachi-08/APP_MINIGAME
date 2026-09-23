@@ -171,6 +171,19 @@ namespace MiniGame.TableTennis
         [Tooltip("弱い/雑なフリックでもサーブがネットを越えられるよう保証する、前進速度の下限 (m/s)")]
         [SerializeField] private float _serveMinForwardSpeed = 3.5f;
 
+        /// <summary>ラケットの能力による倍率（打球速度・回転量・タイミング誤差）</summary>
+        private float _speedMultiplier = 1f;
+        private float _spinMultiplier = 1f;
+        private float _errorMultiplier = 1f;
+
+        /// <summary>選んだラケットの能力を反映する（試合開始前に呼ぶ）</summary>
+        public void SetRacketMultipliers(float speed, float spin, float error)
+        {
+            _speedMultiplier = speed;
+            _spinMultiplier = spin;
+            _errorMultiplier = error;
+        }
+
         /// <summary>
         /// フリックと打球タイミングから打球結果を求める。
         /// 縦フリックと打点の高さがショット種別を、横フリックがコースとサイドスピンを決める。
@@ -184,15 +197,18 @@ namespace MiniGame.TableTennis
 
             float strength = flick.Strength;
             float quality = judgement.Quality;
-            float error = 1f - quality;
+            // ラケットの「ミスしやすさ」は、タイミングが悪いときのズレ幅として効かせる
+            float error = (1f - quality) * _errorMultiplier;
 
             // タイミングが悪いほど弱く・回転が少なく・狙いからズレる
             float forward = Mathf.Lerp(profile.MinForwardSpeed, profile.MaxForwardSpeed, strength)
-                          * Mathf.Lerp(_worstSpeedScale, 1f, quality);
+                          * Mathf.Lerp(_worstSpeedScale, 1f, quality)
+                          * _speedMultiplier;
 
             // 縦回転の向きはショット種別が決め（カットなら必ず下回転）、量だけフリックの強さで変わる。
             // 横回転はフリックの左右がそのまま乗る
-            float spinScale = Mathf.Lerp(_minSpinScale, 1f, strength) * Mathf.Lerp(_worstSpinScale, 1f, quality);
+            float spinScale = Mathf.Lerp(_minSpinScale, 1f, strength) * Mathf.Lerp(_worstSpinScale, 1f, quality)
+                            * _spinMultiplier;
             Vector2 spin = new Vector2(flick.Direction.x * profile.SideSpin, profile.TopSpin) * spinScale;
 
             var target = new Vector3(

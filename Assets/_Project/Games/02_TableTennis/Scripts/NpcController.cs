@@ -98,10 +98,33 @@ namespace MiniGame.TableTennis
 
         private NpcDifficultyStats Difficulty => NpcDifficultyTable.Get(_difficultyLevel);
 
+        /// <summary>選手・ラケットの能力による倍率。NPCは内部で返球を決めるため、難易度倍率と掛け合わせて使う</summary>
+        private float _characterMoveSpeed = 1f;
+        private float _characterReach = 1f;
+        private float _racketSpeed = 1f;
+        private float _racketSpin = 1f;
+
+        private float MoveSpeedScale => Difficulty.MoveSpeedMultiplier * _characterMoveSpeed;
+        private float ReachScale => Difficulty.ReachMultiplier * _characterReach;
+        private float SpeedScale => Difficulty.SpeedMultiplier * _racketSpeed;
+        private float SpinScale => Difficulty.SpinMultiplier * _racketSpin;
+
         /// <summary>難易度選択パネルから、試合開始前に一度だけ呼ばれる想定</summary>
         public void SetDifficulty(int level)
         {
             _difficultyLevel = Mathf.Clamp(level, NpcDifficultyTable.MinLevel, NpcDifficultyTable.MaxLevel);
+        }
+
+        /// <summary>
+        /// 選手・ラケット選択で決めたNPCの能力を反映する（試合開始前に呼ぶ）。
+        /// スイング時間・タイミング誤差はNPCに対応する処理がないため受け取らない（ミスは返球成功率で表現済み）
+        /// </summary>
+        public void SetLoadoutMultipliers(float moveSpeed, float reach, float shotSpeed, float spin)
+        {
+            _characterMoveSpeed = moveSpeed;
+            _characterReach = reach;
+            _racketSpeed = shotSpeed;
+            _racketSpin = spin;
         }
 
         /// <summary>打球・移動の受け付け。ラリー外やポーズ中は false にする</summary>
@@ -194,8 +217,8 @@ namespace MiniGame.TableTennis
             float travelTime = (_hitZ - contact.z) / Mathf.Max(0.1f, _ball.Velocity.z);
             float predictedX = contact.x + _ball.Velocity.x * travelTime;
             float reactionDelay = _reactionDelay * difficulty.ReactionMultiplier;
-            float movableDistance = (_moveSpeed * difficulty.MoveSpeedMultiplier) * Mathf.Max(0f, travelTime - reactionDelay)
-                                     + (_reachX * difficulty.ReachMultiplier);
+            float movableDistance = (_moveSpeed * MoveSpeedScale) * Mathf.Max(0f, travelTime - reactionDelay)
+                                     + (_reachX * ReachScale);
 
             return Mathf.Abs(predictedX - _x) <= movableDistance;
         }
@@ -232,7 +255,7 @@ namespace MiniGame.TableTennis
 
         private void MoveTowards(float targetX, float targetY)
         {
-            float step = _moveSpeed * Difficulty.MoveSpeedMultiplier * Time.deltaTime;
+            float step = _moveSpeed * MoveSpeedScale * Time.deltaTime;
             _x = Mathf.MoveTowards(_x, Mathf.Clamp(targetX, -_rangeX, _rangeX), step);
             _y = Mathf.MoveTowards(_y, Mathf.Clamp(targetY, _minHeight, _maxHeight), step);
         }
@@ -255,7 +278,7 @@ namespace MiniGame.TableTennis
 
             // 追いつけていなければ空振り。2バウンドや打ち抜けとして RallyReferee が失点にする。
             // このときは _incoming を残したままにし、次のサーブ（ResetForRally）まで再評価しない
-            if (Mathf.Abs(ball.x - _x) > _reachX * Difficulty.ReachMultiplier) return;
+            if (Mathf.Abs(ball.x - _x) > _reachX * ReachScale) return;
 
             // 打ち返せたので、ラリーが続く限り次にNPC側でバウンドするボールを新規に評価できるようにする。
             // ここを戻し忘れると、1本目を返した後は _incoming が立ちっぱなしになり、
@@ -267,9 +290,9 @@ namespace MiniGame.TableTennis
             bool smash = ball.y >= _smashHeight;
 
             Vector2 spin = smash
-                ? new Vector2(UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin), _smashTopSpin) * Difficulty.SpinMultiplier
+                ? new Vector2(UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin), _smashTopSpin) * SpinScale
                 : PickSpin();
-            float flightTime = smash ? _smashFlightTime / Difficulty.SpeedMultiplier : PickFlightTime();
+            float flightTime = smash ? _smashFlightTime / SpeedScale : PickFlightTime();
 
             _ball.Launch(ball, SolveShot(ball, spin, flightTime), spin);
             OnReturned?.Invoke();
@@ -314,14 +337,14 @@ namespace MiniGame.TableTennis
 
         private float PickFlightTime()
         {
-            return UnityEngine.Random.Range(_minFlightTime, _maxFlightTime) / Difficulty.SpeedMultiplier;
+            return UnityEngine.Random.Range(_minFlightTime, _maxFlightTime) / SpeedScale;
         }
 
         private Vector2 PickSpin()
         {
             return new Vector2(
                 UnityEngine.Random.Range(-_maxSideSpin, _maxSideSpin),
-                UnityEngine.Random.Range(_minTopSpin, _maxTopSpin)) * Difficulty.SpinMultiplier;
+                UnityEngine.Random.Range(_minTopSpin, _maxTopSpin)) * SpinScale;
         }
     }
 }

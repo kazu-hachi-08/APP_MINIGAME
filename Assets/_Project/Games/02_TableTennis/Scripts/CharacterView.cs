@@ -50,6 +50,15 @@ namespace MiniGame.TableTennis
             ApplyScale();
         }
 
+        /// <summary>選んだ選手の見た目に差し替える。素材ごとに大きさが違っても同じ身長で表示する</summary>
+        public void SetSprite(Sprite sprite)
+        {
+            if (_renderer == null || sprite == null) return;
+
+            _renderer.sprite = sprite;
+            ApplyScale();
+        }
+
         /// <summary>追従するラケットを差し替える（オンライン対戦の開始時に呼ぶ）</summary>
         public void SetActor(ICourtActor actor)
         {
