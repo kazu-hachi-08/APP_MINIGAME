@@ -4,7 +4,7 @@ using UnityEditor;
 namespace CardGame.Unity.Editor
 {
     /// <summary>
-    /// Assets/Resources/ 配下の画像素材を自動設定する(エディタ GUI で 1 枚ずつ設定しなくて済むように)。
+    /// 50_CardGame/Resources/ 配下の画像素材を自動設定する(エディタ GUI で 1 枚ずつ設定しなくて済むように)。
     /// 解像度は「画面に出る最大の大きさ」に合わせて絞る(2026-09-23 の容量削減):
     /// - CardArt/   カードイラスト 512×1024 → 256×512。拡大表示でも絵の窓は横 220px 程度
     /// - Leaders/   リーダーの肖像 512×512 → 256×256(表示は 104px)
@@ -16,17 +16,17 @@ namespace CardGame.Unity.Editor
     public sealed class CardArtImporter : AssetPostprocessor
     {
         // 設定を変えたらこの番号を上げる(該当画像が再インポートされる)
-        public override uint GetVersion() => 12;
+        public override uint GetVersion() => 13;
 
         private void OnPreprocessTexture()
         {
             var path = assetPath.Replace('\\', '/');
-            bool cardArt = path.Contains("/Resources/CardArt/");
-            bool leader = path.Contains("/Resources/Leaders/");
-            bool field = path.Contains("/Resources/Field/");
-            bool parts = path.Contains("/Resources/HsParts/");
+            bool cardArt = path.Contains("/50_CardGame/Resources/CardArt/");
+            bool leader = path.Contains("/50_CardGame/Resources/Leaders/");
+            bool field = path.Contains("/50_CardGame/Resources/Field/");
+            bool parts = path.Contains("/50_CardGame/Resources/HsParts/");
             bool body = parts && path.Contains("/body_");
-            bool icon = path.Contains("/Resources/Emblems/") || path.Contains("/Resources/Keywords/");
+            bool icon = path.Contains("/50_CardGame/Resources/Emblems/") || path.Contains("/50_CardGame/Resources/Keywords/");
             if (!cardArt && !leader && !field && !parts && !icon) return;
 
             bool transparent = icon || (parts && !body);

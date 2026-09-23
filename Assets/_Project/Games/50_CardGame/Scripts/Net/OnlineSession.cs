@@ -101,6 +101,7 @@ namespace CardGame.Unity.Net
         private void EnsureNetworkManager()
         {
             if (_nm != null) return;
+            DestroyForeignNetworkManager();
             var go = new GameObject("NetworkManager");
             DontDestroyOnLoad(go);
             _nm = go.AddComponent<NetworkManager>();
@@ -115,6 +116,29 @@ namespace CardGame.Unity.Net
             _nm.OnClientConnectedCallback += OnClientConnected;
             _nm.OnClientDisconnectCallback += OnClientDisconnected;
             _nm.OnTransportFailure += () => { Debug.LogWarning("[Online] transport failure"); HandleDisconnect(); };
+        }
+
+        /// <summary>
+        /// 他のミニゲームが作った NetworkManager は設定が違う(シーン管理あり等)ので使い回さずに消す。
+        /// Destroy だとフレーム末まで残り、直後の AddComponent で二重になるため DestroyImmediate を使う。
+        /// </summary>
+        private static void DestroyForeignNetworkManager()
+        {
+            var other = NetworkManager.Singleton;
+            if (other == null) return;
+            if (other.IsListening) other.Shutdown();
+            DestroyImmediate(other.gameObject);
+        }
+
+        /// <summary>
+        /// カードゲームから出るときに呼ぶ。自分の NetworkManager を残すと、共通側のオンライン処理が
+        /// NetworkManager.Singleton として拾ってしまうため、自分ごと破棄する。
+        /// </summary>
+        public void Teardown()
+        {
+            Leave();
+            if (_nm != null) Destroy(_nm.gameObject);
+            Destroy(gameObject);   // OnDestroy で Instance が null に戻る
         }
 
         private static string ConnectionType => Application.platform == RuntimePlatform.WebGLPlayer ? "wss" : "dtls";

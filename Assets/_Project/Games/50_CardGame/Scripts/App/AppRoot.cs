@@ -5,7 +5,9 @@ using CardGame.Core.Definitions;
 using CardGame.Unity.Battle;
 using CardGame.Unity.UI;
 using UnityEngine;
+using MiniGame.Common.Scene;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace CardGame.Unity.App
@@ -31,12 +33,13 @@ namespace CardGame.Unity.App
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
             LoadData();
+            StopCommonBgm();
             Audio.PreloadAll();   // WebGL は音の展開が非同期なので、最初に鳴らす前に読み込みを始めておく
 
             _canvas = Ui.CreateCanvas("Canvas");
             BuildBackground();
             if (FindAnyObjectByType<EventSystem>() == null)
-                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
 
             ShowMainMenu();
             // 招待リンクで開かれたら、その部屋に入る流れへ直行する(05-online.md「招待リンク」)
@@ -96,6 +99,25 @@ namespace CardGame.Unity.App
             }
             var vignette = Ui.FillPanel(_canvas.transform, "Vignette", Color.white);
             vignette.sprite = Materials.Vignette(); vignette.type = Image.Type.Simple; vignette.raycastTarget = false;
+        }
+
+        /// <summary>タイトルから来た場合、共通 AudioManager のタイトルBGMが鳴ったままなので止める。</summary>
+        private static void StopCommonBgm()
+        {
+            // CardGame.Unity.UI.Audio と紛れないよう完全修飾で書く
+            if (MiniGame.Common.Audio.AudioManager.HasInstance)
+                MiniGame.Common.Audio.AudioManager.Instance.StopBgm();
+        }
+
+        /// <summary>
+        /// ミニゲーム集のタイトルへ戻る。カードゲームの音と通信は DontDestroyOnLoad で残るので、
+        /// ここで止めないとタイトルに持ち越される。
+        /// </summary>
+        public void ReturnToTitle()
+        {
+            Audio.StopBgm();
+            Net.OnlineSession.Instance?.Teardown();
+            SceneLoader.Instance.LoadTitleScene();
         }
 
         // ---- 画面遷移 ----

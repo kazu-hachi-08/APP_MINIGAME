@@ -5,18 +5,18 @@ using UnityEngine;
 namespace CardGame.Unity.Editor
 {
     /// <summary>
-    /// Assets/Resources/Audio/ の WAV を自動設定する。
+    /// 50_CardGame/Resources/Audio/ の WAV を自動設定する。
     /// - se/  : 短いので読み込み時に展開(遅延なく鳴る)
     /// - bgm/ : ストリーミング(WebGL は展開)。どちらも Vorbis で圧縮してビルドサイズを抑える
     /// </summary>
     public sealed class AudioImporterSettings : AssetPostprocessor
     {
-        public override uint GetVersion() => 4;
+        public override uint GetVersion() => 5;
 
         private void OnPreprocessAudio()
         {
             var path = assetPath.Replace('\\', '/');
-            if (!path.Contains("/Resources/Audio/")) return;
+            if (!path.Contains("/50_CardGame/Resources/Audio/")) return;
             bool bgm = path.Contains("/Audio/bgm/");
 
             var importer = (AudioImporter)assetImporter;

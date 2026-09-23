@@ -34,6 +34,10 @@ namespace CardGame.Unity.App
             FantasyUi.ParchmentButton(transform, "CardList", x, y, w, h, "カード一覧", () => app.ShowCardList(), 28); y -= h + gap;
             FantasyUi.ParchmentButton(transform, "Settings", x, y, w, h, "設定", () => app.ShowSettings(), 28);
             Ui.Label(transform, "Version", 30, 30, 600, 40, $"cards={app.Db.Count}  decks={app.Decks.Count}", 18, TextAnchor.MiddleLeft, new Color(0.7f, 0.62f, 0.48f));
+
+            // ミニゲーム集のタイトルへ戻る(左上。モードボタンの列とは別扱い)
+            const float backX = 30, backY = 980, backW = 320, backH = 70;
+            FantasyUi.ParchmentButton(transform, "BackToTitle", backX, backY, backW, backH, "◀ タイトルへ戻る", () => app.ReturnToTitle(), 26);
         }
     }
 }
