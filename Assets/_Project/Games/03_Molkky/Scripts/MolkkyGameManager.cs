@@ -85,8 +85,8 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
-            // 前の人の投げ方を引き継ぐと気づかず横で投げてしまうので、毎手番 縦に戻す
-            _input.SetStyle(ThrowStyle.Vertical);
+            // 前の人の投げ方を引き継ぐと気づかず違う向きで投げてしまうので、毎手番 横（初期値）に戻す
+            _input.SetStyle(ThrowStyle.Horizontal);
 
             bool isNpc = CurrentPlayer.IsNpc;
             yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),

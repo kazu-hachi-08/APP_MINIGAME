@@ -46,7 +46,7 @@ namespace MiniGame.Molkky
         /// <summary>投擲ライン上の現在位置（地面座標のX）</summary>
         public float PositionX { get; private set; }
 
-        public ThrowStyle Style { get; private set; } = ThrowStyle.Vertical;
+        public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
 
         public event Action<float> PositionChanged;
         public event Action<ThrowStyle> StyleChanged;

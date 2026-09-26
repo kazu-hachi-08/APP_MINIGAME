@@ -22,7 +22,7 @@ namespace MiniGame.Molkky
         private float _peakHeight;
 
         public bool IsThrown { get; private set; }
-        public ThrowStyle Style { get; private set; } = ThrowStyle.Vertical;
+        public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
         public Vector2 GroundPosition => _body.position;
         public float RotationDegrees => _body.rotation;
         public float Speed => IsThrown ? _body.linearVelocity.magnitude : 0f;
