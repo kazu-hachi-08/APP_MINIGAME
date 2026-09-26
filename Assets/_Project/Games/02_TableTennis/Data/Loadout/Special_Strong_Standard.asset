@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd484706a89b00145bb22a06a640b166, type: 3}
+  m_Name: Special_Strong_Standard
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.SpecialData
+  DisplayName: "\u30B9\u30BF\u30FC\u30E9\u30EA\u30FC"
+  BallColor: {r: 1, g: 0.55, b: 0.9, a: 1}
+  SpeedMultiplier: 1
+  SideSpinMultiplier: 1
+  MinSideSpin: 0
+  StunDuration: 0
+  StunMoveMultiplier: 1
+  OpponentReturnRateMultiplier: 1
+  Invisible: 0
+  BounceHeightMultiplier: 1
+  LastsForRally: 1
+  ReachMultiplier: 2
+  PerfectTiming: 1
