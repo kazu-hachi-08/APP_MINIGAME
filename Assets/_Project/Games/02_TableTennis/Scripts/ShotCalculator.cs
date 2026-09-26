@@ -75,6 +75,9 @@ namespace MiniGame.TableTennis
         public Vector3 ServeTarget;
 
         public float ServeForwardSpeed;
+
+        /// <summary>この打球に乗った必殺技。乗っていなければ null</summary>
+        public SpecialData Special;
     }
 
     /// <summary>
@@ -168,13 +171,16 @@ namespace MiniGame.TableTennis
         [Tooltip("実際の卓球と同じく、サーブは自分のコートに1回バウンドさせる。ネットからこの距離だけ自陣側の地点を1バウンド目の狙い点にする")]
         [SerializeField] private float _serveOwnBounceDepth = 0.6f;
 
-        [Tooltip("弱い/雑なフリックでもサーブがネットを越えられるよう保証する、前進速度の下限 (m/s)")]
-        [SerializeField] private float _serveMinForwardSpeed = 3.5f;
-
         /// <summary>ラケットの能力による倍率（打球速度・回転量・タイミング誤差）</summary>
         private float _speedMultiplier = 1f;
         private float _spinMultiplier = 1f;
         private float _errorMultiplier = 1f;
+
+        /// <summary>
+        /// 次の打球1回に乗せる必殺技。打球の計算で消費される。
+        /// 初速の逆算より前に速度と回転を変える必要があるため、打ったあとではなくここで反映する
+        /// </summary>
+        public SpecialData PendingSpecial { get; set; }
 
         /// <summary>選んだラケットの能力を反映する（試合開始前に呼ぶ）</summary>
         public void SetRacketMultipliers(float speed, float spin, float error)
@@ -211,6 +217,14 @@ namespace MiniGame.TableTennis
                             * _spinMultiplier;
             Vector2 spin = new Vector2(flick.Direction.x * profile.SideSpin, profile.TopSpin) * spinScale;
 
+            SpecialData special = PendingSpecial;
+            PendingSpecial = null;
+            if (special != null)
+            {
+                forward *= special.SpeedMultiplier;
+                spin = special.ApplySpin(spin);
+            }
+
             var target = new Vector3(
                 flick.Direction.x * _courseSpread + UnityEngine.Random.Range(-_worstCourseError, _worstCourseError) * error,
                 0f,
@@ -221,9 +235,7 @@ namespace MiniGame.TableTennis
 
             if (isServe)
             {
-                // 弱い/雑なフリックのままだと2バウンド目でネットを越えきらないため、下限を設ける
-                forward = Mathf.Max(forward, _serveMinForwardSpeed);
-
+                // ネットを越える弧は BallMotion が1バウンド目の直後に保証するため、速度はそのまま使う。
                 // サーブは相手コートへ直接ではなく、まず自陣への1バウンドを狙う。
                 // 実際の向け直しは BallMotion.LaunchServe が1バウンド目の直後に行う
                 var ownBounce = new Vector3(target.x, 0f, -_serveOwnBounceDepth);
@@ -238,7 +250,8 @@ namespace MiniGame.TableTennis
                     IsServe = true,
                     ServeBouncePoint = ownBounce,
                     ServeTarget = target,
-                    ServeForwardSpeed = forward
+                    ServeForwardSpeed = forward,
+                    Special = special
                 };
             }
 
@@ -253,7 +266,8 @@ namespace MiniGame.TableTennis
                 Strength = strength,
                 Timing = judgement.Timing,
                 Quality = quality,
-                Type = type
+                Type = type,
+                Special = special
             };
         }
 

@@ -138,6 +138,23 @@ namespace MiniGame.TableTennis
         /// <summary>実際に返球できた。ラリー判定とSE用</summary>
         public event Action OnReturned;
 
+        /// <summary>必殺技を乗せて返球した（OnReturned の直後に通知する）</summary>
+        public event Action<SpecialData> OnSpecialShot;
+
+        /// <summary>次の返球1回に乗せる必殺技。返球で消費される</summary>
+        public SpecialData PendingSpecial { get; set; }
+
+        /// <summary>相手の必殺技による足止めの残り時間と、その間の移動速度の倍率</summary>
+        private float _stunTimer;
+        private float _stunMoveMultiplier = 1f;
+
+        /// <summary>相手の必殺技の球を返せる確率の倍率。次に自陣でバウンドした球の判断で使い切る</summary>
+        private float _returnRateMultiplier = 1f;
+
+        /// <summary>次の返球に乗せる必殺技による強化（届く範囲・必ず返す）</summary>
+        private float SpecialReach => PendingSpecial != null ? PendingSpecial.ReachMultiplier : 1f;
+        private bool SpecialPerfect => PendingSpecial != null && PendingSpecial.PerfectTiming;
+
         private float _x;
         private float _y;
 
@@ -171,6 +188,16 @@ namespace MiniGame.TableTennis
             _willReturn = false;
             _swung = false;
             _reactionTimer = 0f;
+            _stunTimer = 0f;
+            _returnRateMultiplier = 1f;
+        }
+
+        /// <summary>相手の必殺技の球を受ける。足止めと、返しにくさを反映する</summary>
+        public void ReceiveSpecial(SpecialData special)
+        {
+            _stunTimer = special.StunDuration;
+            _stunMoveMultiplier = special.StunMoveMultiplier;
+            _returnRateMultiplier = special.OpponentReturnRateMultiplier;
         }
 
         /// <summary>NPCのサーブ。返球と同じ狙い方でプレイヤーコートへ送り出す</summary>
@@ -207,7 +234,9 @@ namespace MiniGame.TableTennis
             _incoming = true;
             _swung = false;
             _reactionTimer = _reactionDelay * Difficulty.ReactionMultiplier;
-            _willReturn = CanReach(contact) && UnityEngine.Random.value < Difficulty.SuccessRate;
+            float successRate = SpecialPerfect ? 1f : Difficulty.SuccessRate * _returnRateMultiplier;
+            _returnRateMultiplier = 1f;
+            _willReturn = CanReach(contact) && UnityEngine.Random.value < successRate;
         }
 
         /// <summary>バウンド地点から打点までに、横移動が間に合うかどうか。追従速度・反応・届く範囲は難易度で補正する</summary>
@@ -217,8 +246,11 @@ namespace MiniGame.TableTennis
             float travelTime = (_hitZ - contact.z) / Mathf.Max(0.1f, _ball.Velocity.z);
             float predictedX = contact.x + _ball.Velocity.x * travelTime;
             float reactionDelay = _reactionDelay * difficulty.ReactionMultiplier;
-            float movableDistance = (_moveSpeed * MoveSpeedScale) * Mathf.Max(0f, travelTime - reactionDelay)
-                                     + (_reachX * ReachScale);
+
+            // 足止め中に失う移動時間。返せるかどうかを先に確定する方式なので、ここで見込んでおかないと足止めが効かない
+            float stunLoss = _stunTimer * (1f - _stunMoveMultiplier);
+            float movableDistance = (_moveSpeed * MoveSpeedScale) * Mathf.Max(0f, travelTime - reactionDelay - stunLoss)
+                                     + (_reachX * ReachScale * SpecialReach);
 
             return Mathf.Abs(predictedX - _x) <= movableDistance;
         }
@@ -234,6 +266,11 @@ namespace MiniGame.TableTennis
             if (_reactionTimer > 0f)
             {
                 _reactionTimer -= Time.deltaTime;
+            }
+
+            if (_stunTimer > 0f)
+            {
+                _stunTimer -= Time.deltaTime;
             }
 
             bool chasing = _incoming && _reactionTimer <= 0f && _ball.IsFlying;
@@ -255,7 +292,8 @@ namespace MiniGame.TableTennis
 
         private void MoveTowards(float targetX, float targetY)
         {
-            float step = _moveSpeed * MoveSpeedScale * Time.deltaTime;
+            float stunScale = _stunTimer > 0f ? _stunMoveMultiplier : 1f;
+            float step = _moveSpeed * MoveSpeedScale * stunScale * Time.deltaTime;
             _x = Mathf.MoveTowards(_x, Mathf.Clamp(targetX, -_rangeX, _rangeX), step);
             _y = Mathf.MoveTowards(_y, Mathf.Clamp(targetY, _minHeight, _maxHeight), step);
         }
@@ -278,7 +316,7 @@ namespace MiniGame.TableTennis
 
             // 追いつけていなければ空振り。2バウンドや打ち抜けとして RallyReferee が失点にする。
             // このときは _incoming を残したままにし、次のサーブ（ResetForRally）まで再評価しない
-            if (Mathf.Abs(ball.x - _x) > _reachX * ReachScale) return;
+            if (Mathf.Abs(ball.x - _x) > _reachX * ReachScale * SpecialReach) return;
 
             // 打ち返せたので、ラリーが続く限り次にNPC側でバウンドするボールを新規に評価できるようにする。
             // ここを戻し忘れると、1本目を返した後は _incoming が立ちっぱなしになり、
@@ -294,8 +332,22 @@ namespace MiniGame.TableTennis
                 : PickSpin();
             float flightTime = smash ? _smashFlightTime / SpeedScale : PickFlightTime();
 
+            // 速度倍率は飛行時間を縮めて表す。ネットに掛かる場合は SolveShot が山なりに取り直す
+            SpecialData special = PendingSpecial;
+            PendingSpecial = null;
+            if (special != null)
+            {
+                flightTime /= Mathf.Max(0.1f, special.SpeedMultiplier);
+                spin = special.ApplySpin(spin);
+            }
+
             _ball.Launch(ball, SolveShot(ball, spin, flightTime), spin);
             OnReturned?.Invoke();
+
+            if (special != null)
+            {
+                OnSpecialShot?.Invoke(special);
+            }
         }
 
         /// <summary>狙い点へ落とす初速を求める。ネットに掛かる軌道なら山なりにして取り直す</summary>

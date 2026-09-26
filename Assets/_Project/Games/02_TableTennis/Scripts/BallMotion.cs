@@ -64,6 +64,14 @@ namespace MiniGame.TableTennis
         [Range(0f, 1f)]
         [SerializeField] private float _bounceSpinRetention = 0.7f;
 
+        [Tooltip("エッジに当たったときの跳ね上がりの倍率。低く滑らせて、エッジを返しにくい球にする")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _edgeBounceHeight = 0.4f;
+
+        [Header("Serve")]
+        [Tooltip("サーブの2バウンド目以降がネット上端からどれだけ余裕を持って越えるか (m)")]
+        [SerializeField] private float _serveNetClearance = 0.08f;
+
         [Header("Out Of Play")]
         [Tooltip("この距離だけ台の端を越えたらラリー終了とみなす")]
         [SerializeField] private float _outMargin = 1.2f;
@@ -78,8 +86,17 @@ namespace MiniGame.TableTennis
 
         public bool IsFlying { get; private set; }
 
+        /// <summary>
+        /// 次に「打った相手側のコート」でバウンドしたときの跳ね上がりの倍率（必殺技用）。
+        /// サーブの自陣バウンドには効かせないよう、相手側で一度使ったら1へ戻す
+        /// </summary>
+        public float NextBounceHeightMultiplier { get; set; } = 1f;
+
         /// <summary>台にバウンドした（引数は着地点）</summary>
         public event Action<Vector3> OnBounced;
+
+        /// <summary>台の縁（エッジ）に当たった（引数は着地点）。OnBounced の直後に通知する</summary>
+        public event Action<Vector3> OnEdgeBounced;
 
         public event Action<RallyEndReason> OnRallyEnded;
 
@@ -131,6 +148,7 @@ namespace MiniGame.TableTennis
             Spin = Vector2.zero;
             IsFlying = false;
             _awaitingServeBounce = false;
+            NextBounceHeightMultiplier = 1f;
         }
 
         /// <summary>
@@ -187,7 +205,8 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>
-        /// 台の高さ（y=0）を割り込んだらバウンド、台の外なら台外エラーとして扱う
+        /// 台の高さ（y=0）を割り込んだらバウンド、台の外なら台外エラーとして扱う。
+        /// 側面（サイド）に当たる球は y=0 を割り込んだ時点で台の外にいるため、ここで自然に台外になる
         /// </summary>
         private bool CheckBounce(Vector3 previous)
         {
@@ -196,7 +215,8 @@ namespace MiniGame.TableTennis
             float t = Mathf.InverseLerp(previous.y, CourtPosition.y, 0f);
             Vector3 contact = Vector3.Lerp(previous, CourtPosition, t);
 
-            if (!_table.IsOnTable(contact.x, contact.z))
+            bool isEdge = _table.IsOnEdge(contact.x, contact.z);
+            if (!isEdge && !_table.IsOnTable(contact.x, contact.z))
             {
                 CourtPosition = contact;
                 // 自分の後ろに落ちたのは打ち損ない、それ以外は台外エラーとして区別する
@@ -219,18 +239,51 @@ namespace MiniGame.TableTennis
             // 台とこすれた分だけ回転は落ちる
             Spin *= _bounceSpinRetention;
 
+            if (isEdge)
+            {
+                Velocity = new Vector3(Velocity.x, Velocity.y * _edgeBounceHeight, Velocity.z);
+            }
+
+            // 進行方向と同じ側（＝打った相手のコート）でのバウンドだけに効かせる
+            bool isReceiverSide = CourtPosition.z * Velocity.z > 0f;
+            if (isReceiverSide && !_awaitingServeBounce)
+            {
+                Velocity = new Vector3(Velocity.x, Velocity.y * NextBounceHeightMultiplier, Velocity.z);
+                NextBounceHeightMultiplier = 1f;
+            }
+
             OnBounced?.Invoke(CourtPosition);
+            if (isEdge) OnEdgeBounced?.Invoke(CourtPosition);
 
             // サーブの1バウンド目。ここから本来の狙い点（相手コート）へ向け直す
             if (_awaitingServeBounce)
             {
                 _awaitingServeBounce = false;
-                float secondLegTime = Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed;
+                float secondLegTime = Mathf.Max(
+                    Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed,
+                    MinServeTimeToClearNet(CourtPosition, _serveTarget, _serveSpin));
                 Velocity = SolveLaunchVelocity(CourtPosition, _serveTarget, secondLegTime, _serveSpin);
                 Spin = _serveSpin;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 台から台へ飛ぶ放物線は飛行時間だけで弧の高さが決まるため、狙い点だけ逆算すると
+        /// 速いサーブはネットより低い弧になってしまう。ネットを越えるのに必要な最短の飛行時間を返す。
+        /// 高さ h = 0.5 * |a| * T^2 * f * (1 - f)（f はネットまでの距離の割合）を T について解いている。
+        /// </summary>
+        private float MinServeTimeToClearNet(Vector3 from, Vector3 target, Vector2 spin)
+        {
+            // ネットをまたがない狙い（通常は起きない）は制限しない
+            if (from.z * target.z >= 0f) return 0f;
+
+            float netFraction = Mathf.Abs(from.z) / Mathf.Abs(target.z - from.z);
+            float fall = -AccelerationFor(spin).y;
+            float clearHeight = _table.NetHeight + _serveNetClearance;
+
+            return Mathf.Sqrt(2f * clearHeight / (fall * netFraction * (1f - netFraction)));
         }
 
         private void CheckOutOfPlay()

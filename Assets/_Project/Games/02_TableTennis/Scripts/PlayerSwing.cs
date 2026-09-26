@@ -156,13 +156,23 @@ namespace MiniGame.TableTennis
 
         private SwingJudgement Judge(Vector3 ballPosition)
         {
-            float rangeScale = (IsServing ? _serveRangeScale : 1f) * _reachMultiplier;
+            // 次の打球に乗せた必殺技の強化は、当たる前（判定の時点）から効かせる
+            SpecialData special = _shotCalculator.PendingSpecial;
+            float specialReach = special != null ? special.ReachMultiplier : 1f;
+            float rangeScale = (IsServing ? _serveRangeScale : 1f) * _reachMultiplier * specialReach;
             return _timingJudge.Judge(ballPosition, _racket.CourtPosition, rangeScale);
         }
 
         private void Strike(SwingJudgement judgement)
         {
             _swinging = false;
+
+            SpecialData special = _shotCalculator.PendingSpecial;
+            if (special != null && special.PerfectTiming)
+            {
+                judgement.Timing = ShotTiming.Good;
+                judgement.Quality = 1f;
+            }
 
             ShotResult shot = _shotCalculator.Calculate(_swingFlick, judgement, _ball.CourtPosition, IsServing);
 

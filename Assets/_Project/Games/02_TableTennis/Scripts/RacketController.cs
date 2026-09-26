@@ -45,6 +45,10 @@ namespace MiniGame.TableTennis
         /// <summary>選手の能力による追従速度の倍率</summary>
         private float _followSpeedMultiplier = 1f;
 
+        /// <summary>相手の必殺技による足止めの残り時間と、その間の追従速度の倍率</summary>
+        private float _stunTimer;
+        private float _stunMoveMultiplier = 1f;
+
         private void Awake()
         {
             _current = new Vector2(0f, 0.25f);
@@ -61,6 +65,13 @@ namespace MiniGame.TableTennis
         public void SetFollowSpeedMultiplier(float multiplier)
         {
             _followSpeedMultiplier = multiplier;
+        }
+
+        /// <summary>相手の必殺技で、指定秒数だけ指への追従を鈍らせる</summary>
+        public void Stun(float duration, float moveMultiplier)
+        {
+            _stunTimer = duration;
+            _stunMoveMultiplier = moveMultiplier;
         }
 
         /// <summary>選んだラケットの見た目に差し替える</summary>
@@ -115,7 +126,14 @@ namespace MiniGame.TableTennis
         private void Update()
         {
             // フレームレートに依存しない指数補間で目標位置へ寄せる
-            float t = 1f - Mathf.Exp(-_followSpeed * _followSpeedMultiplier * Time.deltaTime);
+            float stunScale = 1f;
+            if (_stunTimer > 0f)
+            {
+                _stunTimer -= Time.deltaTime;
+                stunScale = _stunMoveMultiplier;
+            }
+
+            float t = 1f - Mathf.Exp(-_followSpeed * _followSpeedMultiplier * stunScale * Time.deltaTime);
             _current = Vector2.Lerp(_current, _target, t);
             ApplyView();
         }

@@ -19,3 +19,5 @@ MonoBehaviour:
   MoveSpeedMultiplier: 0.8
   ReachMultiplier: 1.2
   SwingDurationMultiplier: 0.9
+  WeakSpecial: {fileID: 11400000, guid: 4d6584624de089242af0932c72ec50c4, type: 2}
+  StrongSpecial: {fileID: 11400000, guid: c9982621db8d32a44bc76ba47ef49e2b, type: 2}

@@ -10,12 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a16612bbf4a47f64bb5459227eb7fae4, type: 3}
-  m_Name: Character_KAZUKI
+  m_Name: Character_MARIO
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.CharacterData
-  DisplayName: KAZUKI
+  DisplayName: MARIO
   Style: 0
   BackSprite: {fileID: 21300000, guid: 248a4a8b2b705a34f8a60480bdead4ab, type: 3}
   FrontSprite: {fileID: 21300000, guid: b42839249988c7c459b8b532323e55af, type: 3}
   MoveSpeedMultiplier: 1
   ReachMultiplier: 1
   SwingDurationMultiplier: 1
+  WeakSpecial: {fileID: 11400000, guid: 57ccff86f0cf31a4f8fcf06bbfa7a068, type: 2}
+  StrongSpecial: {fileID: 11400000, guid: 8173ae5d76787f949a8c0db5c2d18473, type: 2}

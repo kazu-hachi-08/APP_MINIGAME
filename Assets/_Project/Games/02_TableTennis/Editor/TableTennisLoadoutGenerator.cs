@@ -24,7 +24,12 @@ namespace MiniGame.TableTennis.Editor
         public static LoadoutCatalog EnsureGenerated()
         {
             var existing = AssetDatabase.LoadAssetAtPath<LoadoutCatalog>(CatalogPath);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                // 必殺技より前に作られた選手データにも、後から技を割り当てる
+                EnsureSpecials(existing);
+                return existing;
+            }
 
             if (!Directory.Exists(DataDirectory))
             {
@@ -37,20 +42,123 @@ namespace MiniGame.TableTennis.Editor
             var catalog = ScriptableObject.CreateInstance<LoadoutCatalog>();
             catalog.Characters = new[]
             {
-                CreateCharacter("KAZUKI", PlayStyle.Standard, TableTennisArtGenerator.KazukiName, 1f, 1f, 1f),
+                CreateCharacter("MARIO", PlayStyle.Standard, TableTennisArtGenerator.MarioName, 1f, 1f, 1f),
                 CreateCharacter("KOKINIWA", PlayStyle.Technique, TableTennisArtGenerator.KokiniwaName, 1.2f, 0.9f, 1.2f),
                 CreateCharacter("YOKOZUNA", PlayStyle.Power, TableTennisArtGenerator.YokozunaName, 0.8f, 1.2f, 0.9f)
             };
             catalog.Rackets = new[]
             {
                 CreateRacket(PlayStyle.Standard, TableTennisArtGenerator.StandardRacketName, 1f, 1f, 1f),
-                CreateRacket(PlayStyle.Power, TableTennisArtGenerator.PowerRacketName, 1.15f, 0.8f, 1.2f),
-                CreateRacket(PlayStyle.Technique, TableTennisArtGenerator.TechniqueRacketName, 0.9f, 1.3f, 0.8f)
+                CreateRacket(PlayStyle.Technique, TableTennisArtGenerator.TechniqueRacketName, 0.9f, 1.3f, 0.8f),
+                CreateRacket(PlayStyle.Power, TableTennisArtGenerator.PowerRacketName, 1.15f, 0.8f, 1.2f)
             };
 
             AssetDatabase.CreateAsset(catalog, CatalogPath);
+            EnsureSpecials(catalog);
             AssetDatabase.SaveAssets();
             return catalog;
+        }
+
+        /// <summary>
+        /// 技が未設定の選手に、タイプに応じた弱必殺技を割り当てる。
+        /// 設定済みの選手は触らない（Inspector で差し替えた技を消さないため）
+        /// </summary>
+        private static void EnsureSpecials(LoadoutCatalog catalog)
+        {
+            foreach (CharacterData character in catalog.Characters)
+            {
+                if (character == null) continue;
+
+                if (character.WeakSpecial == null)
+                {
+                    character.WeakSpecial = EnsureWeakSpecial(character.Style);
+                    EditorUtility.SetDirty(character);
+                }
+
+                if (character.StrongSpecial == null)
+                {
+                    character.StrongSpecial = EnsureStrongSpecial(character.Style);
+                    EditorUtility.SetDirty(character);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+
+        private static SpecialData EnsureStrongSpecial(PlayStyle style)
+        {
+            string path = $"{DataDirectory}/Special_Strong_{style}.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<SpecialData>(path);
+            if (existing != null) return existing;
+
+            var data = ScriptableObject.CreateInstance<SpecialData>();
+            switch (style)
+            {
+                // スタンダード: ラリーが終わるまで絶対にミスしない
+                case PlayStyle.Standard:
+                    data.DisplayName = "スターラリー";
+                    data.BallColor = new Color(1f, 0.55f, 0.9f);
+                    data.LastsForRally = true;
+                    data.PerfectTiming = true;
+                    data.ReachMultiplier = 2f;
+                    break;
+
+                // テクニック: 相手コートでバウンドするまで消える。NPCは見えない球の判断に表れないので返球率で表す
+                case PlayStyle.Technique:
+                    data.DisplayName = "消える魔球";
+                    data.BallColor = new Color(0.55f, 1f, 0.6f);
+                    data.Invisible = true;
+                    data.OpponentReturnRateMultiplier = 0.5f;
+                    break;
+
+                // パワー: 台を揺らして低く滑るバウンドにする（エッジより低い）
+                default:
+                    data.DisplayName = "四股ドスコイ";
+                    data.BallColor = new Color(1f, 0.6f, 0.2f);
+                    data.BounceHeightMultiplier = 0.25f;
+                    data.OpponentReturnRateMultiplier = 0.6f;
+                    break;
+            }
+
+            AssetDatabase.CreateAsset(data, path);
+            return data;
+        }
+
+        private static SpecialData EnsureWeakSpecial(PlayStyle style)
+        {
+            string path = $"{DataDirectory}/Special_Weak_{style}.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<SpecialData>(path);
+            if (existing != null) return existing;
+
+            var data = ScriptableObject.CreateInstance<SpecialData>();
+            switch (style)
+            {
+                // スタンダード: 素直に速い球
+                case PlayStyle.Standard:
+                    data.DisplayName = "ファイアショット";
+                    data.BallColor = new Color(1f, 0.35f, 0.15f);
+                    data.SpeedMultiplier = 1.25f;
+                    break;
+
+                // テクニック: バウンド後に大きく横へ逃げる球
+                case PlayStyle.Technique:
+                    data.DisplayName = "魔球カーブ";
+                    data.BallColor = new Color(0.35f, 0.8f, 1f);
+                    data.SideSpinMultiplier = 2.5f;
+                    data.MinSideSpin = 1.5f;
+                    break;
+
+                // パワー: 相手をのけぞらせて出足を止める
+                default:
+                    data.DisplayName = "つっぱり";
+                    data.BallColor = new Color(0.75f, 0.45f, 1f);
+                    data.StunDuration = 1f;
+                    data.StunMoveMultiplier = 0.2f;
+                    break;
+            }
+
+            AssetDatabase.CreateAsset(data, path);
+            return data;
         }
 
         private static CharacterData CreateCharacter(string displayName, PlayStyle style, string spriteName,

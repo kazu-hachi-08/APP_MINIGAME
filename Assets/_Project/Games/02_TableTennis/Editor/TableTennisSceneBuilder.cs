@@ -31,6 +31,7 @@ namespace MiniGame.TableTennis.Editor
         private const int NpcCharacterSortingOrder = 3;
         private const int NpcRacketSortingOrder = 5;
         private const int ShadowSortingOrder = 10;
+        private const int MascotSortingOrder = 11;
         private const int BounceSortingOrder = 12;
         private const int PlayerCharacterSortingOrder = 15;
         private const int BallSortingOrder = 20;
@@ -263,6 +264,10 @@ namespace MiniGame.TableTennis.Editor
                 new Vector2(-80f, -70f), new Vector2(90f, 90f));
             var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
 
+            // 必殺技の発動ボタン（弱・強）。画面下は指とラケットで隠れるため、右端の中ほどに縦に並べる
+            GameObject weakButtonObj = CreateSpecialButton(canvasObj.transform, "Btn_WeakSpecial", -85f);
+            GameObject strongButtonObj = CreateSpecialButton(canvasObj.transform, "Btn_StrongSpecial", 85f);
+
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
@@ -272,6 +277,10 @@ namespace MiniGame.TableTennis.Editor
             // 選手・ラケット選択（§25）。データは未生成なら初期値で作る
             LoadoutCatalog loadoutCatalog = TableTennisLoadoutGenerator.EnsureGenerated();
             var loadoutPanel = CreateLoadoutSelectPanel(canvasObj.transform, loadoutCatalog);
+
+            // 9-1. 弱必殺技（台上キャラに当てて獲得 → SPボタンで発動）
+            SpecialController specialController = CreateSpecial(loadoutCatalog, tableLayout, ballMotion, ballObj,
+                playerSwing, shotCalculator, racket, npc, weakButtonObj, strongButtonObj);
 
             // 9-2. オンライン対戦（接続・メッセージ送受信・相手ラケットの表示）
             // NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
@@ -335,6 +344,7 @@ namespace MiniGame.TableTennis.Editor
             gmSo.FindProperty("_loadoutPanel").objectReferenceValue = loadoutPanel;
             gmSo.FindProperty("_loadoutApplier").objectReferenceValue = loadoutApplier;
             gmSo.FindProperty("_loadoutCatalog").objectReferenceValue = loadoutCatalog;
+            gmSo.FindProperty("_special").objectReferenceValue = specialController;
             gmSo.FindProperty("_modeSelectPanel").objectReferenceValue = modeSelectPanel;
             gmSo.FindProperty("_onlineSession").objectReferenceValue = onlineSession;
             gmSo.FindProperty("_onlineLink").objectReferenceValue = onlineLink;
@@ -479,6 +489,65 @@ namespace MiniGame.TableTennis.Editor
 
             panelObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>台上に現れるキャラと、必殺技の獲得・発動をまとめる SpecialController を作る</summary>
+        private static SpecialController CreateSpecial(LoadoutCatalog catalog, TableLayout table, BallMotion ball,
+            GameObject ballObj, PlayerSwing playerSwing, ShotCalculator shotCalculator, RacketController racket,
+            NpcController npc, GameObject weakButtonObj, GameObject strongButtonObj)
+        {
+            var mascotObj = CreateSpriteObject("TableMascot", null, Color.white, MascotSortingOrder);
+            var mascot = mascotObj.AddComponent<TableMascot>();
+
+            var mascotSo = new SerializedObject(mascot);
+            mascotSo.FindProperty("_table").objectReferenceValue = table;
+            mascotSo.FindProperty("_ball").objectReferenceValue = ball;
+            mascotSo.FindProperty("_renderer").objectReferenceValue = mascotObj.GetComponent<SpriteRenderer>();
+            var spritesProp = mascotSo.FindProperty("_sprites");
+            spritesProp.arraySize = catalog.Characters.Length;
+            for (int i = 0; i < catalog.Characters.Length; i++)
+            {
+                spritesProp.GetArrayElementAtIndex(i).objectReferenceValue = catalog.Characters[i].FrontSprite;
+            }
+            mascotSo.ApplyModifiedProperties();
+
+            var specialObj = new GameObject("Special");
+            var special = specialObj.AddComponent<SpecialController>();
+
+            var so = new SerializedObject(special);
+            so.FindProperty("_ball").objectReferenceValue = ball;
+            so.FindProperty("_ballRenderer").objectReferenceValue = ballObj.GetComponent<SpriteRenderer>();
+            so.FindProperty("_playerSwing").objectReferenceValue = playerSwing;
+            so.FindProperty("_shotCalculator").objectReferenceValue = shotCalculator;
+            so.FindProperty("_playerRacket").objectReferenceValue = racket;
+            so.FindProperty("_npc").objectReferenceValue = npc;
+            so.FindProperty("_mascot").objectReferenceValue = mascot;
+            BindSpecialButton(so.FindProperty("_weakButton"), weakButtonObj);
+            BindSpecialButton(so.FindProperty("_strongButton"), strongButtonObj);
+            so.ApplyModifiedProperties();
+
+            return special;
+        }
+
+        /// <summary>必殺技のストックがあるときだけ出すボタン。色と文言は実行時に SpecialController が付ける</summary>
+        private static GameObject CreateSpecialButton(Transform canvas, string name, float offsetY)
+        {
+            const float width = 220f;
+            const float height = 150f;
+
+            var buttonObj = UIDialogBuilder.CreateButton(canvas, name, "SP", width, height,
+                new Color(0.95f, 0.45f, 0.1f));
+            SetAnchoredRect(buttonObj.GetComponent<RectTransform>(), new Vector2(1f, 0.5f),
+                new Vector2(-40f, offsetY), new Vector2(width, height));
+            buttonObj.GetComponentInChildren<Text>().fontSize = 30;
+            buttonObj.SetActive(false);
+            return buttonObj;
+        }
+
+        private static void BindSpecialButton(SerializedProperty property, GameObject buttonObj)
+        {
+            property.FindPropertyRelative("Button").objectReferenceValue = buttonObj.GetComponent<Button>();
+            property.FindPropertyRelative("Label").objectReferenceValue = buttonObj.GetComponentInChildren<Text>(true);
         }
 
         private static void AddVerticalLayout(GameObject obj, RectOffset padding)
