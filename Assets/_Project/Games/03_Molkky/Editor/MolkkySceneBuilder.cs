@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky.Editor
 {
     /// <summary>
-    /// MolkkyScene（Phase 0〜3）を自動生成するエディタユーティリティ。
+    /// MolkkyScene（Phase 0〜6）を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// </summary>
     public static class MolkkySceneBuilder
@@ -24,6 +24,9 @@ namespace MiniGame.Molkky.Editor
         private const string ScenePath = SceneDirectory + "/MolkkyScene.unity";
         private const string DataDirectory = RootDirectory + "/Data";
         private const string SettingsPath = DataDirectory + "/MolkkyPhysicsSettings.asset";
+        private const string NpcWeakPath = DataDirectory + "/MolkkyNpc_Weak.asset";
+        private const string NpcNormalPath = DataDirectory + "/MolkkyNpc_Normal.asset";
+        private const string NpcStrongPath = DataDirectory + "/MolkkyNpc_Strong.asset";
 
         private const string SpritesDefaultMaterialPath = "Sprites-Default.mat";
 
@@ -47,6 +50,13 @@ namespace MiniGame.Molkky.Editor
             }
 
             MolkkyPhysicsSettings settings = EnsureSettings();
+            // §9.4：よわい＝大きくブレて常に密集地／ふつう＝中くらい＋ちょうどのピン／つよい＝小さく＋25点戻り回避
+            MolkkyNpcDifficulty[] npcDifficulties =
+            {
+                EnsureNpcDifficulty(NpcWeakPath, 9f, 0.3f, false, false),
+                EnsureNpcDifficulty(NpcNormalPath, 4f, 0.15f, true, false),
+                EnsureNpcDifficulty(NpcStrongPath, 1.5f, 0.06f, true, true),
+            };
 
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -114,7 +124,7 @@ namespace MiniGame.Molkky.Editor
 
             // 7. 入力
             var input = new GameObject("ThrowInput").AddComponent<ThrowInput>();
-            SetRefs(input, ("_settings", settings));
+            SetRefs(input, ("_settings", settings), ("_projector", projector), ("_camera", camera));
 
             // 8. UI
             var canvasObj = new GameObject("Canvas");
@@ -127,12 +137,18 @@ namespace MiniGame.Molkky.Editor
             scaler.matchWidthOrHeight = 0.5f;
             canvasObj.AddComponent<GraphicRaycaster>();
 
-            // 画面最上部はインカメラのノッチと重なるため、その下まで下げて表示する
-            Text scoreText = CreateText(canvasObj.transform, "ScoreText", 48,
-                new Vector2(0.5f, 1f), new Vector2(0f, -170f), new Vector2(1000f, 80f), Color.white);
-            Text remainingText = CreateText(canvasObj.transform, "RemainingText", 40,
-                new Vector2(0.5f, 1f), new Vector2(0f, -250f), new Vector2(1000f, 70f), Color.white);
-            Text messageText = CreateText(canvasObj.transform, "MessageText", 96,
+            // スコアやボタンはノッチ・ホームバーを避けるため SafeArea 内に置く（全画面の表示物は Canvas 直下）
+            var safeAreaObj = UIDialogBuilder.CreateUIObject("SafeArea", canvasObj.transform);
+            UIDialogBuilder.SetStretchAll(safeAreaObj.GetComponent<RectTransform>());
+            safeAreaObj.AddComponent<SafeAreaFitter>();
+            Transform safeArea = safeAreaObj.transform;
+
+            // スコアは PAUSE ボタンの下に置き、4人分の横並びでも重ならないようにする
+            Text scoreText = CreateText(safeArea, "ScoreText", 44,
+                new Vector2(0.5f, 1f), new Vector2(0f, -160f), new Vector2(1040f, 80f), Color.white);
+            Text remainingText = CreateText(safeArea, "RemainingText", 40,
+                new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(1000f, 70f), Color.white);
+            Text messageText = CreateText(safeArea, "MessageText", 96,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, 200f), new Vector2(1000f, 220f), new Color(1f, 0.85f, 0.1f));
             messageText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
             messageText.gameObject.SetActive(false);
@@ -140,11 +156,14 @@ namespace MiniGame.Molkky.Editor
             var hud = canvasObj.AddComponent<MolkkyHud>();
             SetRefs(hud, ("_scoreText", scoreText), ("_remainingText", remainingText), ("_messageText", messageText));
 
-            var pauseButtonObj = UIDialogBuilder.CreateButton(canvasObj.transform, "Btn_Pause", "II", 110, 110,
+            TurnBannerView turnBanner = CreateTurnBanner(canvasObj.transform);
+            PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvasObj.transform);
+
+            var pauseButtonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_Pause", "II", 110, 110,
                 new Color(0.15f, 0.17f, 0.22f, 0.8f));
             var pauseRect = pauseButtonObj.GetComponent<RectTransform>();
             pauseRect.anchorMin = pauseRect.anchorMax = pauseRect.pivot = new Vector2(1f, 1f);
-            pauseRect.anchoredPosition = new Vector2(-40f, -40f);
+            pauseRect.anchoredPosition = new Vector2(-30f, -30f);
             var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
 
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
@@ -156,11 +175,15 @@ namespace MiniGame.Molkky.Editor
             var settleWatcher = gameManagerObj.AddComponent<ThrowSettleWatcher>();
             SetRefs(settleWatcher, ("_settings", settings), ("_pinRack", pinRack), ("_stick", stick));
 
+            var npcThrower = gameManagerObj.AddComponent<NpcThrower>();
+            SetRefs(npcThrower, ("_settings", settings), ("_pinRack", pinRack));
+            SetArray(npcThrower, "_difficulties", npcDifficulties);
+
             var gmSo = new SerializedObject(gameManager);
             gmSo.FindProperty("_gameTitle").stringValue = "2D Molkky";
             gmSo.ApplyModifiedPropertiesWithoutUndo();
-            SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input),
-                ("_settleWatcher", settleWatcher), ("_hud", hud));
+            SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input), ("_npc", npcThrower),
+                ("_settleWatcher", settleWatcher), ("_hud", hud), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -188,6 +211,156 @@ namespace MiniGame.Molkky.Editor
             AssetDatabase.CreateAsset(settings, SettingsPath);
             AssetDatabase.SaveAssets();
             return settings;
+        }
+
+        /// <summary>NPC難易度が無ければ作る。既にあれば調整済みの値を残す</summary>
+        private static MolkkyNpcDifficulty EnsureNpcDifficulty(string path, float angleNoise, float speedNoise,
+            bool aimExactPin, bool avoidOverflow)
+        {
+            var difficulty = AssetDatabase.LoadAssetAtPath<MolkkyNpcDifficulty>(path);
+            if (difficulty != null) return difficulty;
+
+            if (!Directory.Exists(DataDirectory))
+            {
+                Directory.CreateDirectory(DataDirectory);
+            }
+
+            difficulty = ScriptableObject.CreateInstance<MolkkyNpcDifficulty>();
+            var so = new SerializedObject(difficulty);
+            so.FindProperty("_angleNoise").floatValue = angleNoise;
+            so.FindProperty("_speedNoise").floatValue = speedNoise;
+            so.FindProperty("_aimExactPin").boolValue = aimExactPin;
+            so.FindProperty("_avoidOverflow").boolValue = avoidOverflow;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            AssetDatabase.CreateAsset(difficulty, path);
+            AssetDatabase.SaveAssets();
+            return difficulty;
+        }
+
+        /// <summary>「○○の番」の全画面表示。画面全体をボタンにして、どこをタップしても開始できるようにする</summary>
+        private static TurnBannerView CreateTurnBanner(Transform canvas)
+        {
+            var bannerObj = UIDialogBuilder.CreateUIObject("TurnBanner", canvas);
+            UIDialogBuilder.SetStretchAll(bannerObj.GetComponent<RectTransform>());
+            bannerObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            var tapArea = bannerObj.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            Text title = CreateText(bannerObj.transform, "TitleText", 120,
+                new Vector2(0.5f, 0.5f), new Vector2(0f, 80f), new Vector2(1000f, 200f), Color.white);
+            title.gameObject.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            Text hint = CreateText(bannerObj.transform, "HintText", 52,
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1000f, 90f), Color.white);
+            hint.text = "タップで開始";
+
+            var banner = bannerObj.AddComponent<TurnBannerView>();
+            SetRefs(banner, ("_titleText", title), ("_hintText", hint), ("_tapArea", tapArea));
+
+            bannerObj.SetActive(false);
+            return banner;
+        }
+
+        /// <summary>人数と各プレイヤーの人間/NPCを選ぶパネル（§10.1）。非表示の行は VerticalLayoutGroup で詰める</summary>
+        private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
+        {
+            const float rowWidth = 820f;
+            const float rowHeight = 110f;
+            const int buttonFontSize = 44;
+
+            var panelObj = UIDialogBuilder.CreateUIObject("PlayerSetupPanel", canvas);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+            panelObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.8f);
+
+            var boxObj = UIDialogBuilder.CreateUIObject("Panel", panelObj.transform);
+            var boxRect = boxObj.GetComponent<RectTransform>();
+            boxRect.anchorMin = boxRect.anchorMax = boxRect.pivot = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(920f, 1200f);
+            boxObj.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.18f);
+            var layout = boxObj.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(40, 40, 40, 40);
+            layout.spacing = 28f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            Text title = CreateText(boxObj.transform, "TitleText", 60,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(rowWidth, 100f), Color.white);
+            title.text = "プレイヤー設定";
+
+            Transform countRow = CreateRow(boxObj.transform, "CountRow", rowWidth, rowHeight);
+            var countButtons = new Button[PlayerSetupPanel.MaxPlayers - PlayerSetupPanel.MinPlayers + 1];
+            for (int i = 0; i < countButtons.Length; i++)
+            {
+                int count = PlayerSetupPanel.MinPlayers + i;
+                countButtons[i] = CreateSetupButton(countRow, $"Btn_{count}Players", $"{count}人", 240f, rowHeight, buttonFontSize);
+            }
+
+            var playerRows = new GameObject[PlayerSetupPanel.MaxPlayers];
+            var kindButtons = new Button[PlayerSetupPanel.MaxPlayers];
+            var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            for (int i = 0; i < PlayerSetupPanel.MaxPlayers; i++)
+            {
+                Transform row = CreateRow(boxObj.transform, $"Row_P{i + 1}", rowWidth, rowHeight);
+                playerRows[i] = row.gameObject;
+
+                Text label = CreateText(row, "Label", 56, new Vector2(0.5f, 0.5f), Vector2.zero,
+                    new Vector2(160f, rowHeight), MolkkyPlayerColors.Get(i));
+                label.text = $"P{i + 1}";
+
+                kindButtons[i] = CreateSetupButton(row, "Btn_Kind", "", 600f, rowHeight, buttonFontSize);
+                kindTexts[i] = kindButtons[i].GetComponentInChildren<Text>();
+            }
+
+            var startButtonObj = UIDialogBuilder.CreateButton(boxObj.transform, "Btn_Start", "試合開始", 560f, 140f,
+                new Color(0.2f, 0.7f, 0.35f));
+            startButtonObj.GetComponentInChildren<Text>().fontSize = 56;
+
+            var panel = panelObj.AddComponent<PlayerSetupPanel>();
+            SetArray(panel, "_countButtons", countButtons);
+            SetArray(panel, "_playerRows", playerRows);
+            SetArray(panel, "_kindButtons", kindButtons);
+            SetArray(panel, "_kindTexts", kindTexts);
+            SetRefs(panel, ("_startButton", startButtonObj.GetComponent<Button>()));
+
+            panelObj.SetActive(false);
+            return panel;
+        }
+
+        private static Transform CreateRow(Transform parent, string name, float width, float height)
+        {
+            var rowObj = UIDialogBuilder.CreateUIObject(name, parent);
+            rowObj.GetComponent<RectTransform>().sizeDelta = new Vector2(width, height);
+            var layout = rowObj.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 20f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+            return rowObj.transform;
+        }
+
+        private static Button CreateSetupButton(Transform parent, string name, string label, float width, float height, int fontSize)
+        {
+            var buttonObj = UIDialogBuilder.CreateButton(parent, name, label, width, height, new Color(0.3f, 0.33f, 0.4f));
+            buttonObj.GetComponentInChildren<Text>().fontSize = fontSize;
+            return buttonObj.GetComponent<Button>();
+        }
+
+        private static void SetArray(Object target, string name, Object[] values)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty property = so.FindProperty(name);
+            property.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void SetRefs(Object target, params (string name, Object value)[] refs)

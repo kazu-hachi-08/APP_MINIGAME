@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 仮のスコア表示（Phase 2）。スコア一覧・残り点数・中央のメッセージを文字だけで出す。
+    /// 仮のスコア表示（Phase 2〜）。スコア一覧・残り点数・中央のメッセージを文字だけで出す。
     /// Phase 7 で ScoreBoardView / TurnBannerView / ScorePopupView に分ける。
     /// </summary>
     public class MolkkyHud : MonoBehaviour
@@ -27,7 +27,7 @@ namespace MiniGame.Molkky
             for (int i = 0; i < players.Count; i++)
             {
                 if (i > 0) builder.Append("   ");
-                builder.Append(FormatPlayer(players[i], i == currentIndex));
+                builder.Append(FormatPlayer(players[i], i, i == currentIndex));
             }
 
             _scoreText.text = builder.ToString();
@@ -37,14 +37,16 @@ namespace MiniGame.Molkky
             _remainingText.text = $"{current.Name}  あと {current.Remaining} 点{warning}";
         }
 
-        private string FormatPlayer(PlayerSlot player, bool isCurrent)
+        private string FormatPlayer(PlayerSlot player, int index, bool isCurrent)
         {
             if (player.IsDisqualified)
             {
                 return $"<color=#{ColorUtility.ToHtmlStringRGB(_disqualifiedColor)}>{player.Name} 失格</color>";
             }
 
-            string text = $"{player.Name} {player.Score} {new string('×', player.MissCount)}";
+            // 名前だけプレイヤー色にして、1台を回すときに誰のスコアか一目で分かるようにする
+            string name = $"<color=#{ColorUtility.ToHtmlStringRGB(MolkkyPlayerColors.Get(index))}>{player.Name}</color>";
+            string text = $"{name} {player.Score} {new string('×', player.MissCount)}";
             if (!isCurrent) return text;
 
             return $"<color=#{ColorUtility.ToHtmlStringRGB(_currentColor)}>▶{text}</color>";

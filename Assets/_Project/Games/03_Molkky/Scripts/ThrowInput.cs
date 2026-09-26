@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -6,28 +7,52 @@ using UnityEngine.InputSystem;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 仮の投擲入力（Phase 1〜3）。押した位置から離した位置までのドラッグで方向と強さを決める。
-    /// Phase 4 で左右移動とフリック速度による投擲に置き換える。
+    /// 投擲入力（§7）。横ドラッグで投擲ライン上の位置を動かし、上フリックで投げる。
+    /// 卓球の FlickInput を参考にしているが、モルックは「離した瞬間の勢い」で投げたいので、判定は指を離したときに行う。
+    /// 位置は指の絶対位置ではなく移動量で動かす。棒の真上を触らなくてよいので、指で棒が隠れない（§14 Phase 6）。
     /// </summary>
     public class ThrowInput : MonoBehaviour
     {
         [SerializeField] private MolkkyPhysicsSettings _settings;
+        [SerializeField] private DepthProjector _projector;
+        [SerializeField] private Camera _camera;
 
-        [Tooltip("この長さ（画面の高さに対する割合）以上ドラッグすると最大の強さになる")]
-        [SerializeField] private float _dragLengthForMaxPower = 0.35f;
+        [Header("Move")]
+        [Tooltip("指の横移動に対する棒の移動量の倍率。1で指と棒が画面上で同じだけ動く")]
+        [SerializeField] private float _moveSensitivity = 1f;
 
-        [Tooltip("これより短いドラッグは誤タップとして無視する（画面の高さに対する割合）")]
-        [SerializeField] private float _minDragLength = 0.03f;
+        [Header("Flick")]
+        [Tooltip("離す直前のこの時間（秒）の動きでフリックの方向と速度を測る")]
+        [SerializeField] private float _sampleWindow = 0.1f;
 
-        [Tooltip("最大角度のこの倍率を超える横向きのドラッグは投擲としない（§7.3）")]
+        [Tooltip("フリックとみなす最低速度（画面高さ/秒）。これより遅い離し方は投げない")]
+        [SerializeField] private float _minFlickSpeed = 0.8f;
+
+        [Tooltip("フリックとみなす最低移動距離（画面高さ比）。指のわずかなブレで投げないようにする")]
+        [SerializeField] private float _minFlickDistance = 0.04f;
+
+        [Tooltip("最大の強さになるフリック速度（画面高さ/秒）")]
+        [SerializeField] private float _maxFlickSpeed = 4f;
+
+        [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない（§7.3）")]
         [SerializeField] private float _cancelAngleRatio = 2f;
 
+        private readonly List<Sample> _samples = new List<Sample>(16);
         private bool _tracking;
-        private Vector2 _startPosition;
+        private Vector2 _lastPosition;
 
         public bool IsAccepting { get; set; }
 
+        /// <summary>投擲ライン上の現在位置（地面座標のX）</summary>
+        public float PositionX { get; private set; }
+
+        public event Action<float> PositionChanged;
         public event Action<ThrowRequest> ThrowRequested;
+
+        public void ResetPosition(float x)
+        {
+            SetPosition(x);
+        }
 
         private void Update()
         {
@@ -42,34 +67,87 @@ namespace MiniGame.Molkky
 
             Vector2 position = pointer.position.ReadValue();
 
+            // 手番開始のタップのように、受付前から押していた指は追わない
             if (pointer.press.wasPressedThisFrame)
             {
                 _tracking = !IsPointerOverUI(pointer);
-                _startPosition = position;
+                _lastPosition = position;
+                _samples.Clear();
             }
-            else if (_tracking && pointer.press.wasReleasedThisFrame)
+
+            if (!_tracking) return;
+
+            AddSample(position);
+
+            if (pointer.press.isPressed)
+            {
+                Move(position - _lastPosition);
+                _lastPosition = position;
+            }
+
+            if (pointer.press.wasReleasedThisFrame)
             {
                 _tracking = false;
-                TryThrow(position - _startPosition);
+                TryThrow();
             }
         }
 
-        private void TryThrow(Vector2 dragPixels)
+        /// <summary>
+        /// 横向きの動きだけで位置を動かす。上フリックの途中で狙いがずれないよう、縦向きが勝るフレームは無視する
+        /// </summary>
+        private void Move(Vector2 deltaPixels)
         {
-            Vector2 drag = dragPixels / Mathf.Max(1, Screen.height);
-            if (drag.y <= 0f || drag.magnitude < _minDragLength) return;
+            if (Mathf.Abs(deltaPixels.x) <= Mathf.Abs(deltaPixels.y)) return;
 
-            float angle = Mathf.Atan2(drag.x, drag.y) * Mathf.Rad2Deg;
+            float worldPerPixel = 2f * _camera.orthographicSize / Mathf.Max(1, Screen.height);
+            float groundPerWorld = 1f / _projector.ScaleAt(0f);
+            SetPosition(PositionX + deltaPixels.x * worldPerPixel * groundPerWorld * _moveSensitivity);
+        }
+
+        private void SetPosition(float x)
+        {
+            PositionX = Mathf.Clamp(x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
+            PositionChanged?.Invoke(PositionX);
+        }
+
+        private void TryThrow()
+        {
+            if (_samples.Count < 2) return;
+
+            Sample oldest = _samples[0];
+            Sample newest = _samples[_samples.Count - 1];
+            float elapsed = newest.Time - oldest.Time;
+            if (elapsed <= Mathf.Epsilon) return;
+
+            // 解像度に依存しないよう画面の高さで割る
+            Vector2 delta = (newest.Position - oldest.Position) / Mathf.Max(1, Screen.height);
+            float flickSpeed = delta.magnitude / elapsed;
+            if (delta.y <= 0f || delta.magnitude < _minFlickDistance || flickSpeed < _minFlickSpeed) return;
+
+            float angle = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
             if (Mathf.Abs(angle) > _settings.MaxThrowAngle * _cancelAngleRatio) return;
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
-            float power = Mathf.Clamp01(drag.magnitude / _dragLengthForMaxPower);
+            float power = Mathf.InverseLerp(_minFlickSpeed, _maxFlickSpeed, flickSpeed);
             float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed, power);
 
-            ThrowRequested?.Invoke(new ThrowRequest(0f, angle, speed));
+            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed));
         }
 
-        /// <summary>触られている間はタッチを優先し、PCではマウスを使う</summary>
+        private void AddSample(Vector2 position)
+        {
+            float now = Time.unscaledTime;
+            _samples.Add(new Sample(position, now));
+
+            // 指を止めてから離した場合は古いサンプルが消えて速度が0近くになり、投擲がキャンセルされる
+            float limit = now - _sampleWindow;
+            while (_samples.Count > 2 && _samples[0].Time < limit)
+            {
+                _samples.RemoveAt(0);
+            }
+        }
+
+        /// <summary>触られている間はタッチを優先し、PCではマウスを使う。タッチは主タッチ（最初の指）だけを見る</summary>
         private static Pointer ResolvePointer()
         {
             Touchscreen touchscreen = Touchscreen.current;
@@ -90,6 +168,18 @@ namespace MiniGame.Molkky
             }
 
             return EventSystem.current.IsPointerOverGameObject();
+        }
+
+        private readonly struct Sample
+        {
+            public readonly Vector2 Position;
+            public readonly float Time;
+
+            public Sample(Vector2 position, float time)
+            {
+                Position = position;
+                Time = time;
+            }
         }
     }
 }

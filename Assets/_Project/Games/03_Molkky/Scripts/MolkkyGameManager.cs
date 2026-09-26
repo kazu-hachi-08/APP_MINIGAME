@@ -6,8 +6,8 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 手番と進行（MolkkyPhase）を回す。得点ルールは MolkkyRules、物理は PinRack / StickThrower に任せ、
-    /// ここは「いつ何を呼ぶか」だけを持つ。
+    /// 手番と進行（MolkkyPhase）を回す。得点ルールは MolkkyRules、物理は PinRack / StickThrower、
+    /// NPCの狙いは NpcThrower に任せ、ここは「いつ何を呼ぶか」だけを持つ。
     /// </summary>
     public class MolkkyGameManager : BaseMiniGameManager
     {
@@ -15,14 +15,16 @@ namespace MiniGame.Molkky
         [SerializeField] private PinRack _pinRack;
         [SerializeField] private StickThrower _stick;
         [SerializeField] private ThrowInput _input;
+        [SerializeField] private NpcThrower _npc;
         [SerializeField] private ThrowSettleWatcher _settleWatcher;
         [SerializeField] private MolkkyHud _hud;
-
-        [Tooltip("プレイヤー人数。Phase 5 でプレイヤー設定画面から決めるようにする")]
-        [SerializeField] private int _playerCount = 2;
+        [SerializeField] private TurnBannerView _turnBanner;
+        [SerializeField] private PlayerSetupPanel _setupPanel;
 
         [Header("Timing (sec)")]
-        [SerializeField] private float _turnBannerDuration = 0.8f;
+        [SerializeField] private float _npcBannerDuration = 0.8f;
+        [Tooltip("NPCが投げる前の間。考えている感じを出す（§9.5）")]
+        [SerializeField] private float _npcThinkTime = 0.8f;
         [SerializeField] private float _scoreDisplayDuration = 1.2f;
         [SerializeField] private float _pinResetDuration = 0.5f;
 
@@ -36,12 +38,19 @@ namespace MiniGame.Molkky
         protected override void OnGameReady()
         {
             _input.ThrowRequested += HandleThrowRequested;
+            _input.PositionChanged += HandlePositionChanged;
             _settleWatcher.Settled += HandleSettled;
 
+            Phase = MolkkyPhase.PlayerSetup;
+            _setupPanel.Show(HandlePlayersConfirmed);
+        }
+
+        private void HandlePlayersConfirmed(IReadOnlyList<PlayerKind> kinds)
+        {
             _players.Clear();
-            for (int i = 0; i < _playerCount; i++)
+            for (int i = 0; i < kinds.Count; i++)
             {
-                _players.Add(new PlayerSlot($"P{i + 1}"));
+                _players.Add(new PlayerSlot($"P{i + 1}", kinds[i]));
             }
 
             StartGame();
@@ -56,7 +65,12 @@ namespace MiniGame.Molkky
         protected override void OnDestroy()
         {
             base.OnDestroy();
-            if (_input != null) _input.ThrowRequested -= HandleThrowRequested;
+            if (_input != null)
+            {
+                _input.ThrowRequested -= HandleThrowRequested;
+                _input.PositionChanged -= HandlePositionChanged;
+            }
+
             if (_settleWatcher != null) _settleWatcher.Settled -= HandleSettled;
         }
 
@@ -64,20 +78,47 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _hud.ShowScores(_players, _currentIndex);
-            _hud.ShowMessage($"{CurrentPlayer.Name} の番");
 
-            yield return new WaitForSeconds(_turnBannerDuration);
+            bool isNpc = CurrentPlayer.IsNpc;
+            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
+                !isNpc, _npcBannerDuration);
 
-            _hud.ClearMessage();
             Phase = MolkkyPhase.Aiming;
-            _input.IsAccepting = true;
+            if (isNpc)
+            {
+                yield return NpcThrowRoutine();
+            }
+            else
+            {
+                _input.IsAccepting = true;
+            }
+        }
+
+        private IEnumerator NpcThrowRoutine()
+        {
+            ThrowRequest request = _npc.CreateRequest(CurrentPlayer);
+            _stick.PlaceOnLine(request.PositionX);
+
+            yield return new WaitForSeconds(_npcThinkTime);
+
+            ExecuteThrow(request);
+        }
+
+        private void HandlePositionChanged(float x)
+        {
+            _stick.PlaceOnLine(x);
         }
 
         private void HandleThrowRequested(ThrowRequest request)
         {
-            if (Phase != MolkkyPhase.Aiming || !IsPlaying) return;
+            if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc) return;
 
             _input.IsAccepting = false;
+            ExecuteThrow(request);
+        }
+
+        private void ExecuteThrow(ThrowRequest request)
+        {
             Phase = MolkkyPhase.Throwing;
 
             _pinRack.ArmAll();
@@ -109,7 +150,8 @@ namespace MiniGame.Molkky
             Phase = MolkkyPhase.PinReset;
             _hud.ClearMessage();
             _pinRack.StandUpFallen();
-            _stick.PlaceOnLine(0f);
+            // 棒がピンの間に残っていると立て直したピンを押してしまうので、先に投擲ラインへ戻す
+            _input.ResetPosition(0f);
 
             yield return new WaitForSeconds(_pinResetDuration);
 
@@ -129,7 +171,8 @@ namespace MiniGame.Molkky
             _hud.ClearMessage();
 
             string detail = result.Outcome == ThrowOutcome.Win ? "50点ちょうど！" : "他のプレイヤーが失格";
-            FinishGame(true, $"{winner.Name} の勝ち", detail);
+            // NPCが勝ったときは人間側の負けとして GAME OVER を出す
+            FinishGame(!winner.IsNpc, $"{winner.Name} の勝ち", detail);
             return true;
         }
     }
