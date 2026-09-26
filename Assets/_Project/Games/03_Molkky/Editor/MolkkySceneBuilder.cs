@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky.Editor
 {
     /// <summary>
-    /// MolkkyScene（Phase 0〜6）を自動生成するエディタユーティリティ。
+    /// MolkkyScene（Phase 0〜8）を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// </summary>
     public static class MolkkySceneBuilder
@@ -30,8 +30,7 @@ namespace MiniGame.Molkky.Editor
 
         private const string SpritesDefaultMaterialPath = "Sprites-Default.mat";
 
-        // 空の色。地平線が画面内に入る縦長端末で、地面メッシュより上に見える部分
-        private static readonly Color BackgroundColor = new Color(0.62f, 0.82f, 0.95f);
+        private static readonly Color ScoreCellColor = new Color(0.2f, 0.2f, 0.25f);
 
         // タイトルと同じく縦画面基準
         private static readonly Vector2 ReferenceResolution = new Vector2(1080, 1920);
@@ -58,13 +57,16 @@ namespace MiniGame.Molkky.Editor
                 EnsureNpcDifficulty(NpcStrongPath, 1.5f, 0.06f, true, true),
             };
 
+            MolkkyArtGenerator.EnsureGenerated();
+
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             // 1. Camera
             var cameraObj = new GameObject("Main Camera");
             var camera = cameraObj.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = BackgroundColor;
+            // 背景スプライトの空の上端と同じ色にして、背景より上が見える縦長端末でも継ぎ目を出さない
+            camera.backgroundColor = MolkkyArtGenerator.SkyTop;
             camera.orthographic = true;
             camera.orthographicSize = 5f;
             cameraObj.transform.position = new Vector3(0f, 0f, -10f);
@@ -96,6 +98,10 @@ namespace MiniGame.Molkky.Editor
             var groundView = groundObj.AddComponent<GroundView>();
             SetRefs(groundView, ("_projector", projector), ("_settings", settings));
 
+            var backdropObj = new GameObject("Backdrop");
+            backdropObj.AddComponent<SpriteRenderer>().sprite = MolkkyArtGenerator.Load(MolkkyArtGenerator.BackdropName);
+            SetRefs(backdropObj.AddComponent<BackdropView>(), ("_projector", projector));
+
             // 5. ロジック用の物理（地面平面の2D物理。見た目を持たない）
             var physicsRoot = new GameObject("--- Physics (Ground Plane) ---");
 
@@ -115,12 +121,16 @@ namespace MiniGame.Molkky.Editor
             var pinRackViewObj = new GameObject("PinRackView");
             pinRackViewObj.transform.SetParent(viewRoot.transform);
             var pinRackView = pinRackViewObj.AddComponent<PinRackView>();
-            SetRefs(pinRackView, ("_pinRack", pinRack), ("_projector", projector), ("_settings", settings));
+            SetRefs(pinRackView, ("_pinRack", pinRack), ("_projector", projector), ("_settings", settings),
+                ("_standingSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.PinStandingName)),
+                ("_fallenSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.PinFallenName)));
 
             var stickViewObj = new GameObject("StickView");
             stickViewObj.transform.SetParent(viewRoot.transform);
             var stickView = stickViewObj.AddComponent<StickView>();
-            SetRefs(stickView, ("_stick", stick), ("_projector", projector), ("_settings", settings));
+            SetRefs(stickView, ("_stick", stick), ("_projector", projector), ("_settings", settings),
+                ("_stickSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.StickName)),
+                ("_shadowSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.ShadowName)));
 
             // 7. 入力
             var input = new GameObject("ThrowInput").AddComponent<ThrowInput>();
@@ -143,18 +153,8 @@ namespace MiniGame.Molkky.Editor
             safeAreaObj.AddComponent<SafeAreaFitter>();
             Transform safeArea = safeAreaObj.transform;
 
-            // スコアは PAUSE ボタンの下に置き、4人分の横並びでも重ならないようにする
-            Text scoreText = CreateText(safeArea, "ScoreText", 44,
-                new Vector2(0.5f, 1f), new Vector2(0f, -160f), new Vector2(1040f, 80f), Color.white);
-            Text remainingText = CreateText(safeArea, "RemainingText", 40,
-                new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(1000f, 70f), Color.white);
-            Text messageText = CreateText(safeArea, "MessageText", 96,
-                new Vector2(0.5f, 0.5f), new Vector2(0f, 200f), new Vector2(1000f, 220f), new Color(1f, 0.85f, 0.1f));
-            messageText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
-            messageText.gameObject.SetActive(false);
-
-            var hud = canvasObj.AddComponent<MolkkyHud>();
-            SetRefs(hud, ("_scoreText", scoreText), ("_remainingText", remainingText), ("_messageText", messageText));
+            ScoreBoardView scoreBoard = CreateScoreBoard(safeArea);
+            ScorePopupView scorePopup = CreateScorePopup(safeArea);
 
             TurnBannerView turnBanner = CreateTurnBanner(canvasObj.transform);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvasObj.transform);
@@ -172,6 +172,9 @@ namespace MiniGame.Molkky.Editor
             // 9. GameManager
             var gameManagerObj = new GameObject("MolkkyGameManager");
             var gameManager = gameManagerObj.AddComponent<MolkkyGameManager>();
+            var molkkyAudio = gameManagerObj.AddComponent<MolkkyAudio>();
+            SetRefs(molkkyAudio, ("_settings", settings), ("_pinRack", pinRack), ("_stick", stick));
+
             var settleWatcher = gameManagerObj.AddComponent<ThrowSettleWatcher>();
             SetRefs(settleWatcher, ("_settings", settings), ("_pinRack", pinRack), ("_stick", stick));
 
@@ -183,7 +186,8 @@ namespace MiniGame.Molkky.Editor
             gmSo.FindProperty("_gameTitle").stringValue = "2D Molkky";
             gmSo.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input), ("_npc", npcThrower),
-                ("_settleWatcher", settleWatcher), ("_hud", hud), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel));
+                ("_settleWatcher", settleWatcher), ("_scoreBoard", scoreBoard), ("_scorePopup", scorePopup),
+                ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -238,12 +242,88 @@ namespace MiniGame.Molkky.Editor
             return difficulty;
         }
 
+        /// <summary>
+        /// 画面上部のスコアボード（§12.1）と「あと○点」。PAUSE ボタンの下に置き、4人分を横に並べても重ならないようにする。
+        /// 各プレイヤーの枠は「名前・点数・ミス」を縦に積み、点数を一番大きく見せる。
+        /// </summary>
+        private static ScoreBoardView CreateScoreBoard(Transform safeArea)
+        {
+            const float cellWidth = 230f;
+            const float cellHeight = 190f;
+
+            var rowObj = UIDialogBuilder.CreateUIObject("ScoreBoard", safeArea);
+            var rowRect = rowObj.GetComponent<RectTransform>();
+            rowRect.anchorMin = rowRect.anchorMax = rowRect.pivot = new Vector2(0.5f, 1f);
+            rowRect.anchoredPosition = new Vector2(0f, -160f);
+            rowRect.sizeDelta = new Vector2(1040f, cellHeight);
+            var layout = rowObj.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 22f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            int count = PlayerSetupPanel.MaxPlayers;
+            var cells = new RectTransform[count];
+            var backgrounds = new Image[count];
+            var names = new Text[count];
+            var scores = new Text[count];
+            var misses = new Text[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                var cellObj = UIDialogBuilder.CreateUIObject($"Cell_P{i + 1}", rowObj.transform);
+                cells[i] = cellObj.GetComponent<RectTransform>();
+                cells[i].sizeDelta = new Vector2(cellWidth, cellHeight);
+                backgrounds[i] = cellObj.AddComponent<Image>();
+                backgrounds[i].color = ScoreCellColor;
+                backgrounds[i].raycastTarget = false; // 画面全体が投擲の入力領域なので、UIで入力を遮らない
+                cellObj.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+
+                names[i] = CreateText(cellObj.transform, "Name", 40,
+                    new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(cellWidth, 50f), Color.white);
+                scores[i] = CreateText(cellObj.transform, "Score", 80,
+                    new Vector2(0.5f, 0.5f), new Vector2(0f, -4f), new Vector2(cellWidth, 90f), Color.white);
+                scores[i].text = "0";
+                scores[i].gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
+                misses[i] = CreateText(cellObj.transform, "Miss", 36,
+                    new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(cellWidth, 44f), Color.white);
+            }
+
+            Text remainingText = CreateText(safeArea, "RemainingText", 44,
+                new Vector2(0.5f, 1f), new Vector2(0f, -380f), new Vector2(1000f, 80f), Color.white);
+            remainingText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
+
+            var view = rowObj.AddComponent<ScoreBoardView>();
+            SetArray(view, "_cells", cells);
+            SetArray(view, "_cellBackgrounds", backgrounds);
+            SetArray(view, "_nameTexts", names);
+            SetArray(view, "_scoreTexts", scores);
+            SetArray(view, "_missTexts", misses);
+            SetRefs(view, ("_remainingText", remainingText));
+            return view;
+        }
+
+        /// <summary>得点ポップアップ（§12.2）。倒れたピンを隠さないよう、ピンと投擲ラインの間の空いた芝の上に出す</summary>
+        private static ScorePopupView CreateScorePopup(Transform safeArea)
+        {
+            Text text = CreateText(safeArea, "ScorePopup", 110,
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1040f, 300f), Color.white);
+            text.gameObject.AddComponent<Outline>().effectDistance = new Vector2(5f, -5f);
+
+            var popup = text.gameObject.AddComponent<ScorePopupView>();
+            SetRefs(popup, ("_text", text));
+            text.gameObject.SetActive(false);
+            return popup;
+        }
+
         /// <summary>「○○の番」の全画面表示。画面全体をボタンにして、どこをタップしても開始できるようにする</summary>
         private static TurnBannerView CreateTurnBanner(Transform canvas)
         {
             var bannerObj = UIDialogBuilder.CreateUIObject("TurnBanner", canvas);
             UIDialogBuilder.SetStretchAll(bannerObj.GetComponent<RectTransform>());
-            bannerObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            var bannerBackground = bannerObj.AddComponent<Image>();
             var tapArea = bannerObj.AddComponent<Button>();
             tapArea.transition = Selectable.Transition.None;
 
@@ -255,7 +335,7 @@ namespace MiniGame.Molkky.Editor
             hint.text = "タップで開始";
 
             var banner = bannerObj.AddComponent<TurnBannerView>();
-            SetRefs(banner, ("_titleText", title), ("_hintText", hint), ("_tapArea", tapArea));
+            SetRefs(banner, ("_titleText", title), ("_hintText", hint), ("_tapArea", tapArea), ("_background", bannerBackground));
 
             bannerObj.SetActive(false);
             return banner;

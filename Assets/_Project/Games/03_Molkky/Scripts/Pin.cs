@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace MiniGame.Molkky
@@ -23,6 +24,9 @@ namespace MiniGame.Molkky
 
         public Vector2 GroundPosition => _body.position;
         public float Speed => _body.linearVelocity.magnitude;
+
+        /// <summary>倒れた瞬間（倒れる音を鳴らすため）</summary>
+        public event Action<Pin> Fell;
 
         public void Initialize(int number, MolkkyPhysicsSettings settings, PhysicsMaterial2D material)
         {
@@ -97,6 +101,7 @@ namespace MiniGame.Molkky
 
             // 倒れたピンは軽く・滑りやすくして、他のピンを巻き込む連鎖を起こしやすくする
             ApplyBody(_settings.PinMassFallen, _settings.PinDampingFallen);
+            Fell?.Invoke(this);
         }
 
         private void ApplyBody(float mass, float damping)

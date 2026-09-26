@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace MiniGame.Molkky
@@ -19,6 +20,9 @@ namespace MiniGame.Molkky
         public Vector2 GroundPosition => _body.position;
         public float RotationDegrees => _body.rotation;
         public float Speed => IsThrown ? _body.linearVelocity.magnitude : 0f;
+
+        /// <summary>投げた棒が何かに当たった（引数は衝突の相対速度）。当たる音の強さに使う</summary>
+        public event Action<float> Hit;
 
         /// <summary>見た目上の高さ。投げてから StickAirTime の間だけ放物線を描く</summary>
         public float Height
@@ -79,6 +83,13 @@ namespace MiniGame.Molkky
             _throwTime = Time.time;
             _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
             IsThrown = true;
+        }
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (!IsThrown) return;
+
+            Hit?.Invoke(collision.relativeVelocity.magnitude);
         }
     }
 }

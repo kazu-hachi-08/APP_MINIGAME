@@ -12,7 +12,11 @@ namespace MiniGame.Molkky
         [SerializeField] private DepthProjector _projector;
         [SerializeField] private MolkkyPhysicsSettings _settings;
 
-        [SerializeField] private Color _stickColor = new Color(0.75f, 0.55f, 0.32f);
+        [Header("Sprite（未設定なら単純な図形で代用する）")]
+        [SerializeField] private Sprite _stickSprite;
+        [SerializeField] private Sprite _shadowSprite;
+
+        [SerializeField] private Color _stickColor = Color.white;
         [SerializeField] private Color _shadowColor = new Color(0f, 0f, 0f, 0.35f);
 
         [Tooltip("この高さで影が最も薄くなる")]
@@ -26,8 +30,8 @@ namespace MiniGame.Molkky
 
         private void Awake()
         {
-            _shadowRenderer = CreateRenderer("Shadow", ShapeSprites.Circle, _shadowColor);
-            _stickRenderer = CreateRenderer("Stick", ShapeSprites.Square, _stickColor);
+            _shadowRenderer = CreateRenderer("Shadow", _shadowSprite != null ? _shadowSprite : ShapeSprites.Circle, _shadowColor);
+            _stickRenderer = CreateRenderer("Stick", _stickSprite != null ? _stickSprite : ShapeSprites.Square, _stickColor);
         }
 
         private SpriteRenderer CreateRenderer(string name, Sprite sprite, Color color)
@@ -51,16 +55,23 @@ namespace MiniGame.Molkky
             // 地面から浮いて見えるよう、棒の太さの半分だけ持ち上げる
             stick.position = _projector.Project(ground, height + _settings.StickThickness * 0.5f);
             stick.rotation = Quaternion.Euler(0f, 0f, _stick.RotationDegrees);
-            stick.localScale = new Vector3(_settings.StickLength * scale, _settings.StickThickness * scale, 1f);
+            SetSize(_stickRenderer, _settings.StickLength * scale, _settings.StickThickness * scale);
             _stickRenderer.sortingOrder = order + 2;
 
             Transform shadow = _shadowRenderer.transform;
             shadow.position = _projector.Project(ground);
-            shadow.localScale = new Vector3(_settings.StickLength * scale, _settings.StickThickness * scale, 1f);
+            SetSize(_shadowRenderer, _settings.StickLength * scale, _settings.StickThickness * scale);
             _shadowRenderer.sortingOrder = order - 1;
 
             float fade = Mathf.Lerp(1f, _minShadowAlphaRatio, height / _shadowFadeHeight);
             _shadowRenderer.color = new Color(_shadowColor.r, _shadowColor.g, _shadowColor.b, _shadowColor.a * fade);
+        }
+
+        /// <summary>スプライトの元の大きさに関係なく、指定したワールド単位の大きさで表示する</summary>
+        private static void SetSize(SpriteRenderer renderer, float width, float height)
+        {
+            Vector2 spriteSize = renderer.sprite.bounds.size;
+            renderer.transform.localScale = new Vector3(width / spriteSize.x, height / spriteSize.y, 1f);
         }
     }
 }

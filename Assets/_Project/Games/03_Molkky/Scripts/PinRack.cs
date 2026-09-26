@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +31,9 @@ namespace MiniGame.Molkky
 
         public IReadOnlyList<Pin> Pins => _pins;
 
+        /// <summary>どれか1本が倒れた。音などの演出側が12本それぞれを購読しなくて済むようまとめて流す</summary>
+        public event Action<Pin> PinFell;
+
         private void Awake()
         {
             CreatePins();
@@ -49,6 +53,7 @@ namespace MiniGame.Molkky
 
                     var pin = obj.GetComponent<Pin>();
                     pin.Initialize(number, _settings, material);
+                    pin.Fell += p => PinFell?.Invoke(p);
                     _pins.Add(pin);
                 }
             }

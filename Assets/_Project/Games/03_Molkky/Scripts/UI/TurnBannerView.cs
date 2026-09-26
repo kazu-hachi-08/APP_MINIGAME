@@ -13,6 +13,11 @@ namespace MiniGame.Molkky
         [SerializeField] private Text _titleText;
         [SerializeField] private Text _hintText;
         [SerializeField] private Button _tapArea;
+        [SerializeField] private Image _background;
+
+        [Tooltip("背景をプレイヤー色にどれだけ寄せるか。文字が読めるよう暗めに留める")]
+        [Range(0f, 1f)] [SerializeField] private float _backgroundTint = 0.35f;
+        [Range(0f, 1f)] [SerializeField] private float _backgroundAlpha = 0.8f;
 
         private bool _tapped;
 
@@ -25,6 +30,10 @@ namespace MiniGame.Molkky
         {
             _titleText.text = title;
             _titleText.color = color;
+            // 画面全体を手番の人の色に寄せ、端末を渡された人が「自分の番だ」と一目で分かるようにする
+            Color background = Color.Lerp(Color.black, color, _backgroundTint);
+            background.a = _backgroundAlpha;
+            _background.color = background;
             _hintText.gameObject.SetActive(waitForTap);
             _tapArea.interactable = waitForTap;
             _tapped = false;

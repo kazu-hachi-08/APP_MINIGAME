@@ -17,7 +17,9 @@ namespace MiniGame.Molkky
         [SerializeField] private ThrowInput _input;
         [SerializeField] private NpcThrower _npc;
         [SerializeField] private ThrowSettleWatcher _settleWatcher;
-        [SerializeField] private MolkkyHud _hud;
+        [SerializeField] private ScoreBoardView _scoreBoard;
+        [SerializeField] private ScorePopupView _scorePopup;
+        [SerializeField] private MolkkyAudio _audio;
         [SerializeField] private TurnBannerView _turnBanner;
         [SerializeField] private PlayerSetupPanel _setupPanel;
 
@@ -26,6 +28,8 @@ namespace MiniGame.Molkky
         [Tooltip("NPCが投げる前の間。考えている感じを出す（§9.5）")]
         [SerializeField] private float _npcThinkTime = 0.8f;
         [SerializeField] private float _scoreDisplayDuration = 1.2f;
+        [Tooltip("50点ちょうどの演出を見せてから結果画面を出すまでの時間。通常の得点より長く余韻を残す")]
+        [SerializeField] private float _winDisplayDuration = 2.2f;
         [SerializeField] private float _pinResetDuration = 0.5f;
 
         private readonly List<PlayerSlot> _players = new List<PlayerSlot>();
@@ -77,7 +81,7 @@ namespace MiniGame.Molkky
         private IEnumerator TurnStartRoutine()
         {
             Phase = MolkkyPhase.TurnStart;
-            _hud.ShowScores(_players, _currentIndex);
+            _scoreBoard.Show(_players, _currentIndex);
 
             bool isNpc = CurrentPlayer.IsNpc;
             yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
@@ -123,6 +127,7 @@ namespace MiniGame.Molkky
 
             _pinRack.ArmAll();
             _stick.Throw(request);
+            _audio.PlayThrow(request);
             _settleWatcher.Begin();
         }
 
@@ -140,16 +145,18 @@ namespace MiniGame.Molkky
             ThrowResult result = MolkkyRules.ApplyThrow(CurrentPlayer, fallen);
             Debug.Log($"[Molkky] {CurrentPlayer.Name}: 倒れたピン [{string.Join(", ", fallen)}] → {result.Outcome} +{result.Points} (合計 {CurrentPlayer.Score})");
 
-            _hud.ShowScores(_players, _currentIndex);
-            _hud.ShowMessage(MolkkyHud.FormatResult(result));
+            _scoreBoard.Show(_players, _currentIndex);
+            PlayResultEffect(result);
 
-            yield return new WaitForSeconds(_scoreDisplayDuration);
+            bool isWin = result.Outcome == ThrowOutcome.Win;
+            yield return new WaitForSeconds(isWin ? _winDisplayDuration : _scoreDisplayDuration);
 
             if (TryFinish(result)) yield break;
 
             Phase = MolkkyPhase.PinReset;
-            _hud.ClearMessage();
+            _scorePopup.Hide();
             _pinRack.StandUpFallen();
+            if (fallen.Count > 0) _audio.PlayPinReset();
             // 棒がピンの間に残っていると立て直したピンを押してしまうので、先に投擲ラインへ戻す
             _input.ResetPosition(0f);
 
@@ -157,6 +164,18 @@ namespace MiniGame.Molkky
 
             _currentIndex = MolkkyRules.NextPlayerIndex(_players, _currentIndex);
             yield return TurnStartRoutine();
+        }
+
+        /// <summary>得点ポップアップ・音・スコア枠の揺れで、1投の結果を伝える（§14 Phase 7）</summary>
+        private void PlayResultEffect(ThrowResult result)
+        {
+            _scorePopup.ShowResult(result);
+            _audio.PlayResult(result.Outcome);
+
+            if (result.Outcome == ThrowOutcome.OverTo25 || result.Outcome == ThrowOutcome.Disqualified)
+            {
+                _scoreBoard.Shake(_currentIndex);
+            }
         }
 
         /// <summary>50点ちょうど、または残り1人なら試合を終える</summary>
@@ -168,7 +187,7 @@ namespace MiniGame.Molkky
             if (winner == null) return false;
 
             Phase = MolkkyPhase.GameSet;
-            _hud.ClearMessage();
+            _scorePopup.Hide();
 
             string detail = result.Outcome == ThrowOutcome.Win ? "50点ちょうど！" : "他のプレイヤーが失格";
             // NPCが勝ったときは人間側の負けとして GAME OVER を出す

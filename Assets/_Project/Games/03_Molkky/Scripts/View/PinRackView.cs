@@ -16,16 +16,27 @@ namespace MiniGame.Molkky
         [Tooltip("立っているピンの見た目の高さ。前の列に隠れすぎないよう実物より低めにしている")]
         [SerializeField] private float _pinHeight = 0.55f;
 
-        [Header("Color")]
-        [SerializeField] private Color _standingColor = new Color(0.9f, 0.76f, 0.52f);
-        // 倒れたピンが一目で分かるよう、色を大きく変える
-        [SerializeField] private Color _fallenColor = new Color(0.85f, 0.45f, 0.3f);
+        [Header("Sprite（未設定なら単純な四角で代用する）")]
+        [SerializeField] private Sprite _standingSprite;
+        [SerializeField] private Sprite _fallenSprite;
+
+        [Header("Color（スプライトへの乗算色）")]
+        [SerializeField] private Color _standingColor = Color.white;
+        // 倒れたピンが一目で分かるよう、赤みを強く乗せる
+        [SerializeField] private Color _fallenColor = new Color(1f, 0.6f, 0.5f);
         [SerializeField] private Color _labelColor = new Color(0.2f, 0.12f, 0.05f);
+
+        [Header("Stand Up")]
+        [Tooltip("立て直すときに、倒れた姿勢から起き上がるアニメーションの時間")]
+        [SerializeField] private float _standUpDuration = 0.3f;
 
         [Header("Label")]
         [SerializeField] private int _labelFontSize = 64;
         [SerializeField] private float _labelCharacterSize = 0.035f;
 
+        public Sprite StandingSprite => _standingSprite != null ? _standingSprite : ShapeSprites.Square;
+        public Sprite FallenSprite => _fallenSprite != null ? _fallenSprite : ShapeSprites.Square;
+        public float StandUpDuration => _standUpDuration;
         public float PinHeight => _pinHeight;
         public float PinWidth => _settings.PinRadius * 2f;
         public Color StandingColor => _standingColor;
