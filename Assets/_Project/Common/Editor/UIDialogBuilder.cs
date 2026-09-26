@@ -105,6 +105,21 @@ namespace MiniGame.Editor
             return dialog;
         }
 
+        // スマホで指で操作しやすいサイズ。横画面(1920x1080, match 0.5)の縦に短い端末でも収まるよう、パネルの高さは約830に抑える
+        private const float PausePanelWidth = 820f;
+        private const int PausePanelPadding = 30;
+        private const float PauseItemSpacing = 20f;
+        private const float PauseTitleHeight = 90f;
+        private const int PauseTitleFontSize = 44;
+        private const float PauseButtonHeight = 100f;
+        private const int PauseButtonFontSize = 36;
+
+        private const float VolumeRowHeight = 140f;
+        private const float VolumeLabelHeight = 50f;
+        private const int VolumeLabelFontSize = 32;
+        private const float VolumeTrackHeight = 16f;
+        private const float VolumeHandleSize = 52f;
+
         public static PauseDialog CreatePauseDialog(Transform parent)
         {
             var dialogObj = CreateUIObject("PauseDialog", parent);
@@ -118,51 +133,38 @@ namespace MiniGame.Editor
             pRect.anchorMin = new Vector2(0.5f, 0.5f);
             pRect.anchorMax = new Vector2(0.5f, 0.5f);
             pRect.pivot = new Vector2(0.5f, 0.5f);
-            pRect.sizeDelta = new Vector2(560, 480);
+            pRect.sizeDelta = new Vector2(PausePanelWidth, 0);
             var panelImg = panelObj.AddComponent<Image>();
             panelImg.color = new Color(0.12f, 0.14f, 0.18f);
 
+            // 項目を上から積むだけにして、サイズ調整のたびに座標を計算し直さなくて済むようにする
+            var layout = panelObj.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(PausePanelPadding, PausePanelPadding, PausePanelPadding, PausePanelPadding);
+            layout.spacing = PauseItemSpacing;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            var fitter = panelObj.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
             // タイトル
             var titleObj = CreateUIObject("TitleText", panelObj.transform);
-            var tRect = titleObj.GetComponent<RectTransform>();
-            tRect.anchorMin = new Vector2(0, 0.85f);
-            tRect.anchorMax = new Vector2(1, 1);
-            tRect.offsetMin = Vector2.zero;
-            tRect.offsetMax = Vector2.zero;
+            titleObj.GetComponent<RectTransform>().sizeDelta = new Vector2(0, PauseTitleHeight);
             var titleText = titleObj.AddComponent<Text>();
             titleText.text = "PAUSE / 設定";
-            titleText.fontSize = 28;
+            titleText.fontSize = PauseTitleFontSize;
             titleText.fontStyle = FontStyle.Bold;
             titleText.alignment = TextAnchor.MiddleCenter;
             titleText.color = Color.white;
 
-            // ボリュームスライダーエリア
-            var audioArea = CreateUIObject("AudioSettings", panelObj.transform);
-            var aRect = audioArea.GetComponent<RectTransform>();
-            aRect.anchorMin = new Vector2(0.1f, 0.45f);
-            aRect.anchorMax = new Vector2(0.9f, 0.82f);
-            aRect.offsetMin = Vector2.zero;
-            aRect.offsetMax = Vector2.zero;
+            var bgmSlider = CreateVolumeSlider("BgmSlider", panelObj.transform, "BGM 音量");
+            var seSlider = CreateVolumeSlider("SeSlider", panelObj.transform, "SE 音量");
 
-            var bgmSlider = CreateVolumeSlider("BgmSlider", audioArea.transform, "BGM 音量", new Vector2(0, 60));
-            var seSlider = CreateVolumeSlider("SeSlider", audioArea.transform, "SE 音量", new Vector2(0, 10));
-
-            // ボタンエリア
-            var btnArea = CreateUIObject("ButtonArea", panelObj.transform);
-            var bRect = btnArea.GetComponent<RectTransform>();
-            bRect.anchorMin = new Vector2(0.1f, 0.05f);
-            bRect.anchorMax = new Vector2(0.9f, 0.42f);
-            bRect.offsetMin = Vector2.zero;
-            bRect.offsetMax = Vector2.zero;
-            var layout = btnArea.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 14;
-            layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = true;
-            layout.childControlHeight = false;
-
-            var resumeBtn = CreateButton(btnArea.transform, "Btn_Resume", "再開する", 380, 48, new Color(0.18f, 0.55f, 0.9f));
-            var restartBtn = CreateButton(btnArea.transform, "Btn_Restart", "リトライ", 380, 48, new Color(0.35f, 0.4f, 0.5f));
-            var titleBtn = CreateButton(btnArea.transform, "Btn_Title", "タイトルへ戻る", 380, 48, new Color(0.45f, 0.25f, 0.28f));
+            var resumeBtn = CreatePauseButton(panelObj.transform, "Btn_Resume", "再開する", new Color(0.18f, 0.55f, 0.9f));
+            var restartBtn = CreatePauseButton(panelObj.transform, "Btn_Restart", "リトライ", new Color(0.35f, 0.4f, 0.5f));
+            var titleBtn = CreatePauseButton(panelObj.transform, "Btn_Title", "タイトルへ戻る", new Color(0.45f, 0.25f, 0.28f));
 
             var pause = dialogObj.AddComponent<PauseDialog>();
             var so = new SerializedObject(pause);
@@ -175,6 +177,14 @@ namespace MiniGame.Editor
 
             dialogObj.SetActive(false);
             return pause;
+        }
+
+        private static GameObject CreatePauseButton(Transform parent, string name, string label, Color color)
+        {
+            // 幅はレイアウトが決めるので 0 を渡す
+            var btnObj = CreateButton(parent, name, label, 0, PauseButtonHeight, color);
+            btnObj.GetComponentInChildren<Text>().fontSize = PauseButtonFontSize;
+            return btnObj;
         }
 
         public static ResultDialog CreateResultDialog(Transform parent)
@@ -300,40 +310,47 @@ namespace MiniGame.Editor
             rect.pivot = new Vector2(0.5f, 0.5f);
         }
 
-        private static Slider CreateVolumeSlider(string name, Transform parent, string label, Vector2 anchoredPos)
+        /// <summary>
+        /// ラベル(上) + スライダー(下)の1行。
+        /// 見た目のバーは細いまま、タッチ判定をスライダーの行全体に広げて指で掴みやすくする
+        /// </summary>
+        private static Slider CreateVolumeSlider(string name, Transform parent, string label)
         {
-            var sliderObj = CreateUIObject(name, parent);
-            var sRect = sliderObj.GetComponent<RectTransform>();
-            sRect.anchorMin = new Vector2(0.5f, 0.5f);
-            sRect.anchorMax = new Vector2(0.5f, 0.5f);
-            sRect.pivot = new Vector2(0.5f, 0.5f);
-            sRect.sizeDelta = new Vector2(360, 36);
-            sRect.anchoredPosition = anchoredPos;
+            var rowObj = CreateUIObject(name, parent);
+            rowObj.GetComponent<RectTransform>().sizeDelta = new Vector2(0, VolumeRowHeight);
 
-            var labelObj = CreateUIObject("Label", sliderObj.transform);
+            var labelObj = CreateUIObject("Label", rowObj.transform);
             var lRect = labelObj.GetComponent<RectTransform>();
-            lRect.anchorMin = new Vector2(0, 0);
-            lRect.anchorMax = new Vector2(0.35f, 1);
-            lRect.offsetMin = Vector2.zero;
-            lRect.offsetMax = Vector2.zero;
+            lRect.anchorMin = new Vector2(0, 1);
+            lRect.anchorMax = new Vector2(1, 1);
+            lRect.pivot = new Vector2(0.5f, 1);
+            lRect.sizeDelta = new Vector2(0, VolumeLabelHeight);
             var text = labelObj.AddComponent<Text>();
             text.text = label;
-            text.fontSize = 18;
+            text.fontSize = VolumeLabelFontSize;
             text.alignment = TextAnchor.MiddleLeft;
             text.color = Color.white;
 
-            var barObj = CreateUIObject("SliderBar", sliderObj.transform);
-            var barRect = barObj.GetComponent<RectTransform>();
-            barRect.anchorMin = new Vector2(0.4f, 0.3f);
-            barRect.anchorMax = new Vector2(1f, 0.7f);
-            barRect.offsetMin = Vector2.zero;
-            barRect.offsetMax = Vector2.zero;
-            var barImg = barObj.AddComponent<Image>();
-            barImg.color = new Color(0.3f, 0.35f, 0.45f);
+            // 透明な Image をタッチ判定にする（Slider は自分に当たったレイキャストでしかドラッグを受け取らないため）
+            var sliderObj = CreateUIObject("SliderBar", rowObj.transform);
+            var sRect = sliderObj.GetComponent<RectTransform>();
+            sRect.anchorMin = Vector2.zero;
+            sRect.anchorMax = Vector2.one;
+            sRect.offsetMin = Vector2.zero;
+            sRect.offsetMax = new Vector2(0, -VolumeLabelHeight);
+            sliderObj.AddComponent<Image>().color = Color.clear;
 
-            var fillArea = CreateUIObject("Fill Area", barObj.transform);
-            SetStretchAll(fillArea.GetComponent<RectTransform>());
+            // つまみが両端ではみ出さないよう、バー・塗り・つまみの可動域をつまみの半径ぶん内側に寄せる
+            float inset = VolumeHandleSize / 2f;
 
+            var trackObj = CreateUIObject("Track", sliderObj.transform);
+            SetHorizontalBand(trackObj.GetComponent<RectTransform>(), inset, VolumeTrackHeight);
+            var trackImg = trackObj.AddComponent<Image>();
+            trackImg.color = new Color(0.3f, 0.35f, 0.45f);
+            trackImg.raycastTarget = false;
+
+            var fillArea = CreateUIObject("Fill Area", sliderObj.transform);
+            SetHorizontalBand(fillArea.GetComponent<RectTransform>(), inset, VolumeTrackHeight);
             var fill = CreateUIObject("Fill", fillArea.transform);
             var fRect = fill.GetComponent<RectTransform>();
             fRect.anchorMin = Vector2.zero;
@@ -341,14 +358,38 @@ namespace MiniGame.Editor
             fRect.sizeDelta = Vector2.zero;
             var fillImg = fill.AddComponent<Image>();
             fillImg.color = new Color(0.2f, 0.6f, 1f);
+            fillImg.raycastTarget = false;
 
-            var slider = barObj.AddComponent<Slider>();
+            var handleArea = CreateUIObject("Handle Slide Area", sliderObj.transform);
+            SetHorizontalBand(handleArea.GetComponent<RectTransform>(), inset, VolumeHandleSize);
+            var handle = CreateUIObject("Handle", handleArea.transform);
+            var hRect = handle.GetComponent<RectTransform>();
+            hRect.anchorMin = new Vector2(0, 0.5f);
+            hRect.anchorMax = new Vector2(0, 0.5f);
+            hRect.sizeDelta = new Vector2(VolumeHandleSize, VolumeHandleSize);
+            var handleImg = handle.AddComponent<Image>();
+            handleImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            handleImg.color = Color.white;
+
+            var slider = sliderObj.AddComponent<Slider>();
             slider.fillRect = fRect;
+            slider.handleRect = hRect;
+            slider.targetGraphic = handleImg;
             slider.minValue = 0f;
             slider.maxValue = 1f;
             slider.value = 0.8f;
 
             return slider;
+        }
+
+        /// <summary>親の縦中央に、左右を inset ずつ内側へ寄せた高さ height の帯を置く</summary>
+        private static void SetHorizontalBand(RectTransform rect, float inset, float height)
+        {
+            rect.anchorMin = new Vector2(0, 0.5f);
+            rect.anchorMax = new Vector2(1, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = new Vector2(inset, -height / 2f);
+            rect.offsetMax = new Vector2(-inset, height / 2f);
         }
     }
 }
