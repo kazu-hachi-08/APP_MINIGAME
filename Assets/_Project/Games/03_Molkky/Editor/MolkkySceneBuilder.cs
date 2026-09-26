@@ -48,6 +48,12 @@ namespace MiniGame.Molkky.Editor
                 Directory.CreateDirectory(SceneDirectory);
             }
 
+            MolkkyArtGenerator.EnsureGenerated();
+
+            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // NewScene(Single) は未使用アセットをアンロードするため、先に読み込んだ ScriptableObject は破棄されて
+            // 参照が null で保存されてしまう。必ずシーンを作った後に読み込む。
             MolkkyPhysicsSettings settings = EnsureSettings();
             // §9.4：よわい＝大きくブレて常に密集地／ふつう＝中くらい＋ちょうどのピン／つよい＝小さく＋25点戻り回避
             MolkkyNpcDifficulty[] npcDifficulties =
@@ -56,10 +62,6 @@ namespace MiniGame.Molkky.Editor
                 EnsureNpcDifficulty(NpcNormalPath, 4f, 0.15f, true, false),
                 EnsureNpcDifficulty(NpcStrongPath, 1.5f, 0.06f, true, true),
             };
-
-            MolkkyArtGenerator.EnsureGenerated();
-
-            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             // 1. Camera
             var cameraObj = new GameObject("Main Camera");
