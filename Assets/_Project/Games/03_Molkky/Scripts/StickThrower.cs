@@ -10,6 +10,10 @@ namespace MiniGame.Molkky
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
     public class StickThrower : MonoBehaviour
     {
+        // 棒の長軸（ローカルX）を奥（+Y）へ向ける回転。
+        // 本物のモルックは縦回転で投げるため、真上から見ると棒は進行方向と平行になり、当たり幅が細く1本だけを狙える
+        private const float ForwardRotation = 90f;
+
         [SerializeField] private MolkkyPhysicsSettings _settings;
 
         private Rigidbody2D _body;
@@ -65,8 +69,8 @@ namespace MiniGame.Molkky
 
             float clampedX = Mathf.Clamp(x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
             _body.position = new Vector2(clampedX, 0f);
-            _body.rotation = 0f;
-            transform.SetPositionAndRotation(_body.position, Quaternion.identity);
+            _body.rotation = ForwardRotation;
+            transform.SetPositionAndRotation(_body.position, Quaternion.Euler(0f, 0f, ForwardRotation));
 
             IsThrown = false;
         }
@@ -76,8 +80,8 @@ namespace MiniGame.Molkky
             PlaceOnLine(request.PositionX);
 
             _body.bodyType = RigidbodyType2D.Dynamic;
-            // 棒は進行方向に対して横向きで飛ぶ（§8.2）
-            _body.rotation = -request.AngleDegrees;
+            // 棒は進行方向と平行に飛ぶ（§8.2）
+            _body.rotation = ForwardRotation - request.AngleDegrees;
             _body.linearVelocity = request.Direction * request.Speed;
 
             _throwTime = Time.time;

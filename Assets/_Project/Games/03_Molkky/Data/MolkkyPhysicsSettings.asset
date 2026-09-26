@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae20e5a8f658a1f4087e127ede6c1a2c, type: 3}
   m_Name: MolkkyPhysicsSettings
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Molkky.MolkkyPhysicsSettings
-  _pinSetDistance: 5
+  _pinSetDistance: 3.5
   _pinSpacing: 0.42
   _pinRadius: 0.2
   _throwLineHalfWidth: 1.5
@@ -33,12 +33,12 @@ MonoBehaviour:
   _stickAirTime: 0.7
   _stickPeakHeight: 1.2
   _pinMassStanding: 1.5
-  _pinMassFallen: 0.6
-  _pinDampingStanding: 6
-  _pinDampingFallen: 1.8
-  _bounciness: 0.3
+  _pinMassFallen: 1.2
+  _pinDampingStanding: 3
+  _pinDampingFallen: 0.9
+  _bounciness: 0.55
   _fallImpactThreshold: 1.2
-  _fallMoveThreshold: 0.12
+  _fallMoveThreshold: 0.25
   _settleSpeedThreshold: 0.05
   _settleDuration: 0.4
   _maxThrowDuration: 5

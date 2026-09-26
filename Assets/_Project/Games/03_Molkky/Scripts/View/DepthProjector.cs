@@ -13,7 +13,7 @@ namespace MiniGame.Molkky
         [SerializeField] private float _nearScale = 1.5f;
 
         [Tooltip("視点から投擲ラインまでの距離。小さいほど奥行きが強調される")]
-        [SerializeField] private float _cameraDistance = 6f;
+        [SerializeField] private float _cameraDistance = 9f;
 
         [Tooltip("投擲ラインの画面上のY座標")]
         [SerializeField] private float _nearBaseY = -3.5f;
