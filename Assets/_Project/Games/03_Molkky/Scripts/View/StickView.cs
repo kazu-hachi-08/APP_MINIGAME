@@ -51,20 +51,34 @@ namespace MiniGame.Molkky
             float scale = _projector.ScaleAt(ground.y);
             int order = _projector.SortingOrderAt(ground.y);
 
-            Transform stick = _stickRenderer.transform;
             // 地面から浮いて見えるよう、棒の太さの半分だけ持ち上げる
-            stick.position = _projector.Project(ground, height + _settings.StickThickness * 0.5f);
-            stick.rotation = Quaternion.Euler(0f, 0f, _stick.RotationDegrees);
-            SetSize(_stickRenderer, _settings.StickLength * scale, _settings.StickThickness * scale);
+            PlaceAlongStick(_stickRenderer, ground, height + _settings.StickThickness * 0.5f, scale);
             _stickRenderer.sortingOrder = order + 2;
 
-            Transform shadow = _shadowRenderer.transform;
-            shadow.position = _projector.Project(ground);
-            SetSize(_shadowRenderer, _settings.StickLength * scale, _settings.StickThickness * scale);
+            PlaceAlongStick(_shadowRenderer, ground, 0f, scale);
             _shadowRenderer.sortingOrder = order - 1;
 
             float fade = Mathf.Lerp(1f, _minShadowAlphaRatio, height / _shadowFadeHeight);
             _shadowRenderer.color = new Color(_shadowColor.r, _shadowColor.g, _shadowColor.b, _shadowColor.a * fade);
+        }
+
+        /// <summary>
+        /// 棒の両端を別々に投影して、その間にスプライトを張る。
+        /// 棒は奥を向いて飛ぶので、地面の回転角をそのまま画面に使うと縮まずに縦長の柱のように見えてしまう
+        /// </summary>
+        private void PlaceAlongStick(SpriteRenderer renderer, Vector2 ground, float height, float scale)
+        {
+            float radians = _stick.RotationDegrees * Mathf.Deg2Rad;
+            Vector2 halfAxis = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * (_settings.StickLength * 0.5f);
+            Vector2 back = _projector.Project(ground - halfAxis, height);
+            Vector2 front = _projector.Project(ground + halfAxis, height);
+            Vector2 delta = front - back;
+
+            renderer.transform.position = (back + front) * 0.5f;
+            renderer.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            // 奥向きだと画面上で極端に短くなるため、太さぶんは長さを残して「棒」と分かるようにする
+            float thickness = _settings.StickThickness * scale;
+            SetSize(renderer, Mathf.Max(delta.magnitude, thickness), thickness);
         }
 
         /// <summary>スプライトの元の大きさに関係なく、指定したワールド単位の大きさで表示する</summary>

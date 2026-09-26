@@ -15,11 +15,14 @@ namespace MiniGame.Molkky
 
         public readonly float Speed;
 
-        public ThrowRequest(float positionX, float angleDegrees, float speed)
+        public readonly ThrowStyle Style;
+
+        public ThrowRequest(float positionX, float angleDegrees, float speed, ThrowStyle style)
         {
             PositionX = positionX;
             AngleDegrees = angleDegrees;
             Speed = speed;
+            Style = style;
         }
 
         /// <summary>地面平面上の進行方向（X＝左右／Y＝奥）</summary>

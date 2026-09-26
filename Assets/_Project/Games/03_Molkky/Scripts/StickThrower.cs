@@ -10,6 +10,11 @@ namespace MiniGame.Molkky
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
     public class StickThrower : MonoBehaviour
     {
+        // 縦投げで棒の長軸（ローカルX）を奥（+Y）へ向ける回転。
+        // 本物のモルックは縦回転で投げるため、真上から見ると棒は進行方向と平行になり、当たり幅が細く1本だけを狙える
+        private const float VerticalRotation = 90f;
+        private const float HorizontalRotation = 0f;
+
         [SerializeField] private MolkkyPhysicsSettings _settings;
 
         private Rigidbody2D _body;
@@ -17,6 +22,7 @@ namespace MiniGame.Molkky
         private float _peakHeight;
 
         public bool IsThrown { get; private set; }
+        public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
         public Vector2 GroundPosition => _body.position;
         public float RotationDegrees => _body.rotation;
         public float Speed => IsThrown ? _body.linearVelocity.magnitude : 0f;
@@ -65,24 +71,38 @@ namespace MiniGame.Molkky
 
             float clampedX = Mathf.Clamp(x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
             _body.position = new Vector2(clampedX, 0f);
-            _body.rotation = 0f;
-            transform.SetPositionAndRotation(_body.position, Quaternion.identity);
+            float rotation = BaseRotation(Style);
+            _body.rotation = rotation;
+            transform.SetPositionAndRotation(_body.position, Quaternion.Euler(0f, 0f, rotation));
 
             IsThrown = false;
         }
 
+        /// <summary>投げ方を変え、構えている棒をその場で向き直す</summary>
+        public void SetStyle(ThrowStyle style)
+        {
+            Style = style;
+            PlaceOnLine(_body.position.x);
+        }
+
         public void Throw(ThrowRequest request)
         {
+            Style = request.Style;
             PlaceOnLine(request.PositionX);
 
             _body.bodyType = RigidbodyType2D.Dynamic;
-            // 棒は進行方向に対して横向きで飛ぶ（§8.2）
-            _body.rotation = -request.AngleDegrees;
+            // 縦投げは進行方向と平行、横投げは進行方向に対して横向きで飛ぶ（§8.2）
+            _body.rotation = BaseRotation(Style) - request.AngleDegrees;
             _body.linearVelocity = request.Direction * request.Speed;
 
             _throwTime = Time.time;
             _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
             IsThrown = true;
+        }
+
+        private static float BaseRotation(ThrowStyle style)
+        {
+            return style == ThrowStyle.Vertical ? VerticalRotation : HorizontalRotation;
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

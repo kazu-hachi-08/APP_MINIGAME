@@ -27,7 +27,10 @@ namespace MiniGame.Molkky
         {
             MolkkyNpcDifficulty difficulty = GetDifficulty(player.Kind);
             Pin target = ChooseTarget(player.Remaining, difficulty, out bool single);
-            return Aim(target.GroundPosition, single ? _singleOvershoot : _denseOvershoot, difficulty);
+            // 1本狙いは当たり幅の細い縦投げ、密集地はまとめて倒せる横投げにする
+            return single
+                ? Aim(target.GroundPosition, _singleOvershoot, ThrowStyle.Vertical, difficulty)
+                : Aim(target.GroundPosition, _denseOvershoot, ThrowStyle.Horizontal, difficulty);
         }
 
         private MolkkyNpcDifficulty GetDifficulty(PlayerKind kind)
@@ -123,7 +126,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>§9.3：狙うピンに近い位置から、ピンの少し先まで届く強さで投げる</summary>
-        private ThrowRequest Aim(Vector2 target, float overshoot, MolkkyNpcDifficulty difficulty)
+        private ThrowRequest Aim(Vector2 target, float overshoot, ThrowStyle style, MolkkyNpcDifficulty difficulty)
         {
             float x = Mathf.Clamp(target.x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
             Vector2 toTarget = target - new Vector2(x, 0f);
@@ -137,7 +140,7 @@ namespace MiniGame.Molkky
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
             speed = Mathf.Clamp(speed, _settings.MinThrowSpeed, _settings.MaxThrowSpeed);
-            return new ThrowRequest(x, angle, speed);
+            return new ThrowRequest(x, angle, speed, style);
         }
     }
 }

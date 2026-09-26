@@ -12,7 +12,7 @@ namespace MiniGame.Molkky
     {
         [Header("Field")]
         [Tooltip("投擲ラインから初期配置の手前の列までの距離")]
-        [SerializeField] private float _pinSetDistance = 5f;
+        [SerializeField] private float _pinSetDistance = 3.5f;
         [Tooltip("初期配置で隣り合うピンの中心間の距離。直径より少し広くして、置いた瞬間に押し合わないようにする")]
         [SerializeField] private float _pinSpacing = 0.42f;
         [SerializeField] private float _pinRadius = 0.2f;
@@ -39,15 +39,15 @@ namespace MiniGame.Molkky
 
         [Header("Pin")]
         [SerializeField] private float _pinMassStanding = 1.5f;
-        [SerializeField] private float _pinMassFallen = 0.6f;
-        [SerializeField] private float _pinDampingStanding = 6f;
-        [SerializeField] private float _pinDampingFallen = 1.8f;
+        [SerializeField] private float _pinMassFallen = 1.2f;
+        [SerializeField] private float _pinDampingStanding = 3f;
+        [SerializeField] private float _pinDampingFallen = 0.9f;
         [Tooltip("ぶつかったときの跳ね返り。0だとピン同士の連鎖が起きにくい")]
-        [SerializeField] private float _bounciness = 0.3f;
+        [SerializeField] private float _bounciness = 0.55f;
 
         [Header("Fall")]
         [SerializeField] private float _fallImpactThreshold = 1.2f;
-        [SerializeField] private float _fallMoveThreshold = 0.12f;
+        [SerializeField] private float _fallMoveThreshold = 0.25f;
 
         [Header("Settle")]
         [SerializeField] private float _settleSpeedThreshold = 0.05f;

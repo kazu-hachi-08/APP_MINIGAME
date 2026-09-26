@@ -46,12 +46,29 @@ namespace MiniGame.Molkky
         /// <summary>投擲ライン上の現在位置（地面座標のX）</summary>
         public float PositionX { get; private set; }
 
+        public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
+
         public event Action<float> PositionChanged;
+        public event Action<ThrowStyle> StyleChanged;
         public event Action<ThrowRequest> ThrowRequested;
 
         public void ResetPosition(float x)
         {
             SetPosition(x);
+        }
+
+        public void SetStyle(ThrowStyle style)
+        {
+            Style = style;
+            StyleChanged?.Invoke(Style);
+        }
+
+        /// <summary>切り替えボタンから呼ぶ。構えている間だけ受け付け、投げた後や相手の番には変えられないようにする</summary>
+        public void ToggleStyle()
+        {
+            if (!IsAccepting) return;
+
+            SetStyle(Style == ThrowStyle.Vertical ? ThrowStyle.Horizontal : ThrowStyle.Vertical);
         }
 
         private void Update()
@@ -131,7 +148,7 @@ namespace MiniGame.Molkky
             float power = Mathf.InverseLerp(_minFlickSpeed, _maxFlickSpeed, flickSpeed);
             float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed, power);
 
-            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed));
+            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style));
         }
 
         private void AddSample(Vector2 position)
