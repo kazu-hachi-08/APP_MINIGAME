@@ -64,6 +64,10 @@ namespace MiniGame.TableTennis
         [Range(0f, 1f)]
         [SerializeField] private float _bounceSpinRetention = 0.7f;
 
+        [Tooltip("エッジに当たったときの跳ね上がりの倍率。低く滑らせて、エッジを返しにくい球にする")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _edgeBounceHeight = 0.4f;
+
         [Header("Serve")]
         [Tooltip("サーブの2バウンド目以降がネット上端からどれだけ余裕を持って越えるか (m)")]
         [SerializeField] private float _serveNetClearance = 0.08f;
@@ -84,6 +88,9 @@ namespace MiniGame.TableTennis
 
         /// <summary>台にバウンドした（引数は着地点）</summary>
         public event Action<Vector3> OnBounced;
+
+        /// <summary>台の縁（エッジ）に当たった（引数は着地点）。OnBounced の直後に通知する</summary>
+        public event Action<Vector3> OnEdgeBounced;
 
         public event Action<RallyEndReason> OnRallyEnded;
 
@@ -191,7 +198,8 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>
-        /// 台の高さ（y=0）を割り込んだらバウンド、台の外なら台外エラーとして扱う
+        /// 台の高さ（y=0）を割り込んだらバウンド、台の外なら台外エラーとして扱う。
+        /// 側面（サイド）に当たる球は y=0 を割り込んだ時点で台の外にいるため、ここで自然に台外になる
         /// </summary>
         private bool CheckBounce(Vector3 previous)
         {
@@ -200,7 +208,8 @@ namespace MiniGame.TableTennis
             float t = Mathf.InverseLerp(previous.y, CourtPosition.y, 0f);
             Vector3 contact = Vector3.Lerp(previous, CourtPosition, t);
 
-            if (!_table.IsOnTable(contact.x, contact.z))
+            bool isEdge = _table.IsOnEdge(contact.x, contact.z);
+            if (!isEdge && !_table.IsOnTable(contact.x, contact.z))
             {
                 CourtPosition = contact;
                 // 自分の後ろに落ちたのは打ち損ない、それ以外は台外エラーとして区別する
@@ -223,7 +232,13 @@ namespace MiniGame.TableTennis
             // 台とこすれた分だけ回転は落ちる
             Spin *= _bounceSpinRetention;
 
+            if (isEdge)
+            {
+                Velocity = new Vector3(Velocity.x, Velocity.y * _edgeBounceHeight, Velocity.z);
+            }
+
             OnBounced?.Invoke(CourtPosition);
+            if (isEdge) OnEdgeBounced?.Invoke(CourtPosition);
 
             // サーブの1バウンド目。ここから本来の狙い点（相手コート）へ向け直す
             if (_awaitingServeBounce)

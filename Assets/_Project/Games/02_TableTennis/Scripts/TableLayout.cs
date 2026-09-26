@@ -14,6 +14,9 @@ namespace MiniGame.TableTennis
         [SerializeField] private float _halfLength = 1.37f;
         [SerializeField] private float _netHeight = 0.1525f;
 
+        [Tooltip("台の端からこの幅までの着地はエッジ（有効）とする。ボールを点で判定しているため、見た目で縁に触れた球を拾うための幅 (m)")]
+        [SerializeField] private float _edgeWidth = 0.02f;
+
         [Header("Pseudo 3D Projection")]
         [Tooltip("手前端で 1m が画面上の何ワールド単位になるか")]
         [SerializeField] private float _nearScale = 3.0f;
@@ -77,6 +80,14 @@ namespace MiniGame.TableTennis
         public bool IsOnTable(float x, float z)
         {
             return Mathf.Abs(x) <= _halfWidth && Mathf.Abs(z) <= _halfLength;
+        }
+
+        /// <summary>台の外だが、縁（エッジ）に当たったとみなせる範囲かどうか</summary>
+        public bool IsOnEdge(float x, float z)
+        {
+            if (IsOnTable(x, z)) return false;
+
+            return Mathf.Abs(x) <= _halfWidth + _edgeWidth && Mathf.Abs(z) <= _halfLength + _edgeWidth;
         }
     }
 }

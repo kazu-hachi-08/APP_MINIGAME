@@ -99,6 +99,7 @@ namespace MiniGame.TableTennis
         {
             _ball.OnRallyEnded += HandleRallyEnded;
             _ball.OnBounced += HandleBounced;
+            _ball.OnEdgeBounced += HandleEdgeBounced;
             _playerSwing.OnShot += HandleShot;
             _playerSwing.OnMissed += HandleMissed;
             _referee.OnPointDecided += HandlePointDecided;
@@ -121,6 +122,7 @@ namespace MiniGame.TableTennis
         {
             _ball.OnRallyEnded -= HandleRallyEnded;
             _ball.OnBounced -= HandleBounced;
+            _ball.OnEdgeBounced -= HandleEdgeBounced;
             _playerSwing.OnShot -= HandleShot;
             _playerSwing.OnMissed -= HandleMissed;
             _referee.OnPointDecided -= HandlePointDecided;
@@ -322,6 +324,12 @@ namespace MiniGame.TableTennis
         private void HandleBounced(Vector3 contact)
         {
             _audio.PlayBounce();
+        }
+
+        /// <summary>縁に当たって跳ね方が変わった理由が分かるよう、打球結果と同じHUDで知らせる</summary>
+        private void HandleEdgeBounced(Vector3 contact)
+        {
+            SetShotInfo("EDGE!", _shotInfoDuration);
         }
 
         private void HandleRallyEnded(RallyEndReason reason)
