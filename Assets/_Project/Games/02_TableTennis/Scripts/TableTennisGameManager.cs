@@ -41,6 +41,9 @@ namespace MiniGame.TableTennis
         [SerializeField] private LoadoutApplier _loadoutApplier;
         [SerializeField] private LoadoutCatalog _loadoutCatalog;
 
+        [Header("必殺技（未設定なら必殺技なし）")]
+        [SerializeField] private SpecialController _special;
+
         [Header("Online（未設定ならNPC戦のみ）")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
@@ -105,6 +108,12 @@ namespace MiniGame.TableTennis
             _referee.OnPointDecided += HandlePointDecided;
             _npc.OnReturned += HandleNpcReturned;
 
+            if (_special != null)
+            {
+                _special.OnGranted += HandleSpecialGranted;
+                _special.OnNpcUsed += HandleNpcSpecialUsed;
+            }
+
             if (_onlineLink != null)
             {
                 _onlineLink.OnShotReceived += HandleRemoteShot;
@@ -127,6 +136,12 @@ namespace MiniGame.TableTennis
             _playerSwing.OnMissed -= HandleMissed;
             _referee.OnPointDecided -= HandlePointDecided;
             _npc.OnReturned -= HandleNpcReturned;
+
+            if (_special != null)
+            {
+                _special.OnGranted -= HandleSpecialGranted;
+                _special.OnNpcUsed -= HandleNpcSpecialUsed;
+            }
 
             if (_onlineLink != null)
             {
@@ -170,6 +185,12 @@ namespace MiniGame.TableTennis
             {
                 _loadoutApplier.ApplyPlayer(player);
                 _loadoutApplier.ApplyNpc(opponent);
+
+                if (_special != null)
+                {
+                    _special.SetSpecials(player.Character, opponent.Character);
+                }
+
                 ShowDifficultySelect();
             });
         }
@@ -208,6 +229,12 @@ namespace MiniGame.TableTennis
             _remoteOpponent.TakeOverViews();
             _referee.IgnoreOwnShotOutcome = true;
             _onlineLink.Begin();
+
+            // 台上キャラの出現・獲得を両端末で揃える仕組みがまだ無いため、オンラインでは必殺技を使わない
+            if (_special != null)
+            {
+                _special.enabled = false;
+            }
 
             if (_loadoutPanel == null)
             {
@@ -284,6 +311,11 @@ namespace MiniGame.TableTennis
 
             // NPCが動くのはラリー中だけ（サーブ待ちやトス中は構えに戻す）
             _npc.IsActive = IsPlaying && _phase == RallyPhase.Rallying;
+
+            if (_special != null)
+            {
+                _special.CanAppear = IsPlaying && _phase == RallyPhase.Rallying;
+            }
         }
 
         /// <summary>サーブ権を確認し、プレイヤーならトス、相手なら送り出しでラリーを始める</summary>
@@ -295,7 +327,11 @@ namespace MiniGame.TableTennis
             _npc.ResetForRally();
 
             CourtSide server = _score.CurrentServer;
-            SetMessage(server == CourtSide.Player ? "YOUR SERVE" : $"{OpponentLabel} SERVE");
+            string serveLabel = server == CourtSide.Player ? "YOUR SERVE" : $"{OpponentLabel} SERVE";
+
+            // 黄色ボールのラリーは、取れば強必殺技がもらえることをサーブ前に知らせる
+            bool isChance = _special != null && _special.PrepareRally(_score.TotalPoints);
+            SetMessage(isChance ? $"CHANCE BALL!\n{serveLabel}" : serveLabel);
             yield return new WaitForSeconds(_serveDelay);
             SetMessage(string.Empty);
             SetShotInfo(server == CourtSide.Player ? "トスを打つ" : string.Empty, _shotInfoDuration);
@@ -454,6 +490,17 @@ namespace MiniGame.TableTennis
             _referee.NotifyHit(CourtSide.Opponent);
         }
 
+        private void HandleSpecialGranted(CourtSide side, SpecialData special)
+        {
+            string label = side == CourtSide.Player ? "SPボタンで次の打球に" : $"{OpponentLabel}が次の返球で使う";
+            SetShotInfo($"{special.DisplayName} 獲得！\n{label}", _shotInfoDuration);
+        }
+
+        private void HandleNpcSpecialUsed(SpecialData special)
+        {
+            SetShotInfo($"{OpponentLabel}の{special.DisplayName}！", _shotInfoDuration);
+        }
+
         private void HandleMissed(SwingJudgement judgement)
         {
             SetShotInfo($"空振り！　{TimingLabel(judgement.Timing)}", _shotInfoDuration);
@@ -481,6 +528,12 @@ namespace MiniGame.TableTennis
 
             SetShotInfo(string.Empty, 0f);
             SetMessage($"{ReasonLabel(reason)}\n{SideLabel(scorer)} POINT");
+
+            // 獲得の表示が打球欄に出るよう、打球欄を消した後に呼ぶ
+            if (_special != null && _special.enabled)
+            {
+                _special.EndRally(scorer);
+            }
             PlaySe(scorer == CourtSide.Player ? SeId.GoalCheer : SeId.Whistle);
 
             StartCoroutine(AfterPointRoutine());
@@ -539,7 +592,9 @@ namespace MiniGame.TableTennis
         /// </summary>
         private static string BuildShotInfo(ShotResult shot)
         {
-            return $"{ShotTypeLabel(shot.Type)}　{TimingLabel(shot.Timing)}　{shot.Strength * 100f:0}%\n{DescribeSpin(shot.Spin)}";
+            // 必殺技を乗せた打球は、種別の代わりに技名を出して発動したことを伝える
+            string name = shot.Special != null ? shot.Special.DisplayName + "！" : ShotTypeLabel(shot.Type);
+            return $"{name}　{TimingLabel(shot.Timing)}　{shot.Strength * 100f:0}%\n{DescribeSpin(shot.Spin)}";
         }
 
         private static string DescribeSpin(Vector2 spin)

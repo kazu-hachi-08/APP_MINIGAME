@@ -86,6 +86,12 @@ namespace MiniGame.TableTennis
 
         public bool IsFlying { get; private set; }
 
+        /// <summary>
+        /// 次に「打った相手側のコート」でバウンドしたときの跳ね上がりの倍率（必殺技用）。
+        /// サーブの自陣バウンドには効かせないよう、相手側で一度使ったら1へ戻す
+        /// </summary>
+        public float NextBounceHeightMultiplier { get; set; } = 1f;
+
         /// <summary>台にバウンドした（引数は着地点）</summary>
         public event Action<Vector3> OnBounced;
 
@@ -142,6 +148,7 @@ namespace MiniGame.TableTennis
             Spin = Vector2.zero;
             IsFlying = false;
             _awaitingServeBounce = false;
+            NextBounceHeightMultiplier = 1f;
         }
 
         /// <summary>
@@ -235,6 +242,14 @@ namespace MiniGame.TableTennis
             if (isEdge)
             {
                 Velocity = new Vector3(Velocity.x, Velocity.y * _edgeBounceHeight, Velocity.z);
+            }
+
+            // 進行方向と同じ側（＝打った相手のコート）でのバウンドだけに効かせる
+            bool isReceiverSide = CourtPosition.z * Velocity.z > 0f;
+            if (isReceiverSide && !_awaitingServeBounce)
+            {
+                Velocity = new Vector3(Velocity.x, Velocity.y * NextBounceHeightMultiplier, Velocity.z);
+                NextBounceHeightMultiplier = 1f;
             }
 
             OnBounced?.Invoke(CourtPosition);

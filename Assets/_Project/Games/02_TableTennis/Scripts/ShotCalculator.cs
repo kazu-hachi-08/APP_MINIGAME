@@ -75,6 +75,9 @@ namespace MiniGame.TableTennis
         public Vector3 ServeTarget;
 
         public float ServeForwardSpeed;
+
+        /// <summary>この打球に乗った必殺技。乗っていなければ null</summary>
+        public SpecialData Special;
     }
 
     /// <summary>
@@ -173,6 +176,12 @@ namespace MiniGame.TableTennis
         private float _spinMultiplier = 1f;
         private float _errorMultiplier = 1f;
 
+        /// <summary>
+        /// 次の打球1回に乗せる必殺技。打球の計算で消費される。
+        /// 初速の逆算より前に速度と回転を変える必要があるため、打ったあとではなくここで反映する
+        /// </summary>
+        public SpecialData PendingSpecial { get; set; }
+
         /// <summary>選んだラケットの能力を反映する（試合開始前に呼ぶ）</summary>
         public void SetRacketMultipliers(float speed, float spin, float error)
         {
@@ -208,6 +217,14 @@ namespace MiniGame.TableTennis
                             * _spinMultiplier;
             Vector2 spin = new Vector2(flick.Direction.x * profile.SideSpin, profile.TopSpin) * spinScale;
 
+            SpecialData special = PendingSpecial;
+            PendingSpecial = null;
+            if (special != null)
+            {
+                forward *= special.SpeedMultiplier;
+                spin = special.ApplySpin(spin);
+            }
+
             var target = new Vector3(
                 flick.Direction.x * _courseSpread + UnityEngine.Random.Range(-_worstCourseError, _worstCourseError) * error,
                 0f,
@@ -233,7 +250,8 @@ namespace MiniGame.TableTennis
                     IsServe = true,
                     ServeBouncePoint = ownBounce,
                     ServeTarget = target,
-                    ServeForwardSpeed = forward
+                    ServeForwardSpeed = forward,
+                    Special = special
                 };
             }
 
@@ -248,7 +266,8 @@ namespace MiniGame.TableTennis
                 Strength = strength,
                 Timing = judgement.Timing,
                 Quality = quality,
-                Type = type
+                Type = type,
+                Special = special
             };
         }
 

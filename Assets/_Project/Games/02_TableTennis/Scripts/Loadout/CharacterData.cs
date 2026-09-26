@@ -28,5 +28,12 @@ namespace MiniGame.TableTennis
 
         [Tooltip("フリック後にボールを待てる時間（NPCには適用しない）")]
         public float SwingDurationMultiplier = 1f;
+
+        [Header("必殺技")]
+        [Tooltip("台上のキャラに当てると獲得できる弱必殺技")]
+        public SpecialData WeakSpecial;
+
+        [Tooltip("黄色ボールのラリーを取ると獲得できる強必殺技")]
+        public SpecialData StrongSpecial;
     }
 }
