@@ -17,5 +17,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Games/50_CardGame/Scenes/CardGameScene.unity
     guid: 1aba5b4fe7c15544091467187c2b743f
+  - enabled: 1
+    path: Assets/_Project/Games/03_Molkky/Scenes/MolkkyScene.unity
+    guid: 84637b6e9acb0254cbd1861e8f94f1de
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
