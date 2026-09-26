@@ -33,7 +33,12 @@ namespace MiniGame.Common.Title
 
             if (_quitButton != null)
             {
+#if UNITY_IOS
+                // iOSはアプリ自身で終了するボタンがガイドライン上非推奨のため表示しない
+                _quitButton.gameObject.SetActive(false);
+#else
                 _quitButton.onClick.AddListener(OnQuitClicked);
+#endif
             }
 
             if (_autoPlayBgm && AudioManager.HasInstance)
