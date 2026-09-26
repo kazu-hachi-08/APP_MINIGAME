@@ -168,6 +168,8 @@ namespace MiniGame.Molkky.Editor
             pauseRect.anchoredPosition = new Vector2(-30f, -30f);
             var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
 
+            ThrowStyleButton styleButton = CreateThrowStyleButton(safeArea, input);
+
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
@@ -189,7 +191,8 @@ namespace MiniGame.Molkky.Editor
             gmSo.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input), ("_npc", npcThrower),
                 ("_settleWatcher", settleWatcher), ("_scoreBoard", scoreBoard), ("_scorePopup", scorePopup),
-                ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel));
+                ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel),
+                ("_styleButton", styleButton));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -318,6 +321,27 @@ namespace MiniGame.Molkky.Editor
             SetRefs(popup, ("_text", text));
             text.gameObject.SetActive(false);
             return popup;
+        }
+
+        /// <summary>
+        /// 縦投げ／横投げの切り替えボタン（§7.5）。右下に置き、中央の棒と横ドラッグの邪魔にならないようにする。
+        /// 人間の構え中だけ GameManager が表示する
+        /// </summary>
+        private static ThrowStyleButton CreateThrowStyleButton(Transform safeArea, ThrowInput input)
+        {
+            var buttonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_ThrowStyle", "", 260f, 130f,
+                new Color(0.15f, 0.17f, 0.22f, 0.85f));
+            var rect = buttonObj.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 0f);
+            rect.anchoredPosition = new Vector2(-30f, 60f);
+            Text label = buttonObj.GetComponentInChildren<Text>();
+            label.fontSize = 52;
+
+            var view = buttonObj.AddComponent<ThrowStyleButton>();
+            SetRefs(view, ("_input", input), ("_button", buttonObj.GetComponent<Button>()), ("_label", label));
+
+            buttonObj.SetActive(false);
+            return view;
         }
 
         /// <summary>「○○の番」の全画面表示。画面全体をボタンにして、どこをタップしても開始できるようにする</summary>

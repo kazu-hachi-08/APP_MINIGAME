@@ -22,6 +22,7 @@ namespace MiniGame.Molkky
         [SerializeField] private MolkkyAudio _audio;
         [SerializeField] private TurnBannerView _turnBanner;
         [SerializeField] private PlayerSetupPanel _setupPanel;
+        [SerializeField] private ThrowStyleButton _styleButton;
 
         [Header("Timing (sec)")]
         [SerializeField] private float _npcBannerDuration = 0.8f;
@@ -43,6 +44,7 @@ namespace MiniGame.Molkky
         {
             _input.ThrowRequested += HandleThrowRequested;
             _input.PositionChanged += HandlePositionChanged;
+            _input.StyleChanged += HandleStyleChanged;
             _settleWatcher.Settled += HandleSettled;
 
             Phase = MolkkyPhase.PlayerSetup;
@@ -73,6 +75,7 @@ namespace MiniGame.Molkky
             {
                 _input.ThrowRequested -= HandleThrowRequested;
                 _input.PositionChanged -= HandlePositionChanged;
+                _input.StyleChanged -= HandleStyleChanged;
             }
 
             if (_settleWatcher != null) _settleWatcher.Settled -= HandleSettled;
@@ -82,6 +85,8 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
+            // 前の人の投げ方を引き継ぐと気づかず横で投げてしまうので、毎手番 縦に戻す
+            _input.SetStyle(ThrowStyle.Vertical);
 
             bool isNpc = CurrentPlayer.IsNpc;
             yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
@@ -95,12 +100,14 @@ namespace MiniGame.Molkky
             else
             {
                 _input.IsAccepting = true;
+                _styleButton.SetVisible(true);
             }
         }
 
         private IEnumerator NpcThrowRoutine()
         {
             ThrowRequest request = _npc.CreateRequest(CurrentPlayer);
+            _stick.SetStyle(request.Style);
             _stick.PlaceOnLine(request.PositionX);
 
             yield return new WaitForSeconds(_npcThinkTime);
@@ -113,11 +120,17 @@ namespace MiniGame.Molkky
             _stick.PlaceOnLine(x);
         }
 
+        private void HandleStyleChanged(ThrowStyle style)
+        {
+            _stick.SetStyle(style);
+        }
+
         private void HandleThrowRequested(ThrowRequest request)
         {
             if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc) return;
 
             _input.IsAccepting = false;
+            _styleButton.SetVisible(false);
             ExecuteThrow(request);
         }
 
