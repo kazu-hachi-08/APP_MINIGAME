@@ -1,0 +1,14 @@
+{
+    "name": "MiniGame.Molkky.Rules",
+    "rootNamespace": "MiniGame.Molkky",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

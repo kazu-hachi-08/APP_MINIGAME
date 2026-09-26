@@ -14,6 +14,9 @@ namespace MiniGame.Common.Scene
         /// <summary>第2弾: 2D卓球ゲーム</summary>
         public const string TableTennis = "TableTennisScene";
 
+        /// <summary>第4弾: 2Dモルックゲーム</summary>
+        public const string Molkky = "MolkkyScene";
+
         /// <summary>カードゲーム（THE CHAOS Ⅱ）</summary>
         public const string CardGame = "CardGameScene";
 

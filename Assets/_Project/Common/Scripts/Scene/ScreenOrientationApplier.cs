@@ -46,9 +46,10 @@ namespace MiniGame.Common.Scene
                     SetLandscape();
                     break;
 
-                // タイトルと卓球（奥行き方向にコートを見る画）は縦画面
+                // タイトルと卓球・モルック（奥行き方向を見る画）は縦画面
                 case SceneNames.Title:
                 case SceneNames.TableTennis:
+                case SceneNames.Molkky:
                 default:
                     SetPortrait();
                     break;

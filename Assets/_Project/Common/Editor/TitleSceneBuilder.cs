@@ -253,6 +253,7 @@ namespace MiniGame.Editor
             // 絵文字は Legacy Text だと実機で□になりやすいため使わない
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_Soccer", "2D サッカー", SceneNames.Soccer, true, new Color(0.2f, 0.55f, 1f));
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_TableTennis", "2D 卓球", SceneNames.TableTennis, true, new Color(1f, 0.5f, 0.25f));
+            CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_Molkky", "2D モルック", SceneNames.Molkky, true, new Color(0.35f, 0.75f, 0.3f));
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_CardGame", "カードゲーム", SceneNames.CardGame, true, new Color(0.7f, 0.4f, 0.95f));
         }
 

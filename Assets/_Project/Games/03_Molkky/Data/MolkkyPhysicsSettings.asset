@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae20e5a8f658a1f4087e127ede6c1a2c, type: 3}
+  m_Name: MolkkyPhysicsSettings
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Molkky.MolkkyPhysicsSettings
+  _pinSetDistance: 5
+  _pinSpacing: 0.42
+  _pinRadius: 0.2
+  _throwLineHalfWidth: 1.5
+  _fieldBounds:
+    serializedVersion: 2
+    x: -3
+    y: 1.5
+    width: 6
+    height: 8
+  _minThrowSpeed: 3
+  _maxThrowSpeed: 11
+  _maxThrowAngle: 25
+  _stickLength: 0.9
+  _stickThickness: 0.22
+  _stickMass: 1
+  _stickDamping: 0.9
+  _stickAngularDamping: 2
+  _stickAirTime: 0.7
+  _stickPeakHeight: 1.2
+  _pinMassStanding: 1.5
+  _pinMassFallen: 0.6
+  _pinDampingStanding: 6
+  _pinDampingFallen: 1.8
+  _bounciness: 0.3
+  _fallImpactThreshold: 1.2
+  _fallMoveThreshold: 0.12
+  _settleSpeedThreshold: 0.05
+  _settleDuration: 0.4
+  _maxThrowDuration: 5
