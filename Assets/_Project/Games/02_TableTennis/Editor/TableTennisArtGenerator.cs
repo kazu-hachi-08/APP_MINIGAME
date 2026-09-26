@@ -29,7 +29,7 @@ namespace MiniGame.TableTennis.Editor
         public const string BackgroundName = "Background";
 
         // 選手・ラケット選択（§25）。選手はシャツの色、ラケットはラバーの色で見分ける
-        public const string KazukiName = "Character_Kazuki";
+        public const string MarioName = "Character_Mario";
         public const string KokiniwaName = "Character_Kokiniwa";
         public const string YokozunaName = "Character_Yokozuna";
         public const string BackSuffix = "_Back";
@@ -39,7 +39,7 @@ namespace MiniGame.TableTennis.Editor
         public const string PowerRacketName = "Racket_Power";
         public const string TechniqueRacketName = "Racket_Technique";
 
-        private static readonly Color32 KazukiShirt = new Color32(214, 84, 76, 255);
+        private static readonly Color32 MarioShirt = new Color32(214, 84, 76, 255);
         private static readonly Color32 KokiniwaShirt = new Color32(64, 168, 110, 255);
         private static readonly Color32 YokozunaShirt = new Color32(150, 88, 196, 255);
 
@@ -70,7 +70,7 @@ namespace MiniGame.TableTennis.Editor
             SaveSprite(NpcCharacterName, BuildCharacter(back: false, shirt: new Color32(70, 118, 208, 255)),
                 48, 64, SpriteAlignment.BottomCenter, repeat: false);
 
-            SaveCharacterPair(KazukiName, KazukiShirt);
+            SaveCharacterPair(MarioName, MarioShirt);
             SaveCharacterPair(KokiniwaName, KokiniwaShirt);
             SaveCharacterPair(YokozunaName, YokozunaShirt);
 

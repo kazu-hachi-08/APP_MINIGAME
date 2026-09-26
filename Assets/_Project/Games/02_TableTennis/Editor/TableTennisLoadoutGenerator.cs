@@ -37,15 +37,15 @@ namespace MiniGame.TableTennis.Editor
             var catalog = ScriptableObject.CreateInstance<LoadoutCatalog>();
             catalog.Characters = new[]
             {
-                CreateCharacter("KAZUKI", PlayStyle.Standard, TableTennisArtGenerator.KazukiName, 1f, 1f, 1f),
+                CreateCharacter("MARIO", PlayStyle.Standard, TableTennisArtGenerator.MarioName, 1f, 1f, 1f),
                 CreateCharacter("KOKINIWA", PlayStyle.Technique, TableTennisArtGenerator.KokiniwaName, 1.2f, 0.9f, 1.2f),
                 CreateCharacter("YOKOZUNA", PlayStyle.Power, TableTennisArtGenerator.YokozunaName, 0.8f, 1.2f, 0.9f)
             };
             catalog.Rackets = new[]
             {
                 CreateRacket(PlayStyle.Standard, TableTennisArtGenerator.StandardRacketName, 1f, 1f, 1f),
-                CreateRacket(PlayStyle.Power, TableTennisArtGenerator.PowerRacketName, 1.15f, 0.8f, 1.2f),
-                CreateRacket(PlayStyle.Technique, TableTennisArtGenerator.TechniqueRacketName, 0.9f, 1.3f, 0.8f)
+                CreateRacket(PlayStyle.Technique, TableTennisArtGenerator.TechniqueRacketName, 0.9f, 1.3f, 0.8f),
+                CreateRacket(PlayStyle.Power, TableTennisArtGenerator.PowerRacketName, 1.15f, 0.8f, 1.2f)
             };
 
             AssetDatabase.CreateAsset(catalog, CatalogPath);

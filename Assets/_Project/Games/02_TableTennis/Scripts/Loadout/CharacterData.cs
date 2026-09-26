@@ -10,7 +10,7 @@ namespace MiniGame.TableTennis
     [CreateAssetMenu(menuName = "MiniGame/TableTennis/Character Data", fileName = "Character_")]
     public class CharacterData : ScriptableObject
     {
-        public string DisplayName = "KAZUKI";
+        public string DisplayName = "MARIO";
         public PlayStyle Style = PlayStyle.Standard;
 
         [Tooltip("手前（プレイヤー側）に立つときの背中向きスプライト")]

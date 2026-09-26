@@ -4,7 +4,7 @@ TextureImporter:
   internalIDToNameTable:
   - first:
       213: -7629664560434812941
-    second: Character_Kazuki_Back_0
+    second: Character_Mario_Back_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -128,7 +128,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Character_Kazuki_Back_0
+      name: Character_Mario_Back_0
       rect:
         serializedVersion: 2
         x: 0

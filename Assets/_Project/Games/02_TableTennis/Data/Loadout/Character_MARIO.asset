@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a16612bbf4a47f64bb5459227eb7fae4, type: 3}
-  m_Name: Character_KAZUKI
+  m_Name: Character_MARIO
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.TableTennis.CharacterData
-  DisplayName: KAZUKI
+  DisplayName: MARIO
   Style: 0
   BackSprite: {fileID: 21300000, guid: 248a4a8b2b705a34f8a60480bdead4ab, type: 3}
   FrontSprite: {fileID: 21300000, guid: b42839249988c7c459b8b532323e55af, type: 3}
