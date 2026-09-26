@@ -168,9 +168,6 @@ namespace MiniGame.TableTennis
         [Tooltip("実際の卓球と同じく、サーブは自分のコートに1回バウンドさせる。ネットからこの距離だけ自陣側の地点を1バウンド目の狙い点にする")]
         [SerializeField] private float _serveOwnBounceDepth = 0.6f;
 
-        [Tooltip("弱い/雑なフリックでもサーブがネットを越えられるよう保証する、前進速度の下限 (m/s)")]
-        [SerializeField] private float _serveMinForwardSpeed = 3.5f;
-
         /// <summary>ラケットの能力による倍率（打球速度・回転量・タイミング誤差）</summary>
         private float _speedMultiplier = 1f;
         private float _spinMultiplier = 1f;
@@ -221,9 +218,7 @@ namespace MiniGame.TableTennis
 
             if (isServe)
             {
-                // 弱い/雑なフリックのままだと2バウンド目でネットを越えきらないため、下限を設ける
-                forward = Mathf.Max(forward, _serveMinForwardSpeed);
-
+                // ネットを越える弧は BallMotion が1バウンド目の直後に保証するため、速度はそのまま使う。
                 // サーブは相手コートへ直接ではなく、まず自陣への1バウンドを狙う。
                 // 実際の向け直しは BallMotion.LaunchServe が1バウンド目の直後に行う
                 var ownBounce = new Vector3(target.x, 0f, -_serveOwnBounceDepth);

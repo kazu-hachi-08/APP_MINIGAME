@@ -12405,7 +12405,6 @@ MonoBehaviour:
   _worstCourseError: 0.45
   _worstDepthError: 0.35
   _serveOwnBounceDepth: 0.6
-  _serveMinForwardSpeed: 3.5
 --- !u!114 &1991612798
 MonoBehaviour:
   m_ObjectHideFlags: 0

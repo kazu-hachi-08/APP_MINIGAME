@@ -64,6 +64,10 @@ namespace MiniGame.TableTennis
         [Range(0f, 1f)]
         [SerializeField] private float _bounceSpinRetention = 0.7f;
 
+        [Header("Serve")]
+        [Tooltip("サーブの2バウンド目以降がネット上端からどれだけ余裕を持って越えるか (m)")]
+        [SerializeField] private float _serveNetClearance = 0.08f;
+
         [Header("Out Of Play")]
         [Tooltip("この距離だけ台の端を越えたらラリー終了とみなす")]
         [SerializeField] private float _outMargin = 1.2f;
@@ -225,12 +229,31 @@ namespace MiniGame.TableTennis
             if (_awaitingServeBounce)
             {
                 _awaitingServeBounce = false;
-                float secondLegTime = Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed;
+                float secondLegTime = Mathf.Max(
+                    Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed,
+                    MinServeTimeToClearNet(CourtPosition, _serveTarget, _serveSpin));
                 Velocity = SolveLaunchVelocity(CourtPosition, _serveTarget, secondLegTime, _serveSpin);
                 Spin = _serveSpin;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 台から台へ飛ぶ放物線は飛行時間だけで弧の高さが決まるため、狙い点だけ逆算すると
+        /// 速いサーブはネットより低い弧になってしまう。ネットを越えるのに必要な最短の飛行時間を返す。
+        /// 高さ h = 0.5 * |a| * T^2 * f * (1 - f)（f はネットまでの距離の割合）を T について解いている。
+        /// </summary>
+        private float MinServeTimeToClearNet(Vector3 from, Vector3 target, Vector2 spin)
+        {
+            // ネットをまたがない狙い（通常は起きない）は制限しない
+            if (from.z * target.z >= 0f) return 0f;
+
+            float netFraction = Mathf.Abs(from.z) / Mathf.Abs(target.z - from.z);
+            float fall = -AccelerationFor(spin).y;
+            float clearHeight = _table.NetHeight + _serveNetClearance;
+
+            return Mathf.Sqrt(2f * clearHeight / (fall * netFraction * (1f - netFraction)));
         }
 
         private void CheckOutOfPlay()
