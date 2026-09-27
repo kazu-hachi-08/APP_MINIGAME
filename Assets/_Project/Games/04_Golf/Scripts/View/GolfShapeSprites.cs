@@ -49,19 +49,44 @@ namespace MiniGame.Golf
         private static readonly Color PennantColor = new Color(0.9f, 0.15f, 0.15f);
         private static readonly Color PennantShadeColor = new Color(0.68f, 0.08f, 0.1f);
 
-        // ゴルファーの胴と脚：幅32×高さ64ピクセルを1ユニットの高さで描く。ピボットは足元（地面に立てる）。
-        // 白で描いてプレイヤー色を掛けるので、脚は暗い灰色にしてズボンに見せる
-        private const int GolferWidth = 32;
-        private const int GolferHeight = 64;
-        private const int LegTop = 26;
-        private const int LegHalfGap = 2;
-        private const int LegWidth = 6;
-        private const int TorsoBottom = 22;
-        private const int TorsoTop = 58;
-        private const int TorsoHalfWidth = 12;
-        private const int TorsoCornerRadius = 6;
-        private static readonly Color GolferLegColor = new Color(0.4f, 0.4f, 0.42f);
+        // ゴルファーは背の高さ64ピクセルを1ユニットで描き、上半身・下半身・頭を別のスプライトにする。
+        // 上半身と下半身を分けるのは、肩と腰の回り方を変えて捻転を見せるため
+        private const float GolferPixelsPerUnit = 64f;
+        private const int GolferPartWidth = 32;
         private static readonly Color GolferShadeColor = new Color(0.72f, 0.72f, 0.75f);
+
+        // 上半身（シャツ）：ピボットは腰。白で描いてプレイヤー色を掛ける。腰より肩を広くして逆三角形にする
+        private const int TorsoHeight = 30;
+        private const float TorsoWaistHalfWidth = 8f;
+        private const float TorsoShoulderHalfWidth = 12f;
+        private const float TorsoShoulderRadius = 6f;
+        // 腰から胸までで肩幅まで広がる（上半身の高さに対する割合）
+        private const float TorsoChestRatio = 0.6f;
+        private const int BeltHeight = 3;
+        private static readonly Color BeltColor = new Color(0.18f, 0.16f, 0.15f);
+
+        // 下半身（ズボン・靴）：ピボットは足元。プレイヤー色を掛けないので色をそのまま描く。
+        // 足を肩幅に開いた構えに見せるため、腰から足元へ向かって脚を外へ開く
+        private const int LegsHeight = 29;
+        private const int HipBottom = 22;
+        private const float HipHalfWidth = 8f;
+        private const float LegHipX = 4f;
+        private const float LegFootX = 7f;
+        private const float LegHalfWidth = 3f;
+        private const int ShoeHeight = 3;
+        private const float ShoeHalfWidth = 3.6f;
+        private static readonly Color PantsColor = new Color(0.32f, 0.32f, 0.36f);
+        private static readonly Color PantsShadeColor = new Color(0.22f, 0.22f, 0.25f);
+        private static readonly Color ShoeColor = new Color(0.95f, 0.95f, 0.95f);
+
+        // 頭（後ろ姿）：上を帽子、下を髪にする。帽子の後ろのアジャスターの穴から髪が見える
+        private const float CapBottom = -0.1f;
+        private const float CapOpeningTop = 0.14f;
+        private const float CapOpeningHalfWidth = 0.18f;
+        private static readonly Color CapColor = new Color(0.96f, 0.96f, 0.96f);
+        private static readonly Color CapShadeColor = new Color(0.75f, 0.76f, 0.8f);
+        private static readonly Color HairColor = new Color(0.22f, 0.15f, 0.1f);
+        private static readonly Color HairShadeColor = new Color(0.12f, 0.08f, 0.05f);
 
         private static Sprite _circle;
         private static Sprite _square;
@@ -70,7 +95,9 @@ namespace MiniGame.Golf
         private static Sprite _cup;
         private static Sprite _flag;
         private static Sprite _tree;
-        private static Sprite _golferBody;
+        private static Sprite _golferTorso;
+        private static Sprite _golferLegs;
+        private static Sprite _golferHead;
 
         public static Sprite Square
         {
@@ -111,9 +138,16 @@ namespace MiniGame.Golf
         public static Sprite Flag => Cached(ref _flag, () => CreateSprite(FlagWidth, FlagHeight, FlagPixel,
             new Vector2((PoleX + PoleWidth * 0.5f) / FlagWidth, 0f), FlagPixelsPerUnit));
 
-        /// <summary>背中から見たゴルファーの胴と脚（頭は別の円で重ねる）。ピボットは足元</summary>
-        public static Sprite GolferBody => Cached(ref _golferBody, () => CreateSprite(GolferWidth, GolferHeight,
-            GolferBodyPixel, new Vector2(0.5f, 0f), GolferHeight));
+        /// <summary>背中から見たゴルファーの上半身（シャツとベルト）。ピボットは腰なので、前傾は腰から曲がる</summary>
+        public static Sprite GolferTorso => Cached(ref _golferTorso, () => CreateSprite(GolferPartWidth, TorsoHeight,
+            GolferTorsoPixel, new Vector2(0.5f, 0f), GolferPixelsPerUnit));
+
+        /// <summary>背中から見たゴルファーの下半身（ズボンと靴）。ピボットは足元</summary>
+        public static Sprite GolferLegs => Cached(ref _golferLegs, () => CreateSprite(GolferPartWidth, LegsHeight,
+            GolferLegsPixel, new Vector2(0.5f, 0f), GolferPixelsPerUnit));
+
+        /// <summary>後ろから見た頭（帽子と髪）。直径1ユニットで中心がピボット</summary>
+        public static Sprite GolferHead => Cached(ref _golferHead, () => CreateRound(GolferHeadPixel));
 
         /// <summary>
         /// ??= だと破棄済み（再生終了で消えたテクスチャ）を null と見なさないため、Unity の == null で判定する
@@ -157,31 +191,46 @@ namespace MiniGame.Golf
             return EdgeAlpha(p.magnitude, radius, CircleResolution);
         }
 
-        private static Color GolferBodyPixel(int x, int y)
+        private static Color GolferTorsoPixel(int x, int y)
         {
-            float fromCenter = x + 0.5f - GolferWidth * 0.5f;
-            if (IsInsideTorso(fromCenter, y))
-            {
-                // 左上から光が当たる前提（ボール・木と揃える）で右側を暗くする
-                float shade = Mathf.InverseLerp(-TorsoHalfWidth, TorsoHalfWidth, fromCenter);
-                return Color.Lerp(Color.white, GolferShadeColor, shade);
-            }
+            float fromCenter = x + 0.5f - GolferPartWidth * 0.5f;
+            float chest = Mathf.Clamp01(y / (TorsoHeight * TorsoChestRatio));
+            float halfWidth = Mathf.Lerp(TorsoWaistHalfWidth, TorsoShoulderHalfWidth, chest);
+            if (Mathf.Abs(fromCenter) > halfWidth || !IsInsideShoulder(fromCenter, y)) return Color.clear;
+            if (y < BeltHeight) return BeltColor;
 
-            float legX = Mathf.Abs(fromCenter);
-            bool isLeg = y < LegTop && legX >= LegHalfGap && legX < LegHalfGap + LegWidth;
-            return isLeg ? GolferLegColor : Color.clear;
+            // 左上から光が当たる前提（ボール・木と揃える）で右側を暗くする
+            float shade = Mathf.InverseLerp(-halfWidth, halfWidth, fromCenter);
+            return Color.Lerp(Color.white, GolferShadeColor, shade);
         }
 
-        /// <summary>角を丸めた長方形。四角いままだと人に見えにくいので肩と腰を丸める</summary>
-        private static bool IsInsideTorso(float fromCenter, int y)
+        /// <summary>肩の角を丸める。四角いままだと人に見えにくい</summary>
+        private static bool IsInsideShoulder(float fromCenter, int y)
         {
-            if (y < TorsoBottom || y > TorsoTop || Mathf.Abs(fromCenter) > TorsoHalfWidth) return false;
-
-            float innerX = TorsoHalfWidth - TorsoCornerRadius;
-            float cornerX = Mathf.Abs(fromCenter) - innerX;
-            float cornerY = Mathf.Max(TorsoBottom + TorsoCornerRadius - y, y - (TorsoTop - TorsoCornerRadius));
+            float cornerX = Mathf.Abs(fromCenter) - (TorsoShoulderHalfWidth - TorsoShoulderRadius);
+            float cornerY = y + 0.5f - (TorsoHeight - TorsoShoulderRadius);
             if (cornerX <= 0f || cornerY <= 0f) return true;
-            return cornerX * cornerX + cornerY * cornerY <= TorsoCornerRadius * TorsoCornerRadius;
+            return cornerX * cornerX + cornerY * cornerY <= TorsoShoulderRadius * TorsoShoulderRadius;
+        }
+
+        private static Color GolferLegsPixel(int x, int y)
+        {
+            float fromCenter = x + 0.5f - GolferPartWidth * 0.5f;
+            float shade = Mathf.InverseLerp(-HipHalfWidth, HipHalfWidth, fromCenter);
+            Color pants = Color.Lerp(PantsColor, PantsShadeColor, shade);
+            if (y >= HipBottom) return Mathf.Abs(fromCenter) <= HipHalfWidth ? pants : Color.clear;
+
+            float legCenter = Mathf.Lerp(LegFootX, LegHipX, y / (float)HipBottom);
+            float fromLeg = Mathf.Abs(Mathf.Abs(fromCenter) - legCenter);
+            if (y < ShoeHeight) return fromLeg <= ShoeHalfWidth ? ShoeColor : Color.clear;
+            return fromLeg <= LegHalfWidth ? pants : Color.clear;
+        }
+
+        private static Color GolferHeadPixel(Vector2 p)
+        {
+            float light = Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / 1.6f);
+            bool isCap = p.y > CapBottom && !(p.y < CapOpeningTop && Mathf.Abs(p.x) < CapOpeningHalfWidth);
+            return isCap ? Color.Lerp(CapColor, CapShadeColor, light) : Color.Lerp(HairColor, HairShadeColor, light);
         }
 
         private static Color FlagPixel(int x, int y)

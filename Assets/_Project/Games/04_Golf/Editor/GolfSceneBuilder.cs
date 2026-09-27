@@ -42,7 +42,11 @@ namespace MiniGame.Golf.Editor
         private const int ShadowSortingOrder = 10;
         private const int OtherBallSortingOrder = 15;
         private const int BallSortingOrder = 20;
-        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている
+        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている。
+        // 背中越しに見るので、腕は体の向こう側（下半身・上半身の下）、頭は一番手前に描く
+        private const int GolferArmSortingOrder = 21;
+        private const int GolferSleeveSortingOrder = 22;
+        private const int GolferLegsSortingOrder = 24;
         private const int GolferSortingOrder = 25;
         // クラブは背中越しに見て体の向こう側にあり、構えたヘッドがボールの横に届くので、体とボール（リング含む）の下に描く
         private const int GolferClubSortingOrder = BallSortingOrder - 2;
@@ -292,30 +296,38 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 胴（プレイヤー色）と頭（髪の色）を分けて、頭まで服の色に染まらないようにする。
+        /// 上半身（プレイヤー色）と下半身・頭を分けて、肩と腰を別々に回せるようにする。
         /// クラブは手元（Hands）を回転の中心にするため、Hands の子に置く
         /// </summary>
         private static GolferView CreateGolfer(GolfBall ball, ShotInput input, AimGuideView aimGuide)
         {
             var golfer = new GameObject("Golfer").AddComponent<GolferView>();
-
-            var body = new GameObject("Body").AddComponent<SpriteRenderer>();
-            body.transform.SetParent(golfer.transform, false);
-            body.sortingOrder = GolferSortingOrder;
-
-            var head = new GameObject("Head").AddComponent<SpriteRenderer>();
-            head.transform.SetParent(golfer.transform, false);
-            head.sortingOrder = GolferSortingOrder + 1;
+            var rig = golfer.gameObject.AddComponent<GolferRig>();
+            Transform root = golfer.transform;
 
             var hands = new GameObject("Hands").transform;
-            hands.SetParent(golfer.transform, false);
-            var club = new GameObject("Club").AddComponent<SpriteRenderer>();
-            club.transform.SetParent(hands, false);
-            club.sortingOrder = GolferClubSortingOrder;
+            hands.SetParent(root, false);
 
-            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_body", body), ("_head", head),
-                ("_club", club));
+            SetRefs(rig,
+                ("_legs", CreateGolferPart("Legs", root, GolferLegsSortingOrder)),
+                ("_torso", CreateGolferPart("Torso", root, GolferSortingOrder)),
+                ("_head", CreateGolferPart("Head", root, GolferSortingOrder + 1)),
+                ("_leftArm", CreateGolferPart("LeftArm", root, GolferArmSortingOrder)),
+                ("_rightArm", CreateGolferPart("RightArm", root, GolferArmSortingOrder)),
+                ("_leftSleeve", CreateGolferPart("LeftSleeve", root, GolferSleeveSortingOrder)),
+                ("_rightSleeve", CreateGolferPart("RightSleeve", root, GolferSleeveSortingOrder)),
+                ("_glove", CreateGolferPart("Glove", root, GolferSleeveSortingOrder)),
+                ("_club", CreateGolferPart("Club", hands, GolferClubSortingOrder)));
+            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_rig", rig));
             return golfer;
+        }
+
+        private static SpriteRenderer CreateGolferPart(string name, Transform parent, int sortingOrder)
+        {
+            var part = new GameObject(name).AddComponent<SpriteRenderer>();
+            part.transform.SetParent(parent, false);
+            part.sortingOrder = sortingOrder;
+            return part;
         }
 
         private static void CreateEventSystem()
