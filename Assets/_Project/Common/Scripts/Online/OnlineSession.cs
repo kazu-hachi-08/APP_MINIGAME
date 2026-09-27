@@ -54,6 +54,17 @@ namespace MiniGame.Common.Online
 
         private bool IsMultiRoom => _maxPlayers > DefaultMaxPlayers;
 
+        private static bool IsBrowser => Application.platform == RuntimePlatform.WebGLPlayer;
+
+        /// <summary>
+        /// ブラウザはUDP(dtls)を使えないので、Relayとの通信をWebSocket(wss)にする。
+        /// 相手の端末とは独立に選べるので、スマホ版とブラウザ版でも対戦できる
+        /// </summary>
+        private static NetworkOptions PlatformNetworkOptions => new NetworkOptions
+        {
+            RelayProtocol = IsBrowser ? RelayProtocol.WSS : RelayProtocol.DTLS
+        };
+
         /// <summary>
         /// 部屋を作り、参加コードを発行する。
         /// 相手の参加は OnPeerConnected（3人以上の部屋では OnMemberCountChanged）で通知する
@@ -65,7 +76,7 @@ namespace MiniGame.Common.Online
             // 部屋の作成完了より先に相手が接続してきても取りこぼさないよう、先にホストとして扱う
             IsHost = true;
             _maxPlayers = maxPlayers;
-            var options = new SessionOptions { MaxPlayers = maxPlayers }.WithRelayNetwork();
+            var options = new SessionOptions { MaxPlayers = maxPlayers }.WithRelayNetwork().WithNetworkOptions(PlatformNetworkOptions);
             _session = await MultiplayerService.Instance.CreateSessionAsync(options);
             return _session.Code;
         }
@@ -76,7 +87,8 @@ namespace MiniGame.Common.Online
             await PrepareAsync();
 
             IsHost = false;
-            _session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant());
+            var options = new JoinSessionOptions().WithNetworkOptions(PlatformNetworkOptions);
+            _session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant(), options);
 
             // 1対1の部屋ではホストが開始メッセージを送らないので、登録しても使われないだけで害はない
             NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(StartMessage, ReceiveStart);
@@ -179,6 +191,7 @@ namespace MiniGame.Common.Online
 
             var obj = new GameObject("NetworkManager");
             var transport = obj.AddComponent<UnityTransport>();
+            transport.UseWebSockets = IsBrowser;
             var manager = obj.AddComponent<NetworkManager>();
             manager.NetworkConfig = new NetworkConfig
             {
