@@ -11,6 +11,7 @@ namespace MiniGame.Golf
     public class GolfBall : MonoBehaviour
     {
         [SerializeField] private GolfPhysicsSettings _settings;
+        [SerializeField] private GolfTerrainSettings _terrainSettings;
 
         private BallSimulator _simulator;
         private float _accumulatedTime;
@@ -19,6 +20,8 @@ namespace MiniGame.Golf
         public Vector2 GroundPosition => ToUnity(Simulator.Position);
         public float Height => Simulator.Height;
         public bool IsMoving => Simulator.IsMoving;
+        public bool IsInCup => Simulator.IsInCup;
+        public GroundType Ground => Simulator.Ground;
 
         /// <summary>最後に打った位置。飛距離の表示に使う</summary>
         public Vector2 LaunchPosition { get; private set; }
@@ -27,7 +30,15 @@ namespace MiniGame.Golf
         public event Action Stopped;
 
         // 他のコンポーネントの Awake から参照されても良いように遅延生成する
-        private BallSimulator Simulator => _simulator ??= new BallSimulator(_settings.Ball);
+        private BallSimulator Simulator => _simulator ??= new BallSimulator(_settings.Ball, _terrainSettings.Terrain);
+
+        /// <summary>ホールの地面とカップで計算し直し、ティーに置く</summary>
+        public void SetCourse(IGroundMap ground, Vector2 teePosition, Vector2 cupPosition)
+        {
+            _simulator = new BallSimulator(_settings.Ball, _terrainSettings.Terrain, ground);
+            _simulator.SetCup(ToNumerics(cupPosition));
+            Place(teePosition);
+        }
 
         public void Place(Vector2 groundPosition)
         {
@@ -35,13 +46,22 @@ namespace MiniGame.Golf
             _accumulatedTime = 0f;
         }
 
-        /// <summary>power は 0〜1。動いている間は打てない</summary>
+        /// <summary>power は 0〜1。動いている間とカップインした後は打てない</summary>
         public void Hit(Vector2 direction, float power)
         {
-            if (IsMoving) return;
+            if (IsMoving || IsInCup) return;
 
             LaunchPosition = GroundPosition;
-            Simulator.Launch(ToNumerics(direction), power);
+            // 仮のパット：グリーン上では転がして打つ。Phase 3 でグリーン上の自動パターに置き換える
+            if (Ground == GroundType.Green)
+            {
+                Simulator.LaunchPutt(ToNumerics(direction), power);
+            }
+            else
+            {
+                Simulator.Launch(ToNumerics(direction), power);
+            }
+
             _accumulatedTime = 0f;
             if (IsMoving) Launched?.Invoke();
         }

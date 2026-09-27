@@ -23,17 +23,17 @@ namespace MiniGame.Golf
         /// <summary>打ち出し角（度）。Phase 3 でクラブごとの値に置き換える</summary>
         public float LaunchAngleDegrees = 25f;
 
-        /// <summary>着地したときに上向きに跳ね返る速さの割合</summary>
-        public float BounceRestitution = 0.35f;
-
-        /// <summary>着地したときに残す水平方向の速さの割合</summary>
-        public float BounceSpeedRetention = 0.7f;
+        /// <summary>仮のパットの最大初速。Phase 3 でパタークラブの値に置き換える</summary>
+        public float PuttMaxSpeed = 5f;
 
         /// <summary>跳ね返りがこれより遅ければバウンドをやめて転がりに移る。小さな跳ねが延々と続くのを防ぐ</summary>
         public float MinBounceSpeed = 0.8f;
 
-        /// <summary>転がり中の減速（ユニット/秒²）。Phase 2 で地面の種類ごとの値に置き換える</summary>
-        public float RollDeceleration = 4f;
+        /// <summary>カップの中心からこの距離以内ならカップの上とみなす</summary>
+        public float CupRadius = 0.25f;
+
+        /// <summary>転がりがこの速さより速いとカップを通り過ぎる</summary>
+        public float CupInMaxSpeed = 2.5f;
 
         /// <summary>転がりがこの速さ以下になったら停止とみなす</summary>
         public float StopSpeed = 0.05f;

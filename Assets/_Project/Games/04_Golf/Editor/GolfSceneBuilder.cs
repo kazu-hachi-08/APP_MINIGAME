@@ -13,8 +13,9 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 1：平らな地面でボールを打って転がす）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 2：ホールをティーから回ってカップインする）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
+    /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
     public static class GolfSceneBuilder
     {
@@ -23,6 +24,7 @@ namespace MiniGame.Golf.Editor
         private const string ScenePath = SceneDirectory + "/GolfScene.unity";
         private const string DataDirectory = RootDirectory + "/Data";
         private const string SettingsPath = DataDirectory + "/GolfPhysicsSettings.asset";
+        private const string TerrainSettingsPath = DataDirectory + "/GolfTerrainSettings.asset";
 
         // タイトルと同じく縦画面基準
         private static readonly Vector2 ReferenceResolution = new Vector2(1080, 1920);
@@ -30,11 +32,10 @@ namespace MiniGame.Golf.Editor
         // §4.3：ボールの周りの狙う先まで見える広さ（縦10ユニット）
         private const float CameraOrthographicSize = 5f;
 
-        // §5 の OB（コースの外側）の灰色。仮の地面の外に出たときの背景
+        // §5 の OB（コースの外側）の灰色。Tilemap の外側がこの色で見える
         private static readonly Color OutOfBoundsColor = new Color(0.55f, 0.57f, 0.55f);
 
-        // 地面 → 影 → ボールの順に重ねる
-        private const int GroundSortingOrder = 0;
+        // 地面・カップ（ホールのプレハブ側）→ 影 → ボールの順に重ねる
         private const int ShadowSortingOrder = 10;
         private const int BallSortingOrder = 20;
 
@@ -57,16 +58,18 @@ namespace MiniGame.Golf.Editor
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             // NewScene(Single) は未使用アセットをアンロードするため、ScriptableObject は必ずシーンを作った後に読み込む
-            GolfPhysicsSettings settings = EnsureSettings();
+            var settings = EnsureAsset<GolfPhysicsSettings>(SettingsPath);
+            var terrainSettings = EnsureAsset<GolfTerrainSettings>(TerrainSettingsPath);
+            GolfHoleCatalog catalog = GolfHoleAssetBuilder.EnsureAssets();
 
             Camera camera = CreateCamera();
             CreateEventSystem();
             CreateManagers();
-            CreateGround();
-            GolfBall ball = CreateBall(settings);
+            GolfBall ball = CreateBall(settings, terrainSettings);
+            HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball));
             PrototypeShotInput input = CreateInput(ball, camera);
-            CreateCanvas(ball, input, settings);
+            CreateCanvas(ball, input, holeLoader, settings);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -78,20 +81,20 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>調整用パラメータの ScriptableObject が無ければ初期値で作る（既にあれば調整済みの値を残す）</summary>
-        private static GolfPhysicsSettings EnsureSettings()
+        private static T EnsureAsset<T>(string path) where T : ScriptableObject
         {
-            var settings = AssetDatabase.LoadAssetAtPath<GolfPhysicsSettings>(SettingsPath);
-            if (settings != null) return settings;
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset != null) return asset;
 
             if (!Directory.Exists(DataDirectory))
             {
                 Directory.CreateDirectory(DataDirectory);
             }
 
-            settings = ScriptableObject.CreateInstance<GolfPhysicsSettings>();
-            AssetDatabase.CreateAsset(settings, SettingsPath);
+            asset = ScriptableObject.CreateInstance<T>();
+            AssetDatabase.CreateAsset(asset, path);
             AssetDatabase.SaveAssets();
-            return settings;
+            return asset;
         }
 
         private static Camera CreateCamera()
@@ -108,18 +111,18 @@ namespace MiniGame.Golf.Editor
             return camera;
         }
 
-        private static void CreateGround()
+        private static HoleLoader CreateHoleLoader(GolfHoleCatalog catalog, GolfBall ball)
         {
-            var groundObj = new GameObject("FlatGround");
-            groundObj.AddComponent<SpriteRenderer>().sortingOrder = GroundSortingOrder;
-            groundObj.AddComponent<FlatGroundView>();
+            var loader = new GameObject("HoleLoader").AddComponent<HoleLoader>();
+            SetRefs(loader, ("_catalog", catalog), ("_ball", ball));
+            return loader;
         }
 
         /// <summary>ロジック（GolfBall）と見た目（BallView / ShadowView）を別の GameObject に分ける</summary>
-        private static GolfBall CreateBall(GolfPhysicsSettings settings)
+        private static GolfBall CreateBall(GolfPhysicsSettings settings, GolfTerrainSettings terrainSettings)
         {
             var ball = new GameObject("GolfBall").AddComponent<GolfBall>();
-            SetRefs(ball, ("_settings", settings));
+            SetRefs(ball, ("_settings", settings), ("_terrainSettings", terrainSettings));
 
             var viewRoot = new GameObject("--- View ---");
 
@@ -159,7 +162,8 @@ namespace MiniGame.Golf.Editor
             CreateManager<AudioManager>("AudioManager", managersRoot.transform);
         }
 
-        private static void CreateCanvas(GolfBall ball, PrototypeShotInput input, GolfPhysicsSettings settings)
+        private static void CreateCanvas(GolfBall ball, PrototypeShotInput input, HoleLoader holeLoader,
+            GolfPhysicsSettings settings)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -176,12 +180,12 @@ namespace MiniGame.Golf.Editor
             UIDialogBuilder.SetStretchAll(safeAreaObj.GetComponent<RectTransform>());
             safeAreaObj.AddComponent<SafeAreaFitter>();
 
-            CreateShotHud(safeAreaObj.transform, ball, input, settings);
+            CreateShotHud(safeAreaObj.transform, ball, input, holeLoader, settings);
             CreateReturnButton(safeAreaObj.transform);
         }
 
         private static void CreateShotHud(Transform parent, GolfBall ball, PrototypeShotInput input,
-            GolfPhysicsSettings settings)
+            HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
             var obj = UIDialogBuilder.CreateUIObject("PrototypeShotHud", parent);
             var rect = obj.GetComponent<RectTransform>();
@@ -204,7 +208,8 @@ namespace MiniGame.Golf.Editor
             obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
 
             var hud = obj.AddComponent<PrototypeShotHud>();
-            SetRefs(hud, ("_ball", ball), ("_input", input), ("_settings", settings), ("_text", text));
+            SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_settings", settings),
+                ("_text", text));
         }
 
         private static void CreateReturnButton(Transform parent)
@@ -220,7 +225,7 @@ namespace MiniGame.Golf.Editor
             SetRefs(returnButton, ("_button", buttonObj.GetComponent<Button>()));
         }
 
-        private static void SetRefs(Object target, params (string property, Object value)[] refs)
+        internal static void SetRefs(Object target, params (string property, Object value)[] refs)
         {
             var so = new SerializedObject(target);
             foreach (var (property, value) in refs)

@@ -13,6 +13,24 @@ namespace MiniGame.Golf
         private const int CircleResolution = 64;
 
         private static Sprite _circle;
+        private static Sprite _square;
+
+        public static Sprite Square
+        {
+            get
+            {
+                if (_square == null)
+                {
+                    // 1ピクセルの白を1ユニットに引き伸ばす
+                    var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    texture.SetPixel(0, 0, Color.white);
+                    texture.Apply();
+                    _square = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+                }
+
+                return _square;
+            }
+        }
 
         public static Sprite Circle
         {
