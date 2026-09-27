@@ -27,6 +27,7 @@ namespace MiniGame.Golf
         [SerializeField] private ClubSelector _clubs;
         [SerializeField] private GolfMessageView _message;
         [SerializeField] private GolfAudio _audio;
+        [SerializeField] private GolfCameraFollower _cameraFollower;
 
         [Tooltip("ボールが止まってから次の人の番を出すまでの時間（秒）。止まった場所を見せる")]
         [SerializeField] private float _shotResultDelay = 1f;
@@ -243,6 +244,7 @@ namespace MiniGame.Golf
 
             CurrentPlayer = GolfRules.NextPlayer(_slots, _teeOrder, ToNumerics(_ball.CupPosition));
             PlaceCurrentBall();
+            yield return PlayHoleIntro(hole);
             if (_isOnline)
             {
                 yield return _turnBanner.PlayAuto(HoleTitle(), HoleDetail(hole), Color.white, string.Empty,
@@ -470,6 +472,13 @@ namespace MiniGame.Golf
         {
             _acceptingShot = accepting;
             _input.enabled = accepting && !IsPaused;
+        }
+
+        /// <summary>コース名を出しながらグリーンからティーまでを見せる。オンラインでも全員同じ長さなので同期は要らない</summary>
+        private IEnumerator PlayHoleIntro(GolfHoleData hole)
+        {
+            _message.ShowHoleName($"{HoleTitle()}\n{hole.DisplayName}", _cameraFollower.FlyoverSeconds);
+            yield return _cameraFollower.PlayFlyover();
         }
 
         private string HoleTitle()

@@ -140,7 +140,7 @@ namespace MiniGame.Golf.Editor
             SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
                 ("_cameraFollower", cameraFollower), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_golferView", golfer));
+            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);

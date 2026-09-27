@@ -51,17 +51,28 @@ namespace MiniGame.Golf
             Show("ギブアップ\n（パー×2）", _badColor, false);
         }
 
+        /// <summary>ホール開始のコース名。カメラがコースを流している間ずっと出すので、長さは呼ぶ側が決める</summary>
+        public void ShowHoleName(string text, float seconds)
+        {
+            Show(text, _normalColor, false, seconds);
+        }
+
         private void Show(string text, Color color, bool emphasize)
+        {
+            Show(text, color, emphasize, _showSeconds);
+        }
+
+        private void Show(string text, Color color, bool emphasize, float seconds)
         {
             _text.text = text;
             _text.color = color;
 
             gameObject.SetActive(true);
             StopAllCoroutines();
-            StartCoroutine(PopRoutine(emphasize ? _greatScale : 1f, emphasize));
+            StartCoroutine(PopRoutine(emphasize ? _greatScale : 1f, emphasize, seconds));
         }
 
-        private IEnumerator PopRoutine(float targetScale, bool pulse)
+        private IEnumerator PopRoutine(float targetScale, bool pulse, float seconds)
         {
             for (float t = 0f; t < _popDuration; t += Time.deltaTime)
             {
@@ -69,7 +80,7 @@ namespace MiniGame.Golf
                 yield return null;
             }
 
-            for (float t = _popDuration; t < _showSeconds; t += Time.deltaTime)
+            for (float t = _popDuration; t < seconds; t += Time.deltaTime)
             {
                 float wave = pulse ? Mathf.Sin(t * _pulseSpeed) * _pulseAmount : 0f;
                 transform.localScale = Vector3.one * targetScale * (1f + wave);
