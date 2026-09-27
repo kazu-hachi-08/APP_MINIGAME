@@ -15,6 +15,9 @@ namespace MiniGame.Golf
 
         public GolfClubData Current => _clubs[_index];
 
+        /// <summary>オンラインで打ったクラブを送るための添字（全端末で同じ並び）</summary>
+        public int CurrentIndex => _index;
+
         /// <summary>グリーン上ではパター以外を選べない</summary>
         public bool CanChange => !IsOnGreen;
 
@@ -24,6 +27,12 @@ namespace MiniGame.Golf
         public void SelectDefault()
         {
             _index = IsOnGreen ? PutterIndex() : ShortestReachingIndex();
+        }
+
+        /// <summary>オンラインで他の人が打ったクラブに合わせる。グリーン上の制限は打った人の端末で済んでいるので見ない</summary>
+        public void Select(int index)
+        {
+            _index = Mathf.Clamp(index, 0, _clubs.Length - 1);
         }
 
         public void Next()

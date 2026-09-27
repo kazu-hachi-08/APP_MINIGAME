@@ -1,5 +1,6 @@
 using System.IO;
 using MiniGame.Common.Audio;
+using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
 using MiniGame.Editor;
@@ -13,7 +14,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 6：2〜4人の交代プレイ・1／3ホールモード・スコアカード）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 8：1台での交代プレイ＋NPC＋オンライン対戦）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -108,7 +109,8 @@ namespace MiniGame.Golf.Editor
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)));
+            SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
+                ("_clubs", clubSelector));
             CreateOtherBalls(manager);
             CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings);
 
@@ -301,6 +303,21 @@ namespace MiniGame.Golf.Editor
             UIDialogBuilder.SetStretchAll(topSafeAreaObj.GetComponent<RectTransform>());
             topSafeAreaObj.AddComponent<SafeAreaFitter>();
             CreateReturnButton(topSafeAreaObj.transform);
+
+            CreateOnline(canvasObj.transform, manager);
+        }
+
+        /// <summary>
+        /// オンライン対戦（§14）。NetworkManager は OnlineSession が実行時に作るので、Scene には置かない。
+        /// モード選択は試合前に最初に出すので、戻るボタンも含めて一番手前に置く（待機中はキャンセルで戻れる）
+        /// </summary>
+        private static void CreateOnline(Transform canvas, GolfGameManager manager)
+        {
+            var onlineObj = new GameObject("Online");
+            var session = onlineObj.AddComponent<OnlineSession>();
+            var link = onlineObj.AddComponent<GolfOnlineLink>();
+            ModeSelectPanel modeSelectPanel = ModeSelectPanelBuilder.Create(canvas, session, "1台で遊ぶ");
+            SetRefs(manager, ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", session), ("_onlineLink", link));
         }
 
         private static void CreateShotGauge(Transform parent, ShotInput input)

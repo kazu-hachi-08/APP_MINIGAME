@@ -60,6 +60,12 @@ namespace MiniGame.Golf
             Strokes += strokes;
         }
 
+        /// <summary>§14.2 オンラインでは打った人の端末の打数（罰打を含む）で上書きする</summary>
+        public void SetStrokes(int strokes)
+        {
+            Strokes = strokes;
+        }
+
         public void HoleOut()
         {
             IsHoledOut = true;
