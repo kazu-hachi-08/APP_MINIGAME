@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40ee3165c57770a41b5f345e3fba7bdd, type: 3}
+  m_Name: GolfHoleCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Golf.GolfHoleCatalog
+  _holes:
+  - {fileID: 11400000, guid: 73033abd22648bc428657a85c8599de7, type: 2}
+  - {fileID: 11400000, guid: 2e9a041581e362b4185e93a7388cd799, type: 2}
+  - {fileID: 11400000, guid: 9d1a52a8a08394940a7849722a5e602a, type: 2}

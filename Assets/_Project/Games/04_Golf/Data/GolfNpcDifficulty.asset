@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff2fa3377f383aa4faa820e662d1ba62, type: 3}
+  m_Name: GolfNpcDifficulty
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Golf.GolfNpcDifficulty
+  _weak:
+    DirectionErrorDegrees: 10
+    PowerErrorRate: 0.2
+    ImpactError: 1.3
+    AvoidHazards: 0
+    ReadWind: 0
+    ReadSlope: 0
+  _normal:
+    DirectionErrorDegrees: 4
+    PowerErrorRate: 0.08
+    ImpactError: 0.7
+    AvoidHazards: 0
+    ReadWind: 1
+    ReadSlope: 0
+  _strong:
+    DirectionErrorDegrees: 1.5
+    PowerErrorRate: 0.03
+    ImpactError: 0.3
+    AvoidHazards: 1
+    ReadWind: 1
+    ReadSlope: 1
