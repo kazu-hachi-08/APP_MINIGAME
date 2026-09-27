@@ -4,14 +4,15 @@ namespace MiniGame.Golf
 {
     /// <summary>
     /// カメラの追従（§4.3）。狙っている間はゴルファーの背中越し（Perspective）に打つ方向を見せ、
-    /// ボールが動き出したら真上視点（Orthographic）に戻ってボールを追う。
+    /// 打ってフォロースルーを見せ終えたら真上視点（Orthographic）に戻ってボールを追う。
     /// 高さでずれるボール本体ではなく地面の位置を追うことで、飛んでいる間もカメラが上下に揺れないようにする。
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class GolfCameraFollower : MonoBehaviour
     {
         [SerializeField] private GolfBall _ball;
-        [SerializeField] private AimGuideView _aimGuide;
+        [Tooltip("背後視点にするかどうかと、背後から見るボールの位置はゴルファーの演出に合わせる")]
+        [SerializeField] private GolferView _golfer;
         [SerializeField] private ShotInput _input;
 
         [Tooltip("ボールに追いつくまでのおおよその時間（秒）。0だと完全に張り付く")]
@@ -57,7 +58,7 @@ namespace MiniGame.Golf
 
         private void LateUpdate()
         {
-            bool wantBehind = _aimGuide.IsShowing;
+            bool wantBehind = _golfer.IsShowing;
             // Perspective ⇔ Orthographic の補間は難しいので、切り替わる瞬間だけは寄せずに飛ばす
             bool snap = wantBehind != _isBehind;
             _isBehind = wantBehind;
@@ -70,7 +71,8 @@ namespace MiniGame.Golf
         {
             _camera.orthographic = false;
 
-            Vector3 ball = _ball.GroundPosition;
+            // フォロースルー中はボールが飛び始めているので、追わずに打った位置から見る
+            Vector3 ball = _golfer.AddressPosition;
             Vector3 dir = _input.Direction;
             Vector3 targetPosition = ball - dir * _backDistance + Vector3.back * _backHeight;
             Vector3 lookPoint = ball + dir * _lookAheadDistance;

@@ -42,6 +42,8 @@ namespace MiniGame.Golf.Editor
         private const int BallSortingOrder = 20;
         // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている
         private const int GolferSortingOrder = 25;
+        // クラブは背中越しに見て体の向こう側にあり、構えたヘッドがボールの横に届くので、体とボール（リング含む）の下に描く
+        private const int GolferClubSortingOrder = BallSortingOrder - 2;
 
         private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
         private static readonly Color LandingMarkerColor = new Color(1f, 1f, 1f, 0.45f);
@@ -113,9 +115,10 @@ namespace MiniGame.Golf.Editor
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
-            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide), ("_input", input));
+            GolferView golfer = CreateGolfer(ball, input, aimGuide);
+            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_golfer", golfer), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_golferView", CreateGolfer(ball, input, aimGuide)));
+            SetRefs(manager, ("_golferView", golfer));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);
@@ -261,7 +264,10 @@ namespace MiniGame.Golf.Editor
             return guide;
         }
 
-        /// <summary>胴（プレイヤー色）と頭（髪の色）を分けて、頭まで服の色に染まらないようにする</summary>
+        /// <summary>
+        /// 胴（プレイヤー色）と頭（髪の色）を分けて、頭まで服の色に染まらないようにする。
+        /// クラブは手元（Hands）を回転の中心にするため、Hands の子に置く
+        /// </summary>
         private static GolferView CreateGolfer(GolfBall ball, ShotInput input, AimGuideView aimGuide)
         {
             var golfer = new GameObject("Golfer").AddComponent<GolferView>();
@@ -274,7 +280,14 @@ namespace MiniGame.Golf.Editor
             head.transform.SetParent(golfer.transform, false);
             head.sortingOrder = GolferSortingOrder + 1;
 
-            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_body", body), ("_head", head));
+            var hands = new GameObject("Hands").transform;
+            hands.SetParent(golfer.transform, false);
+            var club = new GameObject("Club").AddComponent<SpriteRenderer>();
+            club.transform.SetParent(hands, false);
+            club.sortingOrder = GolferClubSortingOrder;
+
+            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_body", body), ("_head", head),
+                ("_club", club));
             return golfer;
         }
 
