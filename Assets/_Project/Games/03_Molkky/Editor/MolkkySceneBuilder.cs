@@ -536,6 +536,9 @@ namespace MiniGame.Molkky.Editor
             text.alignment = TextAnchor.MiddleCenter;
             text.color = color;
             text.supportRichText = true;
+            // 既定の Truncate だと、1行の高さが枠を超えた瞬間にその行ごと描画されなくなる。
+            // フォントの行間（ブラウザ版は NotoSansJP で約1.45倍）や解像度の丸めで点数が消えるのを防ぐ
+            text.verticalOverflow = VerticalWrapMode.Overflow;
             text.raycastTarget = false; // 画面全体が投擲の入力領域なので、文字で入力を遮らない
             return text;
         }
