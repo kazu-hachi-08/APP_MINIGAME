@@ -19,6 +19,7 @@ namespace MiniGame.Golf
         [SerializeField] private HoleLoader _holeLoader;
         [SerializeField] private ShotInput _input;
         [SerializeField] private BallView _ballView;
+        [SerializeField] private GolferView _golferView;
         [SerializeField] private GolfSetupPanel _setupPanel;
         [SerializeField] private GolfTurnBannerView _turnBanner;
         [SerializeField] private ScoreCardView _scoreCard;
@@ -378,7 +379,9 @@ namespace MiniGame.Golf
             if (CurrentPlayer < 0) return;
 
             _ball.Place(ToUnity(Current.Position));
-            _ballView.SetPlayerColor(GolfPlayerColors.Get(Current.Seat));
+            Color color = GolfPlayerColors.Get(Current.Seat);
+            _ballView.SetPlayerColor(color);
+            _golferView.SetPlayerColor(color);
             _input.PrepareShot();
         }
 

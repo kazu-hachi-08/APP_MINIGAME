@@ -40,6 +40,8 @@ namespace MiniGame.Golf.Editor
         private const int ShadowSortingOrder = 10;
         private const int OtherBallSortingOrder = 15;
         private const int BallSortingOrder = 20;
+        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている
+        private const int GolferSortingOrder = 25;
 
         private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
         private static readonly Color LandingMarkerColor = new Color(1f, 1f, 1f, 0.45f);
@@ -113,6 +115,7 @@ namespace MiniGame.Golf.Editor
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
+            SetRefs(manager, ("_golferView", CreateGolfer(ball, input, aimGuide)));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);
@@ -256,6 +259,23 @@ namespace MiniGame.Golf.Editor
             SetRefs(guide, ("_ball", ball), ("_input", input), ("_clubs", clubSelector), ("_line", line),
                 ("_landingMarker", landing));
             return guide;
+        }
+
+        /// <summary>胴（プレイヤー色）と頭（髪の色）を分けて、頭まで服の色に染まらないようにする</summary>
+        private static GolferView CreateGolfer(GolfBall ball, ShotInput input, AimGuideView aimGuide)
+        {
+            var golfer = new GameObject("Golfer").AddComponent<GolferView>();
+
+            var body = new GameObject("Body").AddComponent<SpriteRenderer>();
+            body.transform.SetParent(golfer.transform, false);
+            body.sortingOrder = GolferSortingOrder;
+
+            var head = new GameObject("Head").AddComponent<SpriteRenderer>();
+            head.transform.SetParent(golfer.transform, false);
+            head.sortingOrder = GolferSortingOrder + 1;
+
+            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_body", body), ("_head", head));
+            return golfer;
         }
 
         private static void CreateEventSystem()

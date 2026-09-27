@@ -49,6 +49,20 @@ namespace MiniGame.Golf
         private static readonly Color PennantColor = new Color(0.9f, 0.15f, 0.15f);
         private static readonly Color PennantShadeColor = new Color(0.68f, 0.08f, 0.1f);
 
+        // ゴルファーの胴と脚：幅32×高さ64ピクセルを1ユニットの高さで描く。ピボットは足元（地面に立てる）。
+        // 白で描いてプレイヤー色を掛けるので、脚は暗い灰色にしてズボンに見せる
+        private const int GolferWidth = 32;
+        private const int GolferHeight = 64;
+        private const int LegTop = 26;
+        private const int LegHalfGap = 2;
+        private const int LegWidth = 6;
+        private const int TorsoBottom = 22;
+        private const int TorsoTop = 58;
+        private const int TorsoHalfWidth = 12;
+        private const int TorsoCornerRadius = 6;
+        private static readonly Color GolferLegColor = new Color(0.4f, 0.4f, 0.42f);
+        private static readonly Color GolferShadeColor = new Color(0.72f, 0.72f, 0.75f);
+
         private static Sprite _circle;
         private static Sprite _square;
         private static Sprite _ball;
@@ -56,6 +70,7 @@ namespace MiniGame.Golf
         private static Sprite _cup;
         private static Sprite _flag;
         private static Sprite _tree;
+        private static Sprite _golferBody;
 
         public static Sprite Square
         {
@@ -95,6 +110,10 @@ namespace MiniGame.Golf
         /// <summary>ポールと三角の旗。ピボットはポールの根元</summary>
         public static Sprite Flag => Cached(ref _flag, () => CreateSprite(FlagWidth, FlagHeight, FlagPixel,
             new Vector2((PoleX + PoleWidth * 0.5f) / FlagWidth, 0f), FlagPixelsPerUnit));
+
+        /// <summary>背中から見たゴルファーの胴と脚（頭は別の円で重ねる）。ピボットは足元</summary>
+        public static Sprite GolferBody => Cached(ref _golferBody, () => CreateSprite(GolferWidth, GolferHeight,
+            GolferBodyPixel, new Vector2(0.5f, 0f), GolferHeight));
 
         /// <summary>
         /// ??= だと破棄済み（再生終了で消えたテクスチャ）を null と見なさないため、Unity の == null で判定する
@@ -136,6 +155,33 @@ namespace MiniGame.Golf
             float angle = Mathf.Atan2(p.y, p.x);
             float radius = TreeRadius + Mathf.Sin(angle * TreeBumpCount) * TreeBumpAmount;
             return EdgeAlpha(p.magnitude, radius, CircleResolution);
+        }
+
+        private static Color GolferBodyPixel(int x, int y)
+        {
+            float fromCenter = x + 0.5f - GolferWidth * 0.5f;
+            if (IsInsideTorso(fromCenter, y))
+            {
+                // 左上から光が当たる前提（ボール・木と揃える）で右側を暗くする
+                float shade = Mathf.InverseLerp(-TorsoHalfWidth, TorsoHalfWidth, fromCenter);
+                return Color.Lerp(Color.white, GolferShadeColor, shade);
+            }
+
+            float legX = Mathf.Abs(fromCenter);
+            bool isLeg = y < LegTop && legX >= LegHalfGap && legX < LegHalfGap + LegWidth;
+            return isLeg ? GolferLegColor : Color.clear;
+        }
+
+        /// <summary>角を丸めた長方形。四角いままだと人に見えにくいので肩と腰を丸める</summary>
+        private static bool IsInsideTorso(float fromCenter, int y)
+        {
+            if (y < TorsoBottom || y > TorsoTop || Mathf.Abs(fromCenter) > TorsoHalfWidth) return false;
+
+            float innerX = TorsoHalfWidth - TorsoCornerRadius;
+            float cornerX = Mathf.Abs(fromCenter) - innerX;
+            float cornerY = Mathf.Max(TorsoBottom + TorsoCornerRadius - y, y - (TorsoTop - TorsoCornerRadius));
+            if (cornerX <= 0f || cornerY <= 0f) return true;
+            return cornerX * cornerX + cornerY * cornerY <= TorsoCornerRadius * TorsoCornerRadius;
         }
 
         private static Color FlagPixel(int x, int y)
