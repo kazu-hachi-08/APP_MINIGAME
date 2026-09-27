@@ -17,12 +17,15 @@ namespace MiniGame.Molkky
 
         public readonly ThrowStyle Style;
 
-        public ThrowRequest(float positionX, float angleDegrees, float speed, ThrowStyle style)
+        public readonly ThrowArc Arc;
+
+        public ThrowRequest(float positionX, float angleDegrees, float speed, ThrowStyle style, ThrowArc arc = ThrowArc.Low)
         {
             PositionX = positionX;
             AngleDegrees = angleDegrees;
             Speed = speed;
             Style = style;
+            Arc = arc;
         }
 
         /// <summary>地面平面上の進行方向（X＝左右／Y＝奥）</summary>

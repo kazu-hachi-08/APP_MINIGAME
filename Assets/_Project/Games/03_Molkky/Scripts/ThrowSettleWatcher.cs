@@ -25,6 +25,12 @@ namespace MiniGame.Molkky
             _stillTime = 0f;
         }
 
+        /// <summary>相手の投擲では相手端末の結果が届いた時点で打ち切る（自分の物理の静止は待たない）</summary>
+        public void Cancel()
+        {
+            _watching = false;
+        }
+
         private void FixedUpdate()
         {
             if (!_watching) return;

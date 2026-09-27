@@ -43,7 +43,10 @@ namespace MiniGame.Editor
             UIDialogBuilder.SetStretchAll(waitingObj.GetComponent<RectTransform>());
 
             Text statusText = CreatePanelText(waitingObj.transform, "StatusText", "", 30, new Vector2(0f, 60f), new Vector2(800f, 300f));
-            var cancelButton = CreatePanelButton(waitingObj.transform, "Btn_Cancel", "キャンセル", new Vector2(0f, -180f),
+            var copyButton = CreatePanelButton(waitingObj.transform, "Btn_Copy", "コードをコピー", new Vector2(-170f, -180f),
+                new Vector2(300f, 90f), new Color(0.2f, 0.62f, 0.4f));
+            copyButton.gameObject.SetActive(false);
+            var cancelButton = CreatePanelButton(waitingObj.transform, "Btn_Cancel", "キャンセル", new Vector2(170f, -180f),
                 new Vector2(300f, 90f), new Color(0.3f, 0.33f, 0.4f));
             waitingObj.SetActive(false);
 
@@ -58,6 +61,8 @@ namespace MiniGame.Editor
             so.FindProperty("_waitingGroup").objectReferenceValue = waitingObj;
             so.FindProperty("_statusText").objectReferenceValue = statusText;
             so.FindProperty("_cancelButton").objectReferenceValue = cancelButton;
+            so.FindProperty("_copyButton").objectReferenceValue = copyButton;
+            so.FindProperty("_copyButtonLabel").objectReferenceValue = copyButton.GetComponentInChildren<Text>();
             so.ApplyModifiedProperties();
 
             panelObj.SetActive(false);

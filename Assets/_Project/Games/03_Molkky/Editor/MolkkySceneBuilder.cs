@@ -1,6 +1,7 @@
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
+using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
 using MiniGame.Editor;
@@ -169,9 +170,18 @@ namespace MiniGame.Molkky.Editor
             var pauseButton = pauseButtonObj.AddComponent<PauseButton>();
 
             ThrowStyleButton styleButton = CreateThrowStyleButton(safeArea, input);
+            ThrowArcButton arcButton = CreateThrowArcButton(safeArea, input);
 
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
+
+            // オンライン対戦（§19）。NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
+            var onlineObj = new GameObject("Online");
+            var onlineSession = onlineObj.AddComponent<OnlineSession>();
+            var onlineLink = onlineObj.AddComponent<MolkkyOnlineLink>();
+
+            // 対戦モード選択は試合前に最初に出すので最前面に置く
+            var modeSelectPanel = ModeSelectPanelBuilder.Create(canvasObj.transform, onlineSession, "1台で遊ぶ");
 
             // 9. GameManager
             var gameManagerObj = new GameObject("MolkkyGameManager");
@@ -192,7 +202,8 @@ namespace MiniGame.Molkky.Editor
             SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input), ("_npc", npcThrower),
                 ("_settleWatcher", settleWatcher), ("_scoreBoard", scoreBoard), ("_scorePopup", scorePopup),
                 ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel),
-                ("_styleButton", styleButton));
+                ("_styleButton", styleButton), ("_arcButton", arcButton), ("_modeSelectPanel", modeSelectPanel),
+                ("_onlineSession", onlineSession), ("_onlineLink", onlineLink));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -338,6 +349,26 @@ namespace MiniGame.Molkky.Editor
             label.fontSize = 52;
 
             var view = buttonObj.AddComponent<ThrowStyleButton>();
+            SetRefs(view, ("_input", input), ("_button", buttonObj.GetComponent<Button>()), ("_label", label));
+
+            buttonObj.SetActive(false);
+            return view;
+        }
+
+        /// <summary>
+        /// 低め／山なりの切り替えボタン（§7.6）。縦横ボタンの真上に積み、右下の同じ場所で投げ方をまとめて選べるようにする
+        /// </summary>
+        private static ThrowArcButton CreateThrowArcButton(Transform safeArea, ThrowInput input)
+        {
+            var buttonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_ThrowArc", "", 260f, 130f,
+                new Color(0.15f, 0.17f, 0.22f, 0.85f));
+            var rect = buttonObj.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 0f);
+            rect.anchoredPosition = new Vector2(-30f, 210f);
+            Text label = buttonObj.GetComponentInChildren<Text>();
+            label.fontSize = 52;
+
+            var view = buttonObj.AddComponent<ThrowArcButton>();
             SetRefs(view, ("_input", input), ("_button", buttonObj.GetComponent<Button>()), ("_label", label));
 
             buttonObj.SetActive(false);

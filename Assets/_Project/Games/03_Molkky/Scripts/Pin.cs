@@ -57,6 +57,34 @@ namespace MiniGame.Molkky
             ApplyBody(_settings.PinMassStanding, _settings.PinDampingStanding);
         }
 
+        /// <summary>
+        /// 相手端末が計算した結果で上書きする（§19.2）。
+        /// 倒れる音は自分の端末の演出中に鳴っているので、ここでは Fell を通知しない
+        /// </summary>
+        public void ApplyState(PinState state)
+        {
+            _body.position = state.Position;
+            transform.position = state.Position;
+            Stop();
+
+            _armed = false;
+            IsFallen = state.IsFallen;
+            FallDirection = state.FallDirection;
+            if (IsFallen)
+            {
+                ApplyBody(_settings.PinMassFallen, _settings.PinDampingFallen);
+            }
+            else
+            {
+                ApplyBody(_settings.PinMassStanding, _settings.PinDampingStanding);
+            }
+        }
+
+        public PinState CaptureState()
+        {
+            return new PinState(_body.position, IsFallen, FallDirection);
+        }
+
         public void Stop()
         {
             _body.linearVelocity = Vector2.zero;
