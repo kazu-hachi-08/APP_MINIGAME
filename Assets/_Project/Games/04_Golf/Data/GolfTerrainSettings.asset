@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 931b88f97bc72df488a9835ba4a5d5d0, type: 3}
+  m_Name: GolfTerrainSettings
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Golf.GolfTerrainSettings
+  _terrain:
+    Tee:
+      RollDeceleration: 4
+      BounceRestitution: 0.35
+      BounceSpeedRetention: 0.7
+      ShotDistanceRate: 1
+      ImpactZoneRate: 1
+    Fairway:
+      RollDeceleration: 4
+      BounceRestitution: 0.35
+      BounceSpeedRetention: 0.7
+      ShotDistanceRate: 1
+      ImpactZoneRate: 1
+    Rough:
+      RollDeceleration: 9
+      BounceRestitution: 0.2
+      BounceSpeedRetention: 0.5
+      ShotDistanceRate: 0.8
+      ImpactZoneRate: 1
+    Bunker:
+      RollDeceleration: 25
+      BounceRestitution: 0
+      BounceSpeedRetention: 0.2
+      ShotDistanceRate: 0.6
+      ImpactZoneRate: 0.5
+    Green:
+      RollDeceleration: 2.5
+      BounceRestitution: 0.2
+      BounceSpeedRetention: 0.6
+      ShotDistanceRate: 1
+      ImpactZoneRate: 1
