@@ -23,7 +23,14 @@ namespace MiniGame.Soccer
         [Header("Kick")]
         [SerializeField] private float _kickRadius = 0.7f;
         [SerializeField] private float _passSpeed = 7f;
-        [SerializeField] private float _shootSpeed = 12f;
+        [SerializeField] private float _shootSpeed = 16f;
+
+        [Header("Kick Aim Assist")]
+        [SerializeField] private float _passAimAngle = 60f;     // スティック方向からこの角度以内の味方にパスを寄せる
+        [SerializeField] private float _passAimRange = 10f;
+        [SerializeField] private float _goalDistanceX = 16.5f;  // センターから相手ゴールまでの距離（SoccerSceneBuilder.FieldHalfWidth と同じ値）
+        [SerializeField] private float _shotCornerOffset = 1.2f; // ゴール中央からの狙いのずらし幅（ゴール半幅2より内側に収める）
+        [SerializeField] private float _shotAimRange = 12f;     // この距離以内なら自動でゴール枠へ向ける
 
         [SerializeField] private LayerMask _ballLayerMask = ~0;
 
@@ -83,11 +90,11 @@ namespace MiniGame.Soccer
             // Action1 = パス（弱いキック）、Action2 = シュート（強いキック）
             if (input.IsAction1Down)
             {
-                TryKick(_passSpeed);
+                TryKick(PassDirection(), _passSpeed);
             }
             else if (input.IsAction2Down)
             {
-                TryKick(_shootSpeed);
+                TryKick(ShotDirection(), _shootSpeed);
             }
         }
 
@@ -191,11 +198,24 @@ namespace MiniGame.Soccer
             return false;
         }
 
-        private void TryKick(float speed)
+        private void TryKick(Vector2 direction, float speed)
         {
             if (!TryFindNearbyBall(_kickRadius, out var ball)) return;
-            ball.Kick(FacingDirection, speed);
+            ball.Kick(direction, speed);
             ReleaseBall();
+        }
+
+        private Vector2 PassDirection()
+        {
+            return KickAim.PassDirection(_rigidbody.position, FacingDirection, _teamMember, _passAimAngle, _passAimRange);
+        }
+
+        private Vector2 ShotDirection()
+        {
+            if (_teamMember == null) return FacingDirection;
+
+            float goalX = _teamMember.AttackDirection * _goalDistanceX;
+            return KickAim.ShotDirection(_rigidbody.position, FacingDirection, goalX, _shotCornerOffset, _shotAimRange);
         }
 
         private bool TryFindNearbyBall(float radius, out Ball ball)

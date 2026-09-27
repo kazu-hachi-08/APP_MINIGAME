@@ -32,6 +32,10 @@ namespace MiniGame.Soccer
         [SerializeField] private float _knockSpeed = 7f;
         [SerializeField] private LayerMask _ballLayerMask = ~0;
 
+        [Header("Aim Assist")]
+        [SerializeField] private float _aimAngle = 60f;  // 向きからこの角度以内のボールへ突進方向を寄せる
+        [SerializeField] private float _aimRange = 2.5f;
+
         [Header("Ball Carrier Reaction")]
         [SerializeField] private float _carrierSearchRadius = 1.0f; // ボールからこの距離以内にいる相手を「奪われた選手」とみなす
 
@@ -93,9 +97,25 @@ namespace MiniGame.Soccer
         {
             _state = State.Dashing;
             _timer = _dashDuration;
-            _dashDirection = _playerController.FacingDirection;
+            _dashDirection = ComputeDashDirection();
             _hasKnockedThisTackle = false;
             _playerController.SetMovementSuppressed(true);
+        }
+
+        private Vector2 ComputeDashDirection()
+        {
+            Vector2 facing = _playerController.FacingDirection;
+
+            Collider2D[] hits = Physics2D.OverlapCircleAll(_rigidbody.position, _aimRange, _ballLayerMask);
+            foreach (var hit in hits)
+            {
+                if (hit.TryGetComponent<Ball>(out var ball))
+                {
+                    return KickAim.TowardBall(_rigidbody.position, facing, ball.Position, _aimAngle, _aimRange);
+                }
+            }
+
+            return facing;
         }
 
         private void TickDash()

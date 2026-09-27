@@ -1122,7 +1122,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -1279,7 +1279,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -3068,7 +3068,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -3440,7 +3440,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -4071,7 +4071,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -4427,7 +4427,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -5175,7 +5175,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -5935,7 +5935,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -6343,7 +6343,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -6717,7 +6717,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -7551,7 +7551,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -8661,7 +8661,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -9354,7 +9354,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -9943,7 +9943,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -10674,7 +10674,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -11714,7 +11714,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -11871,7 +11871,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -12347,7 +12347,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -12951,7 +12951,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -14594,7 +14594,7 @@ MonoBehaviour:
   _regrabCooldown: 0.5
   _kickRadius: 0.7
   _passSpeed: 7
-  _shootSpeed: 12
+  _shootSpeed: 16
   _ballLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
