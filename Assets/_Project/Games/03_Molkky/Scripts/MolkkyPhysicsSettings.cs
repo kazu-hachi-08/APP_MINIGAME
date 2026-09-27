@@ -44,7 +44,7 @@ namespace MiniGame.Molkky
         [SerializeField] private float _lobPeakHeight = 2.5f;
         [Tooltip("着地した瞬間に残す速度の割合。小さいほど落ちた場所の近くで止まる")]
         [Range(0f, 1f)]
-        [SerializeField] private float _lobLandingSpeedRatio = 0.3f;
+        [SerializeField] private float _lobLandingSpeedRatio = 0.5f;
 
         [Header("Pin")]
         [SerializeField] private float _pinMassStanding = 1.5f;

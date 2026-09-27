@@ -75,6 +75,8 @@ namespace MiniGame.Molkky
             _body.linearVelocity = Vector2.zero;
             _body.angularVelocity = 0f;
             _capsule.enabled = true;
+            // 山なりの途中で打ち切られた（Freeze 等）場合に、減速なしのまま次の投擲へ持ち越さない
+            _body.linearDamping = _settings.StickDamping;
             _isLobbing = false;
 
             float clampedX = Mathf.Clamp(x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
@@ -112,6 +114,8 @@ namespace MiniGame.Molkky
                 _peakHeight = _settings.LobPeakHeight;
                 // 空中では当たらないようにして、手前のピンを飛び越えさせる（§8.2）
                 _capsule.enabled = false;
+                // 空中は地面の摩擦を受けないので減速させない。着地時の減速と二重に削られて、ピンを倒せなくなるのを防ぐ
+                _body.linearDamping = 0f;
                 _isLobbing = true;
             }
             else
@@ -131,6 +135,7 @@ namespace MiniGame.Molkky
         {
             _isLobbing = false;
             _capsule.enabled = true;
+            _body.linearDamping = _settings.StickDamping;
             _body.linearVelocity *= _settings.LobLandingSpeedRatio;
         }
 
