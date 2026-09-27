@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace MiniGame.Golf
@@ -6,14 +7,34 @@ namespace MiniGame.Golf
     /// カメラの追従（§4.3）。狙っている間はゴルファーの背中越し（Perspective）に打つ方向を見せ、
     /// 打ってフォロースルーを見せ終えたら真上視点（Orthographic）に戻ってボールを追う。
     /// 高さでずれるボール本体ではなく地面の位置を追うことで、飛んでいる間もカメラが上下に揺れないようにする。
+    /// 「全体」ボタンを押している間だけ、ホール全体を真上から見せる。
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class GolfCameraFollower : MonoBehaviour
     {
+        private enum ViewMode { TopDown, Behind, Overview }
+
+        /// <summary>背後視点のカメラ位置。ショットとパターで切り替える</summary>
+        [Serializable]
+        private struct BehindView
+        {
+            [Tooltip("ボールから打つ方向の反対へ下がる距離（地面のユニット）")]
+            public float BackDistance;
+
+            [Tooltip("地面からのカメラの高さ")]
+            public float Height;
+
+            [Tooltip("ボールより前方のどこを画面の中心にするか。大きいほどボールが画面の下へ寄る")]
+            public float LookAheadDistance;
+        }
+
         [SerializeField] private GolfBall _ball;
         [Tooltip("背後視点にするかどうかと、背後から見るボールの位置はゴルファーの演出に合わせる")]
         [SerializeField] private GolferView _golfer;
         [SerializeField] private ShotInput _input;
+        [SerializeField] private ClubSelector _clubs;
+        [SerializeField] private HoleLoader _holeLoader;
+        [SerializeField] private HoldButton _overviewButton;
 
         [Tooltip("ボールに追いつくまでのおおよその時間（秒）。0だと完全に張り付く")]
         [SerializeField] private float _smoothTime = 0.15f;
@@ -22,23 +43,26 @@ namespace MiniGame.Golf
         [SerializeField] private float _lookAhead = 2f;
 
         [Header("背後視点（狙っている間）")]
-        [Tooltip("ボールから打つ方向の反対へ下がる距離（地面のユニット）")]
-        [SerializeField] private float _backDistance = 3f;
+        [SerializeField] private BehindView _shotView = new BehindView { BackDistance = 3f, Height = 2f, LookAheadDistance = 2.75f };
 
-        [Tooltip("地面からのカメラの高さ")]
-        [SerializeField] private float _backHeight = 2f;
-
-        [Tooltip("ボールより前方のどこを画面の中心にするか。大きいほどボールが画面の下へ寄る")]
-        [SerializeField] private float _lookAheadDistance = 2.75f;
+        [Tooltip("パターのときは低く・近くして、グリーンの傾斜の矢印を読みやすくする")]
+        [SerializeField] private BehindView _puttView = new BehindView { BackDistance = 2f, Height = 1.4f, LookAheadDistance = 2f };
 
         [Tooltip("縦の視野角。既定値でボールが下のゲージより上、地平線が上のHUDあたりに来る")]
         [SerializeField] private float _fieldOfView = 60f;
+
+        [Header("全体表示")]
+        [Tooltip("ホールの外側に残す余白（ユニット）。コースの端が画面の端に貼り付かないようにする")]
+        [SerializeField] private float _overviewMargin = 2f;
 
         private Camera _camera;
         private float _baseSize;
         private float _topDownZ;
         private Vector3 _velocity;
-        private bool _isBehind;
+        private ViewMode _mode;
+
+        /// <summary>背中越しに見ている間 true。寝かせて描いている飾り（木）を立てる判定に使う</summary>
+        public bool IsBehind => _mode == ViewMode.Behind;
 
         private void Awake()
         {
@@ -58,24 +82,35 @@ namespace MiniGame.Golf
 
         private void LateUpdate()
         {
-            bool wantBehind = _golfer.IsShowing;
-            // Perspective ⇔ Orthographic の補間は難しいので、切り替わる瞬間だけは寄せずに飛ばす
-            bool snap = wantBehind != _isBehind;
-            _isBehind = wantBehind;
+            ViewMode wanted = WantedMode();
+            // Perspective ⇔ Orthographic や全体表示の広さの補間は難しいので、切り替わる瞬間だけは寄せずに飛ばす
+            bool snap = wanted != _mode;
+            _mode = wanted;
 
-            if (wantBehind) SetBehind(snap);
-            else SetTopDown(snap);
+            switch (_mode)
+            {
+                case ViewMode.Behind: SetBehind(snap); break;
+                case ViewMode.Overview: SetOverview(); break;
+                default: SetTopDown(snap); break;
+            }
+        }
+
+        private ViewMode WantedMode()
+        {
+            if (_overviewButton.IsHeld && _holeLoader.CurrentCourse != null) return ViewMode.Overview;
+            return _golfer.IsShowing ? ViewMode.Behind : ViewMode.TopDown;
         }
 
         private void SetBehind(bool snap)
         {
             _camera.orthographic = false;
+            BehindView view = _clubs.Current.IsPutter ? _puttView : _shotView;
 
             // フォロースルー中はボールが飛び始めているので、追わずに打った位置から見る
             Vector3 ball = _golfer.AddressPosition;
             Vector3 dir = _input.Direction;
-            Vector3 targetPosition = ball - dir * _backDistance + Vector3.back * _backHeight;
-            Vector3 lookPoint = ball + dir * _lookAheadDistance;
+            Vector3 targetPosition = ball - dir * view.BackDistance + Vector3.back * view.Height;
+            Vector3 lookPoint = ball + dir * view.LookAheadDistance;
             // 地面は XY 平面でカメラは -Z 側にいるので、-Z を「空」にすると画面の上が打つ先になる
             Quaternion targetRotation = Quaternion.LookRotation(lookPoint - targetPosition, Vector3.back);
 
@@ -91,6 +126,19 @@ namespace MiniGame.Golf
 
             Vector2 ground = _ball.GroundPosition;
             MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap);
+        }
+
+        /// <summary>押している間は見ているだけなので、なめらかさより即座に全体が見えることを優先する</summary>
+        private void SetOverview()
+        {
+            Bounds bounds = _holeLoader.CurrentCourse.TerrainBounds;
+            float halfHeight = bounds.extents.y + _overviewMargin;
+            float halfWidth = bounds.extents.x + _overviewMargin;
+
+            _camera.orthographic = true;
+            _camera.orthographicSize = Mathf.Max(halfHeight, halfWidth / _camera.aspect);
+            transform.rotation = Quaternion.identity;
+            MoveTo(new Vector3(bounds.center.x, bounds.center.y, _topDownZ), snap: true);
         }
 
         private void MoveTo(Vector3 targetPosition, bool snap)

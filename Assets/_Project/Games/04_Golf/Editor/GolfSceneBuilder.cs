@@ -35,6 +35,8 @@ namespace MiniGame.Golf.Editor
         // §4.3：ボールの周りの狙う先まで見える広さ（縦10ユニット）
         private const float CameraOrthographicSize = 5f;
 
+        // コース外まで続く遠くの地面は、ホールの地面（0）より下に描く
+        private const int FarGroundSortingOrder = -10;
         // 地面・カップ（ホールのプレハブ側）→ 狙いの線 → 影 → ボールの順に重ねる
         private const int AimGuideSortingOrder = 8;
         private const int ShadowSortingOrder = 10;
@@ -56,6 +58,11 @@ namespace MiniGame.Golf.Editor
         private const float PauseButtonSize = 100f;
         private const int PauseButtonFontSize = 44;
         private const float PauseButtonMargin = 16f;
+
+        // 「全体」ボタンは PAUSE ボタンの下。中央寄せの HUD の文字と重ならない幅にする
+        private const float OverviewButtonWidth = 160f;
+        private const float OverviewButtonHeight = 100f;
+        private const int OverviewButtonFontSize = 40;
 
         // 演出メッセージは画面中央のボールより少し上に出し、ボールの止まった場所を隠さない
         private const float MessageOffsetY = 280f;
@@ -111,19 +118,23 @@ namespace MiniGame.Golf.Editor
             UIManager uiManager = CreateManagers();
             GolfBall ball = CreateBall(settings, terrainSettings, out BallView ballView);
             HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
-            SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader));
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             GolferView golfer = CreateGolfer(ball, input, aimGuide);
-            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_golfer", golfer), ("_input", input));
+            var cameraFollower = camera.gameObject.AddComponent<GolfCameraFollower>();
+            SetRefs(cameraFollower, ("_ball", ball), ("_golfer", golfer), ("_input", input), ("_clubs", clubSelector),
+                ("_holeLoader", holeLoader));
+            CreateBackdrop(camera, cameraFollower);
+            SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
+                ("_cameraFollower", cameraFollower), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
             SetRefs(manager, ("_golferView", golfer));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);
             CreateOtherBalls(manager);
-            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager);
+            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager, cameraFollower);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -164,6 +175,15 @@ namespace MiniGame.Golf.Editor
             cameraObj.AddComponent<AudioListener>();
             cameraObj.tag = "MainCamera";
             return camera;
+        }
+
+        /// <summary>背後視点の空と遠くの地面（背後視点 Phase D）。板はカメラの子にせず、地面（Z=0）に置く</summary>
+        private static void CreateBackdrop(Camera camera, GolfCameraFollower cameraFollower)
+        {
+            var farGround = new GameObject("FarGround").AddComponent<SpriteRenderer>();
+            farGround.sortingOrder = FarGroundSortingOrder;
+            SetRefs(camera.gameObject.AddComponent<ShotViewBackdrop>(), ("_follower", cameraFollower),
+                ("_farGround", farGround));
         }
 
         private static HoleLoader CreateHoleLoader(GolfHoleCatalog catalog, GolfBall ball)
@@ -326,7 +346,8 @@ namespace MiniGame.Golf.Editor
         }
 
         private static void CreateCanvas(GolfGameManager manager, GolfBall ball, BallView ballView, ShotInput input,
-            ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings, UIManager uiManager)
+            ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings, UIManager uiManager,
+            GolfCameraFollower cameraFollower)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -347,6 +368,7 @@ namespace MiniGame.Golf.Editor
             CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
+            SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeAreaObj.transform)));
             GolfMessageView message = CreateMessageView(safeAreaObj.transform);
 
             // 試合進行の全画面UIはショット操作より手前に出す
@@ -523,6 +545,21 @@ namespace MiniGame.Golf.Editor
             text.raycastTarget = false;
             obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
             return text;
+        }
+
+        /// <summary>
+        /// 押している間ホール全体を見せる「全体」ボタン（§4.3）。PAUSE ボタンの下に置く。
+        /// 試合進行の全画面UIより奥に置き、設定画面や「○○の番」の間は押せないようにする
+        /// </summary>
+        private static HoldButton CreateOverviewButton(Transform parent)
+        {
+            GameObject obj = UIDialogBuilder.CreateButton(parent, "Btn_Overview", "全体", OverviewButtonWidth,
+                OverviewButtonHeight, ControlButtonColor);
+            var rect = obj.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-PauseButtonMargin, -(PauseButtonMargin * 2f + PauseButtonSize));
+            obj.GetComponentInChildren<Text>().fontSize = OverviewButtonFontSize;
+            return obj.AddComponent<HoldButton>();
         }
 
         private static void CreatePauseButton(Transform parent, GolfGameManager manager)

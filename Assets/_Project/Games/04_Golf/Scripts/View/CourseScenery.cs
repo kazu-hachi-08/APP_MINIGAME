@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace MiniGame.Golf
@@ -5,10 +6,13 @@ namespace MiniGame.Golf
     /// <summary>
     /// コース外の飾り（木）を置く（Phase 10）。当たり判定はなく見た目だけ。
     /// ホールのプレハブに直接置かず、読み込むたびに地面の外側へ並べることで、ホールを追加しても手作業が要らない。
+    /// 木は真上から見た絵なので、背後視点の間だけゴルファーと同じ向きに立てて、奥に並ぶ林に見せる（背後視点 Phase D）。
     /// </summary>
     public class CourseScenery : MonoBehaviour
     {
         [SerializeField] private HoleLoader _holeLoader;
+        [SerializeField] private GolfCameraFollower _cameraFollower;
+        [SerializeField] private ShotInput _input;
 
         [Tooltip("コースの外側に木を並べる幅（ユニット）。「全体」表示で見える範囲まで埋める")]
         [SerializeField] private float _margin = 8f;
@@ -29,12 +33,23 @@ namespace MiniGame.Golf
         [Tooltip("地面（0）より上、カップ・ボールより下に描く。コース外に出たボールが木に隠れないようにする")]
         [SerializeField] private int _sortingOrder = 2;
 
+        [Tooltip("立てたとき、木の大きさに対して中心をどれだけ地面から浮かせるか。葉の下端が地面に付くくらい")]
+        [SerializeField] private float _standingLift = 0.4f;
+
+        private readonly List<Transform> _trees = new List<Transform>();
+        private bool _isStanding;
+        private Vector2 _standingDirection;
+
         private void OnEnable() => _holeLoader.HoleLoaded += Build;
 
         private void OnDisable() => _holeLoader.HoleLoaded -= Build;
 
         private void Build()
         {
+            // 前のホールの木はホールと一緒に消えるので、参照だけ捨てる
+            _trees.Clear();
+            _isStanding = false;
+
             HoleCourse course = _holeLoader.CurrentCourse;
             Bounds courseBounds = course.TerrainBounds;
             // 木の葉がコースの縁にかぶらないよう、木の大きさの半分だけ離す
@@ -68,6 +83,40 @@ namespace MiniGame.Golf
             tree.transform.localScale = Vector3.one * size;
             tree.sprite = GolfShapeSprites.Tree;
             tree.sortingOrder = _sortingOrder;
+            _trees.Add(tree.transform);
+        }
+
+        private void LateUpdate()
+        {
+            bool standing = _cameraFollower.IsBehind;
+            Vector2 direction = _input.Direction;
+            // 木は数百本あるので、立てる・寝かせる・向きを変えるときだけ動かす
+            if (standing == _isStanding && (!standing || direction == _standingDirection)) return;
+
+            _isStanding = standing;
+            _standingDirection = direction;
+            if (standing) StandTrees(direction);
+            else LayTrees();
+        }
+
+        /// <summary>前＝打つ方向、上＝空（-Z）。ゴルファーと同じ規則なので、背後視点のカメラに正対する</summary>
+        private void StandTrees(Vector2 direction)
+        {
+            Quaternion rotation = Quaternion.LookRotation(direction, Vector3.back);
+            foreach (Transform tree in _trees)
+            {
+                Vector3 position = tree.position;
+                tree.SetPositionAndRotation(new Vector3(position.x, position.y, -tree.localScale.y * _standingLift), rotation);
+            }
+        }
+
+        private void LayTrees()
+        {
+            foreach (Transform tree in _trees)
+            {
+                Vector3 position = tree.position;
+                tree.SetPositionAndRotation(new Vector3(position.x, position.y, 0f), Quaternion.identity);
+            }
         }
 
         private static float Range(System.Random random, float min, float max)
