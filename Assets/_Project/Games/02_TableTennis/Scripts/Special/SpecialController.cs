@@ -5,6 +5,17 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis
 {
     /// <summary>
+    /// オンライン対戦で打球に乗った技を伝えるための番号。
+    /// 両端末とも相手の選手を知っているので、技のアセットではなく「弱か強か」だけを送れば足りる。
+    /// </summary>
+    public enum SpecialSlot
+    {
+        None,
+        Weak,
+        Strong
+    }
+
+    /// <summary>
     /// 必殺技の「獲得 → 発動 → 効果」をまとめる。
     /// 打球の数値は ShotCalculator / NpcController / BallMotion が必殺技データを見て変えるので、
     /// ここは「誰が持っているか」「いつ乗せるか」と、ボールの見た目・相手への効果の受け渡しだけを扱う。
@@ -12,6 +23,9 @@ namespace MiniGame.TableTennis
     /// 弱必殺技は台上キャラに当てて、強必殺技は黄色ボールのラリーを取って獲得する。ストックは弱・強それぞれ1個まで。
     /// プレイヤーは SP ボタンで次の打球に乗せ、NPCは持っていれば次の返球で使う（使いどころの判断は持たせない）。
     /// ストックは実際に打ったときに減らす。乗せたまま得点が決まっても失わないようにするため。
+    ///
+    /// オンラインでは「NPC」側を相手プレイヤーとして扱う。相手の技は打球と一緒に届くので（ReceiveOpponentShot）、
+    /// NPCへ技を持たせる処理は止める。台上キャラは両端末で出現をそろえる仕組みが無いため出さない（強必殺技だけ使える）。
     /// </summary>
     public class SpecialController : MonoBehaviour
     {
@@ -54,8 +68,10 @@ namespace MiniGame.TableTennis
         /// <summary>台上キャラを出してよいか。ラリー中だけ true にする</summary>
         public bool CanAppear
         {
-            set => _mascot.CanAppear = value && enabled;
+            set => _mascot.CanAppear = value && enabled && !_isOnline;
         }
+
+        private bool _isOnline;
 
         private SpecialData _playerWeak;
         private SpecialData _playerStrong;
@@ -105,8 +121,9 @@ namespace MiniGame.TableTennis
         }
 
         /// <summary>選んだ選手の必殺技を設定する（試合開始前に呼ぶ）</summary>
-        public void SetSpecials(CharacterData player, CharacterData npc)
+        public void SetSpecials(CharacterData player, CharacterData npc, bool isOnline = false)
         {
+            _isOnline = isOnline;
             _playerWeak = player.WeakSpecial;
             _playerStrong = player.StrongSpecial;
             _npcWeak = npc.WeakSpecial;
@@ -224,7 +241,12 @@ namespace MiniGame.TableTennis
 
             ConsumePlayerStock(shot.Special);
             ApplyShotLook(shot.Special);
-            _npc.ReceiveSpecial(shot.Special);
+
+            // オンラインでは相手端末が打球と一緒に受け取って足止めなどを反映する
+            if (!_isOnline)
+            {
+                _npc.ReceiveSpecial(shot.Special);
+            }
 
             // ラリー中ずっと続く技は、次の打球にも乗せ直す
             if (shot.Special.LastsForRally)
@@ -259,6 +281,8 @@ namespace MiniGame.TableTennis
         /// <summary>NPCに次の返球で使う技を持たせる。強必殺技を優先する</summary>
         private void RefillNpc()
         {
+            // オンラインでは相手が自分で使いどころを決める
+            if (_isOnline) return;
             if (_npc.PendingSpecial != null) return;
 
             if (_npcRallySpecial != null)
@@ -302,6 +326,34 @@ namespace MiniGame.TableTennis
             }
 
             RefillNpc();
+        }
+
+        // ---- オンライン ----
+
+        /// <summary>送信用に、自分の打球に乗った技を番号へ変える</summary>
+        public SpecialSlot SlotOf(SpecialData special)
+        {
+            if (special == null) return SpecialSlot.None;
+            return special == _playerStrong ? SpecialSlot.Strong : SpecialSlot.Weak;
+        }
+
+        /// <summary>
+        /// 相手の打球が届いたときに呼ぶ（ボールを発射した直後・早送りの前）。
+        /// 技の球ならNPCが使ったときと同じく、見た目・跳ね方・自分の足止めを反映する
+        /// </summary>
+        public void ReceiveOpponentShot(SpecialSlot slot)
+        {
+            SpecialData special = slot == SpecialSlot.Strong ? _npcStrong
+                : slot == SpecialSlot.Weak ? _npcWeak
+                : null;
+
+            if (special == null)
+            {
+                ResetBallLook();
+                return;
+            }
+
+            HandleNpcSpecialUsed(special);
         }
 
         // ---- 共通 ----

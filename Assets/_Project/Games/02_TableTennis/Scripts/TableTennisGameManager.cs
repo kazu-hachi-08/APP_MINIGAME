@@ -87,6 +87,10 @@ namespace MiniGame.TableTennis
         private bool _localLoadoutReady;
         private bool _peerLoadoutReady;
 
+        /// <summary>オンラインで、両端末の選手がそろってから必殺技を設定するために持っておく</summary>
+        private CharacterData _localCharacter;
+        private CharacterData _peerCharacter;
+
         private string OpponentLabel => _isOnline ? "RIVAL" : "NPC";
 
         private void Awake()
@@ -230,12 +234,6 @@ namespace MiniGame.TableTennis
             _referee.IgnoreOwnShotOutcome = true;
             _onlineLink.Begin();
 
-            // 台上キャラの出現・獲得を両端末で揃える仕組みがまだ無いため、オンラインでは必殺技を使わない
-            if (_special != null)
-            {
-                _special.enabled = false;
-            }
-
             if (_loadoutPanel == null)
             {
                 _localLoadoutReady = true;
@@ -247,6 +245,7 @@ namespace MiniGame.TableTennis
             _loadoutPanel.Show(false, (player, _) =>
             {
                 _loadoutApplier.ApplyPlayer(player);
+                _localCharacter = player.Character;
                 _onlineLink.SendLoadout(_loadoutCatalog.IndexOf(player.Character), _loadoutCatalog.IndexOf(player.Racket));
                 _localLoadoutReady = true;
 
@@ -264,7 +263,9 @@ namespace MiniGame.TableTennis
         {
             if (!_isOnline || _peerLoadoutReady) return;
 
-            _loadoutApplier.ApplyOpponentLook(_loadoutCatalog.Get(characterIndex, racketIndex));
+            Loadout peer = _loadoutCatalog.Get(characterIndex, racketIndex);
+            _loadoutApplier.ApplyOpponentLook(peer);
+            _peerCharacter = peer.Character;
             _peerLoadoutReady = true;
             TryStartOnlineMatch();
         }
@@ -280,11 +281,29 @@ namespace MiniGame.TableTennis
             if (CurrentState != MiniGameState.Ready) return;
 
             SetMessage(string.Empty);
+            SetupOnlineSpecials();
             _score = new MatchScore(_pointsToWin, _serveChangeInterval, _isHost ? CourtSide.Player : CourtSide.Opponent);
             UpdateScoreText();
 
             StartGame();
             StartCoroutine(NextServeRoutine());
+        }
+
+        /// <summary>
+        /// 相手の技は、相手の選手から「弱・強」の番号で引けるようにしておく。
+        /// 選手選択が無い構成（テストシーンなど）では選手が分からないので、必殺技なしで遊ぶ
+        /// </summary>
+        private void SetupOnlineSpecials()
+        {
+            if (_special == null) return;
+
+            if (_localCharacter == null || _peerCharacter == null)
+            {
+                _special.enabled = false;
+                return;
+            }
+
+            _special.SetSpecials(_localCharacter, _peerCharacter, true);
         }
 
         /// <summary>
@@ -413,7 +432,8 @@ namespace MiniGame.TableTennis
             if (_isOnline)
             {
                 // 打球直後のボール位置 ＝ 発射位置
-                _onlineLink.SendShot(_ball.CourtPosition, shot);
+                SpecialSlot special = _special != null ? _special.SlotOf(shot.Special) : SpecialSlot.None;
+                _onlineLink.SendShot(_ball.CourtPosition, shot, special);
             }
 
             SetShotInfo(BuildShotInfo(shot), _shotInfoDuration);
@@ -445,6 +465,12 @@ namespace MiniGame.TableTennis
             else
             {
                 _ball.Launch(shot.From, shot.Velocity, shot.Spin);
+            }
+
+            // 跳ね方の変化は早送り中のバウンドにも効かせたいので、早送りより先に反映する
+            if (_special != null && _special.enabled)
+            {
+                _special.ReceiveOpponentShot(shot.Special);
             }
 
             // 通信にかかった時間ぶん進めて、相手の画面とボールの位置を揃える
@@ -492,7 +518,8 @@ namespace MiniGame.TableTennis
 
         private void HandleSpecialGranted(CourtSide side, SpecialData special)
         {
-            string label = side == CourtSide.Player ? "SPボタンで次の打球に" : $"{OpponentLabel}が次の返球で使う";
+            string opponentLabel = _isOnline ? $"{OpponentLabel}が獲得" : $"{OpponentLabel}が次の返球で使う";
+            string label = side == CourtSide.Player ? "SPボタンで次の打球に" : opponentLabel;
             SetShotInfo($"{special.DisplayName} 獲得！\n{label}", _shotInfoDuration);
         }
 
