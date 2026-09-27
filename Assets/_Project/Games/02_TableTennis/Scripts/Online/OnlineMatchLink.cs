@@ -17,6 +17,9 @@ namespace MiniGame.TableTennis
         public Vector3 ServeTarget;
         public float ServeForwardSpeed;
 
+        /// <summary>打球に乗った相手の必殺技（相手の選手の弱・強どちらか）</summary>
+        public SpecialSlot Special;
+
         /// <summary>相手が打ってから届くまでにかかった時間（秒）</summary>
         public float Elapsed;
     }
@@ -102,7 +105,7 @@ namespace MiniGame.TableTennis
         // ---- 送信 ----
 
         /// <summary>自分の打球を送る。引数は自分視点の座標のまま渡してよい</summary>
-        public void SendShot(Vector3 from, ShotResult shot)
+        public void SendShot(Vector3 from, ShotResult shot, SpecialSlot special)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
             writer.WriteValueSafe(Network.ServerTime.Time);
@@ -113,6 +116,7 @@ namespace MiniGame.TableTennis
             writer.WriteValueSafe(Mirror(shot.ServeBouncePoint));
             writer.WriteValueSafe(Mirror(shot.ServeTarget));
             writer.WriteValueSafe(shot.ServeForwardSpeed);
+            writer.WriteValueSafe((int)special);
             Send(ShotMessage, writer, NetworkDelivery.ReliableSequenced);
         }
 
@@ -167,6 +171,8 @@ namespace MiniGame.TableTennis
             reader.ReadValueSafe(out shot.ServeBouncePoint);
             reader.ReadValueSafe(out shot.ServeTarget);
             reader.ReadValueSafe(out shot.ServeForwardSpeed);
+            reader.ReadValueSafe(out int special);
+            shot.Special = (SpecialSlot)special;
 
             float elapsed = (float)(Network.ServerTime.Time - sentTime);
             shot.Elapsed = Mathf.Clamp(elapsed, 0f, _maxLatencyCompensation);
