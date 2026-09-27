@@ -13,7 +13,6 @@ namespace MiniGame.Molkky
     public class MolkkyGameManager : BaseMiniGameManager
     {
         private const string LocalPlayerName = "あなた";
-        private const string RemotePlayerName = "相手";
 
         [Header("Molkky")]
         [SerializeField] private PinRack _pinRack;
@@ -52,9 +51,10 @@ namespace MiniGame.Molkky
         private int _localIndex;
 
         // 相手端末から届いた投擲・結果。自分の画面がまだ前の手番の演出中でも取りこぼさないよう、
-        // 届いた時点では保持だけして、相手の手番の処理で取り出す
-        private ThrowRequest? _remoteThrow;
-        private PinState[] _remoteResult;
+        // 届いた時点では溜めておき、相手の手番の処理で古い順に取り出す。
+        // 3人以上だと自分の演出中に次の人の投擲まで届くことがあるため、1件ではなくキューにしている
+        private readonly Queue<ThrowRequest> _remoteThrows = new Queue<ThrowRequest>();
+        private readonly Queue<PinState[]> _remoteResults = new Queue<PinState[]>();
 
         public MolkkyPhase Phase { get; private set; }
 
@@ -73,7 +73,7 @@ namespace MiniGame.Molkky
             Phase = MolkkyPhase.PlayerSetup;
             if (_modeSelectPanel != null)
             {
-                _modeSelectPanel.Show(ShowPlayerSetup, HandleOnlineConnected);
+                _modeSelectPanel.Show(ShowPlayerSetup, HandleOnlineStarted, PlayerSetupPanel.MaxPlayers);
             }
             else
             {
@@ -98,18 +98,20 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// オンラインは1対1固定なので人数設定は出さない。先攻はホスト（§19.4）。
-        /// 名前は端末ごとに「あなた／相手」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// オンラインは部屋に集まった人数で遊ぶので人数設定は出さない。席番号＝手番の順で、先攻はホスト（§19.4）。
+        /// 名前は端末ごとに自分だけ「あなた」にする。名前は表示にしか使わないので端末間で違っていてよい
         /// </summary>
-        private void HandleOnlineConnected(bool isHost)
+        private void HandleOnlineStarted(int localSeat, int playerCount)
         {
             _isOnline = true;
-            _localIndex = isHost ? 0 : 1;
+            _localIndex = localSeat;
             _onlineLink.Begin();
 
             _players.Clear();
-            _players.Add(new PlayerSlot(isHost ? LocalPlayerName : RemotePlayerName));
-            _players.Add(new PlayerSlot(isHost ? RemotePlayerName : LocalPlayerName));
+            for (int i = 0; i < playerCount; i++)
+            {
+                _players.Add(new PlayerSlot(i == localSeat ? LocalPlayerName : $"P{i + 1}"));
+            }
 
             StartGame();
         }
@@ -220,28 +222,25 @@ namespace MiniGame.Molkky
         /// </summary>
         private IEnumerator RemoteThrowRoutine()
         {
-            yield return new WaitUntil(() => _remoteThrow.HasValue);
-            ThrowRequest request = _remoteThrow.Value;
-            _remoteThrow = null;
-            ExecuteThrow(request);
+            yield return new WaitUntil(() => _remoteThrows.Count > 0);
+            ExecuteThrow(_remoteThrows.Dequeue());
 
-            yield return new WaitUntil(() => _remoteResult != null);
+            yield return new WaitUntil(() => _remoteResults.Count > 0);
             _settleWatcher.Cancel();
             _stick.Freeze();
-            _pinRack.ApplyStates(_remoteResult);
-            _remoteResult = null;
+            _pinRack.ApplyStates(_remoteResults.Dequeue());
 
             yield return ScoringRoutine();
         }
 
         private void HandleRemoteThrow(ThrowRequest request)
         {
-            _remoteThrow = request;
+            _remoteThrows.Enqueue(request);
         }
 
         private void HandleRemoteResult(PinState[] states)
         {
-            _remoteResult = states;
+            _remoteResults.Enqueue(states);
         }
 
         private void HandlePositionChanged(float x)
@@ -355,7 +354,7 @@ namespace MiniGame.Molkky
             return !winner.IsNpc;
         }
 
-        /// <summary>試合中に切れたらその時点で終了する（§19.4）。再接続はしない（§19.5）</summary>
+        /// <summary>試合中に誰か1人でも切れたら全員その時点で終了する（§19.4）。再接続はしない（§19.5）</summary>
         private void HandlePeerDisconnected()
         {
             if (!_isOnline || Phase == MolkkyPhase.GameSet) return;
@@ -366,7 +365,7 @@ namespace MiniGame.Molkky
             SetThrowButtonsVisible(false);
             _scorePopup.Hide();
 
-            FinishGame(false, "相手との接続が切れました", "試合を終了しました");
+            FinishGame(false, "他のプレイヤーとの接続が切れました", "試合を終了しました");
         }
     }
 }
