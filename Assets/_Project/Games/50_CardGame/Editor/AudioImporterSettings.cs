@@ -11,7 +11,7 @@ namespace CardGame.Unity.Editor
     /// </summary>
     public sealed class AudioImporterSettings : AssetPostprocessor
     {
-        public override uint GetVersion() => 5;
+        public override uint GetVersion() => 6;
 
         private void OnPreprocessAudio()
         {
@@ -21,7 +21,8 @@ namespace CardGame.Unity.Editor
 
             var importer = (AudioImporter)assetImporter;
             importer.forceToMono = true;
-            importer.loadInBackground = bgm;
+            // 裏読みの BGM は Web ビルド時に "Failed getting load state of FSB" で失敗する。Streaming なら無くても止まらない
+            importer.loadInBackground = false;
 
             var settings = importer.defaultSampleSettings;
             settings.loadType = bgm ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
