@@ -16,15 +16,17 @@ namespace MiniGame.Golf
 
         private readonly float _speed;
         private readonly float _zoneCenter;
-        private readonly float _zoneHalfWidth;
+        private readonly float _baseZoneHalfWidth;
+        private float _zoneHalfWidth;
 
         /// <param name="speed">1秒あたりにマーカーが動く量（ゲージ全体＝1）</param>
         /// <param name="zoneCenter">インパクトゾーンの中心の位置</param>
-        /// <param name="zoneHalfWidth">インパクトゾーンの半分の幅</param>
+        /// <param name="zoneHalfWidth">ライの影響が無いときのインパクトゾーンの半分の幅</param>
         public ShotGauge(float speed, float zoneCenter, float zoneHalfWidth)
         {
             _speed = speed;
             _zoneCenter = zoneCenter;
+            _baseZoneHalfWidth = zoneHalfWidth;
             _zoneHalfWidth = zoneHalfWidth;
         }
 
@@ -47,6 +49,12 @@ namespace MiniGame.Golf
             Marker = 0f;
             Power = 0f;
             ImpactOffset = 0f;
+        }
+
+        /// <summary>§7.4 ライでインパクトゾーンの幅を変える（バンカーは狭い）。構えるたびに呼ぶ</summary>
+        public void SetZoneScale(float scale)
+        {
+            _zoneHalfWidth = _baseZoneHalfWidth * scale;
         }
 
         public void Reset()

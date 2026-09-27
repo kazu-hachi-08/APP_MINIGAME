@@ -13,7 +13,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 3：3タップゲージとクラブで狙って打つ）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 4：池・OB・風のあるホールを3タップゲージとクラブで打つ）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -52,6 +52,13 @@ namespace MiniGame.Golf.Editor
         private const float ReturnButtonHeight = 90f;
         private const int ReturnButtonFontSize = 34;
         private const float ReturnButtonMargin = 16f;
+
+        // 風は戻るボタンと反対の左上（HUDより上）に、矢印＋強さで出す
+        private const float WindViewMargin = 16f;
+        private const float WindArrowSize = 90f;
+        private const float WindLabelWidth = 200f;
+        private const int WindArrowFontSize = 72;
+        private const int WindLabelFontSize = 40;
 
         // 下から ◀ クラブ ▶ の行 → ゲージ の順に積む。合計の高さは GolfCameraFollower の _bottomUiRatio に収める
         private const float AimControlBottomMargin = 40f;
@@ -246,6 +253,7 @@ namespace MiniGame.Golf.Editor
             safeAreaObj.AddComponent<SafeAreaFitter>();
 
             CreateShotHud(safeAreaObj.transform, ball, input, holeLoader, settings);
+            CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
             CreateReturnButton(safeAreaObj.transform);
@@ -348,6 +356,50 @@ namespace MiniGame.Golf.Editor
             var hud = obj.AddComponent<PrototypeShotHud>();
             SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_settings", settings),
                 ("_text", text));
+        }
+
+        /// <summary>左上に「↑（風の向きへ回す）＋ 風 3m」を並べる</summary>
+        private static void CreateWindView(Transform parent, HoleLoader holeLoader)
+        {
+            GameObject root = UIDialogBuilder.CreateUIObject("WindView", parent);
+            var rootRect = root.GetComponent<RectTransform>();
+            rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = new Vector2(0f, 1f);
+            rootRect.anchoredPosition = new Vector2(WindViewMargin, -WindViewMargin);
+            rootRect.sizeDelta = new Vector2(WindArrowSize + WindLabelWidth, WindArrowSize);
+
+            Text arrow = CreateWindText(root.transform, "Arrow", "↑", WindArrowFontSize, TextAnchor.MiddleCenter);
+            var arrowRect = arrow.GetComponent<RectTransform>();
+            arrowRect.anchorMin = arrowRect.anchorMax = new Vector2(0f, 0.5f);
+            // 中心で回すため、ピボットを真ん中にしてから左端に寄せる
+            arrowRect.pivot = new Vector2(0.5f, 0.5f);
+            arrowRect.anchoredPosition = new Vector2(WindArrowSize * 0.5f, 0f);
+            arrowRect.sizeDelta = new Vector2(WindArrowSize, WindArrowSize);
+
+            Text label = CreateWindText(root.transform, "Strength", string.Empty, WindLabelFontSize, TextAnchor.MiddleLeft);
+            var labelRect = label.GetComponent<RectTransform>();
+            labelRect.anchorMin = labelRect.anchorMax = labelRect.pivot = new Vector2(0f, 0.5f);
+            labelRect.anchoredPosition = new Vector2(WindArrowSize, 0f);
+            labelRect.sizeDelta = new Vector2(WindLabelWidth, WindArrowSize);
+
+            SetRefs(root.AddComponent<WindView>(), ("_holeLoader", holeLoader), ("_arrow", arrowRect),
+                ("_strengthLabel", label));
+        }
+
+        private static Text CreateWindText(Transform parent, string name, string content, int fontSize, TextAnchor alignment)
+        {
+            GameObject obj = UIDialogBuilder.CreateUIObject(name, parent);
+            var text = obj.AddComponent<Text>();
+            text.text = content;
+            text.fontSize = fontSize;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = alignment;
+            text.color = Color.white;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            // 画面のどこを押しても打てるように、表示はタップを奪わない
+            text.raycastTarget = false;
+            obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
+            return text;
         }
 
         private static void CreateReturnButton(Transform parent)

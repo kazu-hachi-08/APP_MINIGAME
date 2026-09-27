@@ -356,5 +356,162 @@ namespace MiniGame.Golf.Tests
             actual.AdvanceToRest();
             Assert.AreEqual(actual.Position, predicted);
         }
+
+        // --- 池・OB・風・ライ（Phase 4） ---
+
+        /// <summary>奥行き boundaryY から先が指定の地面、手前はフェアウェイ</summary>
+        private sealed class BeyondGround : IGroundMap
+        {
+            private readonly float _boundaryY;
+            private readonly GroundType _beyond;
+
+            public BeyondGround(float boundaryY, GroundType beyond)
+            {
+                _boundaryY = boundaryY;
+                _beyond = beyond;
+            }
+
+            public GroundType GetGround(Vector2 position) => position.Y >= _boundaryY ? _beyond : GroundType.Fairway;
+        }
+
+        private static BallSimulator CreateOn(IGroundMap ground, Vector2 start)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), ground);
+            simulator.Place(start);
+            return simulator;
+        }
+
+        private static BallSimulator CreateWithWind(Wind wind)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
+            simulator.SetWind(wind);
+            simulator.Place(Vector2.Zero);
+            return simulator;
+        }
+
+        [Test]
+        public void 池に落ちると止まり池に入る直前の地点から打ち直す()
+        {
+            // 手前5ユニットから先が池。アイアンのフルショットは池の上を飛んで池に落ちる
+            BallSimulator simulator = CreateOn(new BeyondGround(5f, GroundType.Water), Vector2.Zero);
+            Hit(simulator, Forward, 1f);
+
+            simulator.AdvanceToRest();
+
+            Assert.IsTrue(simulator.IsInHazard);
+            Assert.AreEqual(GroundType.Water, simulator.Ground);
+            Assert.Greater(simulator.DropPosition.Y, 4f);
+            Assert.Less(simulator.DropPosition.Y, 5f);
+        }
+
+        [Test]
+        public void 転がって池に入っても止まる()
+        {
+            BallSimulator simulator = CreateOn(new BeyondGround(1f, GroundType.Water), Vector2.Zero);
+            Putt(simulator, Forward, 1f);
+
+            simulator.AdvanceToRest();
+
+            Assert.IsTrue(simulator.IsInHazard);
+            // 池に入った次の刻みで止まる（そのまま転がり続けない）
+            Assert.Less(simulator.Position.Y, 1.2f);
+            Assert.Less(simulator.DropPosition.Y, 1f);
+        }
+
+        [Test]
+        public void OBになると打つ前の場所から打ち直す()
+        {
+            var start = new Vector2(1f, 2f);
+            BallSimulator simulator = CreateOn(new BeyondGround(7f, GroundType.OutOfBounds), start);
+            Hit(simulator, Forward, 1f);
+
+            simulator.AdvanceToRest();
+
+            Assert.IsTrue(simulator.IsInHazard);
+            Assert.AreEqual(GroundType.OutOfBounds, simulator.Ground);
+            Assert.AreEqual(start, simulator.DropPosition);
+        }
+
+        [Test]
+        public void 置き直すと池OBの状態は消える()
+        {
+            BallSimulator simulator = CreateOn(new BeyondGround(5f, GroundType.Water), Vector2.Zero);
+            Hit(simulator, Forward, 1f);
+            simulator.AdvanceToRest();
+
+            simulator.Place(simulator.DropPosition);
+
+            Assert.IsFalse(simulator.IsInHazard);
+            Assert.AreEqual(GroundType.Fairway, simulator.Ground);
+        }
+
+        [Test]
+        public void 横風で風下へ流される()
+        {
+            BallSimulator simulator = CreateWithWind(new Wind(new Vector2(1f, 0f), 5f));
+            Hit(simulator, Forward, 1f);
+
+            Assert.Greater(FirstLanding(simulator).X, 0.5f);
+        }
+
+        [Test]
+        public void 向かい風では飛ばない()
+        {
+            float calm = FirstLanding(Shoot(1f)).Y;
+
+            BallSimulator headwind = CreateWithWind(new Wind(new Vector2(0f, -1f), 5f));
+            Hit(headwind, Forward, 1f);
+
+            Assert.Less(FirstLanding(headwind).Y, calm);
+        }
+
+        [Test]
+        public void パットは風の影響を受けない()
+        {
+            BallSimulator simulator = CreateWithWind(new Wind(new Vector2(1f, 0f), 5f));
+            Putt(simulator, Forward, 1f);
+
+            simulator.AdvanceToRest();
+
+            Assert.AreEqual(0f, simulator.Position.X, 0.0001f);
+        }
+
+        [Test]
+        public void 着地予測に風は含めない()
+        {
+            BallSimulator windy = CreateWithWind(new Wind(new Vector2(1f, 0f), 5f));
+            var calm = new BallSimulator(new BallPhysicsConfig());
+            calm.Place(Vector2.Zero);
+
+            Assert.AreEqual(calm.PredictFullPower(Driver, Forward), windy.PredictFullPower(Driver, Forward));
+        }
+
+        private static float CarryFrom(GroundType lie)
+        {
+            BallSimulator simulator = CreateOn(new UniformGround(lie), Vector2.Zero);
+            Hit(simulator, Forward, 1f);
+            return FirstLanding(simulator).Length();
+        }
+
+        [Test]
+        public void ラフから打つとフェアウェイより飛ばない()
+        {
+            Assert.Less(CarryFrom(GroundType.Rough), CarryFrom(GroundType.Fairway));
+        }
+
+        [Test]
+        public void バンカーから打つとラフより飛ばない()
+        {
+            Assert.Less(CarryFrom(GroundType.Bunker), CarryFrom(GroundType.Rough));
+        }
+
+        [Test]
+        public void ライの飛距離の割合がおおよそそのまま飛距離になる()
+        {
+            var terrain = new TerrainPhysicsConfig();
+            float rate = CarryFrom(GroundType.Bunker) / CarryFrom(GroundType.Fairway);
+
+            Assert.AreEqual(terrain.Bunker.ShotDistanceRate, rate, 0.05f);
+        }
     }
 }

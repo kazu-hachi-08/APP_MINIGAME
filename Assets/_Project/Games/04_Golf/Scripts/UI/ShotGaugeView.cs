@@ -24,15 +24,11 @@ namespace MiniGame.Golf
             _label.text = IdleLabel;
         }
 
-        private void Start()
-        {
-            ShotGauge gauge = _input.Gauge;
-            SetRange(_zone, gauge.ZoneCenter - gauge.ZoneHalfWidth, gauge.ZoneCenter + gauge.ZoneHalfWidth);
-        }
-
         private void LateUpdate()
         {
             ShotGauge gauge = _input.Gauge;
+            // ゾーンの幅はライで変わるので毎回合わせる
+            SetRange(_zone, gauge.ZoneCenter - gauge.ZoneHalfWidth, gauge.ZoneCenter + gauge.ZoneHalfWidth);
             SetPosition(_marker, gauge.Marker);
 
             bool powerDecided = gauge.State != ShotGauge.GaugeState.Rising;

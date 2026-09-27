@@ -72,6 +72,23 @@ namespace MiniGame.Golf.Tests
         }
 
         [Test]
+        public void ゾーンを狭めると同じずれでも大きく曲がる()
+        {
+            var gauge = new ShotGauge(Speed, ZoneCenter, ZoneHalfWidth);
+            gauge.SetZoneScale(0.5f);
+            gauge.Begin();
+            gauge.Tick(0.5f);
+            gauge.Tap();
+
+            // 元のゾーンで 0.5 になる位置で押す
+            gauge.Tick(0.5f - ZoneCenter - ZoneHalfWidth * 0.5f);
+            gauge.Tap();
+
+            Assert.AreEqual(ZoneHalfWidth * 0.5f, gauge.ZoneHalfWidth, 0.0001f);
+            Assert.AreEqual(1f, gauge.ImpactOffset, 0.0001f);
+        }
+
+        [Test]
         public void 開始前のタップは無視する()
         {
             var gauge = new ShotGauge(Speed, ZoneCenter, ZoneHalfWidth);

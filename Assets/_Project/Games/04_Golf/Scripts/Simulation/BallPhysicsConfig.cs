@@ -20,6 +20,9 @@ namespace MiniGame.Golf
         /// <summary>インパクトのずれ × クラブの曲がりやすさ → 横向きの加速度</summary>
         public float CurveAccelerationScale = 3f;
 
+        /// <summary>風の強さ（m）→ 空中での加速度。滞空時間の長い高い球ほど流される</summary>
+        public float WindAccelerationScale = 0.3f;
+
         /// <summary>インパクトゾーンの外で打ったときの曲がり（ゾーンの端で打ったときの何倍か）</summary>
         public float MissShotCurve = 2.5f;
 

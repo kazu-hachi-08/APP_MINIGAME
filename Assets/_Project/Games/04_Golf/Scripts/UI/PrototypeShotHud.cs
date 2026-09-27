@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// Phase 1〜3 の仮の表示。打数・ライ・飛距離・インパクトの結果を出して、ホールを回れることとショットの違いを確かめられるようにする。
+    /// Phase 1〜4 の仮の表示。打数・ライ・飛距離・インパクトの結果・罰打を出して、ホールを回れることとショットの違いを確かめられるようにする。
     /// 打数は GolfRules（Phase 6）ができるまでここで数える。Phase 9 の HudView で置き換える。
     /// </summary>
     public class PrototypeShotHud : MonoBehaviour
@@ -20,19 +20,27 @@ namespace MiniGame.Golf
         // ゾーンの中心付近は曲がりがほとんど見えないので「ナイスショット」と出す
         private const float NiceShotRange = 0.2f;
 
+        // §6.5 池・OBはどちらも1打罰
+        private const int PenaltyStrokes = 1;
+
         private int _strokes;
         private string _impactResult = string.Empty;
         private string _lastResult = string.Empty;
 
+        // 罰打になったショットは飛距離の代わりにこれを出す。罰打が無ければ null
+        private string _penaltyResult;
+
         private void OnEnable()
         {
             _ball.Launched += OnBallLaunched;
+            _ball.Penalized += OnBallPenalized;
             _ball.Stopped += OnBallStopped;
         }
 
         private void OnDisable()
         {
             _ball.Launched -= OnBallLaunched;
+            _ball.Penalized -= OnBallPenalized;
             _ball.Stopped -= OnBallStopped;
         }
 
@@ -59,10 +67,25 @@ namespace MiniGame.Golf
         {
             _strokes++;
             _impactResult = ImpactName(_input.Gauge.ImpactOffset);
+            _penaltyResult = null;
+        }
+
+        /// <summary>打ち直しの位置へ移るまでの間も、何が起きたかを出しておく</summary>
+        private void OnBallPenalized(GroundType ground)
+        {
+            _strokes += PenaltyStrokes;
+            _penaltyResult = ground == GroundType.Water ? $"池ポチャ… +{PenaltyStrokes}打" : $"OB +{PenaltyStrokes}打";
+            _impactResult = _penaltyResult;
         }
 
         private void OnBallStopped()
         {
+            if (_penaltyResult != null)
+            {
+                _lastResult = _penaltyResult + "\n";
+                return;
+            }
+
             float units = Vector2.Distance(_ball.LaunchPosition, _ball.GroundPosition);
             _lastResult = $"{_impactResult} 飛距離 {Mathf.RoundToInt(units * _settings.YardsPerUnit)}y\n";
         }

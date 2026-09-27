@@ -4,7 +4,7 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// ボールの飛行・バウンド・転がり・停止・カップインの計算（§8）。
+    /// ボールの飛行・風・バウンド・転がり・停止・カップイン・池とOBの計算（§8）。
     /// Rigidbody2D を使わず固定の時間刻みで自前計算するので、同じ入力からは必ず同じ結果になり、
     /// 着地予測や NPC の試し打ちにもそのまま使える。MonoBehaviour にしないのは EditModeテストで検証するため。
     /// 座標は地面の平面（X＝左右／Y＝奥行きZ）、Height は地面からの高さH。
@@ -18,9 +18,16 @@ namespace MiniGame.Golf
         private Vector2 _cupPosition;
         private bool _hasCup;
 
+        // 空中にいる間だけ足す風の加速度（§8.2）。ホールの間は変わらない
+        private Vector2 _windAcceleration;
+
         // 進行方向の右向きを正とする曲がりの加速度。打ち上げたショットは最初の着地まで、パットは止まるまで効かせる
         private float _curveAcceleration;
         private bool _isPutt;
+
+        // 打ち直しの位置（§6.5）。OB は打つ前の場所、池は入る直前に通った池・OB以外の地点
+        private Vector2 _launchPosition;
+        private Vector2 _lastSafePosition;
 
         /// <summary>terrain・ground を省略すると、どこでもフェアウェイの平らな地面として計算する</summary>
         public BallSimulator(BallPhysicsConfig config, TerrainPhysicsConfig terrain = null, IGroundMap ground = null)
@@ -38,6 +45,12 @@ namespace MiniGame.Golf
         public bool IsInCup { get; private set; }
         public float ElapsedTime { get; private set; }
 
+        /// <summary>池・OBに入って止まった。次は DropPosition から1打罰で打つ</summary>
+        public bool IsInHazard { get; private set; }
+
+        /// <summary>池・OBに入ったときに次に打つ場所</summary>
+        public Vector2 DropPosition { get; private set; }
+
         /// <summary>高さがあるか、打ち出し直後・バウンド直後で上向きに動いている</summary>
         public bool IsAirborne => Height > 0f || VerticalVelocity > 0f;
 
@@ -46,10 +59,18 @@ namespace MiniGame.Golf
         /// <summary>今いる位置の地面の種類</summary>
         public GroundType Ground => _ground?.GetGround(Position) ?? GroundType.Fairway;
 
+        /// <summary>今いる位置のライ。次のショットの飛距離・インパクトゾーンの幅に効く</summary>
+        public TerrainPhysics Lie => _terrain.Get(Ground);
+
         public void SetCup(Vector2 position)
         {
             _cupPosition = position;
             _hasCup = true;
+        }
+
+        public void SetWind(Wind wind)
+        {
+            _windAcceleration = wind.Velocity * _config.WindAccelerationScale;
         }
 
         /// <summary>ボールを止めた状態で置く（ティーや打ち直しの位置）</summary>
@@ -58,6 +79,7 @@ namespace MiniGame.Golf
             Position = position;
             Height = 0f;
             IsInCup = false;
+            IsInHazard = false;
             Stop();
         }
 
@@ -75,7 +97,11 @@ namespace MiniGame.Golf
                 power *= _config.MissShotPowerRate;
             }
 
-            float speed = club.MaxLaunchSpeed * power;
+            // 飛距離はおおよそ初速の2乗に比例するので、平方根を掛けて飛距離の割合が §8.4 の値になるようにする
+            float speed = club.MaxLaunchSpeed * power * MathF.Sqrt(Lie.ShotDistanceRate);
+            _launchPosition = Position;
+            _lastSafePosition = Position;
+
             if (club.IsPutter)
             {
                 StartMoving(shot.Direction, speed, 0f);
@@ -92,7 +118,7 @@ namespace MiniGame.Golf
 
         /// <summary>
         /// 今の位置からクラブをフルパワー・まっすぐで打ったときの着地点（§7.3）。パターは止まる位置。
-        /// 別の計算機で試し打ちするので、このボールの状態は変わらない。
+        /// 別の計算機で試し打ちするので、このボールの状態は変わらない。風は読むのがプレイヤーの仕事なので含めない。
         /// </summary>
         public Vector2 PredictFullPower(ClubConfig club, Vector2 direction)
         {
@@ -122,6 +148,7 @@ namespace MiniGame.Golf
 
             float dt = _config.SimulationStep;
             ElapsedTime += dt;
+            RememberSafePosition();
 
             if (IsAirborne)
             {
@@ -156,12 +183,14 @@ namespace MiniGame.Golf
             Height = 0f;
             ElapsedTime = 0f;
             IsInCup = false;
+            IsInHazard = false;
             IsMoving = true;
         }
 
         private void AdvanceFlight(float dt)
         {
             ApplyCurve(dt);
+            GroundVelocity += _windAcceleration * dt;
             Position += GroundVelocity * dt;
             VerticalVelocity -= _config.Gravity * dt;
             Height += VerticalVelocity * dt;
@@ -185,6 +214,8 @@ namespace MiniGame.Golf
                 return;
             }
 
+            if (TryEnterHazard()) return;
+
             TerrainPhysics terrain = _terrain.Get(Ground);
             float bounceSpeed = -VerticalVelocity * terrain.BounceRestitution;
             GroundVelocity *= terrain.BounceSpeedRetention;
@@ -205,7 +236,32 @@ namespace MiniGame.Golf
             GroundVelocity *= nextSpeed / speed;
             if (_isPutt) ApplyCurve(dt);
             Position += GroundVelocity * dt;
+            if (TryEnterHazard()) return;
+
             TryHoleOut();
+        }
+
+        /// <summary>空中で池の上を通った地点は覚えず、池に落ちたら岸まで戻せるようにする</summary>
+        private void RememberSafePosition()
+        {
+            if (!IsHazard(Ground)) _lastSafePosition = Position;
+        }
+
+        /// <summary>§8.4 池・OBは着地した瞬間か転がって入った瞬間にボールを止め、打ち直しの位置を決める</summary>
+        private bool TryEnterHazard()
+        {
+            GroundType ground = Ground;
+            if (!IsHazard(ground)) return false;
+
+            DropPosition = ground == GroundType.Water ? _lastSafePosition : _launchPosition;
+            IsInHazard = true;
+            Stop();
+            return true;
+        }
+
+        private static bool IsHazard(GroundType ground)
+        {
+            return ground == GroundType.Water || ground == GroundType.OutOfBounds;
         }
 
         /// <summary>進行方向の横向きに加速度を足す。速さは変えず向きだけ変えて、曲がりで飛距離が伸び縮みしないようにする</summary>

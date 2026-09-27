@@ -71,10 +71,11 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>ボールが止まるたびに、カップの方向・距離に合うクラブで構え直す（§7.2、§7.5）</summary>
+        /// <summary>ボールが止まるたびに、カップの方向・距離に合うクラブで構え直す（§7.2、§7.5）。ゾーンの幅はライで変える（§7.4）</summary>
         private void ResetAim()
         {
             Gauge.Reset();
+            Gauge.SetZoneScale(_ball.ImpactZoneRate);
             _dragging = false;
 
             Vector2 toCup = _ball.CupPosition - _ball.GroundPosition;
