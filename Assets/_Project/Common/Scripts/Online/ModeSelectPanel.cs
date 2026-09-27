@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,9 +24,17 @@ namespace MiniGame.Common.Online
         [SerializeField] private GameObject _waitingGroup;
         [SerializeField] private Text _statusText;
         [SerializeField] private Button _cancelButton;
+        [SerializeField] private Button _copyButton;
+        [SerializeField] private Text _copyButtonLabel;
+
+        [Header("Copy")]
+        [SerializeField] private string _copyLabel = "コードをコピー";
+        [SerializeField] private string _copiedLabel = "コピーしました";
+        [SerializeField] private float _copiedLabelSeconds = 1.5f;
 
         private Action _onNpcSelected;
         private Action<bool> _onOnlineReady;
+        private string _roomCode;
 
         private void Awake()
         {
@@ -33,6 +42,7 @@ namespace MiniGame.Common.Online
             _hostButton.onClick.AddListener(Host);
             _joinButton.onClick.AddListener(Join);
             _cancelButton.onClick.AddListener(CancelWaiting);
+            _copyButton.onClick.AddListener(CopyRoomCode);
         }
 
         private void OnEnable()
@@ -68,6 +78,7 @@ namespace MiniGame.Common.Online
             {
                 string code = await _session.HostAsync();
                 SetStatus($"参加コード\n<size=64>{code}</size>\n相手の参加を待っています");
+                ShowCopyButton(code);
             }
             catch (Exception e)
             {
@@ -77,7 +88,8 @@ namespace MiniGame.Common.Online
 
         private async void Join()
         {
-            string code = _codeInput.text;
+            // チャットから貼り付けると前後に空白・改行が混ざったり小文字になったりするため整える
+            string code = _codeInput.text.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(code)) return;
 
             ShowWaiting("接続しています…");
@@ -89,6 +101,28 @@ namespace MiniGame.Common.Online
             {
                 ShowError(e);
             }
+        }
+
+        /// <summary>友達にチャットで送れるよう、コードだけをクリップボードに入れる</summary>
+        private void CopyRoomCode()
+        {
+            GUIUtility.systemCopyBuffer = _roomCode;
+            StopAllCoroutines();
+            StartCoroutine(ShowCopiedFeedback());
+        }
+
+        private IEnumerator ShowCopiedFeedback()
+        {
+            _copyButtonLabel.text = _copiedLabel;
+            yield return new WaitForSecondsRealtime(_copiedLabelSeconds);
+            _copyButtonLabel.text = _copyLabel;
+        }
+
+        private void ShowCopyButton(string code)
+        {
+            _roomCode = code;
+            _copyButtonLabel.text = _copyLabel;
+            _copyButton.gameObject.SetActive(true);
         }
 
         private void CancelWaiting()
@@ -111,6 +145,7 @@ namespace MiniGame.Common.Online
         {
             Debug.LogWarning($"[ModeSelectPanel] オンライン接続に失敗しました: {e}");
             _session.Leave();
+            _copyButton.gameObject.SetActive(false);
             SetStatus("接続できませんでした\nコードや通信状況を確認してください");
         }
 
@@ -124,6 +159,8 @@ namespace MiniGame.Common.Online
         {
             _menuGroup.SetActive(false);
             _waitingGroup.SetActive(true);
+            // コードが発行されるまで（部屋作成中・参加側の接続中）はコピーするものがないので隠す
+            _copyButton.gameObject.SetActive(false);
             SetStatus(status);
         }
 
