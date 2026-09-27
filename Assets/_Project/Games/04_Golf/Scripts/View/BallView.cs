@@ -11,6 +11,12 @@ namespace MiniGame.Golf
     {
         [SerializeField] private GolfBall _ball;
 
+        [Tooltip("ボールの下に重ねるプレイヤー色の円。少し大きくして縁取りに見せる（§5）")]
+        [SerializeField] private SpriteRenderer _ring;
+
+        [Tooltip("縁取りの大きさ（ボールに対する倍率）")]
+        [SerializeField] private float _ringScale = 1.35f;
+
         [Tooltip("ボールの直径（ユニット）")]
         [SerializeField] private float _diameter = 0.35f;
 
@@ -23,6 +29,14 @@ namespace MiniGame.Golf
         private void Awake()
         {
             GetComponent<SpriteRenderer>().sprite = GolfShapeSprites.Circle;
+            _ring.sprite = GolfShapeSprites.Circle;
+            _ring.transform.localScale = Vector3.one * _ringScale;
+        }
+
+        /// <summary>手番の人の色にする。ボールは1つを使い回すので、手番が替わるたびに呼ぶ</summary>
+        public void SetPlayerColor(Color color)
+        {
+            _ring.color = color;
         }
 
         private void LateUpdate()

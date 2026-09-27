@@ -13,7 +13,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 4：池・OB・風のあるホールを3タップゲージとクラブで打つ）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 6：2〜4人の交代プレイ・1／3ホールモード・スコアカード）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -38,6 +38,7 @@ namespace MiniGame.Golf.Editor
         // 地面・カップ（ホールのプレハブ側）→ 狙いの線 → 影 → ボールの順に重ねる
         private const int AimGuideSortingOrder = 8;
         private const int ShadowSortingOrder = 10;
+        private const int OtherBallSortingOrder = 15;
         private const int BallSortingOrder = 20;
 
         private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
@@ -98,13 +99,15 @@ namespace MiniGame.Golf.Editor
             Camera camera = CreateCamera();
             CreateEventSystem();
             CreateManagers();
-            GolfBall ball = CreateBall(settings, terrainSettings);
+            GolfBall ball = CreateBall(settings, terrainSettings, out BallView ballView);
             HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
-            CreateCanvas(ball, input, clubSelector, holeLoader, settings);
+            var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
+            CreateOtherBalls(manager);
+            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -154,7 +157,8 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>ロジック（GolfBall）と見た目（BallView / ShadowView）を別の GameObject に分ける</summary>
-        private static GolfBall CreateBall(GolfPhysicsSettings settings, GolfTerrainSettings terrainSettings)
+        private static GolfBall CreateBall(GolfPhysicsSettings settings, GolfTerrainSettings terrainSettings,
+            out BallView ballView)
         {
             var ball = new GameObject("GolfBall").AddComponent<GolfBall>();
             SetRefs(ball, ("_settings", settings), ("_terrainSettings", terrainSettings));
@@ -169,9 +173,26 @@ namespace MiniGame.Golf.Editor
             var ballViewObj = new GameObject("BallView");
             ballViewObj.transform.SetParent(viewRoot.transform);
             ballViewObj.AddComponent<SpriteRenderer>().sortingOrder = BallSortingOrder;
-            SetRefs(ballViewObj.AddComponent<BallView>(), ("_ball", ball));
+
+            // プレイヤー色の縁取り。ボール本体のすぐ下に描く
+            var ring = new GameObject("Ring").AddComponent<SpriteRenderer>();
+            ring.transform.SetParent(ballViewObj.transform, false);
+            ring.sortingOrder = BallSortingOrder - 1;
+
+            ballView = ballViewObj.AddComponent<BallView>();
+            SetRefs(ballView, ("_ball", ball), ("_ring", ring));
 
             return ball;
+        }
+
+        private static void CreateOtherBalls(GolfGameManager manager)
+        {
+            var view = new GameObject("OtherBalls").AddComponent<OtherBallsView>();
+            SetRefs(view, ("_manager", manager));
+
+            var so = new SerializedObject(view);
+            so.FindProperty("_sortingOrder").intValue = OtherBallSortingOrder;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static ClubSelector CreateClubSelector(GolfBall ball, GolfClubData[] clubs)
@@ -234,8 +255,8 @@ namespace MiniGame.Golf.Editor
             CreateManager<AudioManager>("AudioManager", managersRoot.transform);
         }
 
-        private static void CreateCanvas(GolfBall ball, ShotInput input, ClubSelector clubSelector,
-            HoleLoader holeLoader, GolfPhysicsSettings settings)
+        private static void CreateCanvas(GolfGameManager manager, GolfBall ball, BallView ballView, ShotInput input,
+            ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -252,11 +273,23 @@ namespace MiniGame.Golf.Editor
             UIDialogBuilder.SetStretchAll(safeAreaObj.GetComponent<RectTransform>());
             safeAreaObj.AddComponent<SafeAreaFitter>();
 
-            CreateShotHud(safeAreaObj.transform, ball, input, holeLoader, settings);
+            CreateShotHud(safeAreaObj.transform, manager, ball, input, holeLoader, settings);
             CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
-            CreateReturnButton(safeAreaObj.transform);
+
+            // 試合進行の全画面UIはショット操作より手前に出す
+            GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
+            GolfTurnBannerView turnBanner = GolfMatchUiBuilder.CreateTurnBanner(canvasObj.transform);
+            ScoreCardView scoreCard = GolfMatchUiBuilder.CreateScoreCard(canvasObj.transform);
+            SetRefs(manager, ("_ball", ball), ("_holeLoader", holeLoader), ("_input", input), ("_ballView", ballView),
+                ("_setupPanel", setupPanel), ("_turnBanner", turnBanner), ("_scoreCard", scoreCard));
+
+            // 設定画面や「○○の番」の間もタイトルへ戻れるよう、戻るボタンは一番手前に置く
+            var topSafeAreaObj = UIDialogBuilder.CreateUIObject("SafeAreaTop", canvasObj.transform);
+            UIDialogBuilder.SetStretchAll(topSafeAreaObj.GetComponent<RectTransform>());
+            topSafeAreaObj.AddComponent<SafeAreaFitter>();
+            CreateReturnButton(topSafeAreaObj.transform);
         }
 
         private static void CreateShotGauge(Transform parent, ShotInput input)
@@ -330,7 +363,7 @@ namespace MiniGame.Golf.Editor
             rect.anchoredPosition = new Vector2(x, bottomMargin);
         }
 
-        private static void CreateShotHud(Transform parent, GolfBall ball, ShotInput input,
+        private static void CreateShotHud(Transform parent, GolfGameManager manager, GolfBall ball, ShotInput input,
             HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
             var obj = UIDialogBuilder.CreateUIObject("PrototypeShotHud", parent);
@@ -354,8 +387,8 @@ namespace MiniGame.Golf.Editor
             obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
 
             var hud = obj.AddComponent<PrototypeShotHud>();
-            SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_settings", settings),
-                ("_text", text));
+            SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_manager", manager),
+                ("_settings", settings), ("_text", text));
         }
 
         /// <summary>左上に「↑（風の向きへ回す）＋ 風 3m」を並べる</summary>

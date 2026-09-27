@@ -34,19 +34,13 @@ namespace MiniGame.Golf
         /// <summary>方向とクラブを変えられる（ボールが止まっていて、ゲージを操作していない）</summary>
         public bool CanAim => CanShoot && Gauge.State == ShotGauge.GaugeState.Idle;
 
-        private bool CanShoot => !_ball.IsMoving && !_ball.IsInCup;
+        // 手番でないとき（「○○の番」表示中など）は GolfGameManager がこのコンポーネントを無効にする
+        private bool CanShoot => enabled && !_ball.IsMoving && !_ball.IsInCup;
 
         private void Awake()
         {
             Gauge = new ShotGauge(_settings.GaugeSpeed, _settings.ImpactZoneCenter, _settings.ImpactZoneHalfWidth);
         }
-
-        private void OnEnable() => _ball.Stopped += ResetAim;
-
-        private void OnDisable() => _ball.Stopped -= ResetAim;
-
-        // HoleLoader が Awake でティーに置いた後に構える
-        private void Start() => ResetAim();
 
         /// <summary>ゲージのボタンから呼ぶ（①タップ）</summary>
         public void BeginSwing()
@@ -71,8 +65,8 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>ボールが止まるたびに、カップの方向・距離に合うクラブで構え直す（§7.2、§7.5）。ゾーンの幅はライで変える（§7.4）</summary>
-        private void ResetAim()
+        /// <summary>手番の人のボールを置いたら、カップの方向・距離に合うクラブで構え直す（§7.2、§7.5）。ゾーンの幅はライで変える（§7.4）</summary>
+        public void PrepareShot()
         {
             Gauge.Reset();
             Gauge.SetZoneScale(_ball.ImpactZoneRate);

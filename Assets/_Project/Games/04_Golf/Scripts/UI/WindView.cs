@@ -18,8 +18,12 @@ namespace MiniGame.Golf
         // 矢印は上（+Y）向きに作っているが、Wind の角度は右（+X）が0度
         private const float ArrowBaseDegrees = 90f;
 
-        // ホールは HoleLoader の Awake で読み込まれ、Phase 4 では途中で変わらない
-        private void Start()
+        private void OnEnable() => _holeLoader.HoleLoaded += Refresh;
+
+        private void OnDisable() => _holeLoader.HoleLoaded -= Refresh;
+
+        /// <summary>風はホールごとに変わる（§9.4）ので、ホールを読み込むたびに合わせる</summary>
+        private void Refresh()
         {
             Wind wind = _holeLoader.CurrentWind;
             float degrees = Mathf.Atan2(wind.Direction.Y, wind.Direction.X) * Mathf.Rad2Deg;
