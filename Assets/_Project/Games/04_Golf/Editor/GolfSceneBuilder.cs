@@ -66,7 +66,7 @@ namespace MiniGame.Golf.Editor
         private const int WindArrowFontSize = 72;
         private const int WindLabelFontSize = 40;
 
-        // 下から ◀ クラブ ▶ の行 → ゲージ の順に積む。合計の高さは GolfCameraFollower の _bottomUiRatio に収める
+        // 下から ◀ クラブ ▶ の行 → ゲージ の順に積む。背後視点でボールが隠れないよう、合計の高さは画面の下 2 割弱に収める
         private const float AimControlBottomMargin = 40f;
         private const float AimControlHeight = 130f;
         private const float ClubButtonWidth = 420f;
@@ -111,7 +111,7 @@ namespace MiniGame.Golf.Editor
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
-            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
+            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));

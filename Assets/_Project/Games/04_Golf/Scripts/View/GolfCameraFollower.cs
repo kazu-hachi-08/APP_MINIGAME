@@ -3,7 +3,8 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// カメラの追従（§4.3）。狙っている間はボールと着地予測の両方が入るように引き、飛んでいる間はボールを追う。
+    /// カメラの追従（§4.3）。狙っている間はゴルファーの背中越し（Perspective）に打つ方向を見せ、
+    /// ボールが動き出したら真上視点（Orthographic）に戻ってボールを追う。
     /// 高さでずれるボール本体ではなく地面の位置を追うことで、飛んでいる間もカメラが上下に揺れないようにする。
     /// </summary>
     [RequireComponent(typeof(Camera))]
@@ -11,6 +12,7 @@ namespace MiniGame.Golf
     {
         [SerializeField] private GolfBall _ball;
         [SerializeField] private AimGuideView _aimGuide;
+        [SerializeField] private ShotInput _input;
 
         [Tooltip("ボールに追いつくまでのおおよその時間（秒）。0だと完全に張り付く")]
         [SerializeField] private float _smoothTime = 0.15f;
@@ -18,74 +20,94 @@ namespace MiniGame.Golf
         [Tooltip("ボールより奥（画面の上）を見せる量。打つ先が見えるようにする")]
         [SerializeField] private float _lookAhead = 2f;
 
-        [Tooltip("狙っている間、ボールと着地予測の外側に空ける余白（ユニット）")]
-        [SerializeField] private float _aimMargin = 1.5f;
+        [Header("背後視点（狙っている間）")]
+        [Tooltip("ボールから打つ方向の反対へ下がる距離（地面のユニット）")]
+        [SerializeField] private float _backDistance = 3f;
 
-        [Tooltip("画面の下からこの割合はゲージなどのUIに隠れる。狙いの表示はその上に収める")]
-        [SerializeField] private float _bottomUiRatio = 0.18f;
+        [Tooltip("地面からのカメラの高さ")]
+        [SerializeField] private float _backHeight = 2f;
 
-        [Tooltip("画面の上からこの割合はHUDに隠れる")]
-        [SerializeField] private float _topUiRatio = 0.2f;
+        [Tooltip("ボールより前方のどこを画面の中心にするか。大きいほどボールが画面の下へ寄る")]
+        [SerializeField] private float _lookAheadDistance = 2.75f;
+
+        [Tooltip("縦の視野角。既定値でボールが下のゲージより上、地平線が上のHUDあたりに来る")]
+        [SerializeField] private float _fieldOfView = 60f;
 
         private Camera _camera;
         private float _baseSize;
+        private float _topDownZ;
         private Vector3 _velocity;
-        private float _sizeVelocity;
+        private bool _isBehind;
 
         private void Awake()
         {
             _camera = GetComponent<Camera>();
             _baseSize = _camera.orthographicSize;
+            _topDownZ = transform.position.z;
+            _camera.fieldOfView = _fieldOfView;
+            // Perspective のときも Sprite の重なりを真上視点と同じ規則（sortingOrder → 画面の奥行き無視）で決める
+            _camera.transparencySortMode = TransparencySortMode.Orthographic;
         }
 
         private void Start()
         {
             // 初回はなめらかに寄せず、最初からボールを映す
-            transform.position = FollowPosition();
+            SetTopDown(snap: true);
         }
 
         private void LateUpdate()
         {
-            float targetSize = _baseSize;
-            Vector3 targetPosition;
+            bool wantBehind = _aimGuide.IsShowing;
+            // Perspective ⇔ Orthographic の補間は難しいので、切り替わる瞬間だけは寄せずに飛ばす
+            bool snap = wantBehind != _isBehind;
+            _isBehind = wantBehind;
 
-            if (_aimGuide.IsShowing)
+            if (wantBehind) SetBehind(snap);
+            else SetTopDown(snap);
+        }
+
+        private void SetBehind(bool snap)
+        {
+            _camera.orthographic = false;
+
+            Vector3 ball = _ball.GroundPosition;
+            Vector3 dir = _input.Direction;
+            Vector3 targetPosition = ball - dir * _backDistance + Vector3.back * _backHeight;
+            Vector3 lookPoint = ball + dir * _lookAheadDistance;
+            // 地面は XY 平面でカメラは -Z 側にいるので、-Z を「空」にすると画面の上が打つ先になる
+            Quaternion targetRotation = Quaternion.LookRotation(lookPoint - targetPosition, Vector3.back);
+
+            MoveTo(targetPosition, snap);
+            transform.rotation = snap ? targetRotation : Quaternion.Slerp(transform.rotation, targetRotation, SmoothRate());
+        }
+
+        private void SetTopDown(bool snap)
+        {
+            _camera.orthographic = true;
+            _camera.orthographicSize = _baseSize;
+            transform.rotation = Quaternion.identity;
+
+            Vector2 ground = _ball.GroundPosition;
+            MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap);
+        }
+
+        private void MoveTo(Vector3 targetPosition, bool snap)
+        {
+            if (snap)
             {
-                targetSize = Mathf.Max(_baseSize, AimSize());
-                targetPosition = AimPosition(targetSize);
-            }
-            else
-            {
-                targetPosition = FollowPosition();
+                transform.position = targetPosition;
+                _velocity = Vector3.zero;
+                return;
             }
 
-            _camera.orthographicSize = Mathf.SmoothDamp(_camera.orthographicSize, targetSize, ref _sizeVelocity, _smoothTime);
             transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref _velocity, _smoothTime);
         }
 
-        private Vector3 FollowPosition()
+        /// <summary>フレームレートに依らず、SmoothDamp とおおよそ同じ速さで回転を寄せる割合</summary>
+        private float SmoothRate()
         {
-            Vector2 ground = _ball.GroundPosition;
-            return new Vector3(ground.x, ground.y + _lookAhead, transform.position.z);
-        }
-
-        /// <summary>ボールと着地予測が、上下のUIに隠れない帯と画面の横幅に収まる大きさ</summary>
-        private float AimSize()
-        {
-            Vector2 span = _aimGuide.TargetPoint - _ball.GroundPosition;
-            float visibleRatio = 1f - _bottomUiRatio - _topUiRatio;
-            float sizeForHeight = (Mathf.Abs(span.y) + _aimMargin * 2f) / (2f * visibleRatio);
-            float sizeForWidth = (Mathf.Abs(span.x) + _aimMargin * 2f) / (2f * _camera.aspect);
-            return Mathf.Max(sizeForHeight, sizeForWidth);
-        }
-
-        /// <summary>ボールと着地予測の中点が、UIに隠れない帯の中央に来る位置</summary>
-        private Vector3 AimPosition(float size)
-        {
-            Vector2 center = (_ball.GroundPosition + _aimGuide.TargetPoint) * 0.5f;
-            float bandCenter = (_bottomUiRatio + (1f - _topUiRatio)) * 0.5f;
-            float offsetY = (0.5f - bandCenter) * 2f * size;
-            return new Vector3(center.x, center.y + offsetY, transform.position.z);
+            if (_smoothTime <= 0f) return 1f;
+            return 1f - Mathf.Exp(-Time.deltaTime / _smoothTime);
         }
     }
 }
