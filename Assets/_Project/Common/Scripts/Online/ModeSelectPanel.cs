@@ -145,7 +145,7 @@ namespace MiniGame.Common.Online
         /// <summary>友達にチャットで送れるよう、コードだけをクリップボードに入れる</summary>
         private void CopyRoomCode()
         {
-            GUIUtility.systemCopyBuffer = _roomCode;
+            WebBrowser.CopyText(_roomCode);
             StopAllCoroutines();
             StartCoroutine(ShowCopiedFeedback());
         }

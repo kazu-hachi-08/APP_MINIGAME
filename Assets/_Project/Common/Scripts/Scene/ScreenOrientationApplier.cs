@@ -65,6 +65,7 @@ namespace MiniGame.Common.Scene
             Screen.autorotateToLandscapeLeft = false;
             Screen.autorotateToLandscapeRight = false;
             Screen.orientation = ScreenOrientation.Portrait;
+            WebScreen.SetPortrait();
         }
 
         private static void SetLandscape()
@@ -75,6 +76,7 @@ namespace MiniGame.Common.Scene
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.orientation = ScreenOrientation.AutoRotation;
+            WebScreen.SetLandscape();
         }
     }
 }

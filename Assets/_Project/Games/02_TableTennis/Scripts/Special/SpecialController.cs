@@ -353,7 +353,8 @@ namespace MiniGame.TableTennis
                 return;
             }
 
-            HandleNpcSpecialUsed(special);
+            // RefillNpc はオンラインだと何もしないので、NPCの打球と同じ処理をそのまま使える
+            HandleNpcSpecialShot(special);
         }
 
         // ---- 共通 ----
