@@ -27,6 +27,7 @@ namespace MiniGame.Molkky
         [SerializeField] private TurnBannerView _turnBanner;
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private ThrowStyleButton _styleButton;
+        [SerializeField] private ThrowArcButton _arcButton;
 
         [Header("Online (§19)")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
@@ -170,8 +171,9 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
-            // 前の人の投げ方を引き継ぐと気づかず違う向きで投げてしまうので、毎手番 横（初期値）に戻す
+            // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
+            _input.SetArc(ThrowArc.Low);
 
             yield return PlayTurnBanner();
 
@@ -187,7 +189,7 @@ namespace MiniGame.Molkky
             else
             {
                 _input.IsAccepting = true;
-                _styleButton.SetVisible(true);
+                SetThrowButtonsVisible(true);
             }
         }
 
@@ -257,9 +259,15 @@ namespace MiniGame.Molkky
             if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc || IsRemoteTurn) return;
 
             _input.IsAccepting = false;
-            _styleButton.SetVisible(false);
+            SetThrowButtonsVisible(false);
             if (_isOnline) _onlineLink.SendThrow(request);
             ExecuteThrow(request);
+        }
+
+        private void SetThrowButtonsVisible(bool visible)
+        {
+            _styleButton.SetVisible(visible);
+            _arcButton.SetVisible(visible);
         }
 
         private void ExecuteThrow(ThrowRequest request)
@@ -355,7 +363,7 @@ namespace MiniGame.Molkky
             StopAllCoroutines();
             Phase = MolkkyPhase.GameSet;
             _input.IsAccepting = false;
-            _styleButton.SetVisible(false);
+            SetThrowButtonsVisible(false);
             _scorePopup.Hide();
 
             FinishGame(false, "相手との接続が切れました", "試合を終了しました");

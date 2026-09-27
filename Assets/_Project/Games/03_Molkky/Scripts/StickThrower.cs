@@ -18,8 +18,13 @@ namespace MiniGame.Molkky
         [SerializeField] private MolkkyPhysicsSettings _settings;
 
         private Rigidbody2D _body;
+        private CapsuleCollider2D _capsule;
         private float _throwTime;
+        private float _airTime;
         private float _peakHeight;
+
+        // 山なりで空中にいる間。当たり判定を切っているので、着地で戻す必要がある
+        private bool _isLobbing;
 
         public bool IsThrown { get; private set; }
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
@@ -30,14 +35,14 @@ namespace MiniGame.Molkky
         /// <summary>投げた棒が何かに当たった（引数は衝突の相対速度）。当たる音の強さに使う</summary>
         public event Action<float> Hit;
 
-        /// <summary>見た目上の高さ。投げてから StickAirTime の間だけ放物線を描く</summary>
+        /// <summary>見た目上の高さ。投げてから滞空時間の間だけ放物線を描く</summary>
         public float Height
         {
             get
             {
                 if (!IsThrown) return 0f;
 
-                float t = (Time.time - _throwTime) / _settings.StickAirTime;
+                float t = (Time.time - _throwTime) / _airTime;
                 if (t >= 1f) return 0f;
 
                 return 4f * _peakHeight * t * (1f - t);
@@ -54,10 +59,10 @@ namespace MiniGame.Molkky
             // 速い棒がピンをすり抜けないようにする
             _body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
-            var capsule = GetComponent<CapsuleCollider2D>();
-            capsule.direction = CapsuleDirection2D.Horizontal;
-            capsule.size = new Vector2(_settings.StickLength, _settings.StickThickness);
-            capsule.sharedMaterial = new PhysicsMaterial2D("Stick") { bounciness = _settings.Bounciness, friction = 0f };
+            _capsule = GetComponent<CapsuleCollider2D>();
+            _capsule.direction = CapsuleDirection2D.Horizontal;
+            _capsule.size = new Vector2(_settings.StickLength, _settings.StickThickness);
+            _capsule.sharedMaterial = new PhysicsMaterial2D("Stick") { bounciness = _settings.Bounciness, friction = 0f };
 
             PlaceOnLine(0f);
         }
@@ -69,6 +74,8 @@ namespace MiniGame.Molkky
             _body.bodyType = RigidbodyType2D.Kinematic;
             _body.linearVelocity = Vector2.zero;
             _body.angularVelocity = 0f;
+            _capsule.enabled = true;
+            _isLobbing = false;
 
             float clampedX = Mathf.Clamp(x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
             _body.position = new Vector2(clampedX, 0f);
@@ -97,8 +104,34 @@ namespace MiniGame.Molkky
             _body.linearVelocity = request.Direction * request.Speed;
 
             _throwTime = Time.time;
-            _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
             IsThrown = true;
+
+            if (request.Arc == ThrowArc.High)
+            {
+                _airTime = _settings.LobAirTime;
+                _peakHeight = _settings.LobPeakHeight;
+                // 空中では当たらないようにして、手前のピンを飛び越えさせる（§8.2）
+                _capsule.enabled = false;
+                _isLobbing = true;
+            }
+            else
+            {
+                _airTime = _settings.StickAirTime;
+                _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            if (_isLobbing && Time.time - _throwTime >= _airTime) Land();
+        }
+
+        /// <summary>山なりの着地。上から落ちた棒は前へ滑りにくいので、速度を大きく削って落ちた場所の近くで止める</summary>
+        private void Land()
+        {
+            _isLobbing = false;
+            _capsule.enabled = true;
+            _body.linearVelocity *= _settings.LobLandingSpeedRatio;
         }
 
         /// <summary>

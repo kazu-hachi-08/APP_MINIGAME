@@ -58,6 +58,7 @@ namespace MiniGame.Molkky
             writer.WriteValueSafe(request.AngleDegrees);
             writer.WriteValueSafe(request.Speed);
             writer.WriteValueSafe((int)request.Style);
+            writer.WriteValueSafe((int)request.Arc);
             Send(ThrowMessage, writer);
         }
 
@@ -91,7 +92,8 @@ namespace MiniGame.Molkky
             reader.ReadValueSafe(out float angle);
             reader.ReadValueSafe(out float speed);
             reader.ReadValueSafe(out int style);
-            OnThrowReceived?.Invoke(new ThrowRequest(positionX, angle, speed, (ThrowStyle)style));
+            reader.ReadValueSafe(out int arc);
+            OnThrowReceived?.Invoke(new ThrowRequest(positionX, angle, speed, (ThrowStyle)style, (ThrowArc)arc));
         }
 
         private void ReceiveResult(ulong senderId, FastBufferReader reader)

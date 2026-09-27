@@ -49,7 +49,10 @@ namespace MiniGame.Molkky
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
 
         public event Action<float> PositionChanged;
+        public ThrowArc Arc { get; private set; } = ThrowArc.Low;
+
         public event Action<ThrowStyle> StyleChanged;
+        public event Action<ThrowArc> ArcChanged;
         public event Action<ThrowRequest> ThrowRequested;
 
         public void ResetPosition(float x)
@@ -69,6 +72,20 @@ namespace MiniGame.Molkky
             if (!IsAccepting) return;
 
             SetStyle(Style == ThrowStyle.Vertical ? ThrowStyle.Horizontal : ThrowStyle.Vertical);
+        }
+
+        public void SetArc(ThrowArc arc)
+        {
+            Arc = arc;
+            ArcChanged?.Invoke(Arc);
+        }
+
+        /// <summary>軌道の切り替えボタンから呼ぶ。ToggleStyle と同じく構えている間だけ受け付ける</summary>
+        public void ToggleArc()
+        {
+            if (!IsAccepting) return;
+
+            SetArc(Arc == ThrowArc.High ? ThrowArc.Low : ThrowArc.High);
         }
 
         private void Update()
@@ -148,7 +165,7 @@ namespace MiniGame.Molkky
             float power = Mathf.InverseLerp(_minFlickSpeed, _maxFlickSpeed, flickSpeed);
             float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed, power);
 
-            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style));
+            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style, Arc));
         }
 
         private void AddSample(Vector2 position)
