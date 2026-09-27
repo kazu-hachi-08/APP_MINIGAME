@@ -151,6 +151,22 @@ namespace MiniGame.Golf
             return probe.Position;
         }
 
+        /// <summary>
+        /// 今の位置から shot を打って止まるまで計算した結果（§10 NPC の試し打ち）。別の計算機で打つので、このボールの状態は変わらない。
+        /// 風と傾斜を入れるかは、NPC の難易度で「読むかどうか」を変えられるように選べる。
+        /// </summary>
+        public ShotOutcome TrySimulate(ShotRequest shot, bool withWind, bool withSlope)
+        {
+            var probe = new BallSimulator(_config, _terrain, _ground, withSlope ? _slope : null);
+            if (_hasCup) probe.SetCup(_cupPosition);
+            if (withWind) probe._windAcceleration = _windAcceleration;
+
+            probe.Place(Position);
+            probe.Launch(shot);
+            probe.AdvanceToRest();
+            return new ShotOutcome(probe.Position, probe.IsInHazard, probe.IsInCup);
+        }
+
         /// <summary>SimulationStep 秒だけ進める。表示側は経過時間ぶんこれを繰り返し呼ぶ</summary>
         public void Advance()
         {

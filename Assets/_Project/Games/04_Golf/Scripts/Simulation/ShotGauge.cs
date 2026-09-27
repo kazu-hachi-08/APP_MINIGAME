@@ -37,6 +37,9 @@ namespace MiniGame.Golf
         /// <summary>ゾーンの中心からのずれ。±1 がゾーンの端（ShotRequest.ImpactOffset と同じ）</summary>
         public float ImpactOffset { get; private set; }
 
+        /// <summary>1秒あたりにマーカーが動く量。NPC が狙った位置でぴったり止めるのに使う</summary>
+        public float Speed => _speed;
+
         public float ZoneCenter => _zoneCenter;
         public float ZoneHalfWidth => _zoneHalfWidth;
 

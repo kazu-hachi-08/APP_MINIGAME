@@ -4,20 +4,24 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1人分のボール位置・今のホールの打数・各ホールのスコア（§15）。
+    /// 1人分の人間/NPC・ボール位置・今のホールの打数・各ホールのスコア（§15）。
     /// ボールの実体（GolfBall）は1つだけで手番の人の位置に置き直すので、止まっている位置はここで覚えておく。
     /// </summary>
     public sealed class GolfPlayerSlot
     {
         private readonly List<int> _holeScores = new List<int>();
 
-        public GolfPlayerSlot(int seat)
+        public GolfPlayerSlot(int seat, GolfPlayerType type = GolfPlayerType.Human)
         {
             Seat = seat;
+            Type = type;
         }
 
         /// <summary>席順（0始まり）。P1〜P4 の表示と色に使う</summary>
         public int Seat { get; }
+
+        public GolfPlayerType Type { get; }
+        public bool IsNpc => Type != GolfPlayerType.Human;
 
         public Vector2 Position { get; set; }
 

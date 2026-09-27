@@ -26,9 +26,12 @@ namespace MiniGame.Golf.Editor
         private const float PrimaryButtonHeight = 140f;
         private const int PrimaryButtonFontSize = 56;
 
-        private const float SetupBoxHeight = 1000f;
+        private const float SetupBoxHeight = 1260f;
         private const float ModeButtonWidth = 360f;
         private const float CountButtonWidth = 240f;
+        private const float TypeButtonWidth = 190f;
+        private const float TypeButtonHeight = 130f;
+        private const int TypeButtonFontSize = 34;
 
         private const int BannerTitleFontSize = 110;
         private const int BannerDetailFontSize = 52;
@@ -38,7 +41,7 @@ namespace MiniGame.Golf.Editor
         private const float ScoreGridHeight = 560f;
         private const int ScoreCellFontSize = 40;
 
-        /// <summary>モード（1ホール／3ホール）→ 人数 → 試合開始 を縦に並べる（§11.1）</summary>
+        /// <summary>モード（1ホール／3ホール）→ 人数 → 人間/NPC → 試合開始 を縦に並べる（§11.1）</summary>
         public static GolfSetupPanel CreateSetupPanel(Transform canvas)
         {
             GameObject panelObj = CreateDimmedPanel(canvas, "GolfSetupPanel");
@@ -60,12 +63,26 @@ namespace MiniGame.Golf.Editor
                 countButtons[i] = CreateChoiceButton(countRow, $"Btn_{count}Players", $"{count}人", CountButtonWidth);
             }
 
+            CreateText(box, "TypeLabel", "人間 / NPC（タップで切り替え）", LabelFontSize, RowWidth, RowHeight * 0.6f);
+            Transform typeRow = CreateRow(box, "TypeRow");
+            typeRow.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, TypeButtonHeight);
+            var typeButtons = new Button[GolfSetupPanel.MaxPlayers];
+            for (int i = 0; i < typeButtons.Length; i++)
+            {
+                // ラベルは GolfSetupPanel が「P1 / 人間」のように実行時に書き換える
+                GameObject obj = UIDialogBuilder.CreateButton(typeRow, $"Btn_TypeP{i + 1}", string.Empty, TypeButtonWidth,
+                    TypeButtonHeight, ChoiceColor);
+                obj.GetComponentInChildren<Text>().fontSize = TypeButtonFontSize;
+                typeButtons[i] = obj.GetComponent<Button>();
+            }
+
             Button start = CreatePrimaryButton(box, "Btn_Start", "試合開始").GetComponent<Button>();
 
             var panel = panelObj.AddComponent<GolfSetupPanel>();
             GolfSceneBuilder.SetRefs(panel, ("_oneHoleButton", oneHole), ("_threeHoleButton", threeHole),
                 ("_startButton", start));
             SetArray(panel, "_countButtons", countButtons);
+            SetArray(panel, "_typeButtons", typeButtons);
 
             panelObj.SetActive(false);
             return panel;
@@ -89,7 +106,8 @@ namespace MiniGame.Golf.Editor
             SetCenter(hint.rectTransform, -160f);
 
             var banner = bannerObj.AddComponent<GolfTurnBannerView>();
-            GolfSceneBuilder.SetRefs(banner, ("_titleText", title), ("_detailText", detail), ("_tapArea", tapArea),
+            GolfSceneBuilder.SetRefs(banner, ("_titleText", title), ("_detailText", detail), ("_hintText", hint),
+                ("_tapArea", tapArea),
                 ("_background", background));
 
             bannerObj.SetActive(false);

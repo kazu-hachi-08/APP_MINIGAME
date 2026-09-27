@@ -25,6 +25,7 @@ namespace MiniGame.Golf.Editor
         private const string DataDirectory = RootDirectory + "/Data";
         private const string SettingsPath = DataDirectory + "/GolfPhysicsSettings.asset";
         private const string TerrainSettingsPath = DataDirectory + "/GolfTerrainSettings.asset";
+        private const string NpcDifficultyPath = DataDirectory + "/GolfNpcDifficulty.asset";
 
         // タイトルと同じく縦画面基準
         private static readonly Vector2 ReferenceResolution = new Vector2(1080, 1920);
@@ -93,6 +94,7 @@ namespace MiniGame.Golf.Editor
             // NewScene(Single) は未使用アセットをアンロードするため、ScriptableObject は必ずシーンを作った後に読み込む
             var settings = EnsureAsset<GolfPhysicsSettings>(SettingsPath);
             var terrainSettings = EnsureAsset<GolfTerrainSettings>(TerrainSettingsPath);
+            var npcDifficulty = EnsureAsset<GolfNpcDifficulty>(NpcDifficultyPath);
             GolfHoleCatalog catalog = GolfHoleAssetBuilder.EnsureAssets();
             GolfClubData[] clubs = GolfClubAssetBuilder.EnsureClubs();
 
@@ -106,6 +108,7 @@ namespace MiniGame.Golf.Editor
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
+            SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)));
             CreateOtherBalls(manager);
             CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings);
 
@@ -210,6 +213,14 @@ namespace MiniGame.Golf.Editor
 
             so.ApplyModifiedPropertiesWithoutUndo();
             return selector;
+        }
+
+        private static NpcGolfer CreateNpcGolfer(GolfBall ball, ShotInput input, ClubSelector clubSelector,
+            GolfNpcDifficulty difficulty)
+        {
+            var npc = new GameObject("NpcGolfer").AddComponent<NpcGolfer>();
+            SetRefs(npc, ("_ball", ball), ("_input", input), ("_clubs", clubSelector), ("_difficulty", difficulty));
+            return npc;
         }
 
         /// <summary>◀▶ボタンはキャンバスを作るときに差し込む</summary>

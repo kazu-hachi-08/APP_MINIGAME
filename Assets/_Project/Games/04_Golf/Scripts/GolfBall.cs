@@ -46,6 +46,9 @@ namespace MiniGame.Golf
 
         public event Action Stopped;
 
+        /// <summary>NPC の試し打ち（TrySimulate）用。ボールを動かすときは Hit / Place を使うこと</summary>
+        public BallSimulator Simulation => Simulator;
+
         // 他のコンポーネントの Awake から参照されても良いように遅延生成する
         private BallSimulator Simulator => _simulator ??= new BallSimulator(_settings.Ball, _terrainSettings.Terrain);
 

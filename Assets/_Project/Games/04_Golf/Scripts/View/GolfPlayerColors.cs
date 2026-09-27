@@ -25,5 +25,17 @@ namespace MiniGame.Golf
         }
 
         public static string Name(int seat) => $"P{seat + 1}";
+
+        /// <summary>設定画面・「○○の番」に出す人間/NPCの呼び名</summary>
+        public static string TypeName(GolfPlayerType type)
+        {
+            switch (type)
+            {
+                case GolfPlayerType.NpcWeak: return "NPC よわい";
+                case GolfPlayerType.NpcNormal: return "NPC ふつう";
+                case GolfPlayerType.NpcStrong: return "NPC つよい";
+                default: return "人間";
+            }
+        }
     }
 }

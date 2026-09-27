@@ -19,9 +19,13 @@ namespace MiniGame.Golf
         [SerializeField] private GolfSetupPanel _setupPanel;
         [SerializeField] private GolfTurnBannerView _turnBanner;
         [SerializeField] private ScoreCardView _scoreCard;
+        [SerializeField] private NpcGolfer _npcGolfer;
 
         [Tooltip("ボールが止まってから次の人の番を出すまでの時間（秒）。止まった場所を見せる")]
         [SerializeField] private float _shotResultDelay = 1f;
+
+        [Tooltip("NPCの「○○の番」を自動で閉じるまでの時間（秒）。端末の受け渡しが要らないので短くする")]
+        [SerializeField] private float _npcBannerSeconds = 1f;
 
         private readonly List<GolfPlayerSlot> _slots = new List<GolfPlayerSlot>();
         private readonly List<GolfHoleData> _holes = new List<GolfHoleData>();
@@ -64,12 +68,12 @@ namespace MiniGame.Golf
 
         private void Start()
         {
-            _setupPanel.Show(_holeLoader.Holes.Count, (holeCount, playerCount) => StartCoroutine(PlayMatch(holeCount, playerCount)));
+            _setupPanel.Show(_holeLoader.Holes.Count, (holeCount, types) => StartCoroutine(PlayMatch(holeCount, types)));
         }
 
-        private IEnumerator PlayMatch(int holeCount, int playerCount)
+        private IEnumerator PlayMatch(int holeCount, IReadOnlyList<GolfPlayerType> types)
         {
-            SetUpPlayers(playerCount);
+            SetUpPlayers(types);
             PickHoles(holeCount);
 
             for (HoleNumber = 0; HoleNumber < _holes.Count; HoleNumber++)
@@ -82,13 +86,13 @@ namespace MiniGame.Golf
         }
 
         /// <summary>§6.3 1ホール目のティーは席順</summary>
-        private void SetUpPlayers(int playerCount)
+        private void SetUpPlayers(IReadOnlyList<GolfPlayerType> types)
         {
             _slots.Clear();
             _teeOrder.Clear();
-            for (int i = 0; i < playerCount; i++)
+            for (int i = 0; i < types.Count; i++)
             {
-                _slots.Add(new GolfPlayerSlot(i));
+                _slots.Add(new GolfPlayerSlot(i, types[i]));
                 _teeOrder.Add(i);
             }
         }
@@ -131,7 +135,7 @@ namespace MiniGame.Golf
             yield return new WaitUntil(() => next);
         }
 
-        /// <summary>前のショットの結果と「○○の番」を出し、タップ後にボールが止まるまで待つ</summary>
+        /// <summary>前のショットの結果と「○○の番」を出し、打ってボールが止まるまで待つ</summary>
         private IEnumerator PlayTurn(string lastResult)
         {
             Phase = GolfPhase.TurnStart;
@@ -139,11 +143,25 @@ namespace MiniGame.Golf
             TurnStarted?.Invoke();
 
             string name = GolfPlayerColors.Name(Current.Seat);
-            yield return _turnBanner.Play($"{name} の番", lastResult, GolfPlayerColors.Get(Current.Seat));
-
-            Phase = GolfPhase.Aiming;
+            Color color = GolfPlayerColors.Get(Current.Seat);
             _shotFinished = false;
-            _input.enabled = true;
+
+            if (Current.IsNpc)
+            {
+                yield return _turnBanner.PlayAuto($"{name} の番", lastResult, color, GolfPlayerColors.TypeName(Current.Type),
+                    _npcBannerSeconds);
+
+                Phase = GolfPhase.Aiming;
+                yield return _npcGolfer.TakeShot(Current.Type);
+            }
+            else
+            {
+                yield return _turnBanner.Play($"{name} の番", lastResult, color);
+
+                Phase = GolfPhase.Aiming;
+                _input.enabled = true;
+            }
+
             yield return new WaitUntil(() => _shotFinished);
             _input.enabled = false;
         }

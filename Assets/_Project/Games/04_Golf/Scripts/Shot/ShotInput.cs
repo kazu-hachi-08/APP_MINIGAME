@@ -89,10 +89,19 @@ namespace MiniGame.Golf
             // タップで終わらなかったときは、時間で進めて左端まで戻ったら打つ
             if (Gauge.IsSwinging) Gauge.Tick(Time.deltaTime);
 
-            if (Gauge.State == ShotGauge.GaugeState.Finished)
-            {
-                _ball.Hit(Direction, _clubs.Current.Config, Gauge.Power, Gauge.ImpactOffset);
-            }
+            if (Gauge.State == ShotGauge.GaugeState.Finished) HitWithGauge();
+        }
+
+        /// <summary>今の方向・クラブ・ゲージの結果で打つ。NPC もゲージを動かし終えたらここから打つ</summary>
+        public void HitWithGauge()
+        {
+            _ball.Hit(Direction, _clubs.Current.Config, Gauge.Power, Gauge.ImpactOffset);
+        }
+
+        /// <summary>NPC が狙った方向を線で見せるために使う</summary>
+        public void SetDirection(Vector2 direction)
+        {
+            if (direction.sqrMagnitude > 0f) Direction = direction.normalized;
         }
 
         private void UpdateAim()
