@@ -8,7 +8,6 @@
 **https://kazu-hachi-08.github.io/minigame-web/**
 
 * WebGLビルドを別リポジトリ（`minigame-web`）の GitHub Pages で公開している
-* Windows PC のブラウザ（Chrome / Edge）での動作を想定。スマホブラウザは対象外
 
 ---
 
