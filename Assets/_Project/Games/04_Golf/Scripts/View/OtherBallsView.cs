@@ -41,26 +41,27 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>プレイヤー色の円の上に白い円を重ねて、縁取りに見せる</summary>
+        /// <summary>プレイヤー色の円の上にボールを重ねて、縁取りに見せる</summary>
         private Transform CreateBall(int seat)
         {
             var ball = new GameObject($"OtherBall_P{seat + 1}").transform;
             ball.SetParent(transform);
             ball.localScale = Vector3.one * _diameter;
 
-            SpriteRenderer ring = CreateCircle("Ring", ball, GolfPlayerColors.Get(seat), _sortingOrder);
+            SpriteRenderer ring = CreateCircle("Ring", ball, GolfShapeSprites.Circle, GolfPlayerColors.Get(seat), _sortingOrder);
             ring.transform.localScale = Vector3.one * _ringScale;
-            CreateCircle("Body", ball, Color.white, _sortingOrder + 1);
+            CreateCircle("Body", ball, GolfShapeSprites.Ball, Color.white, _sortingOrder + 1);
 
             ball.gameObject.SetActive(false);
             return ball;
         }
 
-        private static SpriteRenderer CreateCircle(string name, Transform parent, Color color, int sortingOrder)
+        private static SpriteRenderer CreateCircle(string name, Transform parent, Sprite sprite, Color color,
+            int sortingOrder)
         {
             var renderer = new GameObject(name).AddComponent<SpriteRenderer>();
             renderer.transform.SetParent(parent, false);
-            renderer.sprite = GolfShapeSprites.Circle;
+            renderer.sprite = sprite;
             renderer.color = color;
             renderer.sortingOrder = sortingOrder;
             return renderer;

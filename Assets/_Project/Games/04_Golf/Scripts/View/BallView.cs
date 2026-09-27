@@ -28,7 +28,7 @@ namespace MiniGame.Golf
 
         private void Awake()
         {
-            GetComponent<SpriteRenderer>().sprite = GolfShapeSprites.Circle;
+            GetComponent<SpriteRenderer>().sprite = GolfShapeSprites.Ball;
             _ring.sprite = GolfShapeSprites.Circle;
             _ring.transform.localScale = Vector3.one * _ringScale;
         }

@@ -15,7 +15,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 9：HUD・演出・PAUSE・結果画面まで）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 10：ビジュアル置き換えまで）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -34,9 +34,6 @@ namespace MiniGame.Golf.Editor
 
         // §4.3：ボールの周りの狙う先まで見える広さ（縦10ユニット）
         private const float CameraOrthographicSize = 5f;
-
-        // §5 の OB（コースの外側）の灰色。Tilemap の外側がこの色で見える
-        private static readonly Color OutOfBoundsColor = new Color(0.55f, 0.57f, 0.55f);
 
         // 地面・カップ（ホールのプレハブ側）→ 狙いの線 → 影 → ボールの順に重ねる
         private const int AimGuideSortingOrder = 8;
@@ -110,6 +107,7 @@ namespace MiniGame.Golf.Editor
             UIManager uiManager = CreateManagers();
             GolfBall ball = CreateBall(settings, terrainSettings, out BallView ballView);
             HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
+            SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader));
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
@@ -152,7 +150,8 @@ namespace MiniGame.Golf.Editor
             var cameraObj = new GameObject("Main Camera");
             var camera = cameraObj.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = OutOfBoundsColor;
+            // Tilemap の外側は林として見せる。OB タイルと同じ色にして境目を出さない
+            camera.backgroundColor = GolfTileArtBuilder.OutOfBoundsColor;
             camera.orthographic = true;
             camera.orthographicSize = CameraOrthographicSize;
             cameraObj.transform.position = new Vector3(0f, 0f, -10f);

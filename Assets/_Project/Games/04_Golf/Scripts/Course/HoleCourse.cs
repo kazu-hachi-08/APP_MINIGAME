@@ -17,6 +17,17 @@ namespace MiniGame.Golf
         public Vector2 TeePosition => _tee.position;
         public Vector2 CupPosition => _cup.position;
 
+        /// <summary>地面を塗った範囲（ワールド座標）。コース外の飾りをこの外側に置くために使う</summary>
+        public Bounds TerrainBounds
+        {
+            get
+            {
+                Bounds bounds = _terrain.localBounds;
+                bounds.center = _terrain.transform.TransformPoint(bounds.center);
+                return bounds;
+            }
+        }
+
         public GroundType GetGround(Vector2 position)
         {
             Vector3Int cell = _terrain.WorldToCell(position);

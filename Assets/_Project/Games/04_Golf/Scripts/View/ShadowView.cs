@@ -29,7 +29,7 @@ namespace MiniGame.Golf
         private void Awake()
         {
             _renderer = GetComponent<SpriteRenderer>();
-            _renderer.sprite = GolfShapeSprites.Circle;
+            _renderer.sprite = GolfShapeSprites.SoftCircle;
         }
 
         private void LateUpdate()

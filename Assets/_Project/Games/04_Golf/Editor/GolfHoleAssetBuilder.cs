@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -9,40 +10,22 @@ using Object = UnityEngine.Object;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// 地面タイル・ホールのプレハブ・GolfHoleData・GolfHoleCatalog を作る（§9、Phase 2・4）。
+    /// 地面タイル・ホールのプレハブ・GolfHoleData・GolfHoleCatalog を作る（§9、Phase 2・4・10）。
     /// どれも「無ければ作る」だけにして、Tilemap を塗り替えたホールや調整済みの値を上書きしない。
+    /// 例外はタイルの見た目で、画像（GolfTileArtBuilder）に毎回揃える。
     /// </summary>
     public static class GolfHoleAssetBuilder
     {
         private const string RootDirectory = "Assets/_Project/Games/04_Golf";
         private const string TileDirectory = RootDirectory + "/Tiles";
-        private const string TileSpritePath = TileDirectory + "/TileSquare.png";
         private const string HoleRootDirectory = RootDirectory + "/Holes";
         private const string CatalogPath = RootDirectory + "/Data/GolfHoleCatalog.asset";
-
-        // タイル1枚の画像。単色なので小さくてよく、1枚＝1ユニットにする
-        private const int TileSpriteSize = 4;
 
         private const int GroundSortingOrder = 0;
         private const int CupSortingOrder = 5;
         private const int FlagSortingOrder = 15;
 
-        // §5 の色。ティーはフェアウェイと区別できるよう少し明るくし、OB はコースの外側（カメラの背景）と同じ灰色にする
-        private static readonly Dictionary<GroundType, Color> TileColors = new Dictionary<GroundType, Color>
-        {
-            { GroundType.Tee, new Color(0.62f, 0.88f, 0.5f) },
-            { GroundType.Fairway, new Color(0.47f, 0.78f, 0.37f) },
-            { GroundType.Rough, new Color(0.24f, 0.52f, 0.22f) },
-            { GroundType.Bunker, new Color(0.9f, 0.82f, 0.56f) },
-            { GroundType.Green, new Color(0.74f, 0.92f, 0.52f) },
-            { GroundType.Water, new Color(0.25f, 0.5f, 0.9f) },
-            { GroundType.OutOfBounds, new Color(0.55f, 0.57f, 0.55f) },
-        };
-
         private const float CupDiameter = 0.5f;
-        private static readonly Vector2 FlagSize = new Vector2(0.4f, 0.28f);
-        private static readonly Vector2 FlagOffset = new Vector2(0.25f, 0.5f);
-        private static readonly Color FlagColor = new Color(0.9f, 0.15f, 0.15f);
 
         // 横は §19 の目安どおり16タイル（x = -8〜7）。縦はパーに合わせて伸ばす
         private const int HoleMinX = -8;
@@ -125,62 +108,78 @@ namespace MiniGame.Golf.Editor
                 Register(catalog, EnsureHoleData(spec, prefab));
             }
 
+            // 手で追加したホールも含めて、登録済みの全ホールの見た目を揃える
+            foreach (GolfHoleData hole in catalog.Holes)
+            {
+                if (hole != null && hole.Prefab != null) RefreshTiles(hole.Prefab, tiles.Values);
+            }
+
             AssetDatabase.SaveAssets();
             return catalog;
         }
 
         private static Dictionary<GroundType, GolfTerrainTile> EnsureTiles()
         {
-            Sprite sprite = EnsureTileSprite();
+            EnsureDirectory(TileDirectory);
             var tiles = new Dictionary<GroundType, GolfTerrainTile>();
 
-            foreach (KeyValuePair<GroundType, Color> pair in TileColors)
+            foreach (GroundType type in (GroundType[])Enum.GetValues(typeof(GroundType)))
             {
-                string path = $"{TileDirectory}/Tile_{pair.Key}.asset";
+                string path = $"{TileDirectory}/Tile_{type}.asset";
                 var tile = AssetDatabase.LoadAssetAtPath<GolfTerrainTile>(path);
                 if (tile == null)
                 {
                     tile = ScriptableObject.CreateInstance<GolfTerrainTile>();
-                    tile.sprite = sprite;
-                    tile.color = pair.Value;
                     AssetDatabase.CreateAsset(tile, path);
-                    SetInt(tile, "_groundType", (int)pair.Key);
+                    SetInt(tile, "_groundType", (int)type);
                 }
 
-                tiles[pair.Key] = tile;
+                ApplyArt(tile, type);
+                tiles[type] = tile;
             }
 
             AssetDatabase.SaveAssets();
             return tiles;
         }
 
-        /// <summary>タイルは色で塗り分けるので、白い正方形の画像を1枚だけ用意する</summary>
-        private static Sprite EnsureTileSprite()
+        /// <summary>
+        /// 見た目は画像で決めるので、既存のタイルも毎回画像に揃える（Phase 9 までの単色タイルもここで置き換わる）。
+        /// 画像そのものを差し替えたいときは Tiles/Art の PNG を上書きする。
+        /// </summary>
+        private static void ApplyArt(GolfTerrainTile tile, GroundType type)
         {
-            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(TileSpritePath);
-            if (sprite != null) return sprite;
+            tile.sprite = GolfTileArtBuilder.EnsureSprite(type);
+            tile.color = Color.white;
 
-            EnsureDirectory(TileDirectory);
-            var texture = new Texture2D(TileSpriteSize, TileSpriteSize, TextureFormat.RGBA32, false);
-            var pixels = new Color[TileSpriteSize * TileSpriteSize];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
-            texture.SetPixels(pixels);
-            texture.Apply();
-            File.WriteAllBytes(TileSpritePath, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
+            Sprite[] frames = type == GroundType.Water ? GolfTileArtBuilder.EnsureWaterFrames() : new Sprite[0];
+            var so = new SerializedObject(tile);
+            SerializedProperty framesProperty = so.FindProperty("_animationFrames");
+            framesProperty.arraySize = frames.Length;
+            for (int i = 0; i < frames.Length; i++)
+            {
+                framesProperty.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+            }
 
-            AssetDatabase.ImportAsset(TileSpritePath, ImportAssetOptions.ForceUpdate);
-            var importer = (TextureImporter)AssetImporter.GetAtPath(TileSpritePath);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = TileSpriteSize;
-            // タイル同士の境目がにじまないようにする
-            importer.filterMode = FilterMode.Point;
-            importer.mipmapEnabled = false;
-            importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.SaveAndReimport();
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(tile);
+        }
 
-            return AssetDatabase.LoadAssetAtPath<Sprite>(TileSpritePath);
+        /// <summary>
+        /// Tilemap は塗った時点のタイルの画像・色をセルごとに覚えているため、タイルを変えたら塗り直しが要る。
+        /// 手で塗り替えたホールの形はそのまま、見た目だけを最新のタイルに揃える。
+        /// </summary>
+        private static void RefreshTiles(HoleCourse prefab, IEnumerable<GolfTerrainTile> terrainTiles)
+        {
+            string path = AssetDatabase.GetAssetPath(prefab);
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            foreach (Tilemap tilemap in root.GetComponentsInChildren<Tilemap>(true))
+            {
+                // 傾斜の Tilemap は回転したセルを持つので触らず、地面タイルを塗った Tilemap だけ塗り直す
+                if (terrainTiles.Any(tilemap.ContainsTile)) tilemap.RefreshAllTiles();
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+            PrefabUtility.UnloadPrefabContents(root);
         }
 
         private static HoleCourse EnsureHolePrefab(HoleSpec spec, Dictionary<GroundType, GolfTerrainTile> tiles)
@@ -274,14 +273,10 @@ namespace MiniGame.Golf.Editor
             var hole = new GameObject("Hole").AddComponent<SpriteRenderer>();
             hole.transform.SetParent(cupObj.transform, false);
             hole.transform.localScale = Vector3.one * CupDiameter;
-            hole.color = Color.black;
             hole.sortingOrder = CupSortingOrder;
 
             var flag = new GameObject("Flag").AddComponent<SpriteRenderer>();
             flag.transform.SetParent(cupObj.transform, false);
-            flag.transform.localPosition = FlagOffset;
-            flag.transform.localScale = new Vector3(FlagSize.x, FlagSize.y, 1f);
-            flag.color = FlagColor;
             flag.sortingOrder = FlagSortingOrder;
 
             GolfSceneBuilder.SetRefs(cupObj.AddComponent<CupView>(), ("_hole", hole), ("_flag", flag));
