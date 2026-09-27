@@ -69,13 +69,13 @@ namespace MiniGame.Golf
             _isDropPending = false;
         }
 
-        /// <summary>power は 0〜1、impactOffset は ShotRequest と同じ。動いている間とカップインした後は打てない</summary>
-        public void Hit(Vector2 direction, ClubConfig club, float power, float impactOffset)
+        /// <summary>power は 0〜1、impactOffset・spin は ShotRequest と同じ。動いている間とカップインした後は打てない</summary>
+        public void Hit(Vector2 direction, ClubConfig club, float power, float impactOffset, ShotSpin spin)
         {
             if (IsMoving || IsInCup) return;
 
             LaunchPosition = GroundPosition;
-            Simulator.Launch(new ShotRequest(ToNumerics(direction), club, power, impactOffset));
+            Simulator.Launch(new ShotRequest(ToNumerics(direction), club, power, impactOffset, spin));
 
             _accumulatedTime = 0f;
             if (IsMoving) Launched?.Invoke();

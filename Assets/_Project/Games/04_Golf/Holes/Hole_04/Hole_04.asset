@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ca8f7d46bad35cd469de0945139973de, type: 3}
-  m_Name: Hole_01
+  m_Name: Hole_04
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Golf.GolfHoleData
-  _displayName: "\u306F\u3058\u307E\u308A\u306E\u4E00\u672C\u9053"
+  _displayName: "\u6D6E\u5CF6\u30B0\u30EA\u30FC\u30F3"
   _par: 3
-  _prefab: {fileID: 6852255582340085554, guid: 7baac6fc2de70e346aaa98edc07f57fd, type: 3}
-  _minWindStrength: 0
-  _maxWindStrength: 3
+  _prefab: {fileID: 7522349105875120667, guid: f032b01a6cf9e53438549e8eac600bf7, type: 3}
+  _minWindStrength: 1
+  _maxWindStrength: 4

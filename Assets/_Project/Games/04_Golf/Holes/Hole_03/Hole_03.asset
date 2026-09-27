@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca8f7d46bad35cd469de0945139973de, type: 3}
   m_Name: Hole_03
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Golf.GolfHoleData
-  _displayName: "\u30DB\u30FC\u30EB3"
+  _displayName: "\u5D16\u3063\u3077\u3061\u30ED\u30FC\u30C9"
   _par: 5
   _prefab: {fileID: 372112882460234869, guid: 053d4bde728f69245a75484dd100ac8a, type: 3}
   _minWindStrength: 2

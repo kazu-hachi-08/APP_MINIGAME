@@ -7,12 +7,14 @@ namespace MiniGame.Golf
     /// </summary>
     public readonly struct ShotRequest
     {
-        public ShotRequest(Vector2 direction, ClubConfig club, float power, float impactOffset)
+        public ShotRequest(Vector2 direction, ClubConfig club, float power, float impactOffset,
+            ShotSpin spin = ShotSpin.None)
         {
             Direction = direction;
             Club = club;
             Power = power;
             ImpactOffset = impactOffset;
+            Spin = spin;
         }
 
         public Vector2 Direction { get; }
@@ -23,5 +25,8 @@ namespace MiniGame.Golf
 
         /// <summary>インパクトゾーンの中心からのずれ。±1 がゾーンの端、+ は右（スライス）、- は左（フック）</summary>
         public float ImpactOffset { get; }
+
+        /// <summary>パターでは効かない</summary>
+        public ShotSpin Spin { get; }
     }
 }

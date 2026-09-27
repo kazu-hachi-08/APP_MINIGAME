@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace MiniGame.Golf
@@ -8,11 +9,12 @@ namespace MiniGame.Golf
     /// 打ってフォロースルーを見せ終えたら真上視点（Orthographic）に戻ってボールを追う。
     /// 高さでずれるボール本体ではなく地面の位置を追うことで、飛んでいる間もカメラが上下に揺れないようにする。
     /// 「全体」ボタンを押している間だけ、ホール全体を真上から見せる。
+    /// ホール開始時はグリーンからティーまでを真上から流して見せ、これから攻めるコースの形を伝える。
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class GolfCameraFollower : MonoBehaviour
     {
-        private enum ViewMode { TopDown, Behind, Overview }
+        private enum ViewMode { TopDown, Behind, Overview, Flyover }
 
         /// <summary>背後視点のカメラ位置。ショットとパターで切り替える</summary>
         [Serializable]
@@ -55,14 +57,45 @@ namespace MiniGame.Golf
         [Tooltip("ホールの外側に残す余白（ユニット）。コースの端が画面の端に貼り付かないようにする")]
         [SerializeField] private float _overviewMargin = 2f;
 
+        [Header("ホール開始の流し見せ")]
+        [Tooltip("グリーンで止めて見せる時間（秒）。カップの位置を先に覚えてもらう")]
+        [SerializeField] private float _flyoverHoldSeconds = 0.8f;
+
+        [Tooltip("グリーンからティーまで流す時間（秒）")]
+        [SerializeField] private float _flyoverMoveSeconds = 1.8f;
+
         private Camera _camera;
         private float _baseSize;
         private float _topDownZ;
         private Vector3 _velocity;
         private ViewMode _mode;
+        private bool _isFlyingOver;
+        private float _flyoverProgress;
 
         /// <summary>背中越しに見ている間 true。寝かせて描いている飾り（木）を立てる判定に使う</summary>
         public bool IsBehind => _mode == ViewMode.Behind;
+
+        public float FlyoverSeconds => _flyoverHoldSeconds + _flyoverMoveSeconds;
+
+        /// <summary>
+        /// グリーンからティー（ボールの位置）までカメラを流す。終わりの位置を真上視点の位置に揃えて、
+        /// 通常の追従へ切り替わるときにカメラが跳ばないようにする。
+        /// </summary>
+        public IEnumerator PlayFlyover()
+        {
+            _isFlyingOver = true;
+            _flyoverProgress = 0f;
+            yield return new WaitForSeconds(_flyoverHoldSeconds);
+
+            for (float t = 0f; t < _flyoverMoveSeconds; t += Time.deltaTime)
+            {
+                _flyoverProgress = t / _flyoverMoveSeconds;
+                yield return null;
+            }
+
+            _flyoverProgress = 1f;
+            _isFlyingOver = false;
+        }
 
         private void Awake()
         {
@@ -91,12 +124,14 @@ namespace MiniGame.Golf
             {
                 case ViewMode.Behind: SetBehind(snap); break;
                 case ViewMode.Overview: SetOverview(); break;
+                case ViewMode.Flyover: SetFlyover(); break;
                 default: SetTopDown(snap); break;
             }
         }
 
         private ViewMode WantedMode()
         {
+            if (_isFlyingOver && _holeLoader.CurrentCourse != null) return ViewMode.Flyover;
             if (_overviewButton.IsHeld && _holeLoader.CurrentCourse != null) return ViewMode.Overview;
             return _golfer.IsShowing ? ViewMode.Behind : ViewMode.TopDown;
         }
@@ -126,6 +161,18 @@ namespace MiniGame.Golf
 
             Vector2 ground = _ball.GroundPosition;
             MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap);
+        }
+
+        private void SetFlyover()
+        {
+            _camera.orthographic = true;
+            _camera.orthographicSize = _baseSize;
+            transform.rotation = Quaternion.identity;
+
+            Vector2 cup = _holeLoader.CurrentCourse.CupPosition;
+            Vector2 ball = _ball.GroundPosition;
+            Vector2 ground = Vector2.Lerp(cup, ball, Mathf.SmoothStep(0f, 1f, _flyoverProgress));
+            MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap: true);
         }
 
         /// <summary>押している間は見ているだけなので、なめらかさより即座に全体が見えることを優先する</summary>

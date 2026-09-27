@@ -35,6 +35,12 @@ namespace MiniGame.Golf
         /// <summary>インパクトゾーンの外で打ったときに残すパワーの割合</summary>
         public float MissShotPowerRate = 0.7f;
 
+        /// <summary>バックスピンのとき、最初の着地で残す地面方向の速さの割合。小さいほどピタッと止まる</summary>
+        public float BackSpinRollRate = 0.3f;
+
+        /// <summary>トップスピンのとき、最初の着地で地面方向の速さに掛ける倍率。1 より大きいほどよく転がる</summary>
+        public float TopSpinRollRate = 1.6f;
+
         /// <summary>跳ね返りがこれより遅ければバウンドをやめて転がりに移る。小さな跳ねが延々と続くのを防ぐ</summary>
         public float MinBounceSpeed = 0.8f;
 

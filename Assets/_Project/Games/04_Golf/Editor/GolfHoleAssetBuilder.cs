@@ -77,22 +77,50 @@ namespace MiniGame.Golf.Editor
         private static readonly RectInt Hole03LeftOutOfBounds = new RectInt(HoleMinX, 6, 3, 44);
         private static readonly RectInt Hole03RightOutOfBounds = new RectInt(5, 6, 3, 44);
 
+        // ホール4：パー3・池越え。ティーとグリーンの間を池がふさぎ、届かないと池ポチャになる。横16×縦30タイル
+        private static readonly Vector2 Hole04Cup = new Vector2(0f, 24f);
+        private const float Hole04GreenRadius = 4f;
+        private static readonly RectInt Hole04TeeBox = new RectInt(-2, 0, 4, 4);
+        private static readonly RectInt Hole04FairwayFront = new RectInt(-4, 4, 8, 5);
+        private static readonly RectInt Hole04Water = new RectInt(-6, 9, 12, 9);
+        private static readonly RectInt Hole04FairwayLanding = new RectInt(-4, 18, 8, 2);
+        private static readonly RectInt Hole04LeftBunker = new RectInt(-6, 22, 2, 3);
+        private static readonly RectInt Hole04RightBunker = new RectInt(4, 22, 2, 3);
+
+        // ホール5：パー4・フェアウェイを横切るバンカー列。手前に刻むか、越えて寄せるかを選ばせる。横16×縦44タイル
+        private static readonly Vector2 Hole05Cup = new Vector2(-2f, 38f);
+        private const float Hole05GreenRadius = 4f;
+        private static readonly RectInt Hole05TeeBox = new RectInt(-2, 0, 4, 4);
+        private static readonly RectInt Hole05Fairway = new RectInt(-4, 4, 8, 30);
+        private static readonly RectInt Hole05CrossBunker = new RectInt(-5, 18, 10, 2);
+        private static readonly RectInt Hole05GreenBunker = new RectInt(1, 33, 3, 2);
+
         private static readonly HoleSpec[] Holes =
         {
             new HoleSpec
             {
-                Id = "Hole_01", DisplayName = "ホール1", Par = 3, Height = 32,
+                Id = "Hole_01", DisplayName = "はじまりの一本道", Par = 3, Height = 32,
                 Tee = new Vector2(0f, 2f), Cup = Hole01Cup, MinWind = 0f, MaxWind = 3f, GroundAt = Hole01GroundAt,
             },
             new HoleSpec
             {
-                Id = "Hole_02", DisplayName = "ホール2", Par = 4, Height = 44,
+                Id = "Hole_02", DisplayName = "池のほとり", Par = 4, Height = 44,
                 Tee = new Vector2(-4f, 2f), Cup = Hole02Cup, MinWind = 0f, MaxWind = 5f, GroundAt = Hole02GroundAt,
             },
             new HoleSpec
             {
-                Id = "Hole_03", DisplayName = "ホール3", Par = 5, Height = 60,
+                Id = "Hole_03", DisplayName = "崖っぷちロード", Par = 5, Height = 60,
                 Tee = new Vector2(0f, 2f), Cup = Hole03Cup, MinWind = 2f, MaxWind = 5f, GroundAt = Hole03GroundAt,
+            },
+            new HoleSpec
+            {
+                Id = "Hole_04", DisplayName = "浮島グリーン", Par = 3, Height = 30,
+                Tee = new Vector2(0f, 2f), Cup = Hole04Cup, MinWind = 1f, MaxWind = 4f, GroundAt = Hole04GroundAt,
+            },
+            new HoleSpec
+            {
+                Id = "Hole_05", DisplayName = "砂の関所", Par = 4, Height = 44,
+                Tee = new Vector2(0f, 2f), Cup = Hole05Cup, MinWind = 0f, MaxWind = 5f, GroundAt = Hole05GroundAt,
             },
         };
 
@@ -261,6 +289,25 @@ namespace MiniGame.Golf.Editor
             if (Hole03FairwayBunker.Contains(cell) || Hole03GreenBunker.Contains(cell)) return GroundType.Bunker;
             if (Hole03TeeBox.Contains(cell)) return GroundType.Tee;
             if (Hole03Fairway.Contains(cell)) return GroundType.Fairway;
+            return GroundType.Rough;
+        }
+
+        private static GroundType Hole04GroundAt(Vector2Int cell)
+        {
+            if (IsOnGreen(cell, Hole04Cup, Hole04GreenRadius)) return GroundType.Green;
+            if (Hole04LeftBunker.Contains(cell) || Hole04RightBunker.Contains(cell)) return GroundType.Bunker;
+            if (Hole04Water.Contains(cell)) return GroundType.Water;
+            if (Hole04TeeBox.Contains(cell)) return GroundType.Tee;
+            if (Hole04FairwayFront.Contains(cell) || Hole04FairwayLanding.Contains(cell)) return GroundType.Fairway;
+            return GroundType.Rough;
+        }
+
+        private static GroundType Hole05GroundAt(Vector2Int cell)
+        {
+            if (IsOnGreen(cell, Hole05Cup, Hole05GreenRadius)) return GroundType.Green;
+            if (Hole05CrossBunker.Contains(cell) || Hole05GreenBunker.Contains(cell)) return GroundType.Bunker;
+            if (Hole05TeeBox.Contains(cell)) return GroundType.Tee;
+            if (Hole05Fairway.Contains(cell)) return GroundType.Fairway;
             return GroundType.Rough;
         }
 

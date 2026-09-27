@@ -96,6 +96,7 @@ namespace MiniGame.Golf
             writer.WriteValueSafe(shot.ClubIndex);
             writer.WriteValueSafe(shot.Power);
             writer.WriteValueSafe(shot.ImpactOffset);
+            writer.WriteValueSafe((int)shot.Spin);
             Send(ShotMessage, writer, originId);
         }
 
@@ -162,7 +163,8 @@ namespace MiniGame.Golf
             reader.ReadValueSafe(out int clubIndex);
             reader.ReadValueSafe(out float power);
             reader.ReadValueSafe(out float impactOffset);
-            var shot = new GolfShotMessage(direction, clubIndex, power, impactOffset);
+            reader.ReadValueSafe(out int spin);
+            var shot = new GolfShotMessage(direction, clubIndex, power, impactOffset, (ShotSpin)spin);
 
             if (Network.IsServer) SendShot(shot, senderId);
             OnShotReceived?.Invoke(shot);

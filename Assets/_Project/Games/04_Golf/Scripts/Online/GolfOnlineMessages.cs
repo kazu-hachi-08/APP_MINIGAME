@@ -22,18 +22,20 @@ namespace MiniGame.Golf
     /// </summary>
     public readonly struct GolfShotMessage
     {
-        public GolfShotMessage(Vector2 direction, int clubIndex, float power, float impactOffset)
+        public GolfShotMessage(Vector2 direction, int clubIndex, float power, float impactOffset, ShotSpin spin)
         {
             Direction = direction;
             ClubIndex = clubIndex;
             Power = power;
             ImpactOffset = impactOffset;
+            Spin = spin;
         }
 
         public Vector2 Direction { get; }
         public int ClubIndex { get; }
         public float Power { get; }
         public float ImpactOffset { get; }
+        public ShotSpin Spin { get; }
     }
 
     /// <summary>§14.2 止まった後に打った人の端末が確定させる結果。他の端末はこれで上書きする</summary>

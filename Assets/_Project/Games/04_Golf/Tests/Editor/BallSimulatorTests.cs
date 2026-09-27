@@ -621,5 +621,43 @@ namespace MiniGame.Golf.Tests
 
             Assert.AreEqual(flat.PredictFullPower(Putter, Forward), sloped.PredictFullPower(Putter, Forward));
         }
+
+        private static float RestDistance(ClubConfig club, ShotSpin spin)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
+            simulator.Place(Vector2.Zero);
+            simulator.Launch(new ShotRequest(Forward, club, 1f, 0f, spin));
+            simulator.AdvanceToRest();
+            return simulator.Position.Y;
+        }
+
+        [Test]
+        public void バックスピンはスピンなしより手前に止まる()
+        {
+            Assert.Less(RestDistance(Iron, ShotSpin.Back), RestDistance(Iron, ShotSpin.None));
+        }
+
+        [Test]
+        public void トップスピンはスピンなしより奥に止まる()
+        {
+            Assert.Greater(RestDistance(Iron, ShotSpin.Top), RestDistance(Iron, ShotSpin.None));
+        }
+
+        [Test]
+        public void スピンは着地点を変えない()
+        {
+            BallSimulator none = Shoot(1f);
+            var back = new BallSimulator(new BallPhysicsConfig());
+            back.Place(Vector2.Zero);
+            back.Launch(new ShotRequest(Forward, Iron, 1f, 0f, ShotSpin.Back));
+
+            Assert.AreEqual(FirstLanding(none), FirstLanding(back));
+        }
+
+        [Test]
+        public void パターにスピンは効かない()
+        {
+            Assert.AreEqual(RestDistance(Putter, ShotSpin.None), RestDistance(Putter, ShotSpin.Back));
+        }
     }
 }

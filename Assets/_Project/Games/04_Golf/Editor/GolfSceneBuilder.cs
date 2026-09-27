@@ -42,7 +42,11 @@ namespace MiniGame.Golf.Editor
         private const int ShadowSortingOrder = 10;
         private const int OtherBallSortingOrder = 15;
         private const int BallSortingOrder = 20;
-        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている
+        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている。
+        // 背中越しに見るので、腕は体の向こう側（下半身・上半身の下）、頭は一番手前に描く
+        private const int GolferArmSortingOrder = 21;
+        private const int GolferSleeveSortingOrder = 22;
+        private const int GolferLegsSortingOrder = 24;
         private const int GolferSortingOrder = 25;
         // クラブは背中越しに見て体の向こう側にあり、構えたヘッドがボールの横に届くので、体とボール（リング含む）の下に描く
         private const int GolferClubSortingOrder = BallSortingOrder - 2;
@@ -63,6 +67,13 @@ namespace MiniGame.Golf.Editor
         private const float OverviewButtonWidth = 160f;
         private const float OverviewButtonHeight = 100f;
         private const int OverviewButtonFontSize = 40;
+
+        // 「？」ボタンは「全体」ボタンのさらに下。説明は縦画面で読める大きさにし、端に余白をとる
+        private const float HelpButtonSize = 100f;
+        private const int HelpButtonFontSize = 52;
+        private const int HelpTextFontSize = 40;
+        private const float HelpTextPadding = 60f;
+        private static readonly Color HelpPanelColor = new Color(0f, 0f, 0f, 0.85f);
 
         // 演出メッセージは画面中央のボールより少し上に出し、ボールの止まった場所を隠さない
         private const float MessageOffsetY = 280f;
@@ -95,6 +106,13 @@ namespace MiniGame.Golf.Editor
         private static readonly Color GaugeBackgroundColor = new Color(0.1f, 0.1f, 0.12f, 0.85f);
         private static readonly Color ImpactZoneColor = new Color(0.95f, 0.75f, 0.2f);
         private static readonly Color PowerMarkColor = new Color(0.95f, 0.3f, 0.3f);
+
+        // スピンはゲージの右上の隅に置く。背後視点で真ん中のボールを隠さないよう、中央には寄せない
+        private const float SpinButtonWidth = 180f;
+        private const float SpinButtonHeight = 100f;
+        private const float SpinButtonOffsetX = 400f;
+        private const float SpinButtonGap = 20f;
+        private const int SpinButtonFontSize = 32;
 
         [MenuItem("Tools/MiniGame/Build Golf Scene", false, 5)]
         public static void BuildGolfScene()
@@ -129,7 +147,7 @@ namespace MiniGame.Golf.Editor
             SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
                 ("_cameraFollower", cameraFollower), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_golferView", golfer));
+            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);
@@ -285,30 +303,38 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 胴（プレイヤー色）と頭（髪の色）を分けて、頭まで服の色に染まらないようにする。
+        /// 上半身（プレイヤー色）と下半身・頭を分けて、肩と腰を別々に回せるようにする。
         /// クラブは手元（Hands）を回転の中心にするため、Hands の子に置く
         /// </summary>
         private static GolferView CreateGolfer(GolfBall ball, ShotInput input, AimGuideView aimGuide)
         {
             var golfer = new GameObject("Golfer").AddComponent<GolferView>();
-
-            var body = new GameObject("Body").AddComponent<SpriteRenderer>();
-            body.transform.SetParent(golfer.transform, false);
-            body.sortingOrder = GolferSortingOrder;
-
-            var head = new GameObject("Head").AddComponent<SpriteRenderer>();
-            head.transform.SetParent(golfer.transform, false);
-            head.sortingOrder = GolferSortingOrder + 1;
+            var rig = golfer.gameObject.AddComponent<GolferRig>();
+            Transform root = golfer.transform;
 
             var hands = new GameObject("Hands").transform;
-            hands.SetParent(golfer.transform, false);
-            var club = new GameObject("Club").AddComponent<SpriteRenderer>();
-            club.transform.SetParent(hands, false);
-            club.sortingOrder = GolferClubSortingOrder;
+            hands.SetParent(root, false);
 
-            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_body", body), ("_head", head),
-                ("_club", club));
+            SetRefs(rig,
+                ("_legs", CreateGolferPart("Legs", root, GolferLegsSortingOrder)),
+                ("_torso", CreateGolferPart("Torso", root, GolferSortingOrder)),
+                ("_head", CreateGolferPart("Head", root, GolferSortingOrder + 1)),
+                ("_leftArm", CreateGolferPart("LeftArm", root, GolferArmSortingOrder)),
+                ("_rightArm", CreateGolferPart("RightArm", root, GolferArmSortingOrder)),
+                ("_leftSleeve", CreateGolferPart("LeftSleeve", root, GolferSleeveSortingOrder)),
+                ("_rightSleeve", CreateGolferPart("RightSleeve", root, GolferSleeveSortingOrder)),
+                ("_glove", CreateGolferPart("Glove", root, GolferSleeveSortingOrder)),
+                ("_club", CreateGolferPart("Club", hands, GolferClubSortingOrder)));
+            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_rig", rig));
             return golfer;
+        }
+
+        private static SpriteRenderer CreateGolferPart(string name, Transform parent, int sortingOrder)
+        {
+            var part = new GameObject(name).AddComponent<SpriteRenderer>();
+            part.transform.SetParent(parent, false);
+            part.sortingOrder = sortingOrder;
+            return part;
         }
 
         private static void CreateEventSystem()
@@ -368,8 +394,11 @@ namespace MiniGame.Golf.Editor
             CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
+            CreateSpinButton(safeAreaObj.transform, input, clubSelector);
             SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeAreaObj.transform)));
             GolfMessageView message = CreateMessageView(safeAreaObj.transform);
+            // 開いた説明はショット操作のUIを覆うように、ショット操作より後（手前）に作る
+            CreateHelp(safeAreaObj.transform, input);
 
             // 試合進行の全画面UIはショット操作より手前に出す
             GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
@@ -458,6 +487,19 @@ namespace MiniGame.Golf.Editor
             var clubView = clubObj.AddComponent<ClubButtonView>();
             SetRefs(clubView, ("_input", input), ("_clubs", clubSelector), ("_settings", settings),
                 ("_button", clubObj.GetComponent<Button>()), ("_label", clubLabel));
+        }
+
+        private static void CreateSpinButton(Transform parent, ShotInput input, ClubSelector clubSelector)
+        {
+            GameObject obj = UIDialogBuilder.CreateButton(parent, "Btn_Spin", string.Empty, SpinButtonWidth,
+                SpinButtonHeight, ControlButtonColor);
+            SetBottomCenter(obj.GetComponent<RectTransform>(), SpinButtonOffsetX,
+                GaugeBottomMargin + GaugeHeight + SpinButtonGap);
+            Text label = obj.GetComponentInChildren<Text>();
+            label.fontSize = SpinButtonFontSize;
+
+            SetRefs(obj.AddComponent<SpinButtonView>(), ("_input", input), ("_clubs", clubSelector),
+                ("_button", obj.GetComponent<Button>()), ("_label", label));
         }
 
         private static HoldButton CreateRotateButton(Transform parent, string name, string label, float offsetX)
@@ -560,6 +602,41 @@ namespace MiniGame.Golf.Editor
             rect.anchoredPosition = new Vector2(-PauseButtonMargin, -(PauseButtonMargin * 2f + PauseButtonSize));
             obj.GetComponentInChildren<Text>().fontSize = OverviewButtonFontSize;
             return obj.AddComponent<HoldButton>();
+        }
+
+        /// <summary>
+        /// 「？」ボタンと操作説明のパネル。GolfHelpView はパネルを閉じても動き続けるよう、常に有効な親に付ける。
+        /// パネル全体をボタンにして、どこをタップしても閉じられるようにする
+        /// </summary>
+        private static void CreateHelp(Transform parent, ShotInput input)
+        {
+            GameObject root = UIDialogBuilder.CreateUIObject("Help", parent);
+            UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
+
+            GameObject openObj = UIDialogBuilder.CreateButton(root.transform, "Btn_Help", "？", HelpButtonSize,
+                HelpButtonSize, ControlButtonColor);
+            var openRect = openObj.GetComponent<RectTransform>();
+            openRect.anchorMin = openRect.anchorMax = openRect.pivot = new Vector2(1f, 1f);
+            openRect.anchoredPosition = new Vector2(-PauseButtonMargin,
+                -(PauseButtonMargin * 3f + PauseButtonSize + OverviewButtonHeight));
+            openObj.GetComponentInChildren<Text>().fontSize = HelpButtonFontSize;
+
+            GameObject panelObj = UIDialogBuilder.CreateButton(root.transform, "HelpPanel", string.Empty, 0f, 0f,
+                HelpPanelColor);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+
+            Text text = panelObj.GetComponentInChildren<Text>();
+            var textRect = text.GetComponent<RectTransform>();
+            textRect.offsetMin = new Vector2(HelpTextPadding, HelpTextPadding);
+            textRect.offsetMax = new Vector2(-HelpTextPadding, -HelpTextPadding);
+            text.fontSize = HelpTextFontSize;
+            text.fontStyle = FontStyle.Normal;
+            text.alignment = TextAnchor.MiddleLeft;
+            text.supportRichText = true;
+            text.raycastTarget = false;
+
+            SetRefs(root.AddComponent<GolfHelpView>(), ("_input", input), ("_openButton", openObj.GetComponent<Button>()),
+                ("_panel", panelObj.GetComponent<Button>()), ("_text", text));
         }
 
         private static void CreatePauseButton(Transform parent, GolfGameManager manager)
