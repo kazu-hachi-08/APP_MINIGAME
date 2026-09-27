@@ -13,7 +13,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 2：ホールをティーから回ってカップインする）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 3：3タップゲージとクラブで狙って打つ）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -35,17 +35,42 @@ namespace MiniGame.Golf.Editor
         // §5 の OB（コースの外側）の灰色。Tilemap の外側がこの色で見える
         private static readonly Color OutOfBoundsColor = new Color(0.55f, 0.57f, 0.55f);
 
-        // 地面・カップ（ホールのプレハブ側）→ 影 → ボールの順に重ねる
+        // 地面・カップ（ホールのプレハブ側）→ 狙いの線 → 影 → ボールの順に重ねる
+        private const int AimGuideSortingOrder = 8;
         private const int ShadowSortingOrder = 10;
         private const int BallSortingOrder = 20;
+
+        private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
+        private static readonly Color LandingMarkerColor = new Color(1f, 1f, 1f, 0.45f);
 
         private const int HudFontSize = 52;
         private const float HudTopMargin = 120f;
         private const float HudHeight = 240f;
-        private const float ReturnButtonWidth = 480f;
-        private const float ReturnButtonHeight = 130f;
-        private const int ReturnButtonFontSize = 44;
-        private const float ReturnButtonBottomMargin = 200f;
+
+        // 下部の操作UIとぶつからないよう、戻るボタンは右上（HUDより上）に小さく置く
+        private const float ReturnButtonWidth = 280f;
+        private const float ReturnButtonHeight = 90f;
+        private const int ReturnButtonFontSize = 34;
+        private const float ReturnButtonMargin = 16f;
+
+        // 下から ◀ クラブ ▶ の行 → ゲージ の順に積む。合計の高さは GolfCameraFollower の _bottomUiRatio に収める
+        private const float AimControlBottomMargin = 40f;
+        private const float AimControlHeight = 130f;
+        private const float ClubButtonWidth = 420f;
+        private const int ClubButtonFontSize = 40;
+        private const float RotateButtonWidth = 200f;
+        private const float RotateButtonOffsetX = 340f;
+        private const int RotateButtonFontSize = 60;
+        private static readonly Color ControlButtonColor = new Color(0.15f, 0.17f, 0.22f, 0.85f);
+
+        private const float GaugeBottomMargin = 200f;
+        private const float GaugeWidth = 900f;
+        private const float GaugeHeight = 110f;
+        private const float GaugeMarkWidth = 12f;
+        private const int GaugeLabelFontSize = 40;
+        private static readonly Color GaugeBackgroundColor = new Color(0.1f, 0.1f, 0.12f, 0.85f);
+        private static readonly Color ImpactZoneColor = new Color(0.95f, 0.75f, 0.2f);
+        private static readonly Color PowerMarkColor = new Color(0.95f, 0.3f, 0.3f);
 
         [MenuItem("Tools/MiniGame/Build Golf Scene", false, 5)]
         public static void BuildGolfScene()
@@ -61,15 +86,18 @@ namespace MiniGame.Golf.Editor
             var settings = EnsureAsset<GolfPhysicsSettings>(SettingsPath);
             var terrainSettings = EnsureAsset<GolfTerrainSettings>(TerrainSettingsPath);
             GolfHoleCatalog catalog = GolfHoleAssetBuilder.EnsureAssets();
+            GolfClubData[] clubs = GolfClubAssetBuilder.EnsureClubs();
 
             Camera camera = CreateCamera();
             CreateEventSystem();
             CreateManagers();
             GolfBall ball = CreateBall(settings, terrainSettings);
             HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
-            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball));
-            PrototypeShotInput input = CreateInput(ball, camera);
-            CreateCanvas(ball, input, holeLoader, settings);
+            ClubSelector clubSelector = CreateClubSelector(ball, clubs);
+            ShotInput input = CreateInput(ball, clubSelector, settings);
+            AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
+            SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
+            CreateCanvas(ball, input, clubSelector, holeLoader, settings);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -139,11 +167,48 @@ namespace MiniGame.Golf.Editor
             return ball;
         }
 
-        private static PrototypeShotInput CreateInput(GolfBall ball, Camera camera)
+        private static ClubSelector CreateClubSelector(GolfBall ball, GolfClubData[] clubs)
         {
-            var input = new GameObject("PrototypeShotInput").AddComponent<PrototypeShotInput>();
-            SetRefs(input, ("_ball", ball), ("_camera", camera));
+            var selector = new GameObject("ClubSelector").AddComponent<ClubSelector>();
+            SetRefs(selector, ("_ball", ball));
+
+            var so = new SerializedObject(selector);
+            SerializedProperty clubsProperty = so.FindProperty("_clubs");
+            clubsProperty.arraySize = clubs.Length;
+            for (int i = 0; i < clubs.Length; i++)
+            {
+                clubsProperty.GetArrayElementAtIndex(i).objectReferenceValue = clubs[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return selector;
+        }
+
+        /// <summary>◀▶ボタンはキャンバスを作るときに差し込む</summary>
+        private static ShotInput CreateInput(GolfBall ball, ClubSelector clubSelector, GolfPhysicsSettings settings)
+        {
+            var input = new GameObject("ShotInput").AddComponent<ShotInput>();
+            SetRefs(input, ("_ball", ball), ("_clubs", clubSelector), ("_settings", settings));
             return input;
+        }
+
+        private static AimGuideView CreateAimGuide(GolfBall ball, ShotInput input, ClubSelector clubSelector)
+        {
+            var guide = new GameObject("AimGuide").AddComponent<AimGuideView>();
+
+            var line = new GameObject("Line").AddComponent<SpriteRenderer>();
+            line.transform.SetParent(guide.transform);
+            line.color = AimLineColor;
+            line.sortingOrder = AimGuideSortingOrder;
+
+            var landing = new GameObject("LandingMarker").AddComponent<SpriteRenderer>();
+            landing.transform.SetParent(guide.transform);
+            landing.color = LandingMarkerColor;
+            landing.sortingOrder = AimGuideSortingOrder;
+
+            SetRefs(guide, ("_ball", ball), ("_input", input), ("_clubs", clubSelector), ("_line", line),
+                ("_landingMarker", landing));
+            return guide;
         }
 
         private static void CreateEventSystem()
@@ -162,8 +227,8 @@ namespace MiniGame.Golf.Editor
             CreateManager<AudioManager>("AudioManager", managersRoot.transform);
         }
 
-        private static void CreateCanvas(GolfBall ball, PrototypeShotInput input, HoleLoader holeLoader,
-            GolfPhysicsSettings settings)
+        private static void CreateCanvas(GolfBall ball, ShotInput input, ClubSelector clubSelector,
+            HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -181,10 +246,83 @@ namespace MiniGame.Golf.Editor
             safeAreaObj.AddComponent<SafeAreaFitter>();
 
             CreateShotHud(safeAreaObj.transform, ball, input, holeLoader, settings);
+            CreateShotGauge(safeAreaObj.transform, input);
+            CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
             CreateReturnButton(safeAreaObj.transform);
         }
 
-        private static void CreateShotHud(Transform parent, GolfBall ball, PrototypeShotInput input,
+        private static void CreateShotGauge(Transform parent, ShotInput input)
+        {
+            GameObject gaugeObj = UIDialogBuilder.CreateButton(parent, "ShotGauge", string.Empty,
+                GaugeWidth, GaugeHeight, GaugeBackgroundColor);
+            SetBottomCenter(gaugeObj.GetComponent<RectTransform>(), 0f, GaugeBottomMargin);
+
+            Text label = gaugeObj.GetComponentInChildren<Text>();
+            label.fontSize = GaugeLabelFontSize;
+            label.raycastTarget = false;
+
+            RectTransform zone = CreateGaugeBar(gaugeObj.transform, "ImpactZone", ImpactZoneColor, 0f);
+            RectTransform powerMark = CreateGaugeBar(gaugeObj.transform, "PowerMark", PowerMarkColor, GaugeMarkWidth);
+            RectTransform marker = CreateGaugeBar(gaugeObj.transform, "Marker", Color.white, GaugeMarkWidth);
+            // ラベルはバーより手前に出す
+            label.transform.SetAsLastSibling();
+
+            var view = gaugeObj.AddComponent<ShotGaugeView>();
+            SetRefs(view, ("_input", input), ("_button", gaugeObj.GetComponent<Button>()),
+                ("_zone", zone), ("_marker", marker), ("_powerMark", powerMark), ("_label", label));
+        }
+
+        /// <summary>ゲージの上下いっぱいの縦棒。横位置は ShotGaugeView がアンカーで動かす</summary>
+        private static RectTransform CreateGaugeBar(Transform parent, string name, Color color, float width)
+        {
+            GameObject obj = UIDialogBuilder.CreateUIObject(name, parent);
+            var rect = obj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(width, 0f);
+
+            var image = obj.AddComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return rect;
+        }
+
+        /// <summary>◀ クラブ ▶ を1行に並べる</summary>
+        private static void CreateAimControls(Transform parent, ShotInput input, ClubSelector clubSelector,
+            GolfPhysicsSettings settings)
+        {
+            HoldButton left = CreateRotateButton(parent, "Btn_RotateLeft", "◀", -RotateButtonOffsetX);
+            HoldButton right = CreateRotateButton(parent, "Btn_RotateRight", "▶", RotateButtonOffsetX);
+            SetRefs(input, ("_rotateLeftButton", left), ("_rotateRightButton", right));
+
+            GameObject clubObj = UIDialogBuilder.CreateButton(parent, "Btn_Club", string.Empty,
+                ClubButtonWidth, AimControlHeight, ControlButtonColor);
+            SetBottomCenter(clubObj.GetComponent<RectTransform>(), 0f, AimControlBottomMargin);
+            Text clubLabel = clubObj.GetComponentInChildren<Text>();
+            clubLabel.fontSize = ClubButtonFontSize;
+
+            var clubView = clubObj.AddComponent<ClubButtonView>();
+            SetRefs(clubView, ("_input", input), ("_clubs", clubSelector), ("_settings", settings),
+                ("_button", clubObj.GetComponent<Button>()), ("_label", clubLabel));
+        }
+
+        private static HoldButton CreateRotateButton(Transform parent, string name, string label, float offsetX)
+        {
+            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, RotateButtonWidth, AimControlHeight,
+                ControlButtonColor);
+            SetBottomCenter(obj.GetComponent<RectTransform>(), offsetX, AimControlBottomMargin);
+            obj.GetComponentInChildren<Text>().fontSize = RotateButtonFontSize;
+            return obj.AddComponent<HoldButton>();
+        }
+
+        private static void SetBottomCenter(RectTransform rect, float x, float bottomMargin)
+        {
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(x, bottomMargin);
+        }
+
+        private static void CreateShotHud(Transform parent, GolfBall ball, ShotInput input,
             HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
             var obj = UIDialogBuilder.CreateUIObject("PrototypeShotHud", parent);
@@ -217,8 +355,8 @@ namespace MiniGame.Golf.Editor
             var buttonObj = UIDialogBuilder.CreateButton(parent, "Btn_ReturnToTitle", "タイトルへ戻る",
                 ReturnButtonWidth, ReturnButtonHeight, new Color(0.15f, 0.17f, 0.22f, 0.9f));
             var rect = buttonObj.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, ReturnButtonBottomMargin);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-ReturnButtonMargin, -ReturnButtonMargin);
             buttonObj.GetComponentInChildren<Text>().fontSize = ReturnButtonFontSize;
 
             var returnButton = buttonObj.AddComponent<GolfTitleReturnButton>();

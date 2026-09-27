@@ -7,12 +7,41 @@ namespace MiniGame.Golf.Tests
     {
         private static readonly Vector2 Forward = new Vector2(0f, 1f);
 
-        private static BallSimulator Shoot(float power, BallPhysicsConfig config = null)
+        // クラブの値はテストが調整値の変更で壊れないよう、テスト側で固定する
+        private static readonly ClubConfig Iron = new ClubConfig(12f, 25f, 0.8f);
+        private static readonly ClubConfig Driver = new ClubConfig(16f, 15f, 1f);
+        private static readonly ClubConfig Wedge = new ClubConfig(7f, 50f, 0.5f);
+        private static readonly ClubConfig Putter = new ClubConfig(5f, 0f, 0.1f, true);
+
+        private static void Hit(BallSimulator simulator, Vector2 direction, float power, ClubConfig club = null,
+            float impactOffset = 0f)
         {
-            var simulator = new BallSimulator(config ?? new BallPhysicsConfig());
+            simulator.Launch(new ShotRequest(direction, club ?? Iron, power, impactOffset));
+        }
+
+        private static void Putt(BallSimulator simulator, Vector2 direction, float power)
+        {
+            Hit(simulator, direction, power, Putter);
+        }
+
+        private static BallSimulator Shoot(float power, ClubConfig club = null, float impactOffset = 0f)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
             simulator.Place(Vector2.Zero);
-            simulator.Launch(Forward, power);
+            Hit(simulator, Forward, power, club, impactOffset);
             return simulator;
+        }
+
+        private static float MaxHeight(BallSimulator simulator)
+        {
+            float maxHeight = 0f;
+            while (simulator.IsMoving)
+            {
+                simulator.Advance();
+                if (simulator.Height > maxHeight) maxHeight = simulator.Height;
+            }
+
+            return maxHeight;
         }
 
         [Test]
@@ -31,16 +60,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 打ったボールは高さを持って飛ぶ()
         {
-            BallSimulator simulator = Shoot(1f);
-            float maxHeight = 0f;
-
-            while (simulator.IsMoving)
-            {
-                simulator.Advance();
-                if (simulator.Height > maxHeight) maxHeight = simulator.Height;
-            }
-
-            Assert.Greater(maxHeight, 1f);
+            Assert.Greater(MaxHeight(Shoot(1f)), 1f);
         }
 
         [Test]
@@ -81,7 +101,7 @@ namespace MiniGame.Golf.Tests
         {
             var simulator = new BallSimulator(new BallPhysicsConfig());
             simulator.Place(new Vector2(3f, 5f));
-            simulator.Launch(new Vector2(1f, 0f), 1f);
+            Hit(simulator, new Vector2(1f, 0f), 1f);
 
             simulator.AdvanceToRest();
 
@@ -96,7 +116,7 @@ namespace MiniGame.Golf.Tests
             var terrain = new TerrainPhysicsConfig { Fairway = new TerrainPhysics(0f, 0.35f, 0.7f) };
             var simulator = new BallSimulator(config, terrain);
             simulator.Place(Vector2.Zero);
-            simulator.Launch(Forward, 1f);
+            Hit(simulator, Forward, 1f);
 
             simulator.AdvanceToRest();
 
@@ -121,11 +141,11 @@ namespace MiniGame.Golf.Tests
             simulator.Place(Vector2.Zero);
             if (putt)
             {
-                simulator.LaunchPutt(Forward, 1f);
+                Putt(simulator, Forward, 1f);
             }
             else
             {
-                simulator.Launch(Forward, 1f);
+                Hit(simulator, Forward, 1f);
             }
 
             simulator.AdvanceToRest();
@@ -156,7 +176,7 @@ namespace MiniGame.Golf.Tests
         {
             var simulator = new BallSimulator(new BallPhysicsConfig());
             simulator.Place(Vector2.Zero);
-            simulator.LaunchPutt(Forward, 0.5f);
+            Putt(simulator, Forward, 0.5f);
 
             while (simulator.IsMoving)
             {
@@ -174,7 +194,7 @@ namespace MiniGame.Golf.Tests
             var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), new UniformGround(GroundType.Green));
             simulator.SetCup(cup);
             simulator.Place(Vector2.Zero);
-            simulator.LaunchPutt(cup, power);
+            Putt(simulator, cup, power);
             simulator.AdvanceToRest();
             return simulator;
         }
@@ -221,10 +241,120 @@ namespace MiniGame.Golf.Tests
             var simulator = new BallSimulator(new BallPhysicsConfig());
             simulator.SetCup(landing);
             simulator.Place(Vector2.Zero);
-            simulator.Launch(Forward, 1f);
+            Hit(simulator, Forward, 1f);
             simulator.AdvanceToRest();
 
             Assert.IsTrue(simulator.IsInCup);
+        }
+
+        // --- クラブ・インパクト・着地予測（Phase 3） ---
+
+        private static Vector2 FirstLanding(BallSimulator simulator)
+        {
+            do
+            {
+                simulator.Advance();
+            } while (simulator.IsMoving && simulator.Height > 0f);
+
+            return simulator.Position;
+        }
+
+        [Test]
+        public void クラブで飛距離が変わる()
+        {
+            float driver = FirstLanding(Shoot(1f, Driver)).Length();
+            float iron = FirstLanding(Shoot(1f, Iron)).Length();
+            float wedge = FirstLanding(Shoot(1f, Wedge)).Length();
+
+            Assert.Greater(driver, iron);
+            Assert.Greater(iron, wedge);
+        }
+
+        [Test]
+        public void ウェッジはドライバーより高く上がる()
+        {
+            Assert.Greater(MaxHeight(Shoot(1f, Wedge)), MaxHeight(Shoot(1f, Driver)));
+        }
+
+        [Test]
+        public void インパクトがゾーンの中心ならまっすぐ飛ぶ()
+        {
+            BallSimulator simulator = Shoot(1f);
+            simulator.AdvanceToRest();
+
+            Assert.AreEqual(0f, simulator.Position.X, 0.0001f);
+        }
+
+        [Test]
+        public void インパクトが右にずれるとスライス左にずれるとフックする()
+        {
+            BallSimulator slice = Shoot(1f, Iron, 0.5f);
+            BallSimulator hook = Shoot(1f, Iron, -0.5f);
+            slice.AdvanceToRest();
+            hook.AdvanceToRest();
+
+            Assert.Greater(slice.Position.X, 0.1f);
+            Assert.Less(hook.Position.X, -0.1f);
+        }
+
+        [Test]
+        public void ずれが大きいほど大きく曲がる()
+        {
+            BallSimulator small = Shoot(1f, Iron, 0.3f);
+            BallSimulator large = Shoot(1f, Iron, 0.9f);
+            small.AdvanceToRest();
+            large.AdvanceToRest();
+
+            Assert.Greater(large.Position.X, small.Position.X);
+        }
+
+        [Test]
+        public void ゾーンの外はミスショットで大きく曲がり飛ばない()
+        {
+            Vector2 edge = FirstLanding(Shoot(1f, Iron, 1f));
+            Vector2 miss = FirstLanding(Shoot(1f, Iron, 1.5f));
+
+            Assert.Greater(miss.X, edge.X);
+            Assert.Less(miss.Length(), edge.Length());
+        }
+
+        [Test]
+        public void パットもインパクトがずれると曲がる()
+        {
+            BallSimulator simulator = Shoot(1f, Putter, 1f);
+            simulator.AdvanceToRest();
+
+            Assert.Greater(simulator.Position.X, 0f);
+        }
+
+        [Test]
+        public void 着地予測はフルパワーでまっすぐ打った最初の着地点になる()
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
+            simulator.Place(new Vector2(1f, 2f));
+
+            Vector2 predicted = simulator.PredictFullPower(Driver, Forward);
+
+            var actual = new BallSimulator(new BallPhysicsConfig());
+            actual.Place(new Vector2(1f, 2f));
+            Hit(actual, Forward, 1f, Driver);
+            Assert.AreEqual(FirstLanding(actual), predicted);
+            // 予測しても元のボールは動かない
+            Assert.IsFalse(simulator.IsMoving);
+            Assert.AreEqual(new Vector2(1f, 2f), simulator.Position);
+        }
+
+        [Test]
+        public void パターの予測は止まる位置になる()
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
+            simulator.Place(Vector2.Zero);
+
+            Vector2 predicted = simulator.PredictFullPower(Putter, Forward);
+
+            BallSimulator actual = Shoot(1f, Putter);
+            actual.AdvanceToRest();
+            Assert.AreEqual(actual.Position, predicted);
         }
     }
 }

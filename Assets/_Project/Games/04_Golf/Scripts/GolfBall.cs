@@ -26,6 +26,8 @@ namespace MiniGame.Golf
         /// <summary>最後に打った位置。飛距離の表示に使う</summary>
         public Vector2 LaunchPosition { get; private set; }
 
+        public Vector2 CupPosition { get; private set; }
+
         public event Action Launched;
         public event Action Stopped;
 
@@ -37,6 +39,7 @@ namespace MiniGame.Golf
         {
             _simulator = new BallSimulator(_settings.Ball, _terrainSettings.Terrain, ground);
             _simulator.SetCup(ToNumerics(cupPosition));
+            CupPosition = cupPosition;
             Place(teePosition);
         }
 
@@ -46,24 +49,22 @@ namespace MiniGame.Golf
             _accumulatedTime = 0f;
         }
 
-        /// <summary>power は 0〜1。動いている間とカップインした後は打てない</summary>
-        public void Hit(Vector2 direction, float power)
+        /// <summary>power は 0〜1、impactOffset は ShotRequest と同じ。動いている間とカップインした後は打てない</summary>
+        public void Hit(Vector2 direction, ClubConfig club, float power, float impactOffset)
         {
             if (IsMoving || IsInCup) return;
 
             LaunchPosition = GroundPosition;
-            // 仮のパット：グリーン上では転がして打つ。Phase 3 でグリーン上の自動パターに置き換える
-            if (Ground == GroundType.Green)
-            {
-                Simulator.LaunchPutt(ToNumerics(direction), power);
-            }
-            else
-            {
-                Simulator.Launch(ToNumerics(direction), power);
-            }
+            Simulator.Launch(new ShotRequest(ToNumerics(direction), club, power, impactOffset));
 
             _accumulatedTime = 0f;
             if (IsMoving) Launched?.Invoke();
+        }
+
+        /// <summary>今の位置からフルパワー・まっすぐで打ったときの着地点（パターは止まる位置）</summary>
+        public Vector2 PredictFullPower(ClubConfig club, Vector2 direction)
+        {
+            return ToUnity(Simulator.PredictFullPower(club, ToNumerics(direction)));
         }
 
         private void Update()

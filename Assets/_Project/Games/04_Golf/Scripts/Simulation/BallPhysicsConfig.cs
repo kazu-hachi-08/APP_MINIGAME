@@ -17,14 +17,14 @@ namespace MiniGame.Golf
         /// <summary>高さ方向の重力。小さいほど滞空時間が長く、ふわっと飛ぶ</summary>
         public float Gravity = 6f;
 
-        /// <summary>パワー100%のときの初速</summary>
-        public float MaxLaunchSpeed = 12f;
+        /// <summary>インパクトのずれ × クラブの曲がりやすさ → 横向きの加速度</summary>
+        public float CurveAccelerationScale = 3f;
 
-        /// <summary>打ち出し角（度）。Phase 3 でクラブごとの値に置き換える</summary>
-        public float LaunchAngleDegrees = 25f;
+        /// <summary>インパクトゾーンの外で打ったときの曲がり（ゾーンの端で打ったときの何倍か）</summary>
+        public float MissShotCurve = 2.5f;
 
-        /// <summary>仮のパットの最大初速。Phase 3 でパタークラブの値に置き換える</summary>
-        public float PuttMaxSpeed = 5f;
+        /// <summary>インパクトゾーンの外で打ったときに残すパワーの割合</summary>
+        public float MissShotPowerRate = 0.7f;
 
         /// <summary>跳ね返りがこれより遅ければバウンドをやめて転がりに移る。小さな跳ねが延々と続くのを防ぐ</summary>
         public float MinBounceSpeed = 0.8f;
