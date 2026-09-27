@@ -65,6 +65,7 @@ namespace MiniGame.Molkky
         /// <summary>投擲ライン上に棒を戻す。狙っている間はピンに押されないよう Kinematic にしておく</summary>
         public void PlaceOnLine(float x)
         {
+            _body.simulated = true;
             _body.bodyType = RigidbodyType2D.Kinematic;
             _body.linearVelocity = Vector2.zero;
             _body.angularVelocity = 0f;
@@ -98,6 +99,17 @@ namespace MiniGame.Molkky
             _throwTime = Time.time;
             _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
             IsThrown = true;
+        }
+
+        /// <summary>
+        /// その場で止めて当たり判定を外す。相手端末の結果でピンを上書きしたとき、
+        /// 自分の端末で止まった棒と重なってピンが押し出されないようにするため。PlaceOnLine で元に戻る
+        /// </summary>
+        public void Freeze()
+        {
+            _body.linearVelocity = Vector2.zero;
+            _body.angularVelocity = 0f;
+            _body.simulated = false;
         }
 
         private static float BaseRotation(ThrowStyle style)

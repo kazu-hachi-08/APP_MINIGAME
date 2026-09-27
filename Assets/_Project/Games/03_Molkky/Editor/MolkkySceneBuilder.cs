@@ -1,6 +1,7 @@
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
+using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
 using MiniGame.Editor;
@@ -173,6 +174,14 @@ namespace MiniGame.Molkky.Editor
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
+            // オンライン対戦（§19）。NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
+            var onlineObj = new GameObject("Online");
+            var onlineSession = onlineObj.AddComponent<OnlineSession>();
+            var onlineLink = onlineObj.AddComponent<MolkkyOnlineLink>();
+
+            // 対戦モード選択は試合前に最初に出すので最前面に置く
+            var modeSelectPanel = ModeSelectPanelBuilder.Create(canvasObj.transform, onlineSession, "1台で遊ぶ");
+
             // 9. GameManager
             var gameManagerObj = new GameObject("MolkkyGameManager");
             var gameManager = gameManagerObj.AddComponent<MolkkyGameManager>();
@@ -192,7 +201,8 @@ namespace MiniGame.Molkky.Editor
             SetRefs(gameManager, ("_pinRack", pinRack), ("_stick", stick), ("_input", input), ("_npc", npcThrower),
                 ("_settleWatcher", settleWatcher), ("_scoreBoard", scoreBoard), ("_scorePopup", scorePopup),
                 ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel),
-                ("_styleButton", styleButton));
+                ("_styleButton", styleButton), ("_modeSelectPanel", modeSelectPanel),
+                ("_onlineSession", onlineSession), ("_onlineLink", onlineLink));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 

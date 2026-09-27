@@ -1,16 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using MiniGame.Common.Core;
+using MiniGame.Common.Online;
 using UnityEngine;
 
 namespace MiniGame.Molkky
 {
     /// <summary>
     /// 手番と進行（MolkkyPhase）を回す。得点ルールは MolkkyRules、物理は PinRack / StickThrower、
-    /// NPCの狙いは NpcThrower に任せ、ここは「いつ何を呼ぶか」だけを持つ。
+    /// NPCの狙いは NpcThrower、オンラインの送受信は MolkkyOnlineLink に任せ、ここは「いつ何を呼ぶか」だけを持つ。
     /// </summary>
     public class MolkkyGameManager : BaseMiniGameManager
     {
+        private const string LocalPlayerName = "あなた";
+        private const string RemotePlayerName = "相手";
+
         [Header("Molkky")]
         [SerializeField] private PinRack _pinRack;
         [SerializeField] private StickThrower _stick;
@@ -24,8 +28,15 @@ namespace MiniGame.Molkky
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private ThrowStyleButton _styleButton;
 
+        [Header("Online (§19)")]
+        [SerializeField] private ModeSelectPanel _modeSelectPanel;
+        [SerializeField] private OnlineSession _onlineSession;
+        [SerializeField] private MolkkyOnlineLink _onlineLink;
+
         [Header("Timing (sec)")]
         [SerializeField] private float _npcBannerDuration = 0.8f;
+        [Tooltip("オンライン対戦の「○○の番」表示時間。端末を回さないのでタップ待ちにしない")]
+        [SerializeField] private float _onlineBannerDuration = 0.8f;
         [Tooltip("NPCが投げる前の間。考えている感じを出す（§9.5）")]
         [SerializeField] private float _npcThinkTime = 0.8f;
         [SerializeField] private float _scoreDisplayDuration = 1.2f;
@@ -36,9 +47,19 @@ namespace MiniGame.Molkky
         private readonly List<PlayerSlot> _players = new List<PlayerSlot>();
         private int _currentIndex;
 
+        private bool _isOnline;
+        private int _localIndex;
+
+        // 相手端末から届いた投擲・結果。自分の画面がまだ前の手番の演出中でも取りこぼさないよう、
+        // 届いた時点では保持だけして、相手の手番の処理で取り出す
+        private ThrowRequest? _remoteThrow;
+        private PinState[] _remoteResult;
+
         public MolkkyPhase Phase { get; private set; }
 
         private PlayerSlot CurrentPlayer => _players[_currentIndex];
+
+        private bool IsRemoteTurn => _isOnline && _currentIndex != _localIndex;
 
         protected override void OnGameReady()
         {
@@ -46,8 +67,21 @@ namespace MiniGame.Molkky
             _input.PositionChanged += HandlePositionChanged;
             _input.StyleChanged += HandleStyleChanged;
             _settleWatcher.Settled += HandleSettled;
+            SubscribeOnline();
 
             Phase = MolkkyPhase.PlayerSetup;
+            if (_modeSelectPanel != null)
+            {
+                _modeSelectPanel.Show(ShowPlayerSetup, HandleOnlineConnected);
+            }
+            else
+            {
+                ShowPlayerSetup();
+            }
+        }
+
+        private void ShowPlayerSetup()
+        {
             _setupPanel.Show(HandlePlayersConfirmed);
         }
 
@@ -58,6 +92,23 @@ namespace MiniGame.Molkky
             {
                 _players.Add(new PlayerSlot($"P{i + 1}", kinds[i]));
             }
+
+            StartGame();
+        }
+
+        /// <summary>
+        /// オンラインは1対1固定なので人数設定は出さない。先攻はホスト（§19.4）。
+        /// 名前は端末ごとに「あなた／相手」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// </summary>
+        private void HandleOnlineConnected(bool isHost)
+        {
+            _isOnline = true;
+            _localIndex = isHost ? 0 : 1;
+            _onlineLink.Begin();
+
+            _players.Clear();
+            _players.Add(new PlayerSlot(isHost ? LocalPlayerName : RemotePlayerName));
+            _players.Add(new PlayerSlot(isHost ? RemotePlayerName : LocalPlayerName));
 
             StartGame();
         }
@@ -79,6 +130,40 @@ namespace MiniGame.Molkky
             }
 
             if (_settleWatcher != null) _settleWatcher.Settled -= HandleSettled;
+            UnsubscribeOnline();
+        }
+
+        private void SubscribeOnline()
+        {
+            if (_onlineLink != null)
+            {
+                _onlineLink.OnThrowReceived += HandleRemoteThrow;
+                _onlineLink.OnResultReceived += HandleRemoteResult;
+            }
+
+            if (_onlineSession != null) _onlineSession.OnPeerDisconnected += HandlePeerDisconnected;
+        }
+
+        private void UnsubscribeOnline()
+        {
+            if (_onlineLink != null)
+            {
+                _onlineLink.OnThrowReceived -= HandleRemoteThrow;
+                _onlineLink.OnResultReceived -= HandleRemoteResult;
+            }
+
+            if (_onlineSession != null) _onlineSession.OnPeerDisconnected -= HandlePeerDisconnected;
+        }
+
+        /// <summary>
+        /// オンラインでは相手の端末は止まらないため、時間は止めずに自分の投擲受付だけ止める（§19.4）。
+        /// PAUSE中は IsPlaying が false になり、HandleThrowRequested で投擲が弾かれる
+        /// </summary>
+        public override void PauseGame()
+        {
+            base.PauseGame();
+
+            if (_isOnline) Time.timeScale = 1f;
         }
 
         private IEnumerator TurnStartRoutine()
@@ -88,20 +173,31 @@ namespace MiniGame.Molkky
             // 前の人の投げ方を引き継ぐと気づかず違う向きで投げてしまうので、毎手番 横（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
 
-            bool isNpc = CurrentPlayer.IsNpc;
-            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
-                !isNpc, _npcBannerDuration);
+            yield return PlayTurnBanner();
 
             Phase = MolkkyPhase.Aiming;
-            if (isNpc)
+            if (CurrentPlayer.IsNpc)
             {
                 yield return NpcThrowRoutine();
+            }
+            else if (IsRemoteTurn)
+            {
+                yield return RemoteThrowRoutine();
             }
             else
             {
                 _input.IsAccepting = true;
                 _styleButton.SetVisible(true);
             }
+        }
+
+        /// <summary>1台を回すときだけ人間の番をタップ待ちにする。NPCとオンラインは端末を渡さないので自動で閉じる</summary>
+        private IEnumerator PlayTurnBanner()
+        {
+            bool waitForTap = !CurrentPlayer.IsNpc && !_isOnline;
+            float duration = _isOnline ? _onlineBannerDuration : _npcBannerDuration;
+            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
+                waitForTap, duration);
         }
 
         private IEnumerator NpcThrowRoutine()
@@ -113,6 +209,37 @@ namespace MiniGame.Molkky
             yield return new WaitForSeconds(_npcThinkTime);
 
             ExecuteThrow(request);
+        }
+
+        /// <summary>
+        /// 相手の手番：届いた ThrowRequest で自分の端末でも物理を動かして見せ、
+        /// 相手端末の結果が届いたらピンを上書きして採点する（§19.2 / 案1）。
+        /// 倒れ方は一致しないが、最終的なピン配置と得点は一致する（§19.5）
+        /// </summary>
+        private IEnumerator RemoteThrowRoutine()
+        {
+            yield return new WaitUntil(() => _remoteThrow.HasValue);
+            ThrowRequest request = _remoteThrow.Value;
+            _remoteThrow = null;
+            ExecuteThrow(request);
+
+            yield return new WaitUntil(() => _remoteResult != null);
+            _settleWatcher.Cancel();
+            _stick.Freeze();
+            _pinRack.ApplyStates(_remoteResult);
+            _remoteResult = null;
+
+            yield return ScoringRoutine();
+        }
+
+        private void HandleRemoteThrow(ThrowRequest request)
+        {
+            _remoteThrow = request;
+        }
+
+        private void HandleRemoteResult(PinState[] states)
+        {
+            _remoteResult = states;
         }
 
         private void HandlePositionChanged(float x)
@@ -127,10 +254,11 @@ namespace MiniGame.Molkky
 
         private void HandleThrowRequested(ThrowRequest request)
         {
-            if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc) return;
+            if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc || IsRemoteTurn) return;
 
             _input.IsAccepting = false;
             _styleButton.SetVisible(false);
+            if (_isOnline) _onlineLink.SendThrow(request);
             ExecuteThrow(request);
         }
 
@@ -146,6 +274,10 @@ namespace MiniGame.Molkky
 
         private void HandleSettled()
         {
+            // 相手の投擲は相手端末の結果で採点するので、自分の端末の物理が止まっても進めない
+            if (IsRemoteTurn) return;
+
+            if (_isOnline) _onlineLink.SendResult(_pinRack.CaptureStates());
             StartCoroutine(ScoringRoutine());
         }
 
@@ -203,9 +335,30 @@ namespace MiniGame.Molkky
             _scorePopup.Hide();
 
             string detail = result.Outcome == ThrowOutcome.Win ? "50点ちょうど！" : "他のプレイヤーが失格";
-            // NPCが勝ったときは人間側の負けとして GAME OVER を出す
-            FinishGame(!winner.IsNpc, $"{winner.Name} の勝ち", detail);
+            FinishGame(IsLocalVictory(winner), $"{winner.Name} の勝ち", detail);
             return true;
+        }
+
+        /// <summary>オンラインは自分が勝ったか、1台プレイはNPCが勝ったら人間側の負けとして GAME OVER を出す</summary>
+        private bool IsLocalVictory(PlayerSlot winner)
+        {
+            if (_isOnline) return _players.IndexOf(winner) == _localIndex;
+
+            return !winner.IsNpc;
+        }
+
+        /// <summary>試合中に切れたらその時点で終了する（§19.4）。再接続はしない（§19.5）</summary>
+        private void HandlePeerDisconnected()
+        {
+            if (!_isOnline || Phase == MolkkyPhase.GameSet) return;
+
+            StopAllCoroutines();
+            Phase = MolkkyPhase.GameSet;
+            _input.IsAccepting = false;
+            _styleButton.SetVisible(false);
+            _scorePopup.Hide();
+
+            FinishGame(false, "相手との接続が切れました", "試合を終了しました");
         }
     }
 }

@@ -98,6 +98,26 @@ namespace MiniGame.Molkky
             return numbers;
         }
 
+        /// <summary>全ピンの状態。並びは生成順で、両端末で同じなので番号を送らずに済む</summary>
+        public PinState[] CaptureStates()
+        {
+            var states = new PinState[_pins.Count];
+            for (int i = 0; i < _pins.Count; i++)
+            {
+                states[i] = _pins[i].CaptureState();
+            }
+
+            return states;
+        }
+
+        public void ApplyStates(IReadOnlyList<PinState> states)
+        {
+            for (int i = 0; i < _pins.Count && i < states.Count; i++)
+            {
+                _pins[i].ApplyState(states[i]);
+            }
+        }
+
         public bool AreAllSlowerThan(float speed)
         {
             foreach (Pin pin in _pins)
