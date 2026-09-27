@@ -1,319 +1,91 @@
-# 週末 2Dミニゲームプロジェクト 基本仕様書
+# 週末 2Dミニゲームプロジェクト
+
+週末の限られた時間で、2人で2Dミニゲームを作って積み重ねていくプロジェクト。
+**小さく作って、遊べる状態にして、次のゲームへ** を基本方針とする。
+
+## ▶ ブラウザで遊ぶ
+
+**https://kazu-hachi-08.github.io/minigame-web/**
+
+* WebGLビルドを別リポジトリ（`minigame-web`）の GitHub Pages で公開している
+* Windows PC のブラウザ（Chrome / Edge）での動作を想定。スマホブラウザは対象外
+
+---
 
 ## ミニゲーム一覧
 
-- [2Dサッカーゲーム](Docs/01_SOCCER_SPEC.md)
-- [2D卓球ゲーム](Docs/02_TABLE_TENNIS_SPEC.md)
-- [デジタルカードゲーム（THE CHAOS Ⅱ）](Docs/50_CARD_GAME_SPEC.md)
+| # | ゲーム | 仕様書 | コード |
+| - | ------ | ------ | ------ |
+| 01 | 2Dサッカー | [01_SOCCER_SPEC.md](Docs/01_SOCCER_SPEC.md) | `Assets/_Project/Games/01_Soccer/` |
+| 02 | 2D卓球 | [02_TABLE_TENNIS_SPEC.md](Docs/02_TABLE_TENNIS_SPEC.md) | `Assets/_Project/Games/02_TableTennis/` |
+| 03 | 2Dモルック | [03_MOLKKY_SPEC.md](Docs/03_MOLKKY_SPEC.md) | `Assets/_Project/Games/03_Molkky/` |
+| 04 | 2Dゴルフ | [04_GOLF_SPEC.md](Docs/04_GOLF_SPEC.md) | `Assets/_Project/Games/04_Golf/` |
+| 50 | デジタルカードゲーム（THE CHAOS Ⅱ） | [50_CARD_GAME_SPEC.md](Docs/50_CARD_GAME_SPEC.md) | `Assets/_Project/Games/50_CardGame/` |
 
 ---
 
-## 1. 目的・基本方針
+## 技術スタック
 
-### 1.1 プロジェクト概要
+| 項目 | 内容 |
+| ---- | ---- |
+| ゲームエンジン | Unity |
+| 言語 | C# |
+| グラフィック | 2Dスプライト |
+| 対象プラットフォーム | Android / iPhone / Windowsブラウザ（WebGL） |
+| ソース管理 | GitHub |
+| 開発人数 | 2人 |
 
-週末の限られた開発時間を利用し、2人で多彩な2Dミニゲームを順次開発・追加していく。
-
-1つのゲームを長期間開発するのではなく、**小さく作って、実際に遊べる状態にして、次のゲームへ展開する**ことを基本方針とする。
-
-### 1.2 基本技術
-
-| 項目         | 内容               |
-| ---------- | ---------------- |
-| ゲームエンジン    | Unity            |
-| プログラミング言語  | C#               |
-| グラフィック     | 2Dスプライトイラスト      |
-| 対象プラットフォーム | Android / iPhone |
-| ソース管理      | GitHub           |
-| 開発人数       | 2人               |
-
-### 1.3 ミニゲームの位置付け
-
-本プロジェクトでは、複数のミニゲームを1つの開発プロジェクトとして管理する。
+## ディレクトリ構成
 
 ```text
-ミニゲームプロジェクト
-│
-├── ミニゲーム①
-│   └── 2Dサッカーゲーム
-│
-├── ミニゲーム②
-│   └── 今後追加
-│
-├── ミニゲーム③
-│   └── 今後追加
-│
-└── ミニゲーム④
-    └── 今後追加
+Assets/_Project/
+├── Common/   # 全ミニゲーム共通（Scene / Input / UI / Audio 管理など）
+└── Games/    # 各ミニゲーム固有の処理
+Docs/         # 仕様書・開発手順
+Tools/        # 開発補助ツール
 ```
 
-第1弾として「2Dサッカーゲーム」を開発する。
+* `Common/` には特定のミニゲームに依存するコードを書かない
+* 新しいミニゲームは `Games/` 配下にディレクトリを追加し、仕様書を `Docs/` に置く
+
+## 開発環境のセットアップ
+
+[Docs/DEVELOPMENT_SETUP.md](Docs/DEVELOPMENT_SETUP.md) を参照。
 
 ---
 
-# 2. チーム運用ルール
+## 開発ルール
 
-## 2.1 リポジトリ管理
-
-初期段階からGitHubを使用し、ソースコード・設定ファイル・必要なアセットを管理する。
-
-基本的な開発フローは以下とする。
-
-```text
-作業開始
-  ↓
-featureブランチ作成
-  ↓
-実装
-  ↓
-動作確認
-  ↓
-Pull Request
-  ↓
-レビュー
-  ↓
-mainへMerge
-  ↓
-Playable Build更新
-```
-
-## 2.2 役割分担
-
-固定的な担当制にはせず、2人で状況に応じて柔軟に作業を分担する。
-
-例：
-
-* ゲームロジック
-* UI
-* アニメーション
-* アセット作成
-* テスト
-* バグ修正
-* ビルド・リリース対応
-
-必要に応じて担当を入れ替える。
-
-## 2.3 開発サイクル
-
-毎週末の開発終了時点で、必ず**「とりあえず遊べる状態（Playable Build）」**を維持する。
-
-```text
-週末開発開始
-    ↓
-機能追加
-    ↓
-動作確認
-    ↓
-不具合修正
-    ↓
-Playable Build
-    ↓
-次週へ
-```
-
-未完成の機能を大量に抱えた状態で次週へ持ち越さないことを基本とする。
-
-## 2.4 スコープ制御
-
-当初構想した機能のすべてを実装するのではなく、**当初構想の約3分の1を目標スコープ**とする。
-
-基本的には以下の優先順位で実装する。
-
-```text
-必須機能
-  ↓
-ゲームとして成立する機能
-  ↓
-操作性
-  ↓
-演出
-  ↓
-追加要素
-```
-
----
-
-# 3. 開発フェーズ
-
-## Phase 0：開発環境・リポジトリ構築
-
-### 目的
-
-2人が同じ環境で開発できる状態を構築する。
-
-### 作業内容
-
-* Unity Hubの導入
-* Unity Editorの導入
-* Gitの導入
-* GitHubリポジトリ作成
-* Unityプロジェクト作成
-* `.gitignore`設定
-* 必要に応じてGit LFS導入
-* 2人でGitHubからcloneできることを確認
-* Unityプロジェクトを起動できることを確認
-* Android向けビルド環境を確認
-* iPhone向けビルド方法を確認
-
-### 完了条件
-
-```text
-[ ] GitHubからcloneできる
-[ ] 2人ともUnityプロジェクトを開ける
-[ ] Unity上でゲームを実行できる
-[ ] Android向けBuildを実行できる
-[ ] Gitでcommit / pushできる
-```
-
----
-
-## Phase 1：ゲーム共通基盤
-
-### 目的
-
-複数のミニゲームで利用できる基本構造を整える。
-
-### 作業内容
-
-* シーン管理
-* タイトル画面
-* ゲーム画面
-* リスタート処理
-* 共通UI
-* 入力処理
-* サウンド管理
-* ゲーム状態管理
-
-### 方針
-
-各ミニゲーム固有の処理と、プロジェクト全体で共通する処理を分離する。
-
-```text
-共通基盤
-│
-├── Scene管理
-├── Input管理
-├── UI管理
-├── Audio管理
-└── Game管理
-       │
-       ├── サッカーゲーム
-       ├── ミニゲーム②
-       └── ミニゲーム③
-```
-
-### 実装・セットアップ手順（Unity Editor）
-
-1. **TitleScene の作成と設定**
-   * エディタ拡張 `Assets/_Project/Common/Editor/TitleSceneBuilder.cs` により、Unity 上部メニュー `Tools` > `MiniGame` > `Build Title Scene` からワンクリックで自動構築が可能
-   * `Assets/_Project/Common/Scenes/TitleScene.unity` を生成・設定
-   * `SceneLoader`, `FadeController`, `AudioManager`, `UIManager` を持つマネージャー群 GameObject を配置（常駐用）
-   * Canvas を作成し、タイトルロゴ・サブタイトル、ミニゲーム選択ボタン群（`MiniGameSelectButton`：2Dサッカーゲーム等）、設定ボタン（`SettingsButton`）、終了ボタン（`QuitButton`）、バージョン情報（`VersionText`）を配置
-   * 共通ダイアログ（`CommonDialog`, `PauseDialog`, `ResultDialog`）を配置し `UIManager` とバインド
-2. **GameScene の作成と設定**
-   * `Assets/_Project/Common/Scenes/GameScene.unity` または各ミニゲーム用シーンを作成
-   * `BaseMiniGameManager` を継承した GameManager、UI Canvas（スコア、ポーズダイアログ、リザルトダイアログ）を配置
-3. **Build Settings へのシーン登録**
-   * `TitleScene`（Index 0）を `Scenes In Build`（`ProjectSettings/EditorBuildSettings.asset`）に自動登録済み
-4. **VS Code でのデバッグ確認**
-   * VS Code で `F5`（Attach to Unity）を実行後、Unity Editor で再生（▶）してブレークポイントでの一時停止・ステップ実行を確認
-
-### 完了条件
-
-```text
-[ ] 共通スクリプト群（Scene/Audio/UI/Input/Core）がエラーなくコンパイルされる
-[ ] TitleScene でタイトルUIが表示され、ミニゲーム選択ボタンが動作する
-[ ] シーン遷移（FadeController によるフェードイン/フェードアウト）が動作する
-[ ] サウンド再生（BGM/SE）の動作確認
-[ ] ポーズダイアログ、リザルトダイアログの表示確認
-[ ] VS Code で F5 デバッグ（ブレークポイント動作）ができる
-```
-
----
-
-## Phase 2以降：ミニゲーム追加
-
-新しいミニゲームを追加する場合は、以下の流れを基本とする。
-
-```text
-企画
- ↓
-最小仕様決定
- ↓
-プロトタイプ
- ↓
-Playable Build
- ↓
-操作性改善
- ↓
-演出追加
- ↓
-完成
-```
-
-各ミニゲームについて、最初から全機能を実装しない。
-
----
-
-# 4. Git運用
-
-## 4.1 ブランチ
-
-基本構成：
-
-```text
-main
-│
-├── feature/xxx
-├── feature/yyy
-└── fix/zzz
-```
-
-## 4.2 Unity開発時の注意
-
-UnityではSceneやPrefabを2人が同時編集すると競合が発生しやすいため、同じファイルを同時に大きく変更しない。
-
-```text
-Aさん
-└── Player関連
-
-Bさん
-└── UI関連
-```
-
-など、変更範囲を意識して作業する。
-
----
-
-# 5. Playable Buildの定義
-
-Playable Buildとは、完成版ではなく、**その時点の機能で実際にゲームとして操作・プレイできる状態**を指す。
-
-例えば、
-
-```text
-選手を動かせる
-↓
-ボールを操作できる
-↓
-ゴールできる
-↓
-得点される
-```
-
-まで動けば、グラフィックや演出が未完成でもPlayable Buildとする。
-
----
-
-# 6. 開発方針
-
-本プロジェクトでは以下を重視する。
+### 基本方針
 
 1. 小さく作る
 2. 早く遊べる状態にする
-3. 毎週Playable Buildを残す
-4. 必要以上に仕様を増やさない
-5. 2人で柔軟に作業分担する
-6. GitHubで常に成果物を共有する
-7. 1つのミニゲームに時間をかけすぎない
-8. 完成したミニゲームを積み重ねる
+3. 毎週末 Playable Build を残す
+4. 必要以上に仕様を増やさない（当初構想の約1/3を目標スコープにする）
+5. 1つのミニゲームに時間をかけすぎない
+
+**Playable Build** = 完成版ではなく、その時点の機能で実際に操作・プレイできる状態。グラフィックや演出が未完成でもよい。
+
+実装の優先順位：
+
+```text
+必須機能 → ゲームとして成立する機能 → 操作性 → 演出 → 追加要素
+```
+
+### Git運用
+
+```text
+main
+├── feature/#xx   # Issue番号でブランチを切る
+└── fix/xxx
+```
+
+featureブランチで実装 → 動作確認 → Pull Request → レビュー → main へ Merge
+
+### Unity開発時の注意
+
+Scene / Prefab は2人で同時編集すると競合しやすい。
+
+* 同じ Scene / Prefab を同時に大きく変更しない
+* 機能ごとに小さな Prefab に分割する、データは ScriptableObject に切り出す
+* 作業範囲（例：Aさん＝Player関連、Bさん＝UI関連）を意識して分担する
