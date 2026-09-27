@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using NUnit.Framework;
 
@@ -512,6 +513,113 @@ namespace MiniGame.Golf.Tests
             float rate = CarryFrom(GroundType.Bunker) / CarryFrom(GroundType.Fairway);
 
             Assert.AreEqual(terrain.Bunker.ShotDistanceRate, rate, 0.05f);
+        }
+
+        // --- グリーンの傾斜（Phase 5） ---
+
+        /// <summary>どこでも同じ向き・強さの傾斜</summary>
+        private sealed class UniformSlope : ISlopeMap
+        {
+            private readonly Vector2 _slope;
+
+            public UniformSlope(Vector2 slope) => _slope = slope;
+
+            public Vector2 GetSlope(Vector2 position) => _slope;
+        }
+
+        private static BallSimulator CreateOnSlopedGreen(Vector2 slope)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(),
+                new UniformGround(GroundType.Green), new UniformSlope(slope));
+            simulator.Place(Vector2.Zero);
+            return simulator;
+        }
+
+        private static Vector2 PuttOnSlope(Vector2 slope, float power = 0.6f)
+        {
+            BallSimulator simulator = CreateOnSlopedGreen(slope);
+            Putt(simulator, Forward, power);
+            simulator.AdvanceToRest();
+            return simulator.Position;
+        }
+
+        [Test]
+        public void パットは傾斜の下り方向へ曲がる()
+        {
+            Assert.Greater(PuttOnSlope(new Vector2(1f, 0f)).X, 0.1f);
+            Assert.Less(PuttOnSlope(new Vector2(-1f, 0f)).X, -0.1f);
+        }
+
+        [Test]
+        public void 傾斜が強いほど大きく曲がる()
+        {
+            Assert.Greater(PuttOnSlope(new Vector2(3f, 0f)).X, PuttOnSlope(new Vector2(1f, 0f)).X);
+        }
+
+        [Test]
+        public void 下りはよく転がり上りは手前で止まる()
+        {
+            float flat = PuttOnSlope(Vector2.Zero).Y;
+
+            Assert.Greater(PuttOnSlope(new Vector2(0f, 1f)).Y, flat);
+            Assert.Less(PuttOnSlope(new Vector2(0f, -1f)).Y, flat);
+        }
+
+        [Test]
+        public void 一番強い傾斜でも転がり続けずに止まる()
+        {
+            BallSimulator simulator = CreateOnSlopedGreen(new Vector2(0f, 3f));
+            Putt(simulator, Forward, 1f);
+
+            simulator.AdvanceToRest();
+
+            Assert.Less(simulator.ElapsedTime, new BallPhysicsConfig().MaxSimulationTime);
+        }
+
+        /// <summary>右下りの強い傾斜で、3ユニット先のカップへ degrees（右回りが正）の向きにパットする</summary>
+        private static bool HolesOutOnSideSlope(int degrees)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(),
+                new UniformGround(GroundType.Green), new UniformSlope(new Vector2(3f, 0f)));
+            simulator.SetCup(new Vector2(0f, 3f));
+            simulator.Place(Vector2.Zero);
+            float radians = degrees * MathF.PI / 180f;
+            Putt(simulator, new Vector2(MathF.Sin(radians), MathF.Cos(radians)), 0.8f);
+            simulator.AdvanceToRest();
+            return simulator.IsInCup;
+        }
+
+        [Test]
+        public void カップへまっすぐ打つと傾斜で外れ読んで左へ打つと入る()
+        {
+            Assert.IsFalse(HolesOutOnSideSlope(0));
+
+            bool holedOut = false;
+            for (int degrees = -1; degrees >= -30 && !holedOut; degrees--)
+            {
+                holedOut = HolesOutOnSideSlope(degrees);
+            }
+
+            Assert.IsTrue(holedOut);
+        }
+
+        [Test]
+        public void 打ち上げたショットは空中で傾斜の影響を受けない()
+        {
+            BallSimulator simulator = CreateOnSlopedGreen(new Vector2(3f, 0f));
+            Hit(simulator, Forward, 1f);
+
+            Assert.AreEqual(0f, FirstLanding(simulator).X, 0.0001f);
+        }
+
+        [Test]
+        public void パターの予測に傾斜は含めない()
+        {
+            BallSimulator sloped = CreateOnSlopedGreen(new Vector2(1f, 0f));
+            var flat = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), new UniformGround(GroundType.Green));
+            flat.Place(Vector2.Zero);
+
+            Assert.AreEqual(flat.PredictFullPower(Putter, Forward), sloped.PredictFullPower(Putter, Forward));
         }
     }
 }

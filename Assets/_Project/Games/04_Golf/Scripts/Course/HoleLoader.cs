@@ -34,7 +34,7 @@ namespace MiniGame.Golf
             CurrentHole = hole;
             CurrentCourse = Instantiate(hole.Prefab);
             CurrentWind = RandomWind(hole);
-            _ball.SetCourse(CurrentCourse, CurrentCourse.TeePosition, CurrentCourse.CupPosition, CurrentWind);
+            _ball.SetCourse(CurrentCourse, CurrentCourse, CurrentCourse.TeePosition, CurrentCourse.CupPosition, CurrentWind);
         }
 
         /// <summary>§9.4 向きは全方向、強さはホールデータの範囲内でランダム</summary>

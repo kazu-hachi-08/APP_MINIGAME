@@ -14,6 +14,7 @@ namespace MiniGame.Golf
         private readonly BallPhysicsConfig _config;
         private readonly TerrainPhysicsConfig _terrain;
         private readonly IGroundMap _ground;
+        private readonly ISlopeMap _slope;
 
         private Vector2 _cupPosition;
         private bool _hasCup;
@@ -29,12 +30,14 @@ namespace MiniGame.Golf
         private Vector2 _launchPosition;
         private Vector2 _lastSafePosition;
 
-        /// <summary>terrain・ground を省略すると、どこでもフェアウェイの平らな地面として計算する</summary>
-        public BallSimulator(BallPhysicsConfig config, TerrainPhysicsConfig terrain = null, IGroundMap ground = null)
+        /// <summary>terrain・ground を省略するとどこでもフェアウェイ、slope を省略すると平らな地面として計算する</summary>
+        public BallSimulator(BallPhysicsConfig config, TerrainPhysicsConfig terrain = null, IGroundMap ground = null,
+            ISlopeMap slope = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _terrain = terrain ?? new TerrainPhysicsConfig();
             _ground = ground;
+            _slope = slope;
         }
 
         public Vector2 Position { get; private set; }
@@ -118,13 +121,20 @@ namespace MiniGame.Golf
 
         /// <summary>
         /// 今の位置からクラブをフルパワー・まっすぐで打ったときの着地点（§7.3）。パターは止まる位置。
-        /// 別の計算機で試し打ちするので、このボールの状態は変わらない。風は読むのがプレイヤーの仕事なので含めない。
+        /// 別の計算機で試し打ちするので、このボールの状態は変わらない。風と傾斜は読むのがプレイヤーの仕事なので含めない。
         /// </summary>
         public Vector2 PredictFullPower(ClubConfig club, Vector2 direction)
         {
+            return Predict(club, direction, 1f);
+        }
+
+        /// <summary>PredictFullPower のパワー指定版。パターの距離の目盛りに使う</summary>
+        public Vector2 Predict(ClubConfig club, Vector2 direction, float power)
+        {
+            // 傾斜を渡さないことで、傾斜なしのまっすぐな予測にする
             var probe = new BallSimulator(_config, _terrain, _ground);
             probe.Place(Position);
-            probe.Launch(new ShotRequest(direction, club, 1f, 0f));
+            probe.Launch(new ShotRequest(direction, club, power, 0f));
 
             if (club.IsPutter)
             {
@@ -224,6 +234,7 @@ namespace MiniGame.Golf
 
         private void AdvanceRoll(float dt)
         {
+            ApplySlope(dt);
             float speed = GroundVelocity.Length();
             float nextSpeed = speed - _terrain.Get(Ground).RollDeceleration * dt;
             if (nextSpeed <= _config.StopSpeed)
@@ -239,6 +250,17 @@ namespace MiniGame.Golf
             if (TryEnterHazard()) return;
 
             TryHoleOut();
+        }
+
+        /// <summary>
+        /// §8.5 転がっている間だけ、いるマスの下り方向へ加速させる。
+        /// 減速より弱い傾斜なら、上りで止まったボールはそこで止まったままにする（止まった後は計算しない）
+        /// </summary>
+        private void ApplySlope(float dt)
+        {
+            if (_slope == null) return;
+
+            GroundVelocity += _slope.GetSlope(Position) * (_config.SlopeAccelerationScale * dt);
         }
 
         /// <summary>空中で池の上を通った地点は覚えず、池に落ちたら岸まで戻せるようにする</summary>

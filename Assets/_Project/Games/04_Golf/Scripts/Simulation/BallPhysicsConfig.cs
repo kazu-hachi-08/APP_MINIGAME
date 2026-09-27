@@ -17,6 +17,12 @@ namespace MiniGame.Golf
         /// <summary>高さ方向の重力。小さいほど滞空時間が長く、ふわっと飛ぶ</summary>
         public float Gravity = 6f;
 
+        /// <summary>
+        /// 傾斜の強さ → 転がり中の加速度。グリーンの転がりの減速より小さく保つこと。
+        /// 超えると急な傾斜でボールが止まらず転がり続ける
+        /// </summary>
+        public float SlopeAccelerationScale = 0.4f;
+
         /// <summary>インパクトのずれ × クラブの曲がりやすさ → 横向きの加速度</summary>
         public float CurveAccelerationScale = 3f;
 

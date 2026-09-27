@@ -49,10 +49,10 @@ namespace MiniGame.Golf
         // 他のコンポーネントの Awake から参照されても良いように遅延生成する
         private BallSimulator Simulator => _simulator ??= new BallSimulator(_settings.Ball, _terrainSettings.Terrain);
 
-        /// <summary>ホールの地面・カップ・風で計算し直し、ティーに置く</summary>
-        public void SetCourse(IGroundMap ground, Vector2 teePosition, Vector2 cupPosition, Wind wind)
+        /// <summary>ホールの地面・傾斜・カップ・風で計算し直し、ティーに置く</summary>
+        public void SetCourse(IGroundMap ground, ISlopeMap slope, Vector2 teePosition, Vector2 cupPosition, Wind wind)
         {
-            _simulator = new BallSimulator(_settings.Ball, _terrainSettings.Terrain, ground);
+            _simulator = new BallSimulator(_settings.Ball, _terrainSettings.Terrain, ground, slope);
             _simulator.SetCup(ToNumerics(cupPosition));
             _simulator.SetWind(wind);
             CupPosition = cupPosition;
