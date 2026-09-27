@@ -64,6 +64,13 @@ namespace MiniGame.Golf.Editor
         private const float OverviewButtonHeight = 100f;
         private const int OverviewButtonFontSize = 40;
 
+        // 「？」ボタンは「全体」ボタンのさらに下。説明は縦画面で読める大きさにし、端に余白をとる
+        private const float HelpButtonSize = 100f;
+        private const int HelpButtonFontSize = 52;
+        private const int HelpTextFontSize = 40;
+        private const float HelpTextPadding = 60f;
+        private static readonly Color HelpPanelColor = new Color(0f, 0f, 0f, 0.85f);
+
         // 演出メッセージは画面中央のボールより少し上に出し、ボールの止まった場所を隠さない
         private const float MessageOffsetY = 280f;
         private const float MessageWidth = 1000f;
@@ -370,6 +377,8 @@ namespace MiniGame.Golf.Editor
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
             SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeAreaObj.transform)));
             GolfMessageView message = CreateMessageView(safeAreaObj.transform);
+            // 開いた説明はショット操作のUIを覆うように、ショット操作より後（手前）に作る
+            CreateHelp(safeAreaObj.transform, input);
 
             // 試合進行の全画面UIはショット操作より手前に出す
             GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
@@ -560,6 +569,41 @@ namespace MiniGame.Golf.Editor
             rect.anchoredPosition = new Vector2(-PauseButtonMargin, -(PauseButtonMargin * 2f + PauseButtonSize));
             obj.GetComponentInChildren<Text>().fontSize = OverviewButtonFontSize;
             return obj.AddComponent<HoldButton>();
+        }
+
+        /// <summary>
+        /// 「？」ボタンと操作説明のパネル。GolfHelpView はパネルを閉じても動き続けるよう、常に有効な親に付ける。
+        /// パネル全体をボタンにして、どこをタップしても閉じられるようにする
+        /// </summary>
+        private static void CreateHelp(Transform parent, ShotInput input)
+        {
+            GameObject root = UIDialogBuilder.CreateUIObject("Help", parent);
+            UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
+
+            GameObject openObj = UIDialogBuilder.CreateButton(root.transform, "Btn_Help", "？", HelpButtonSize,
+                HelpButtonSize, ControlButtonColor);
+            var openRect = openObj.GetComponent<RectTransform>();
+            openRect.anchorMin = openRect.anchorMax = openRect.pivot = new Vector2(1f, 1f);
+            openRect.anchoredPosition = new Vector2(-PauseButtonMargin,
+                -(PauseButtonMargin * 3f + PauseButtonSize + OverviewButtonHeight));
+            openObj.GetComponentInChildren<Text>().fontSize = HelpButtonFontSize;
+
+            GameObject panelObj = UIDialogBuilder.CreateButton(root.transform, "HelpPanel", string.Empty, 0f, 0f,
+                HelpPanelColor);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+
+            Text text = panelObj.GetComponentInChildren<Text>();
+            var textRect = text.GetComponent<RectTransform>();
+            textRect.offsetMin = new Vector2(HelpTextPadding, HelpTextPadding);
+            textRect.offsetMax = new Vector2(-HelpTextPadding, -HelpTextPadding);
+            text.fontSize = HelpTextFontSize;
+            text.fontStyle = FontStyle.Normal;
+            text.alignment = TextAnchor.MiddleLeft;
+            text.supportRichText = true;
+            text.raycastTarget = false;
+
+            SetRefs(root.AddComponent<GolfHelpView>(), ("_input", input), ("_openButton", openObj.GetComponent<Button>()),
+                ("_panel", panelObj.GetComponent<Button>()), ("_text", text));
         }
 
         private static void CreatePauseButton(Transform parent, GolfGameManager manager)
