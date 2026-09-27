@@ -16,7 +16,8 @@ namespace MiniGame.Soccer
         [SerializeField] private float _dribbleRadius = 0.6f;     // この距離以内のボールを保持する
         [SerializeField] private float _holdOffset = 0.4f;        // 保持中のボール位置（足元から向いている方向へのずれ）
         [SerializeField] private float _dribbleSuppressSpeed = 5f; // ボールがこれ以上の速さで動いている間は保持しない（パスやシュートを横取りしてしまうのを防ぐ）
-        [SerializeField] private float _stealRadius = 0.45f;      // 相手選手がボールにこの距離まで近づいたら奪われる
+        [SerializeField] private float _stealRadius = 0.45f;      // 相手選手がボールにこの距離まで近づいている間は奪われかけている
+        [SerializeField] private float _stealTime = 0.3f;         // すれ違いや一瞬の接触では失わないよう、この時間張り付かれ続けたら奪われる
         [SerializeField] private float _regrabCooldown = 0.5f;    // 手放した直後にすぐ保持し直して、奪われた瞬間に奪い返すのを防ぐ
 
         [Header("Kick")]
@@ -31,6 +32,7 @@ namespace MiniGame.Soccer
         private TeamMember _teamMember;
         private Ball _heldBall;
         private float _regrabTimer;
+        private float _stealTimer;
 
         // オンライン対戦ではホスト端末がAWAY選手も動かすため、入力元を差し替えられるようにする（未設定なら端末の入力）
         private IInputProvider _input;
@@ -129,7 +131,7 @@ namespace MiniGame.Soccer
                 return;
             }
 
-            if (IsOpponentNearBall(_heldBall.Position))
+            if (IsStolen())
             {
                 ReleaseBall();
                 return;
@@ -146,6 +148,22 @@ namespace MiniGame.Soccer
 
             ball.Hold(_collider);
             _heldBall = ball;
+            _stealTimer = 0f;
+        }
+
+        /// <summary>
+        /// 相手がボールに張り付いた時間を数え、一定時間続いたら奪われたとみなす
+        /// </summary>
+        private bool IsStolen()
+        {
+            if (!IsOpponentNearBall(_heldBall.Position))
+            {
+                _stealTimer = 0f;
+                return false;
+            }
+
+            _stealTimer += Time.fixedDeltaTime;
+            return _stealTimer >= _stealTime;
         }
 
         private void ReleaseBall()

@@ -23,6 +23,7 @@ namespace MiniGame.Soccer
 
         public Vector2 Position => _rigidbody.position;
         public Vector2 Velocity => _rigidbody.linearVelocity;
+        public bool IsHeld => _holder != null;
 
         /// <summary>蹴られた（引数はキック速度）。オンライン対戦でキック音を相手端末にも鳴らすために使う</summary>
         public event Action<float> OnKicked;

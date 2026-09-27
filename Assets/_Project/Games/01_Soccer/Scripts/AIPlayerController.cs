@@ -218,6 +218,8 @@ namespace MiniGame.Soccer
         {
             if (_ball == null || _gameManager == null || !_gameManager.IsPlaying) return;
             if (_kickCooldownTimer > 0f) return;
+            // 保持中のボールを蹴れると近づいただけで奪えてしまうため、奪取はPlayerController側の接触時間判定に任せる
+            if (_ball.IsHeld) return;
 
             float myDistance = Vector2.Distance(_rigidbody.position, _ball.Position);
             if (myDistance > _kickRadius) return;
