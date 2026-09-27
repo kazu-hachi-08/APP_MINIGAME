@@ -102,7 +102,7 @@ namespace MiniGame.Golf
                 if (played) playedPar += holes[h].Par;
             }
 
-            AddCell($"{slot.Total} ({FormatToPar(slot.Total - playedPar)})");
+            AddCell($"{slot.Total} ({GolfRules.FormatToPar(slot.Total - playedPar)})");
         }
 
         private void AddCell(string content)
@@ -130,13 +130,6 @@ namespace MiniGame.Golf
             var totals = new int[slots.Count];
             for (int i = 0; i < slots.Count; i++) totals[i] = slots[i].Total;
             return totals;
-        }
-
-        /// <summary>§6.6 パーとの差（-1＝バーディー、±0＝パー、+1＝ボギー）</summary>
-        private static string FormatToPar(int diff)
-        {
-            if (diff == 0) return "±0";
-            return diff > 0 ? $"+{diff}" : diff.ToString();
         }
     }
 }

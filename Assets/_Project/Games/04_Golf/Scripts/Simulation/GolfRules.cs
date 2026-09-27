@@ -53,6 +53,32 @@ namespace MiniGame.Golf
             return farthest;
         }
 
+        /// <summary>§13.3 カップインしたときの呼び名。1打目のカップインはパーとの差に関係なくホールインワン</summary>
+        public static string ScoreName(int strokes, int par)
+        {
+            if (strokes == 1) return "ホールインワン！";
+
+            int diff = strokes - par;
+            switch (diff)
+            {
+                case -3: return "アルバトロス！";
+                case -2: return "イーグル！";
+                case -1: return "バーディー！";
+                case 0: return "パー";
+                case 1: return "ボギー";
+                case 2: return "ダブルボギー";
+                case 3: return "トリプルボギー";
+                default: return diff < 0 ? $"{diff}" : $"+{diff}";
+            }
+        }
+
+        /// <summary>§6.6 パーとの差の表示（-1＝バーディー、±0＝パー、+1＝ボギー）</summary>
+        public static string FormatToPar(int diff)
+        {
+            if (diff == 0) return "±0";
+            return diff > 0 ? $"+{diff}" : diff.ToString();
+        }
+
         /// <summary>§6.3 次のホールのティーの順番。直前のホールの打数が少ない順で、同じ打数なら前の順番を引き継ぐ</summary>
         public static List<int> NextTeeOrder(IReadOnlyList<int> previousOrder, IReadOnlyList<GolfPlayerSlot> slots)
         {

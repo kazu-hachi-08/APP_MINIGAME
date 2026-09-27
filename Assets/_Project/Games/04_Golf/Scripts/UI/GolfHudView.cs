@@ -5,10 +5,11 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// Phase 1〜6 の仮の表示。ホール・全員の打数・ライ・飛距離・インパクトの結果・罰打を出す。
-    /// 打数は GolfGameManager（GolfPlayerSlot）が数えたものを読むだけにする。Phase 9 の HudView で置き換える。
+    /// 常に出すHUD（§13.1）。ホール・パー・全員の打数・今のライ・カップまでの残り距離と、直前のショットの結果を出す。
+    /// 風は WindView、池ポチャ・カップインなどの大きな演出は GolfMessageView が出すので、ここは文字情報だけにする。
+    /// 打数は GolfGameManager（GolfPlayerSlot）が数えたものを読むだけにする。
     /// </summary>
-    public class PrototypeShotHud : MonoBehaviour
+    public class GolfHudView : MonoBehaviour
     {
         [SerializeField] private GolfBall _ball;
         [SerializeField] private ShotInput _input;
@@ -66,7 +67,7 @@ namespace MiniGame.Golf
             else
             {
                 string hint = _input.CanAim ? HintMessage : string.Empty;
-                _text.text = header + $"{GroundName(_ball.Ground)}  " + _lastResult + hint;
+                _text.text = header + $"{GroundName(_ball.Ground)}  残り {RemainingYards()}y\n" + _lastResult + hint;
             }
         }
 
@@ -85,6 +86,12 @@ namespace MiniGame.Golf
             return line.ToString();
         }
 
+        private int RemainingYards()
+        {
+            float units = Vector2.Distance(_ball.GroundPosition, _ball.CupPosition);
+            return Mathf.RoundToInt(units * _settings.YardsPerUnit);
+        }
+
         /// <summary>前の人のショット結果が残らないよう、手番が替わったら消す</summary>
         private void OnTurnStarted()
         {
@@ -101,7 +108,7 @@ namespace MiniGame.Golf
         private void OnBallPenalized(GroundType ground)
         {
             int penalty = GolfRules.PenaltyStrokes;
-            _penaltyResult = ground == GroundType.Water ? $"池ポチャ… +{penalty}打" : $"OB +{penalty}打";
+            _penaltyResult = ground == GroundType.Water ? $"池ポチャ +{penalty}打" : $"OB +{penalty}打";
             _impactResult = _penaltyResult;
         }
 

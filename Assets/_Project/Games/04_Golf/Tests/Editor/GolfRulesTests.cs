@@ -151,5 +151,22 @@ namespace MiniGame.Golf.Tests
         {
             Assert.Throws<ArgumentException>(() => GolfRules.PickHoles(2, 3, new Random(1)));
         }
+
+        [TestCase(2, 4, "イーグル！")]
+        [TestCase(3, 4, "バーディー！")]
+        [TestCase(4, 4, "パー")]
+        [TestCase(5, 4, "ボギー")]
+        [TestCase(6, 4, "ダブルボギー")]
+        [TestCase(8, 4, "+4")]
+        public void カップインの呼び名はパーとの差で決まる(int strokes, int par, string expected)
+        {
+            Assert.AreEqual(expected, GolfRules.ScoreName(strokes, par));
+        }
+
+        [Test]
+        public void 一打目のカップインはホールインワン()
+        {
+            Assert.AreEqual("ホールインワン！", GolfRules.ScoreName(1, 3));
+        }
     }
 }

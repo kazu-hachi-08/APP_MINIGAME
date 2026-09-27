@@ -1,5 +1,6 @@
 using System.IO;
 using MiniGame.Common.Audio;
+using MiniGame.Common.Input;
 using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
@@ -14,7 +15,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 8：1台での交代プレイ＋NPC＋オンライン対戦）。
+    /// GolfScene を自動生成するエディタユーティリティ（Phase 9：HUD・演出・PAUSE・結果画面まで）。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
     /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
     /// </summary>
@@ -50,13 +51,18 @@ namespace MiniGame.Golf.Editor
         private const float HudTopMargin = 120f;
         private const float HudHeight = 240f;
 
-        // 下部の操作UIとぶつからないよう、戻るボタンは右上（HUDより上）に小さく置く
-        private const float ReturnButtonWidth = 280f;
-        private const float ReturnButtonHeight = 90f;
-        private const int ReturnButtonFontSize = 34;
-        private const float ReturnButtonMargin = 16f;
+        // 下部の操作UIとぶつからないよう、PAUSE ボタンは右上（HUDより上）に小さく置く
+        private const float PauseButtonSize = 100f;
+        private const int PauseButtonFontSize = 44;
+        private const float PauseButtonMargin = 16f;
 
-        // 風は戻るボタンと反対の左上（HUDより上）に、矢印＋強さで出す
+        // 演出メッセージは画面中央のボールより少し上に出し、ボールの止まった場所を隠さない
+        private const float MessageOffsetY = 280f;
+        private const float MessageWidth = 1000f;
+        private const float MessageHeight = 360f;
+        private const int MessageFontSize = 120;
+
+        // 風は PAUSE ボタンと反対の左上（HUDより上）に、矢印＋強さで出す
         private const float WindViewMargin = 16f;
         private const float WindArrowSize = 90f;
         private const float WindLabelWidth = 200f;
@@ -101,7 +107,7 @@ namespace MiniGame.Golf.Editor
 
             Camera camera = CreateCamera();
             CreateEventSystem();
-            CreateManagers();
+            UIManager uiManager = CreateManagers();
             GolfBall ball = CreateBall(settings, terrainSettings, out BallView ballView);
             HoleLoader holeLoader = CreateHoleLoader(catalog, ball);
             ClubSelector clubSelector = CreateClubSelector(ball, clubs);
@@ -110,9 +116,10 @@ namespace MiniGame.Golf.Editor
             SetRefs(camera.gameObject.AddComponent<GolfCameraFollower>(), ("_ball", ball), ("_aimGuide", aimGuide));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
-                ("_clubs", clubSelector));
+                ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
+            SetGameTitle(manager);
             CreateOtherBalls(manager);
-            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings);
+            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -260,16 +267,34 @@ namespace MiniGame.Golf.Editor
             eventSystemObj.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
 
-        private static void CreateManagers()
+        /// <summary>共通基盤の再利用。PAUSE / 結果画面は UIManager、PC の Esc キーでの PAUSE は InputManager が受け持つ</summary>
+        private static UIManager CreateManagers()
         {
             // タイトルへ戻るときのフェード遷移に SceneLoader を使う
             var managersRoot = new GameObject("--- Managers ---");
             CreateManager<SceneLoader>("SceneLoader", managersRoot.transform);
-            CreateManager<AudioManager>("AudioManager", managersRoot.transform);
+            var audioManager = CreateManager<AudioManager>("AudioManager", managersRoot.transform);
+            audioManager.gameObject.AddComponent<ProceduralSe>(); // ボタン音など共通SEの仮音
+            CreateManager<InputManager>("InputManager", managersRoot.transform);
+            return CreateManager<UIManager>("UIManager", managersRoot.transform);
+        }
+
+        private static GolfAudio CreateAudio(GolfGameManager manager, GolfBall ball, ClubSelector clubSelector)
+        {
+            var audio = manager.gameObject.AddComponent<GolfAudio>();
+            SetRefs(audio, ("_ball", ball), ("_clubs", clubSelector));
+            return audio;
+        }
+
+        private static void SetGameTitle(GolfGameManager manager)
+        {
+            var so = new SerializedObject(manager);
+            so.FindProperty("_gameTitle").stringValue = "2D Golf";
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void CreateCanvas(GolfGameManager manager, GolfBall ball, BallView ballView, ShotInput input,
-            ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings)
+            ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings, UIManager uiManager)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -290,19 +315,24 @@ namespace MiniGame.Golf.Editor
             CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
+            GolfMessageView message = CreateMessageView(safeAreaObj.transform);
 
             // 試合進行の全画面UIはショット操作より手前に出す
             GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
             GolfTurnBannerView turnBanner = GolfMatchUiBuilder.CreateTurnBanner(canvasObj.transform);
             ScoreCardView scoreCard = GolfMatchUiBuilder.CreateScoreCard(canvasObj.transform);
             SetRefs(manager, ("_ball", ball), ("_holeLoader", holeLoader), ("_input", input), ("_ballView", ballView),
-                ("_setupPanel", setupPanel), ("_turnBanner", turnBanner), ("_scoreCard", scoreCard));
+                ("_setupPanel", setupPanel), ("_turnBanner", turnBanner), ("_scoreCard", scoreCard),
+                ("_message", message));
 
-            // 設定画面や「○○の番」の間もタイトルへ戻れるよう、戻るボタンは一番手前に置く
+            // 設定画面や「○○の番」の間も PAUSE からタイトルへ戻れるよう、PAUSE ボタンは試合進行のUIより手前に置く
             var topSafeAreaObj = UIDialogBuilder.CreateUIObject("SafeAreaTop", canvasObj.transform);
             UIDialogBuilder.SetStretchAll(topSafeAreaObj.GetComponent<RectTransform>());
             topSafeAreaObj.AddComponent<SafeAreaFitter>();
-            CreateReturnButton(topSafeAreaObj.transform);
+            CreatePauseButton(topSafeAreaObj.transform, manager);
+
+            // 共通ダイアログ（PAUSE / リザルト）は PAUSE ボタンより手前に出す
+            UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
 
             CreateOnline(canvasObj.transform, manager);
         }
@@ -394,7 +424,7 @@ namespace MiniGame.Golf.Editor
         private static void CreateShotHud(Transform parent, GolfGameManager manager, GolfBall ball, ShotInput input,
             HoleLoader holeLoader, GolfPhysicsSettings settings)
         {
-            var obj = UIDialogBuilder.CreateUIObject("PrototypeShotHud", parent);
+            var obj = UIDialogBuilder.CreateUIObject("HudView", parent);
             var rect = obj.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
@@ -414,7 +444,7 @@ namespace MiniGame.Golf.Editor
             // 明るい芝の上でも読めるように縁取りする
             obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
 
-            var hud = obj.AddComponent<PrototypeShotHud>();
+            var hud = obj.AddComponent<GolfHudView>();
             SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_manager", manager),
                 ("_settings", settings), ("_text", text));
         }
@@ -463,17 +493,41 @@ namespace MiniGame.Golf.Editor
             return text;
         }
 
-        private static void CreateReturnButton(Transform parent)
+        private static void CreatePauseButton(Transform parent, GolfGameManager manager)
         {
-            var buttonObj = UIDialogBuilder.CreateButton(parent, "Btn_ReturnToTitle", "タイトルへ戻る",
-                ReturnButtonWidth, ReturnButtonHeight, new Color(0.15f, 0.17f, 0.22f, 0.9f));
+            var buttonObj = UIDialogBuilder.CreateButton(parent, "Btn_Pause", "II", PauseButtonSize, PauseButtonSize,
+                new Color(0.15f, 0.17f, 0.22f, 0.8f));
             var rect = buttonObj.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-ReturnButtonMargin, -ReturnButtonMargin);
-            buttonObj.GetComponentInChildren<Text>().fontSize = ReturnButtonFontSize;
+            rect.anchoredPosition = new Vector2(-PauseButtonMargin, -PauseButtonMargin);
+            buttonObj.GetComponentInChildren<Text>().fontSize = PauseButtonFontSize;
 
-            var returnButton = buttonObj.AddComponent<GolfTitleReturnButton>();
-            SetRefs(returnButton, ("_button", buttonObj.GetComponent<Button>()));
+            SetRefs(buttonObj.AddComponent<PauseButton>(), ("_gameManager", manager));
+        }
+
+        /// <summary>「バーディー！」「池ポチャ…」などを大きく出す（§13.3）。表示中だけ有効にする</summary>
+        private static GolfMessageView CreateMessageView(Transform parent)
+        {
+            GameObject obj = UIDialogBuilder.CreateUIObject("MessageView", parent);
+            var rect = obj.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, MessageOffsetY);
+            rect.sizeDelta = new Vector2(MessageWidth, MessageHeight);
+
+            var text = obj.AddComponent<Text>();
+            text.fontSize = MessageFontSize;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            // 演出中もタップを奪わない
+            text.raycastTarget = false;
+            obj.AddComponent<Outline>().effectDistance = new Vector2(5f, -5f);
+
+            var view = obj.AddComponent<GolfMessageView>();
+            SetRefs(view, ("_text", text));
+            obj.SetActive(false);
+            return view;
         }
 
         internal static void SetRefs(Object target, params (string property, Object value)[] refs)
