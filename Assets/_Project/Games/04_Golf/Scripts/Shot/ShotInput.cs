@@ -31,6 +31,9 @@ namespace MiniGame.Golf
 
         public ShotGauge Gauge { get; private set; }
 
+        /// <summary>かけるスピン。構え直すたびに「なし」へ戻し、前の人・前のショットの設定を引き継がない</summary>
+        public ShotSpin Spin { get; private set; }
+
         /// <summary>方向とクラブを変えられる（ボールが止まっていて、ゲージを操作していない）</summary>
         public bool CanAim => CanShoot && Gauge.State == ShotGauge.GaugeState.Idle;
 
@@ -71,6 +74,7 @@ namespace MiniGame.Golf
             Gauge.Reset();
             Gauge.SetZoneScale(_ball.ImpactZoneRate);
             _dragging = false;
+            Spin = ShotSpin.None;
 
             Vector2 toCup = _ball.CupPosition - _ball.GroundPosition;
             if (toCup.sqrMagnitude > 0f) Direction = toCup.normalized;
@@ -95,7 +99,20 @@ namespace MiniGame.Golf
         /// <summary>今の方向・クラブ・ゲージの結果で打つ。NPC もゲージを動かし終えたらここから打つ</summary>
         public void HitWithGauge()
         {
-            _ball.Hit(Direction, _clubs.Current.Config, Gauge.Power, Gauge.ImpactOffset);
+            _ball.Hit(Direction, _clubs.Current.Config, Gauge.Power, Gauge.ImpactOffset, Spin);
+        }
+
+        /// <summary>スピンのボタンから呼ぶ。なし → バック → トップ → なし の順に切り替える</summary>
+        public void CycleSpin()
+        {
+            if (!CanAim) return;
+
+            Spin = Spin switch
+            {
+                ShotSpin.None => ShotSpin.Back,
+                ShotSpin.Back => ShotSpin.Top,
+                _ => ShotSpin.None,
+            };
         }
 
         /// <summary>NPC が狙った方向を線で見せるために使う</summary>

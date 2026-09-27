@@ -26,6 +26,9 @@ namespace MiniGame.Golf
         private float _curveAcceleration;
         private bool _isPutt;
 
+        // 最初の着地で地面方向の速さに掛ける倍率（スピン）。一度使ったら 1 に戻し、2回目以降のバウンドには効かせない
+        private float _spinRollRate = 1f;
+
         // 打ち直しの位置（§6.5）。OB は打つ前の場所、池は入る直前に通った池・OB以外の地点
         private Vector2 _launchPosition;
         private Vector2 _lastSafePosition;
@@ -117,6 +120,17 @@ namespace MiniGame.Golf
 
             _curveAcceleration = curve * club.CurveFactor * _config.CurveAccelerationScale;
             _isPutt = club.IsPutter;
+            _spinRollRate = club.IsPutter ? 1f : SpinRollRate(shot.Spin);
+        }
+
+        private float SpinRollRate(ShotSpin spin)
+        {
+            switch (spin)
+            {
+                case ShotSpin.Back: return _config.BackSpinRollRate;
+                case ShotSpin.Top: return _config.TopSpinRollRate;
+                default: return 1f;
+            }
         }
 
         /// <summary>
@@ -244,7 +258,8 @@ namespace MiniGame.Golf
 
             TerrainPhysics terrain = _terrain.Get(Ground);
             float bounceSpeed = -VerticalVelocity * terrain.BounceRestitution;
-            GroundVelocity *= terrain.BounceSpeedRetention;
+            GroundVelocity *= terrain.BounceSpeedRetention * _spinRollRate;
+            _spinRollRate = 1f;
             VerticalVelocity = bounceSpeed >= _config.MinBounceSpeed ? bounceSpeed : 0f;
         }
 

@@ -107,6 +107,13 @@ namespace MiniGame.Golf.Editor
         private static readonly Color ImpactZoneColor = new Color(0.95f, 0.75f, 0.2f);
         private static readonly Color PowerMarkColor = new Color(0.95f, 0.3f, 0.3f);
 
+        // スピンはゲージの右上の隅に置く。背後視点で真ん中のボールを隠さないよう、中央には寄せない
+        private const float SpinButtonWidth = 180f;
+        private const float SpinButtonHeight = 100f;
+        private const float SpinButtonOffsetX = 400f;
+        private const float SpinButtonGap = 20f;
+        private const int SpinButtonFontSize = 32;
+
         [MenuItem("Tools/MiniGame/Build Golf Scene", false, 5)]
         public static void BuildGolfScene()
         {
@@ -387,6 +394,7 @@ namespace MiniGame.Golf.Editor
             CreateWindView(safeAreaObj.transform, holeLoader);
             CreateShotGauge(safeAreaObj.transform, input);
             CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
+            CreateSpinButton(safeAreaObj.transform, input, clubSelector);
             SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeAreaObj.transform)));
             GolfMessageView message = CreateMessageView(safeAreaObj.transform);
             // 開いた説明はショット操作のUIを覆うように、ショット操作より後（手前）に作る
@@ -479,6 +487,19 @@ namespace MiniGame.Golf.Editor
             var clubView = clubObj.AddComponent<ClubButtonView>();
             SetRefs(clubView, ("_input", input), ("_clubs", clubSelector), ("_settings", settings),
                 ("_button", clubObj.GetComponent<Button>()), ("_label", clubLabel));
+        }
+
+        private static void CreateSpinButton(Transform parent, ShotInput input, ClubSelector clubSelector)
+        {
+            GameObject obj = UIDialogBuilder.CreateButton(parent, "Btn_Spin", string.Empty, SpinButtonWidth,
+                SpinButtonHeight, ControlButtonColor);
+            SetBottomCenter(obj.GetComponent<RectTransform>(), SpinButtonOffsetX,
+                GaugeBottomMargin + GaugeHeight + SpinButtonGap);
+            Text label = obj.GetComponentInChildren<Text>();
+            label.fontSize = SpinButtonFontSize;
+
+            SetRefs(obj.AddComponent<SpinButtonView>(), ("_input", input), ("_clubs", clubSelector),
+                ("_button", obj.GetComponent<Button>()), ("_label", label));
         }
 
         private static HoldButton CreateRotateButton(Transform parent, string name, string label, float offsetX)

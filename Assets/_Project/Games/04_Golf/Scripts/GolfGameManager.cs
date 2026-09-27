@@ -345,7 +345,7 @@ namespace MiniGame.Golf
         {
             _clubs.Select(shot.ClubIndex);
             _input.SetDirection(shot.Direction);
-            _ball.Hit(_input.Direction, _clubs.Current.Config, shot.Power, shot.ImpactOffset);
+            _ball.Hit(_input.Direction, _clubs.Current.Config, shot.Power, shot.ImpactOffset, shot.Spin);
         }
 
         /// <summary>自分の端末で止まった結果で確定する。オンラインなら他の端末へ送る</summary>
@@ -500,7 +500,7 @@ namespace MiniGame.Golf
             if (IsLocalOnlineTurn)
             {
                 _onlineLink.SendShot(new GolfShotMessage(_input.Direction, _clubs.CurrentIndex, _input.Gauge.Power,
-                    _input.Gauge.ImpactOffset));
+                    _input.Gauge.ImpactOffset, _input.Spin));
             }
         }
 
