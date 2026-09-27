@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Collections;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
@@ -13,11 +15,17 @@ namespace MiniGame.Common.Online
     /// オンライン対戦の接続だけを担当する（部屋を作る／参加コードで入る／抜ける）。
     /// 通信経路は Unity Relay に任せ、NAT越えやIP入力をプレイヤーにさせない。
     /// 試合中にやり取りする内容は各ミニゲームの通信クラス（卓球: OnlineMatchLink / サッカー: SoccerOnlineLink）が扱う。
+    ///
+    /// 3人以上の部屋（HostAsync の maxPlayers が3以上）では、相手が来ても自動では始めず、
+    /// ホストが StartMatch を呼んだときに参加順で席番号を配る。
     /// </summary>
     public class OnlineSession : MonoBehaviour
     {
-        /// <summary>どのミニゲームも1対1なので部屋の定員は2人で固定</summary>
-        private const int MaxPlayers = 2;
+        /// <summary>1対1のミニゲーム（卓球・サッカー）の定員。引数を省略したときはこれまで通り2人部屋</summary>
+        public const int DefaultMaxPlayers = 2;
+
+        private const string StartMessage = "session.start";
+        private const int StartMessageSize = sizeof(int) * 2;
 
         /// <summary>接続完了（相手が揃った）。引数は自分がホストかどうか</summary>
         public event Action<bool> OnPeerConnected;
@@ -25,22 +33,39 @@ namespace MiniGame.Common.Online
         /// <summary>試合中に相手との接続が切れた</summary>
         public event Action OnPeerDisconnected;
 
+        /// <summary>3人以上の部屋のホストのみ：参加人数（ホスト自身を含む）が変わった</summary>
+        public event Action<int> OnMemberCountChanged;
+
+        /// <summary>3人以上の部屋のみ：試合開始。引数は自分の席番号（ホスト=0）と総人数</summary>
+        public event Action<int, int> OnMatchStarted;
+
         public bool IsHost { get; private set; }
 
         /// <summary>自分が作った部屋の参加コード（ホストのみ）</summary>
         public string JoinCode => _session?.Code;
 
+        /// <summary>ホストから見た参加者（自分以外）。席番号を参加順で配るため順番を保つ</summary>
+        private readonly List<ulong> _memberIds = new List<ulong>();
+
         private ISession _session;
         private bool _peerConnected;
+        private int _maxPlayers = DefaultMaxPlayers;
+        private bool _matchStarted;
 
-        /// <summary>部屋を作り、参加コードを発行する。相手の参加は OnPeerConnected で通知する</summary>
-        public async Task<string> HostAsync()
+        private bool IsMultiRoom => _maxPlayers > DefaultMaxPlayers;
+
+        /// <summary>
+        /// 部屋を作り、参加コードを発行する。
+        /// 相手の参加は OnPeerConnected（3人以上の部屋では OnMemberCountChanged）で通知する
+        /// </summary>
+        public async Task<string> HostAsync(int maxPlayers = DefaultMaxPlayers)
         {
             await PrepareAsync();
 
             // 部屋の作成完了より先に相手が接続してきても取りこぼさないよう、先にホストとして扱う
             IsHost = true;
-            var options = new SessionOptions { MaxPlayers = MaxPlayers }.WithRelayNetwork();
+            _maxPlayers = maxPlayers;
+            var options = new SessionOptions { MaxPlayers = maxPlayers }.WithRelayNetwork();
             _session = await MultiplayerService.Instance.CreateSessionAsync(options);
             return _session.Code;
         }
@@ -53,14 +78,38 @@ namespace MiniGame.Common.Online
             IsHost = false;
             _session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant());
 
+            // 1対1の部屋ではホストが開始メッセージを送らないので、登録しても使われないだけで害はない
+            NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(StartMessage, ReceiveStart);
+
             // クライアントは Join が返った時点でホストとつながっている
             NotifyPeerConnected();
+        }
+
+        /// <summary>
+        /// 3人以上の部屋のホストが、集まったメンバーで試合を始める。席番号は参加順（ホスト=0）。
+        /// 以降に入ってきた人は AddMember で切断する
+        /// </summary>
+        public void StartMatch()
+        {
+            if (!IsHost || _matchStarted || _memberIds.Count == 0) return;
+
+            _matchStarted = true;
+            int count = _memberIds.Count + 1;
+            for (int i = 0; i < _memberIds.Count; i++)
+            {
+                SendStart(_memberIds[i], i + 1, count);
+            }
+
+            OnMatchStarted?.Invoke(0, count);
         }
 
         /// <summary>部屋から抜ける。待機中のキャンセルとシーン離脱の両方で使う</summary>
         public void Leave()
         {
             UnsubscribeNetworkEvents();
+            _memberIds.Clear();
+            _matchStarted = false;
+            _maxPlayers = DefaultMaxPlayers;
 
             if (_session == null) return;
 
@@ -153,6 +202,7 @@ namespace MiniGame.Common.Online
 
             NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnected;
+            NetworkManager.Singleton.CustomMessagingManager?.UnregisterNamedMessageHandler(StartMessage);
         }
 
         private void HandleClientConnected(ulong clientId)
@@ -160,15 +210,77 @@ namespace MiniGame.Common.Online
             // ホスト自身の接続は無視し、相手が入ってきたときだけ試合を始める
             if (!IsHost || clientId == NetworkManager.Singleton.LocalClientId) return;
 
+            if (IsMultiRoom)
+            {
+                AddMember(clientId);
+                return;
+            }
+
             NotifyPeerConnected();
+        }
+
+        private void AddMember(ulong clientId)
+        {
+            // 試合中に途中参加されると手番の数が合わなくなるので断る
+            if (_matchStarted)
+            {
+                NetworkManager.Singleton.DisconnectClient(clientId);
+                return;
+            }
+
+            _memberIds.Add(clientId);
+            _peerConnected = true;
+            OnMemberCountChanged?.Invoke(_memberIds.Count + 1);
         }
 
         private void HandleClientDisconnected(ulong clientId)
         {
+            if (IsHost && IsMultiRoom)
+            {
+                HandleMemberDisconnected(clientId);
+                return;
+            }
+
             if (!_peerConnected) return;
 
             _peerConnected = false;
             OnPeerDisconnected?.Invoke();
+        }
+
+        /// <summary>
+        /// 開始前に抜けた人は人数を減らすだけ。試合中に1人でも抜けたら全員の試合を終える（途中離脱の継続・再接続はしない）。
+        /// ホストが部屋を閉じると残りのクライアントにも切断が届き、それぞれの端末で試合が終わる
+        /// </summary>
+        private void HandleMemberDisconnected(ulong clientId)
+        {
+            if (!_memberIds.Remove(clientId)) return;
+
+            if (!_matchStarted)
+            {
+                _peerConnected = _memberIds.Count > 0;
+                OnMemberCountChanged?.Invoke(_memberIds.Count + 1);
+                return;
+            }
+
+            OnPeerDisconnected?.Invoke();
+            Leave();
+        }
+
+        private static void SendStart(ulong clientId, int seat, int count)
+        {
+            using var writer = new FastBufferWriter(StartMessageSize, Allocator.Temp);
+            writer.WriteValueSafe(seat);
+            writer.WriteValueSafe(count);
+            NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(StartMessage, clientId, writer,
+                NetworkDelivery.ReliableSequenced);
+        }
+
+        private void ReceiveStart(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out int seat);
+            reader.ReadValueSafe(out int count);
+            _matchStarted = true;
+            OnMatchStarted?.Invoke(seat, count);
         }
 
         private void NotifyPeerConnected()

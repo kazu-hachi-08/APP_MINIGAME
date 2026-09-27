@@ -48,6 +48,10 @@ namespace MiniGame.Editor
             copyButton.gameObject.SetActive(false);
             var cancelButton = CreatePanelButton(waitingObj.transform, "Btn_Cancel", "キャンセル", new Vector2(170f, -180f),
                 new Vector2(300f, 90f), new Color(0.3f, 0.33f, 0.4f));
+            // 3人以上で遊ぶミニゲームのロビーでだけ ModeSelectPanel が表示する
+            var startButton = CreatePanelButton(waitingObj.transform, "Btn_Start", "開始", new Vector2(0f, -85f),
+                new Vector2(300f, 80f), new Color(0.18f, 0.55f, 0.9f));
+            startButton.gameObject.SetActive(false);
             waitingObj.SetActive(false);
 
             var panel = panelObj.AddComponent<ModeSelectPanel>();
@@ -63,6 +67,7 @@ namespace MiniGame.Editor
             so.FindProperty("_cancelButton").objectReferenceValue = cancelButton;
             so.FindProperty("_copyButton").objectReferenceValue = copyButton;
             so.FindProperty("_copyButtonLabel").objectReferenceValue = copyButton.GetComponentInChildren<Text>();
+            so.FindProperty("_startButton").objectReferenceValue = startButton;
             so.ApplyModifiedProperties();
 
             panelObj.SetActive(false);
