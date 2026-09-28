@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 図形のスプライトを実行時に作る（§5、Phase 10 で陰影付きの見た目に置き換え）。
+    /// 図形のスプライトを実行時に作る。
     /// 画像アセットを増やさずに済むので、2人開発でのアセット競合も起きない。
     /// モルックの ShapeSprites と同じ作りだが、ミニゲーム同士を依存させないためゴルフ側にも持つ。
     /// 旗以外は1ワールド単位の大きさで、中心がピボット。
@@ -15,6 +15,8 @@ namespace MiniGame.Golf
 
         // 左上から光が当たっている前提で陰影をつける（ボール・木で揃える）
         private static readonly Vector2 HighlightCenter = new Vector2(-0.35f, 0.35f);
+        // 光の中心からこの距離（半径1に対する値）で陰の色になりきる。円の反対側の縁でもまだ少し明るさを残す
+        private const float ShadeFalloffDistance = 1.6f;
 
         private static readonly Color BallShadeColor = new Color(0.72f, 0.75f, 0.82f);
         private static readonly Color BallEdgeColor = new Color(0.55f, 0.58f, 0.65f);
@@ -80,7 +82,7 @@ namespace MiniGame.Golf
         private static readonly Color ShoeColor = new Color(0.95f, 0.95f, 0.95f);
 
         // 頭（後ろ姿）：髪の丸の上に帽子を重ねる。帽子の後ろのアジャスターの穴から髪が見える。
-        // どちらも白で描き、キャラの帽子・髪の色を掛ける（§21.3）
+        // どちらも白で描き、キャラの帽子・髪の色を掛ける
         private const float CapBottom = -0.1f;
         private const float CapOpeningTop = 0.14f;
         private const float CapOpeningHalfWidth = 0.18f;
@@ -98,22 +100,8 @@ namespace MiniGame.Golf
         private static Sprite _golferHead;
         private static Sprite _golferCap;
 
-        public static Sprite Square
-        {
-            get
-            {
-                if (_square == null)
-                {
-                    // 1ピクセルの白を1ユニットに引き伸ばす
-                    var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                    texture.SetPixel(0, 0, Color.white);
-                    texture.Apply();
-                    _square = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-                }
-
-                return _square;
-            }
-        }
+        /// <summary>1ピクセルの白を1ユニットに引き伸ばした四角</summary>
+        public static Sprite Square => Cached(ref _square, CreateWhitePixel);
 
         /// <summary>白い円。色を付けて使う（プレイヤー色の縁取り・着地予測など）</summary>
         public static Sprite Circle => Cached(ref _circle, () => CreateRound(p => Color.white));
@@ -162,8 +150,7 @@ namespace MiniGame.Golf
 
         private static Color BallPixel(Vector2 p)
         {
-            float shade = Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / 1.6f);
-            Color color = Color.Lerp(Color.white, BallShadeColor, shade);
+            Color color = Color.Lerp(Color.white, BallShadeColor, LightShade(p));
             if (p.magnitude > BallEdgeStart) color = BallEdgeColor;
             return color;
         }
@@ -230,8 +217,13 @@ namespace MiniGame.Golf
 
         private static Color HeadShadePixel(Vector2 p)
         {
-            float light = Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / 1.6f);
-            return Color.Lerp(Color.white, HeadShadeColor, light);
+            return Color.Lerp(Color.white, HeadShadeColor, LightShade(p));
+        }
+
+        /// <summary>左上の光の中心から離れるほど 0→1 に増える陰の濃さ（ボール・頭で揃える）</summary>
+        private static float LightShade(Vector2 p)
+        {
+            return Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / ShadeFalloffDistance);
         }
 
         private static Color GolferCapPixel(Vector2 p)
@@ -251,6 +243,14 @@ namespace MiniGame.Golf
             float t = (x - PoleX - PoleWidth) / (float)(FlagWidth - PoleX - PoleWidth);
             if (Mathf.Abs(y - center) > halfHeight * (1f - t)) return Color.clear;
             return y < center ? PennantShadeColor : PennantColor;
+        }
+
+        private static Sprite CreateWhitePixel()
+        {
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            texture.SetPixel(0, 0, Color.white);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         }
 
         /// <summary>中心(0,0)・半径1の座標で色を決める丸いスプライトを作る。円の外は透明</summary>

@@ -15,9 +15,9 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// GolfScene を自動生成するエディタユーティリティ（Phase 10：ビジュアル置き換えまで）。
+    /// GolfScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する（§9.1）。
+    /// ホールは Scene に置かず、HoleLoader が実行時にカタログから生成する。
     /// </summary>
     public static class GolfSceneBuilder
     {
@@ -29,11 +29,15 @@ namespace MiniGame.Golf.Editor
         private const string TerrainSettingsPath = DataDirectory + "/GolfTerrainSettings.asset";
         private const string NpcDifficultyPath = DataDirectory + "/GolfNpcDifficulty.asset";
 
+        private const string GameTitle = "2D Golf";
+        private const string OfflineModeLabel = "1台で遊ぶ";
+
         // タイトルと同じく縦画面基準
         private static readonly Vector2 ReferenceResolution = new Vector2(1080, 1920);
 
-        // §4.3：ボールの周りの狙う先まで見える広さ（縦10ユニット）
+        // ボールの周りと狙う先まで見える広さ（縦10ユニット）
         private const float CameraOrthographicSize = 5f;
+        private static readonly Vector3 CameraPosition = new Vector3(0f, 0f, -10f);
 
         // コース外まで続く遠くの地面は、ホールの地面（0）より下に描く
         private const int FarGroundSortingOrder = -10;
@@ -42,17 +46,30 @@ namespace MiniGame.Golf.Editor
         private const int ShadowSortingOrder = 10;
         private const int OtherBallSortingOrder = 15;
         private const int BallSortingOrder = 20;
+        // プレイヤー色の縁取りは、ボール本体のすぐ下に描く
+        private const int BallRingSortingOrder = BallSortingOrder - 1;
         // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている。
         // 背中越しに見るので、腕は体の向こう側（下半身・上半身の下）、頭は一番手前に描く
         private const int GolferArmSortingOrder = 21;
         private const int GolferSleeveSortingOrder = 22;
         private const int GolferLegsSortingOrder = 24;
         private const int GolferSortingOrder = 25;
+        private const int GolferHeadSortingOrder = GolferSortingOrder + 1;
+        private const int GolferCapSortingOrder = GolferSortingOrder + 2;
         // クラブは背中越しに見て体の向こう側にあり、構えたヘッドがボールの横に届くので、体とボール（リング含む）の下に描く
         private const int GolferClubSortingOrder = BallSortingOrder - 2;
 
         private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
         private static readonly Color LandingMarkerColor = new Color(1f, 1f, 1f, 0.45f);
+
+        private static readonly Vector2 CenterAnchor = new Vector2(0.5f, 0.5f);
+        private static readonly Vector2 TopLeftAnchor = new Vector2(0f, 1f);
+        private static readonly Vector2 TopRightAnchor = new Vector2(1f, 1f);
+        private static readonly Vector2 BottomCenterAnchor = new Vector2(0.5f, 0f);
+        private static readonly Vector2 MiddleLeftAnchor = new Vector2(0f, 0.5f);
+
+        // 明るい芝の上でも HUD・風の文字が読めるように縁取りする
+        private static readonly Color OverlayTextOutlineColor = new Color(0f, 0f, 0f, 0.6f);
 
         private const int HudFontSize = 52;
         private const float HudTopMargin = 120f;
@@ -62,15 +79,18 @@ namespace MiniGame.Golf.Editor
         private const float PauseButtonSize = 100f;
         private const int PauseButtonFontSize = 44;
         private const float PauseButtonMargin = 16f;
+        private static readonly Color PauseButtonColor = new Color(0.15f, 0.17f, 0.22f, 0.8f);
 
         // 「全体」ボタンは PAUSE ボタンの下。中央寄せの HUD の文字と重ならない幅にする
         private const float OverviewButtonWidth = 160f;
         private const float OverviewButtonHeight = 100f;
         private const int OverviewButtonFontSize = 40;
+        private const float OverviewButtonTop = PauseButtonMargin * 2f + PauseButtonSize;
 
         // 「？」ボタンは「全体」ボタンのさらに下。説明は縦画面で読める大きさにし、端に余白をとる
         private const float HelpButtonSize = 100f;
         private const int HelpButtonFontSize = 52;
+        private const float HelpButtonTop = PauseButtonMargin * 3f + PauseButtonSize + OverviewButtonHeight;
         private const int HelpTextFontSize = 40;
         private const float HelpTextPadding = 60f;
         private static readonly Color HelpPanelColor = new Color(0f, 0f, 0f, 0.85f);
@@ -80,6 +100,7 @@ namespace MiniGame.Golf.Editor
         private const float MessageWidth = 1000f;
         private const float MessageHeight = 360f;
         private const int MessageFontSize = 120;
+        private static readonly Vector2 MessageOutlineDistance = new Vector2(5f, -5f);
 
         // 風は PAUSE ボタンと反対の左上（HUDより上）に、矢印＋強さで出す
         private const float WindViewMargin = 16f;
@@ -112,15 +133,16 @@ namespace MiniGame.Golf.Editor
         private const float SpinButtonHeight = 100f;
         private const float SpinButtonOffsetX = 400f;
         private const float SpinButtonGap = 20f;
+        private const float SpinButtonBottomMargin = GaugeBottomMargin + GaugeHeight + SpinButtonGap;
         private const int SpinButtonFontSize = 32;
 
+        /// <summary>
+        /// 生成順がそのまま Hierarchy の並び順（UIは描画の前後関係）になるため、呼び出し順を入れ替えないこと
+        /// </summary>
         [MenuItem("Tools/MiniGame/Build Golf Scene", false, 5)]
         public static void BuildGolfScene()
         {
-            if (!Directory.Exists(SceneDirectory))
-            {
-                Directory.CreateDirectory(SceneDirectory);
-            }
+            EnsureDirectory(SceneDirectory);
 
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -141,21 +163,20 @@ namespace MiniGame.Golf.Editor
             ShotInput input = CreateInput(ball, clubSelector, settings);
             AimGuideView aimGuide = CreateAimGuide(ball, input, clubSelector);
             GolferView golfer = CreateGolfer(ball, input, aimGuide);
-            var cameraFollower = camera.gameObject.AddComponent<GolfCameraFollower>();
-            SetRefs(cameraFollower, ("_ball", ball), ("_golfer", golfer), ("_input", input), ("_clubs", clubSelector),
-                ("_holeLoader", holeLoader));
+            GolfCameraFollower cameraFollower = CreateCameraFollower(camera, ball, golfer, input, clubSelector, holeLoader);
             CreateBackdrop(camera, cameraFollower);
-            SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
-                ("_cameraFollower", cameraFollower), ("_input", input));
-            var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower), ("_characters", characters));
-            SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
-                ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
-            SetGameTitle(manager);
+            CreateCourseScenery(holeLoader, cameraFollower, input);
+            GolfGameManager manager = CreateGameManager(ball, input, clubSelector, golfer, cameraFollower, characters,
+                npcDifficulty);
             CreateOtherBalls(manager);
             CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager, cameraFollower,
                 characters);
 
+            SaveScene(scene);
+        }
+
+        private static void SaveScene(UnityEngine.SceneManagement.Scene scene)
+        {
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
 
@@ -171,15 +192,17 @@ namespace MiniGame.Golf.Editor
             var asset = AssetDatabase.LoadAssetAtPath<T>(path);
             if (asset != null) return asset;
 
-            if (!Directory.Exists(DataDirectory))
-            {
-                Directory.CreateDirectory(DataDirectory);
-            }
+            EnsureDirectory(DataDirectory);
 
             asset = ScriptableObject.CreateInstance<T>();
             AssetDatabase.CreateAsset(asset, path);
             AssetDatabase.SaveAssets();
             return asset;
+        }
+
+        private static void EnsureDirectory(string directory)
+        {
+            if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
         }
 
         private static Camera CreateCamera()
@@ -191,19 +214,34 @@ namespace MiniGame.Golf.Editor
             camera.backgroundColor = GolfTileArtBuilder.OutOfBoundsColor;
             camera.orthographic = true;
             camera.orthographicSize = CameraOrthographicSize;
-            cameraObj.transform.position = new Vector3(0f, 0f, -10f);
+            cameraObj.transform.position = CameraPosition;
             cameraObj.AddComponent<AudioListener>();
             cameraObj.tag = "MainCamera";
             return camera;
         }
 
-        /// <summary>背後視点の空と遠くの地面（背後視点 Phase D）。板はカメラの子にせず、地面（Z=0）に置く</summary>
+        private static GolfCameraFollower CreateCameraFollower(Camera camera, GolfBall ball, GolferView golfer,
+            ShotInput input, ClubSelector clubSelector, HoleLoader holeLoader)
+        {
+            var follower = camera.gameObject.AddComponent<GolfCameraFollower>();
+            SetRefs(follower, ("_ball", ball), ("_golfer", golfer), ("_input", input), ("_clubs", clubSelector),
+                ("_holeLoader", holeLoader));
+            return follower;
+        }
+
+        /// <summary>背後視点の空と遠くの地面。板はカメラの子にせず、地面（Z=0）に置く</summary>
         private static void CreateBackdrop(Camera camera, GolfCameraFollower cameraFollower)
         {
             var farGround = new GameObject("FarGround").AddComponent<SpriteRenderer>();
             farGround.sortingOrder = FarGroundSortingOrder;
             SetRefs(camera.gameObject.AddComponent<ShotViewBackdrop>(), ("_follower", cameraFollower),
                 ("_farGround", farGround));
+        }
+
+        private static void CreateCourseScenery(HoleLoader holeLoader, GolfCameraFollower cameraFollower, ShotInput input)
+        {
+            SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
+                ("_cameraFollower", cameraFollower), ("_input", input));
         }
 
         private static HoleLoader CreateHoleLoader(GolfHoleCatalog catalog, GolfBall ball)
@@ -220,23 +258,15 @@ namespace MiniGame.Golf.Editor
             var ball = new GameObject("GolfBall").AddComponent<GolfBall>();
             SetRefs(ball, ("_settings", settings), ("_terrainSettings", terrainSettings));
 
-            var viewRoot = new GameObject("--- View ---");
+            Transform viewRoot = new GameObject("--- View ---").transform;
 
-            var shadowObj = new GameObject("BallShadow");
-            shadowObj.transform.SetParent(viewRoot.transform);
-            shadowObj.AddComponent<SpriteRenderer>().sortingOrder = ShadowSortingOrder;
-            SetRefs(shadowObj.AddComponent<ShadowView>(), ("_ball", ball));
+            SpriteRenderer shadow = CreateSpriteChild("BallShadow", viewRoot, ShadowSortingOrder);
+            SetRefs(shadow.gameObject.AddComponent<ShadowView>(), ("_ball", ball));
 
-            var ballViewObj = new GameObject("BallView");
-            ballViewObj.transform.SetParent(viewRoot.transform);
-            ballViewObj.AddComponent<SpriteRenderer>().sortingOrder = BallSortingOrder;
+            SpriteRenderer ballSprite = CreateSpriteChild("BallView", viewRoot, BallSortingOrder);
+            SpriteRenderer ring = CreateSpriteChild("Ring", ballSprite.transform, BallRingSortingOrder);
 
-            // プレイヤー色の縁取り。ボール本体のすぐ下に描く
-            var ring = new GameObject("Ring").AddComponent<SpriteRenderer>();
-            ring.transform.SetParent(ballViewObj.transform, false);
-            ring.sortingOrder = BallSortingOrder - 1;
-
-            ballView = ballViewObj.AddComponent<BallView>();
+            ballView = ballSprite.gameObject.AddComponent<BallView>();
             SetRefs(ballView, ("_ball", ball), ("_ring", ring));
 
             return ball;
@@ -256,16 +286,7 @@ namespace MiniGame.Golf.Editor
         {
             var selector = new GameObject("ClubSelector").AddComponent<ClubSelector>();
             SetRefs(selector, ("_ball", ball));
-
-            var so = new SerializedObject(selector);
-            SerializedProperty clubsProperty = so.FindProperty("_clubs");
-            clubsProperty.arraySize = clubs.Length;
-            for (int i = 0; i < clubs.Length; i++)
-            {
-                clubsProperty.GetArrayElementAtIndex(i).objectReferenceValue = clubs[i];
-            }
-
-            so.ApplyModifiedPropertiesWithoutUndo();
+            SetArray(selector, "_clubs", clubs);
             return selector;
         }
 
@@ -289,15 +310,11 @@ namespace MiniGame.Golf.Editor
         {
             var guide = new GameObject("AimGuide").AddComponent<AimGuideView>();
 
-            var line = new GameObject("Line").AddComponent<SpriteRenderer>();
-            line.transform.SetParent(guide.transform);
+            SpriteRenderer line = CreateSpriteChild("Line", guide.transform, AimGuideSortingOrder);
             line.color = AimLineColor;
-            line.sortingOrder = AimGuideSortingOrder;
 
-            var landing = new GameObject("LandingMarker").AddComponent<SpriteRenderer>();
-            landing.transform.SetParent(guide.transform);
+            SpriteRenderer landing = CreateSpriteChild("LandingMarker", guide.transform, AimGuideSortingOrder);
             landing.color = LandingMarkerColor;
-            landing.sortingOrder = AimGuideSortingOrder;
 
             SetRefs(guide, ("_ball", ball), ("_input", input), ("_clubs", clubSelector), ("_line", line),
                 ("_landingMarker", landing));
@@ -317,25 +334,25 @@ namespace MiniGame.Golf.Editor
             var hands = new GameObject("Hands").transform;
             hands.SetParent(root, false);
             // 帽子は頭の子にして、頭の位置・大きさにそのまま付いていかせる
-            SpriteRenderer head = CreateGolferPart("Head", root, GolferSortingOrder + 1);
-            SpriteRenderer cap = CreateGolferPart("Cap", head.transform, GolferSortingOrder + 2);
+            SpriteRenderer head = CreateSpriteChild("Head", root, GolferHeadSortingOrder);
+            SpriteRenderer cap = CreateSpriteChild("Cap", head.transform, GolferCapSortingOrder);
 
             SetRefs(rig,
-                ("_legs", CreateGolferPart("Legs", root, GolferLegsSortingOrder)),
-                ("_torso", CreateGolferPart("Torso", root, GolferSortingOrder)),
+                ("_legs", CreateSpriteChild("Legs", root, GolferLegsSortingOrder)),
+                ("_torso", CreateSpriteChild("Torso", root, GolferSortingOrder)),
                 ("_head", head),
                 ("_cap", cap),
-                ("_leftArm", CreateGolferPart("LeftArm", root, GolferArmSortingOrder)),
-                ("_rightArm", CreateGolferPart("RightArm", root, GolferArmSortingOrder)),
-                ("_leftSleeve", CreateGolferPart("LeftSleeve", root, GolferSleeveSortingOrder)),
-                ("_rightSleeve", CreateGolferPart("RightSleeve", root, GolferSleeveSortingOrder)),
-                ("_glove", CreateGolferPart("Glove", root, GolferSleeveSortingOrder)),
-                ("_club", CreateGolferPart("Club", hands, GolferClubSortingOrder)));
+                ("_leftArm", CreateSpriteChild("LeftArm", root, GolferArmSortingOrder)),
+                ("_rightArm", CreateSpriteChild("RightArm", root, GolferArmSortingOrder)),
+                ("_leftSleeve", CreateSpriteChild("LeftSleeve", root, GolferSleeveSortingOrder)),
+                ("_rightSleeve", CreateSpriteChild("RightSleeve", root, GolferSleeveSortingOrder)),
+                ("_glove", CreateSpriteChild("Glove", root, GolferSleeveSortingOrder)),
+                ("_club", CreateSpriteChild("Club", hands, GolferClubSortingOrder)));
             SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_rig", rig));
             return golfer;
         }
 
-        private static SpriteRenderer CreateGolferPart(string name, Transform parent, int sortingOrder)
+        private static SpriteRenderer CreateSpriteChild(string name, Transform parent, int sortingOrder)
         {
             var part = new GameObject(name).AddComponent<SpriteRenderer>();
             part.transform.SetParent(parent, false);
@@ -363,6 +380,22 @@ namespace MiniGame.Golf.Editor
             return CreateManager<UIManager>("UIManager", managersRoot.transform);
         }
 
+        /// <summary>NPC と効果音は試合進行から使うので、GolfGameManager と一緒に作って繋ぐ</summary>
+        private static GolfGameManager CreateGameManager(GolfBall ball, ShotInput input, ClubSelector clubSelector,
+            GolferView golfer, GolfCameraFollower cameraFollower, GolfCharacterCatalog characters,
+            GolfNpcDifficulty npcDifficulty)
+        {
+            var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
+            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower), ("_characters", characters));
+
+            NpcGolfer npcGolfer = CreateNpcGolfer(ball, input, clubSelector, npcDifficulty);
+            GolfAudio audio = CreateAudio(manager, ball, clubSelector);
+            SetRefs(manager, ("_npcGolfer", npcGolfer), ("_clubs", clubSelector), ("_audio", audio));
+
+            SetGameTitle(manager);
+            return manager;
+        }
+
         private static GolfAudio CreateAudio(GolfGameManager manager, GolfBall ball, ClubSelector clubSelector)
         {
             var audio = manager.gameObject.AddComponent<GolfAudio>();
@@ -373,13 +406,34 @@ namespace MiniGame.Golf.Editor
         private static void SetGameTitle(GolfGameManager manager)
         {
             var so = new SerializedObject(manager);
-            so.FindProperty("_gameTitle").stringValue = "2D Golf";
+            so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void CreateCanvas(GolfGameManager manager, GolfBall ball, BallView ballView, ShotInput input,
             ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings, UIManager uiManager,
             GolfCameraFollower cameraFollower, GolfCharacterCatalog characters)
+        {
+            Transform canvas = CreateCanvasRoot();
+
+            // ボタンはノッチ・ホームバーを避けるため SafeArea 内に置く
+            Transform safeArea = CreateSafeArea("SafeArea", canvas);
+            GolfMessageView message = CreateShotUi(safeArea, manager, ball, input, clubSelector, holeLoader, settings,
+                cameraFollower);
+
+            // 試合進行の全画面UIはショット操作より手前に出す
+            CreateMatchUi(canvas, manager, ball, ballView, input, holeLoader, characters, message);
+
+            // 設定画面や「○○の番」の間も PAUSE からタイトルへ戻れるよう、PAUSE ボタンは試合進行のUIより手前に置く
+            CreatePauseButton(CreateSafeArea("SafeAreaTop", canvas), manager);
+
+            // 共通ダイアログ（PAUSE / リザルト）は PAUSE ボタンより手前に出す
+            UIDialogBuilder.BuildDialogs(canvas, uiManager);
+
+            CreateOnline(canvas, manager);
+        }
+
+        private static Transform CreateCanvasRoot()
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -388,49 +442,52 @@ namespace MiniGame.Golf.Editor
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = ReferenceResolution;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            // 縦画面なので横幅に合わせ、機種による左右の見切れを防ぐ
             scaler.matchWidthOrHeight = 0f;
             canvasObj.AddComponent<GraphicRaycaster>();
+            return canvasObj.transform;
+        }
 
-            // ボタンはノッチ・ホームバーを避けるため SafeArea 内に置く
-            var safeAreaObj = UIDialogBuilder.CreateUIObject("SafeArea", canvasObj.transform);
-            UIDialogBuilder.SetStretchAll(safeAreaObj.GetComponent<RectTransform>());
-            safeAreaObj.AddComponent<SafeAreaFitter>();
+        private static Transform CreateSafeArea(string name, Transform canvas)
+        {
+            GameObject obj = UIDialogBuilder.CreateUIObject(name, canvas);
+            UIDialogBuilder.SetStretchAll(obj.GetComponent<RectTransform>());
+            obj.AddComponent<SafeAreaFitter>();
+            return obj.transform;
+        }
 
-            CreateShotHud(safeAreaObj.transform, manager, ball, input, holeLoader, settings);
-            CreateWindView(safeAreaObj.transform, holeLoader);
-            CreateShotGauge(safeAreaObj.transform, input);
-            CreateAimControls(safeAreaObj.transform, input, clubSelector, settings);
-            CreateSpinButton(safeAreaObj.transform, input, clubSelector);
-            SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeAreaObj.transform)));
-            GolfMessageView message = CreateMessageView(safeAreaObj.transform);
+        /// <summary>ショット中に常に出ている HUD・操作ボタン・演出メッセージ。作った順に手前へ重なる</summary>
+        private static GolfMessageView CreateShotUi(Transform safeArea, GolfGameManager manager, GolfBall ball,
+            ShotInput input, ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings,
+            GolfCameraFollower cameraFollower)
+        {
+            CreateShotHud(safeArea, manager, ball, input, holeLoader, settings);
+            CreateWindView(safeArea, holeLoader);
+            CreateShotGauge(safeArea, input);
+            CreateAimControls(safeArea, input, clubSelector, settings);
+            CreateSpinButton(safeArea, input, clubSelector);
+            SetRefs(cameraFollower, ("_overviewButton", CreateOverviewButton(safeArea)));
+            GolfMessageView message = CreateMessageView(safeArea);
             // 開いた説明はショット操作のUIを覆うように、ショット操作より後（手前）に作る
-            CreateHelp(safeAreaObj.transform, input);
+            CreateHelp(safeArea, input);
+            return message;
+        }
 
-            // 試合進行の全画面UIはショット操作より手前に出す
-            GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
-            GolfCharacterSelectPanel characterSelectPanel =
-                GolfMatchUiBuilder.CreateCharacterSelectPanel(canvasObj.transform, characters);
-            GolfTurnBannerView turnBanner = GolfMatchUiBuilder.CreateTurnBanner(canvasObj.transform);
-            ScoreCardView scoreCard = GolfMatchUiBuilder.CreateScoreCard(canvasObj.transform);
+        private static void CreateMatchUi(Transform canvas, GolfGameManager manager, GolfBall ball, BallView ballView,
+            ShotInput input, HoleLoader holeLoader, GolfCharacterCatalog characters, GolfMessageView message)
+        {
+            GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvas);
+            GolfCharacterSelectPanel characterSelectPanel = GolfMatchUiBuilder.CreateCharacterSelectPanel(canvas, characters);
+            GolfTurnBannerView turnBanner = GolfMatchUiBuilder.CreateTurnBanner(canvas);
+            ScoreCardView scoreCard = GolfMatchUiBuilder.CreateScoreCard(canvas);
             SetRefs(manager, ("_ball", ball), ("_holeLoader", holeLoader), ("_input", input), ("_ballView", ballView),
                 ("_setupPanel", setupPanel), ("_characterSelectPanel", characterSelectPanel),
                 ("_turnBanner", turnBanner), ("_scoreCard", scoreCard),
                 ("_message", message));
-
-            // 設定画面や「○○の番」の間も PAUSE からタイトルへ戻れるよう、PAUSE ボタンは試合進行のUIより手前に置く
-            var topSafeAreaObj = UIDialogBuilder.CreateUIObject("SafeAreaTop", canvasObj.transform);
-            UIDialogBuilder.SetStretchAll(topSafeAreaObj.GetComponent<RectTransform>());
-            topSafeAreaObj.AddComponent<SafeAreaFitter>();
-            CreatePauseButton(topSafeAreaObj.transform, manager);
-
-            // 共通ダイアログ（PAUSE / リザルト）は PAUSE ボタンより手前に出す
-            UIDialogBuilder.BuildDialogs(canvasObj.transform, uiManager);
-
-            CreateOnline(canvasObj.transform, manager);
         }
 
         /// <summary>
-        /// オンライン対戦（§14）。NetworkManager は OnlineSession が実行時に作るので、Scene には置かない。
+        /// オンライン対戦。NetworkManager は OnlineSession が実行時に作るので、Scene には置かない。
         /// モード選択は試合前に最初に出すので、戻るボタンも含めて一番手前に置く（待機中はキャンセルで戻れる）
         /// </summary>
         private static void CreateOnline(Transform canvas, GolfGameManager manager)
@@ -438,18 +495,17 @@ namespace MiniGame.Golf.Editor
             var onlineObj = new GameObject("Online");
             var session = onlineObj.AddComponent<OnlineSession>();
             var link = onlineObj.AddComponent<GolfOnlineLink>();
-            ModeSelectPanel modeSelectPanel = ModeSelectPanelBuilder.Create(canvas, session, "1台で遊ぶ");
+            ModeSelectPanel modeSelectPanel = ModeSelectPanelBuilder.Create(canvas, session, OfflineModeLabel);
             SetRefs(manager, ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", session), ("_onlineLink", link));
         }
 
         private static void CreateShotGauge(Transform parent, ShotInput input)
         {
-            GameObject gaugeObj = UIDialogBuilder.CreateButton(parent, "ShotGauge", string.Empty,
-                GaugeWidth, GaugeHeight, GaugeBackgroundColor);
+            GameObject gaugeObj = CreateButton(parent, "ShotGauge", string.Empty, GaugeWidth, GaugeHeight,
+                GaugeBackgroundColor, GaugeLabelFontSize);
             SetBottomCenter(gaugeObj.GetComponent<RectTransform>(), 0f, GaugeBottomMargin);
 
             Text label = gaugeObj.GetComponentInChildren<Text>();
-            label.fontSize = GaugeLabelFontSize;
             label.raycastTarget = false;
 
             RectTransform zone = CreateGaugeBar(gaugeObj.transform, "ImpactZone", ImpactZoneColor, 0f);
@@ -470,7 +526,7 @@ namespace MiniGame.Golf.Editor
             var rect = obj.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.pivot = CenterAnchor;
             rect.sizeDelta = new Vector2(width, 0f);
 
             var image = obj.AddComponent<Image>();
@@ -487,43 +543,52 @@ namespace MiniGame.Golf.Editor
             HoldButton right = CreateRotateButton(parent, "Btn_RotateRight", "▶", RotateButtonOffsetX);
             SetRefs(input, ("_rotateLeftButton", left), ("_rotateRightButton", right));
 
-            GameObject clubObj = UIDialogBuilder.CreateButton(parent, "Btn_Club", string.Empty,
-                ClubButtonWidth, AimControlHeight, ControlButtonColor);
+            GameObject clubObj = CreateButton(parent, "Btn_Club", string.Empty, ClubButtonWidth, AimControlHeight,
+                ControlButtonColor, ClubButtonFontSize);
             SetBottomCenter(clubObj.GetComponent<RectTransform>(), 0f, AimControlBottomMargin);
-            Text clubLabel = clubObj.GetComponentInChildren<Text>();
-            clubLabel.fontSize = ClubButtonFontSize;
 
             var clubView = clubObj.AddComponent<ClubButtonView>();
             SetRefs(clubView, ("_input", input), ("_clubs", clubSelector), ("_settings", settings),
-                ("_button", clubObj.GetComponent<Button>()), ("_label", clubLabel));
+                ("_button", clubObj.GetComponent<Button>()), ("_label", clubObj.GetComponentInChildren<Text>()));
         }
 
         private static void CreateSpinButton(Transform parent, ShotInput input, ClubSelector clubSelector)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, "Btn_Spin", string.Empty, SpinButtonWidth,
-                SpinButtonHeight, ControlButtonColor);
-            SetBottomCenter(obj.GetComponent<RectTransform>(), SpinButtonOffsetX,
-                GaugeBottomMargin + GaugeHeight + SpinButtonGap);
-            Text label = obj.GetComponentInChildren<Text>();
-            label.fontSize = SpinButtonFontSize;
+            GameObject obj = CreateButton(parent, "Btn_Spin", string.Empty, SpinButtonWidth, SpinButtonHeight,
+                ControlButtonColor, SpinButtonFontSize);
+            SetBottomCenter(obj.GetComponent<RectTransform>(), SpinButtonOffsetX, SpinButtonBottomMargin);
 
             SetRefs(obj.AddComponent<SpinButtonView>(), ("_input", input), ("_clubs", clubSelector),
-                ("_button", obj.GetComponent<Button>()), ("_label", label));
+                ("_button", obj.GetComponent<Button>()), ("_label", obj.GetComponentInChildren<Text>()));
         }
 
         private static HoldButton CreateRotateButton(Transform parent, string name, string label, float offsetX)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, RotateButtonWidth, AimControlHeight,
-                ControlButtonColor);
+            GameObject obj = CreateButton(parent, name, label, RotateButtonWidth, AimControlHeight, ControlButtonColor,
+                RotateButtonFontSize);
             SetBottomCenter(obj.GetComponent<RectTransform>(), offsetX, AimControlBottomMargin);
-            obj.GetComponentInChildren<Text>().fontSize = RotateButtonFontSize;
             return obj.AddComponent<HoldButton>();
         }
 
         private static void SetBottomCenter(RectTransform rect, float x, float bottomMargin)
         {
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchorMin = rect.anchorMax = rect.pivot = BottomCenterAnchor;
             rect.anchoredPosition = new Vector2(x, bottomMargin);
+        }
+
+        /// <summary>右上の PAUSE ボタンの列に、上から top の位置で揃えて置く</summary>
+        private static void SetTopRight(RectTransform rect, float top)
+        {
+            rect.anchorMin = rect.anchorMax = rect.pivot = TopRightAnchor;
+            rect.anchoredPosition = new Vector2(-PauseButtonMargin, -top);
+        }
+
+        private static void Place(RectTransform rect, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
+        {
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.pivot = pivot;
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
         }
 
         private static void CreateShotHud(Transform parent, GolfGameManager manager, GolfBall ball, ShotInput input,
@@ -537,17 +602,7 @@ namespace MiniGame.Golf.Editor
             rect.anchoredPosition = new Vector2(0f, -HudTopMargin);
             rect.sizeDelta = new Vector2(0f, HudHeight);
 
-            var text = obj.AddComponent<Text>();
-            text.fontSize = HudFontSize;
-            text.fontStyle = FontStyle.Bold;
-            text.alignment = TextAnchor.UpperCenter;
-            text.color = Color.white;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            // 画面のどこを押しても打てるように、表示はタップを奪わない
-            text.raycastTarget = false;
-            // 明るい芝の上でも読めるように縁取りする
-            obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
+            Text text = AddOverlayText(obj, HudFontSize, TextAnchor.UpperCenter);
 
             var hud = obj.AddComponent<GolfHudView>();
             SetRefs(hud, ("_ball", ball), ("_input", input), ("_holeLoader", holeLoader), ("_manager", manager),
@@ -558,24 +613,18 @@ namespace MiniGame.Golf.Editor
         private static void CreateWindView(Transform parent, HoleLoader holeLoader)
         {
             GameObject root = UIDialogBuilder.CreateUIObject("WindView", parent);
-            var rootRect = root.GetComponent<RectTransform>();
-            rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = new Vector2(0f, 1f);
-            rootRect.anchoredPosition = new Vector2(WindViewMargin, -WindViewMargin);
-            rootRect.sizeDelta = new Vector2(WindArrowSize + WindLabelWidth, WindArrowSize);
+            Place(root.GetComponent<RectTransform>(), TopLeftAnchor, TopLeftAnchor,
+                new Vector2(WindViewMargin, -WindViewMargin), new Vector2(WindArrowSize + WindLabelWidth, WindArrowSize));
 
             Text arrow = CreateWindText(root.transform, "Arrow", "↑", WindArrowFontSize, TextAnchor.MiddleCenter);
             var arrowRect = arrow.GetComponent<RectTransform>();
-            arrowRect.anchorMin = arrowRect.anchorMax = new Vector2(0f, 0.5f);
             // 中心で回すため、ピボットを真ん中にしてから左端に寄せる
-            arrowRect.pivot = new Vector2(0.5f, 0.5f);
-            arrowRect.anchoredPosition = new Vector2(WindArrowSize * 0.5f, 0f);
-            arrowRect.sizeDelta = new Vector2(WindArrowSize, WindArrowSize);
+            Place(arrowRect, MiddleLeftAnchor, CenterAnchor, new Vector2(WindArrowSize * 0.5f, 0f),
+                new Vector2(WindArrowSize, WindArrowSize));
 
             Text label = CreateWindText(root.transform, "Strength", string.Empty, WindLabelFontSize, TextAnchor.MiddleLeft);
-            var labelRect = label.GetComponent<RectTransform>();
-            labelRect.anchorMin = labelRect.anchorMax = labelRect.pivot = new Vector2(0f, 0.5f);
-            labelRect.anchoredPosition = new Vector2(WindArrowSize, 0f);
-            labelRect.sizeDelta = new Vector2(WindLabelWidth, WindArrowSize);
+            Place(label.GetComponent<RectTransform>(), MiddleLeftAnchor, MiddleLeftAnchor, new Vector2(WindArrowSize, 0f),
+                new Vector2(WindLabelWidth, WindArrowSize));
 
             SetRefs(root.AddComponent<WindView>(), ("_holeLoader", holeLoader), ("_arrow", arrowRect),
                 ("_strengthLabel", label));
@@ -584,32 +633,38 @@ namespace MiniGame.Golf.Editor
         private static Text CreateWindText(Transform parent, string name, string content, int fontSize, TextAnchor alignment)
         {
             GameObject obj = UIDialogBuilder.CreateUIObject(name, parent);
-            var text = obj.AddComponent<Text>();
+            Text text = AddOverlayText(obj, fontSize, alignment);
             text.text = content;
+            return text;
+        }
+
+        /// <summary>
+        /// HUD・風のように、ショット中ずっと画面に重ねておく文字。
+        /// 画面のどこを押しても打てるように、表示はタップを奪わない
+        /// </summary>
+        private static Text AddOverlayText(GameObject obj, int fontSize, TextAnchor alignment)
+        {
+            var text = obj.AddComponent<Text>();
             text.fontSize = fontSize;
             text.fontStyle = FontStyle.Bold;
             text.alignment = alignment;
             text.color = Color.white;
             text.horizontalOverflow = HorizontalWrapMode.Overflow;
             text.verticalOverflow = VerticalWrapMode.Overflow;
-            // 画面のどこを押しても打てるように、表示はタップを奪わない
             text.raycastTarget = false;
-            obj.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.6f);
+            obj.AddComponent<Outline>().effectColor = OverlayTextOutlineColor;
             return text;
         }
 
         /// <summary>
-        /// 押している間ホール全体を見せる「全体」ボタン（§4.3）。PAUSE ボタンの下に置く。
+        /// 押している間ホール全体を見せる「全体」ボタン。PAUSE ボタンの下に置く。
         /// 試合進行の全画面UIより奥に置き、設定画面や「○○の番」の間は押せないようにする
         /// </summary>
         private static HoldButton CreateOverviewButton(Transform parent)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, "Btn_Overview", "全体", OverviewButtonWidth,
-                OverviewButtonHeight, ControlButtonColor);
-            var rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-PauseButtonMargin, -(PauseButtonMargin * 2f + PauseButtonSize));
-            obj.GetComponentInChildren<Text>().fontSize = OverviewButtonFontSize;
+            GameObject obj = CreateButton(parent, "Btn_Overview", "全体", OverviewButtonWidth, OverviewButtonHeight,
+                ControlButtonColor, OverviewButtonFontSize);
+            SetTopRight(obj.GetComponent<RectTransform>(), OverviewButtonTop);
             return obj.AddComponent<HoldButton>();
         }
 
@@ -622,52 +677,47 @@ namespace MiniGame.Golf.Editor
             GameObject root = UIDialogBuilder.CreateUIObject("Help", parent);
             UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
 
-            GameObject openObj = UIDialogBuilder.CreateButton(root.transform, "Btn_Help", "？", HelpButtonSize,
-                HelpButtonSize, ControlButtonColor);
-            var openRect = openObj.GetComponent<RectTransform>();
-            openRect.anchorMin = openRect.anchorMax = openRect.pivot = new Vector2(1f, 1f);
-            openRect.anchoredPosition = new Vector2(-PauseButtonMargin,
-                -(PauseButtonMargin * 3f + PauseButtonSize + OverviewButtonHeight));
-            openObj.GetComponentInChildren<Text>().fontSize = HelpButtonFontSize;
+            GameObject openObj = CreateButton(root.transform, "Btn_Help", "？", HelpButtonSize, HelpButtonSize,
+                ControlButtonColor, HelpButtonFontSize);
+            SetTopRight(openObj.GetComponent<RectTransform>(), HelpButtonTop);
 
-            GameObject panelObj = UIDialogBuilder.CreateButton(root.transform, "HelpPanel", string.Empty, 0f, 0f,
-                HelpPanelColor);
+            GameObject panelObj = CreateButton(root.transform, "HelpPanel", string.Empty, 0f, 0f, HelpPanelColor,
+                HelpTextFontSize);
             UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
-
-            Text text = panelObj.GetComponentInChildren<Text>();
-            var textRect = text.GetComponent<RectTransform>();
-            textRect.offsetMin = new Vector2(HelpTextPadding, HelpTextPadding);
-            textRect.offsetMax = new Vector2(-HelpTextPadding, -HelpTextPadding);
-            text.fontSize = HelpTextFontSize;
-            text.fontStyle = FontStyle.Normal;
-            text.alignment = TextAnchor.MiddleLeft;
-            text.supportRichText = true;
-            text.raycastTarget = false;
+            Text text = SetUpHelpText(panelObj.GetComponentInChildren<Text>());
 
             SetRefs(root.AddComponent<GolfHelpView>(), ("_input", input), ("_openButton", openObj.GetComponent<Button>()),
                 ("_panel", panelObj.GetComponent<Button>()), ("_text", text));
         }
 
+        /// <summary>説明文は複数行を左寄せで読ませ、見出しの強調にリッチテキストを使う</summary>
+        private static Text SetUpHelpText(Text text)
+        {
+            var textRect = text.GetComponent<RectTransform>();
+            textRect.offsetMin = new Vector2(HelpTextPadding, HelpTextPadding);
+            textRect.offsetMax = new Vector2(-HelpTextPadding, -HelpTextPadding);
+            text.fontStyle = FontStyle.Normal;
+            text.alignment = TextAnchor.MiddleLeft;
+            text.supportRichText = true;
+            text.raycastTarget = false;
+            return text;
+        }
+
         private static void CreatePauseButton(Transform parent, GolfGameManager manager)
         {
-            var buttonObj = UIDialogBuilder.CreateButton(parent, "Btn_Pause", "II", PauseButtonSize, PauseButtonSize,
-                new Color(0.15f, 0.17f, 0.22f, 0.8f));
-            var rect = buttonObj.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-PauseButtonMargin, -PauseButtonMargin);
-            buttonObj.GetComponentInChildren<Text>().fontSize = PauseButtonFontSize;
+            GameObject buttonObj = CreateButton(parent, "Btn_Pause", "II", PauseButtonSize, PauseButtonSize,
+                PauseButtonColor, PauseButtonFontSize);
+            SetTopRight(buttonObj.GetComponent<RectTransform>(), PauseButtonMargin);
 
             SetRefs(buttonObj.AddComponent<PauseButton>(), ("_gameManager", manager));
         }
 
-        /// <summary>「バーディー！」「池ポチャ…」などを大きく出す（§13.3）。表示中だけ有効にする</summary>
+        /// <summary>「バーディー！」「池ポチャ…」などを大きく出す。表示中だけ有効にする</summary>
         private static GolfMessageView CreateMessageView(Transform parent)
         {
             GameObject obj = UIDialogBuilder.CreateUIObject("MessageView", parent);
-            var rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(0f, MessageOffsetY);
-            rect.sizeDelta = new Vector2(MessageWidth, MessageHeight);
+            Place(obj.GetComponent<RectTransform>(), CenterAnchor, CenterAnchor, new Vector2(0f, MessageOffsetY),
+                new Vector2(MessageWidth, MessageHeight));
 
             var text = obj.AddComponent<Text>();
             text.fontSize = MessageFontSize;
@@ -677,12 +727,21 @@ namespace MiniGame.Golf.Editor
             text.verticalOverflow = VerticalWrapMode.Overflow;
             // 演出中もタップを奪わない
             text.raycastTarget = false;
-            obj.AddComponent<Outline>().effectDistance = new Vector2(5f, -5f);
+            obj.AddComponent<Outline>().effectDistance = MessageOutlineDistance;
 
             var view = obj.AddComponent<GolfMessageView>();
             SetRefs(view, ("_text", text));
             obj.SetActive(false);
             return view;
+        }
+
+        /// <summary>共通のボタン生成に、ラベルの文字サイズ指定を足したもの（共通側は文字サイズが固定のため）</summary>
+        internal static GameObject CreateButton(Transform parent, string name, string label, float width, float height,
+            Color color, int fontSize)
+        {
+            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, width, height, color);
+            obj.GetComponentInChildren<Text>().fontSize = fontSize;
+            return obj;
         }
 
         internal static void SetRefs(Object target, params (string property, Object value)[] refs)
@@ -691,6 +750,20 @@ namespace MiniGame.Golf.Editor
             foreach (var (property, value) in refs)
             {
                 so.FindProperty(property).objectReferenceValue = value;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>配列のシリアライズフィールドを values で丸ごと置き換える</summary>
+        internal static void SetArray(Object target, string property, Object[] values)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty array = so.FindProperty(property);
+            array.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++)
+            {
+                array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();

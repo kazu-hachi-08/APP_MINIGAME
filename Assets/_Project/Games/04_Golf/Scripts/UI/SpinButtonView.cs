@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 今のスピンを出し、タップで なし → バック → トップ を切り替えるボタン（§7.7 スピン）。
+    /// 今のスピンを出し、タップで なし → バック → トップ を切り替えるボタン。
     /// </summary>
     public class SpinButtonView : MonoBehaviour
     {

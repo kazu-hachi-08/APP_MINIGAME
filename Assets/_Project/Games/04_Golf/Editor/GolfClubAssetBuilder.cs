@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// クラブ4種類の GolfClubData を作る（§7.5、Phase 3）。
+    /// クラブ4種類の GolfClubData を作る。
     /// 「無ければ作る」だけにして、調整済みの値を上書きしない。
     /// </summary>
     public static class GolfClubAssetBuilder
@@ -26,7 +26,7 @@ namespace MiniGame.Golf.Editor
             public ClubConfig Config { get; }
         }
 
-        // 最大飛距離（着地まで）が §7.5 の暫定値（22 / 15 / 8ユニット）になるよう、重力6で初速と打ち出し角を合わせている。
+        // 最大飛距離（着地まで）が 22 / 15 / 8 ユニットになるよう、重力6で初速と打ち出し角を合わせている。
         // 飛ぶクラブほど曲がりやすく、パターはほとんど曲がらない
         private static readonly ClubSpec[] Specs =
         {

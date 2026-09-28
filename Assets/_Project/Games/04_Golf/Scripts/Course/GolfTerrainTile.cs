@@ -4,7 +4,7 @@ using UnityEngine.Tilemaps;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 地面の種類を持つタイル（§9.2）。種類ごとに1アセット用意し、タイルの画像がそのまま見た目になる。
+    /// 地面の種類を持つタイル。種類ごとに1アセット用意し、タイルの画像がそのまま見た目になる。
     /// Tilemap に塗るだけでホールの形とライの両方が決まるので、ホールの形をコードに書かずに済む。
     /// </summary>
     [CreateAssetMenu(fileName = "GolfTerrainTile", menuName = "MiniGame/Golf/Terrain Tile")]

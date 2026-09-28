@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// ボール本体の表示（§4.2）。真上視点では高さが見えないので、高いほど画面の上へずらして少し大きく描き、
+    /// ボール本体の表示。真上視点では高さが見えないので、高いほど画面の上へずらして少し大きく描き、
     /// 地面に残る影（ShadowView）との距離で高さを分からせる。
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -11,7 +11,7 @@ namespace MiniGame.Golf
     {
         [SerializeField] private GolfBall _ball;
 
-        [Tooltip("ボールの下に重ねるプレイヤー色の円。少し大きくして縁取りに見せる（§5）")]
+        [Tooltip("ボールの下に重ねるプレイヤー色の円。少し大きくして縁取りに見せる")]
         [SerializeField] private SpriteRenderer _ring;
 
         [Tooltip("縁取りの大きさ（ボールに対する倍率）")]

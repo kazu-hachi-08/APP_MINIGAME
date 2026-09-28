@@ -7,7 +7,7 @@ using Object = UnityEngine.Object;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// 地面タイルの画像を手続き的に作る（Phase 10）。
+    /// 地面タイルの画像を手続き的に作る。
     /// 色だけでなく模様（芝の刈り目・砂粒・波）でも塗り分け、小さい画面でもライの違いが分かるようにする。
     /// 画像は「無ければ作る」だけなので、あとで手描きの PNG に差し替えても上書きしない。
     /// </summary>

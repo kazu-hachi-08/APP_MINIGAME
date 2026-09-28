@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// ボールの影の表示（§4.2）。常に地面の位置に置き、高いほど小さく薄くして、ボール本体との離れ具合を強調する。
+    /// ボールの影の表示。常に地面の位置に置き、高いほど小さく薄くして、ボール本体との離れ具合を強調する。
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public class ShadowView : MonoBehaviour

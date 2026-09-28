@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// 試合の進行に使う全画面UI（設定画面・「○○の番」・スコアカード）を作る（Phase 6）。
+    /// 試合の進行に使う全画面UI（設定画面・「○○の番」・スコアカード）を作る。
     /// GolfSceneBuilder が大きくなりすぎないよう、ショット操作のUIとは分けておく。
     /// </summary>
     internal static class GolfMatchUiBuilder
@@ -16,9 +16,20 @@ namespace MiniGame.Golf.Editor
         private static readonly Color ChoiceColor = new Color(0.3f, 0.33f, 0.4f);
         private static readonly Color PrimaryColor = new Color(0.2f, 0.7f, 0.35f);
 
+        private static readonly Vector2 CenterAnchor = new Vector2(0.5f, 0.5f);
+
+        // 文字の縁取りの太さ。大きい文字ほど太くして背景の上でも読めるようにする
+        private static readonly Vector2 NameOutlineDistance = new Vector2(3f, -3f);
+        private static readonly Vector2 BannerTitleOutlineDistance = new Vector2(4f, -4f);
+
         private const float BoxWidth = 920f;
+        private const int BoxPadding = 40;
+        private const float BoxSpacing = 28f;
         private const float RowWidth = 820f;
         private const float RowHeight = 110f;
+        // 見出しの行は選択肢の行より低くして、パネルの縦幅に収める
+        private const float LabelRowHeight = RowHeight * 0.6f;
+        private const float RowSpacing = 20f;
         private const int TitleFontSize = 60;
         private const int LabelFontSize = 44;
         private const int ButtonFontSize = 44;
@@ -45,6 +56,20 @@ namespace MiniGame.Golf.Editor
         private const float BackButtonWidth = 280f;
         private const float ConfirmButtonWidth = 440f;
 
+        // 飛距離 0.9〜1.15、曲がりにくさ 0.75〜1.35 の差がマスの数で見えるよう、バーごとに幅を合わせる
+        private const float DistanceBarMin = 0.8f;
+        private const float DistanceBarMax = 1.25f;
+        private const float StraightnessBarMin = 0.75f;
+        private const float StraightnessBarMax = 1.35f;
+
+        // 「○○の番」は 詳細 → 名前 → ヒント を画面中央から上下に並べる
+        private const float BannerTextWidth = 1000f;
+        private const float BannerDetailHeight = 300f;
+        private const float BannerDetailY = 260f;
+        private const float BannerTitleHeight = 200f;
+        private const float BannerTitleY = 0f;
+        private const float BannerHintHeight = 90f;
+        private const float BannerHintY = -160f;
         private const int BannerTitleFontSize = 110;
         private const int BannerTitleMinFontSize = 60;
         private const int BannerDetailFontSize = 52;
@@ -52,10 +77,12 @@ namespace MiniGame.Golf.Editor
 
         private const float ScoreCardBoxHeight = 1150f;
         private const float ScoreGridHeight = 560f;
+        private const float ScoreCellWidth = 100f;
+        private const float ScoreCellHeight = 80f;
         private const int ScoreCellFontSize = 40;
         private const int ScoreCellMinFontSize = 18;
 
-        /// <summary>モード（1ホール／3ホール）→ 人数 → 人間/NPC → 試合開始 を縦に並べる（§11.1）</summary>
+        /// <summary>モード（1ホール／3ホール）→ 人数 → 人間/NPC → 試合開始 を縦に並べる</summary>
         public static GolfSetupPanel CreateSetupPanel(Transform canvas)
         {
             GameObject panelObj = CreateDimmedPanel(canvas, "GolfSetupPanel");
@@ -63,47 +90,57 @@ namespace MiniGame.Golf.Editor
 
             CreateText(box, "Title", "ゴルフ 設定", TitleFontSize, RowWidth, RowHeight);
 
-            CreateText(box, "ModeLabel", "モード", LabelFontSize, RowWidth, RowHeight * 0.6f);
+            CreateSectionLabel(box, "ModeLabel", "モード");
             Transform modeRow = CreateRow(box, "ModeRow");
             Button oneHole = CreateChoiceButton(modeRow, "Btn_OneHole", "1ホール", ModeButtonWidth);
             Button threeHole = CreateChoiceButton(modeRow, "Btn_ThreeHole", $"{GolfRules.LongModeHoleCount}ホール", ModeButtonWidth);
 
-            CreateText(box, "CountLabel", "人数", LabelFontSize, RowWidth, RowHeight * 0.6f);
-            Transform countRow = CreateRow(box, "CountRow");
-            var countButtons = new Button[GolfSetupPanel.MaxPlayers - GolfSetupPanel.MinPlayers + 1];
-            for (int i = 0; i < countButtons.Length; i++)
-            {
-                int count = GolfSetupPanel.MinPlayers + i;
-                countButtons[i] = CreateChoiceButton(countRow, $"Btn_{count}Players", $"{count}人", CountButtonWidth);
-            }
+            CreateSectionLabel(box, "CountLabel", "人数");
+            Button[] countButtons = CreateCountButtons(CreateRow(box, "CountRow"));
 
-            CreateText(box, "TypeLabel", "人間 / NPC（タップで切り替え）", LabelFontSize, RowWidth, RowHeight * 0.6f);
-            Transform typeRow = CreateRow(box, "TypeRow");
-            typeRow.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, TypeButtonHeight);
-            var typeButtons = new Button[GolfSetupPanel.MaxPlayers];
-            for (int i = 0; i < typeButtons.Length; i++)
-            {
-                // ラベルは GolfSetupPanel が「P1 / 人間」のように実行時に書き換える
-                GameObject obj = UIDialogBuilder.CreateButton(typeRow, $"Btn_TypeP{i + 1}", string.Empty, TypeButtonWidth,
-                    TypeButtonHeight, ChoiceColor);
-                obj.GetComponentInChildren<Text>().fontSize = TypeButtonFontSize;
-                typeButtons[i] = obj.GetComponent<Button>();
-            }
+            CreateSectionLabel(box, "TypeLabel", "人間 / NPC（タップで切り替え）");
+            Button[] typeButtons = CreateTypeButtons(CreateRow(box, "TypeRow", TypeButtonHeight));
 
             Button start = CreatePrimaryButton(box, "Btn_Start", "試合開始").GetComponent<Button>();
 
             var panel = panelObj.AddComponent<GolfSetupPanel>();
             GolfSceneBuilder.SetRefs(panel, ("_oneHoleButton", oneHole), ("_threeHoleButton", threeHole),
                 ("_startButton", start));
-            SetArray(panel, "_countButtons", countButtons);
-            SetArray(panel, "_typeButtons", typeButtons);
+            GolfSceneBuilder.SetArray(panel, "_countButtons", countButtons);
+            GolfSceneBuilder.SetArray(panel, "_typeButtons", typeButtons);
 
             panelObj.SetActive(false);
             return panel;
         }
 
+        private static Button[] CreateCountButtons(Transform row)
+        {
+            var buttons = new Button[GolfSetupPanel.MaxPlayers - GolfSetupPanel.MinPlayers + 1];
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                int count = GolfSetupPanel.MinPlayers + i;
+                buttons[i] = CreateChoiceButton(row, $"Btn_{count}Players", $"{count}人", CountButtonWidth);
+            }
+
+            return buttons;
+        }
+
+        private static Button[] CreateTypeButtons(Transform row)
+        {
+            var buttons = new Button[GolfSetupPanel.MaxPlayers];
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                // ラベルは GolfSetupPanel が「P1 / 人間」のように実行時に書き換える
+                GameObject obj = GolfSceneBuilder.CreateButton(row, $"Btn_TypeP{i + 1}", string.Empty, TypeButtonWidth,
+                    TypeButtonHeight, ChoiceColor, TypeButtonFontSize);
+                buttons[i] = obj.GetComponent<Button>();
+            }
+
+            return buttons;
+        }
+
         /// <summary>
-        /// 人数設定の後に1人ずつキャラを選ぶパネル（§21.4）。
+        /// 人数設定の後に1人ずつキャラを選ぶパネル。
         /// 立ち絵を大きく中央に置き、左右の ◀ ▶ で切り替える。能力は2行のマス表示で見せる
         /// </summary>
         public static GolfCharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, GolfCharacterCatalog catalog)
@@ -114,47 +151,54 @@ namespace MiniGame.Golf.Editor
             Text title = CreateText(box, "Title", string.Empty, TitleFontSize, RowWidth, RowHeight);
             FitToRect(title, LabelFontSize);
 
-            Transform portraitRow = CreateRow(box, "PortraitRow");
-            portraitRow.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, PortraitHeight);
-            Button prev = CreateSquareButton(portraitRow, "Btn_Prev", "◀");
-            GameObject portraitObj = UIDialogBuilder.CreateUIObject("Portrait", portraitRow);
-            portraitObj.GetComponent<RectTransform>().sizeDelta = new Vector2(PortraitWidth, PortraitHeight);
-            var portrait = portraitObj.AddComponent<Image>();
-            portrait.preserveAspect = true;
-            portrait.raycastTarget = false;
-            Button next = CreateSquareButton(portraitRow, "Btn_Next", "▶");
+            Image portrait = CreatePortraitRow(box, out Button prev, out Button next);
 
             Text nameText = CreateText(box, "NameText", string.Empty, CharacterNameFontSize, RowWidth, RowHeight);
-            nameText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
+            nameText.gameObject.AddComponent<Outline>().effectDistance = NameOutlineDistance;
 
-            // 飛距離 0.9〜1.15、曲がりにくさ 0.75〜1.35 の差がマスの数で見えるよう、バーごとに幅を合わせる
-            GolfStatBarView distanceBar = CreateStatRow(box, "Distance", "飛距離", 0.8f, 1.25f);
-            GolfStatBarView straightnessBar = CreateStatRow(box, "Straightness", "曲がりにくさ", 0.75f, 1.35f);
+            GolfStatBarView distanceBar = CreateStatRow(box, "Distance", "飛距離", DistanceBarMin, DistanceBarMax);
+            GolfStatBarView straightnessBar = CreateStatRow(box, "Straightness", "曲がりにくさ", StraightnessBarMin,
+                StraightnessBarMax);
 
-            Transform buttonRow = CreateRow(box, "ButtonRow");
-            buttonRow.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, PrimaryButtonHeight);
-            GameObject backObj = UIDialogBuilder.CreateButton(buttonRow, "Btn_Back", "戻る", BackButtonWidth,
-                PrimaryButtonHeight, ChoiceColor);
-            backObj.GetComponentInChildren<Text>().fontSize = ButtonFontSize;
-            GameObject confirmObj = UIDialogBuilder.CreateButton(buttonRow, "Btn_Confirm", "決定", ConfirmButtonWidth,
-                PrimaryButtonHeight, PrimaryColor);
-            confirmObj.GetComponentInChildren<Text>().fontSize = PrimaryButtonFontSize;
+            CreateBackConfirmRow(box, out Button back, out Button confirm);
 
             var panel = panelObj.AddComponent<GolfCharacterSelectPanel>();
             GolfSceneBuilder.SetRefs(panel, ("_catalog", catalog), ("_titleText", title), ("_portrait", portrait),
                 ("_nameText", nameText), ("_distanceBar", distanceBar), ("_straightnessBar", straightnessBar),
                 ("_prevButton", prev), ("_nextButton", next),
-                ("_confirmButton", confirmObj.GetComponent<Button>()), ("_backButton", backObj.GetComponent<Button>()));
+                ("_confirmButton", confirm), ("_backButton", back));
 
             panelObj.SetActive(false);
             return panel;
         }
 
+        /// <summary>◀ 立ち絵 ▶ の行</summary>
+        private static Image CreatePortraitRow(Transform box, out Button prev, out Button next)
+        {
+            Transform row = CreateRow(box, "PortraitRow", PortraitHeight);
+            prev = CreateSquareButton(row, "Btn_Prev", "◀");
+            GameObject portraitObj = UIDialogBuilder.CreateUIObject("Portrait", row);
+            portraitObj.GetComponent<RectTransform>().sizeDelta = new Vector2(PortraitWidth, PortraitHeight);
+            var portrait = portraitObj.AddComponent<Image>();
+            portrait.preserveAspect = true;
+            portrait.raycastTarget = false;
+            next = CreateSquareButton(row, "Btn_Next", "▶");
+            return portrait;
+        }
+
+        private static void CreateBackConfirmRow(Transform box, out Button back, out Button confirm)
+        {
+            Transform row = CreateRow(box, "ButtonRow", PrimaryButtonHeight);
+            back = GolfSceneBuilder.CreateButton(row, "Btn_Back", "戻る", BackButtonWidth, PrimaryButtonHeight,
+                ChoiceColor, ButtonFontSize).GetComponent<Button>();
+            confirm = GolfSceneBuilder.CreateButton(row, "Btn_Confirm", "決定", ConfirmButtonWidth, PrimaryButtonHeight,
+                PrimaryColor, PrimaryButtonFontSize).GetComponent<Button>();
+        }
+
         /// <summary>能力1行（ラベル＋5マス）</summary>
         private static GolfStatBarView CreateStatRow(Transform parent, string name, string label, float min, float max)
         {
-            Transform row = CreateRow(parent, $"Stat_{name}");
-            row.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, StatRowHeight);
+            Transform row = CreateRow(parent, $"Stat_{name}", StatRowHeight);
             Text labelText = CreateText(row, "Label", label, LabelFontSize, StatLabelWidth, StatRowHeight);
             labelText.alignment = TextAnchor.MiddleLeft;
 
@@ -168,7 +212,7 @@ namespace MiniGame.Golf.Editor
             }
 
             var bar = row.gameObject.AddComponent<GolfStatBarView>();
-            SetArray(bar, "_cells", cells);
+            GolfSceneBuilder.SetArray(bar, "_cells", cells);
             var so = new SerializedObject(bar);
             so.FindProperty("_minMultiplier").floatValue = min;
             so.FindProperty("_maxMultiplier").floatValue = max;
@@ -178,9 +222,8 @@ namespace MiniGame.Golf.Editor
 
         private static Button CreateSquareButton(Transform parent, string name, string label)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, ArrowButtonSize, ArrowButtonSize, ChoiceColor);
-            obj.GetComponentInChildren<Text>().fontSize = PrimaryButtonFontSize;
-            return obj.GetComponent<Button>();
+            return GolfSceneBuilder.CreateButton(parent, name, label, ArrowButtonSize, ArrowButtonSize, ChoiceColor,
+                PrimaryButtonFontSize).GetComponent<Button>();
         }
 
         /// <summary>画面全体をボタンにして、どこをタップしても開始できるようにする</summary>
@@ -192,15 +235,15 @@ namespace MiniGame.Golf.Editor
             var tapArea = bannerObj.AddComponent<Button>();
             tapArea.transition = Selectable.Transition.None;
 
-            Text detail = CreateText(bannerObj.transform, "DetailText", string.Empty, BannerDetailFontSize, 1000f, 300f);
-            SetCenter(detail.rectTransform, 260f);
-            Text title = CreateText(bannerObj.transform, "TitleText", string.Empty, BannerTitleFontSize, 1000f, 200f);
-            SetCenter(title.rectTransform, 0f);
-            title.gameObject.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            Text detail = CreateBannerText(bannerObj.transform, "DetailText", string.Empty, BannerDetailFontSize,
+                BannerDetailHeight, BannerDetailY);
+            Text title = CreateBannerText(bannerObj.transform, "TitleText", string.Empty, BannerTitleFontSize,
+                BannerTitleHeight, BannerTitleY);
+            title.gameObject.AddComponent<Outline>().effectDistance = BannerTitleOutlineDistance;
             // 「P1 テクニック型 の番」が2行に折り返して下のヒントと重ならないよう、1行に収まる大きさまで縮める
             FitToRect(title, BannerTitleMinFontSize);
-            Text hint = CreateText(bannerObj.transform, "HintText", "タップで開始", BannerHintFontSize, 1000f, 90f);
-            SetCenter(hint.rectTransform, -160f);
+            Text hint = CreateBannerText(bannerObj.transform, "HintText", "タップで開始", BannerHintFontSize,
+                BannerHintHeight, BannerHintY);
 
             var banner = bannerObj.AddComponent<GolfTurnBannerView>();
             GolfSceneBuilder.SetRefs(banner, ("_titleText", title), ("_detailText", detail), ("_hintText", hint),
@@ -211,27 +254,28 @@ namespace MiniGame.Golf.Editor
             return banner;
         }
 
-        /// <summary>タイトル → 表（セルは ScoreCardView が実行時に作る）→ ボタン2つ（§13.4）</summary>
+        private static Text CreateBannerText(Transform parent, string name, string content, int fontSize, float height,
+            float y)
+        {
+            Text text = CreateText(parent, name, content, fontSize, BannerTextWidth, height);
+            RectTransform rect = text.rectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = CenterAnchor;
+            rect.anchoredPosition = new Vector2(0f, y);
+            return text;
+        }
+
+        /// <summary>タイトル → 表（セルは ScoreCardView が実行時に作る）→ ボタン2つ</summary>
         public static ScoreCardView CreateScoreCard(Transform canvas)
         {
             GameObject panelObj = CreateDimmedPanel(canvas, "ScoreCard");
             Transform box = CreateBox(panelObj.transform, ScoreCardBoxHeight);
 
             Text title = CreateText(box, "Title", string.Empty, TitleFontSize, RowWidth, RowHeight);
-
-            GameObject gridObj = UIDialogBuilder.CreateUIObject("Grid", box);
-            gridObj.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, ScoreGridHeight);
-            var grid = gridObj.AddComponent<GridLayoutGroup>();
-            grid.childAlignment = TextAnchor.UpperCenter;
-
-            Text cellTemplate = CreateText(gridObj.transform, "CellTemplate", string.Empty, ScoreCellFontSize, 100f, 80f);
-            // 見出し列の「1位 P1」「テクニック型」の2行がセルに収まるよう縮める。数字だけのセルは元の大きさのまま
-            FitToRect(cellTemplate, ScoreCellMinFontSize);
+            GridLayoutGroup grid = CreateScoreGrid(box, out Text cellTemplate);
 
             GameObject primaryObj = CreatePrimaryButton(box, "Btn_Primary", string.Empty);
-            GameObject secondaryObj = UIDialogBuilder.CreateButton(box, "Btn_Title", "タイトルへ",
-                PrimaryButtonWidth, RowHeight, ChoiceColor);
-            secondaryObj.GetComponentInChildren<Text>().fontSize = ButtonFontSize;
+            GameObject secondaryObj = GolfSceneBuilder.CreateButton(box, "Btn_Title", "タイトルへ",
+                PrimaryButtonWidth, RowHeight, ChoiceColor, ButtonFontSize);
 
             var view = panelObj.AddComponent<ScoreCardView>();
             GolfSceneBuilder.SetRefs(view, ("_titleText", title), ("_grid", grid), ("_cellTemplate", cellTemplate),
@@ -241,6 +285,20 @@ namespace MiniGame.Golf.Editor
 
             panelObj.SetActive(false);
             return view;
+        }
+
+        private static GridLayoutGroup CreateScoreGrid(Transform box, out Text cellTemplate)
+        {
+            GameObject gridObj = UIDialogBuilder.CreateUIObject("Grid", box);
+            gridObj.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, ScoreGridHeight);
+            var grid = gridObj.AddComponent<GridLayoutGroup>();
+            grid.childAlignment = TextAnchor.UpperCenter;
+
+            cellTemplate = CreateText(gridObj.transform, "CellTemplate", string.Empty, ScoreCellFontSize, ScoreCellWidth,
+                ScoreCellHeight);
+            // 見出し列の「1位 P1」「テクニック型」の2行がセルに収まるよう縮める。数字だけのセルは元の大きさのまま
+            FitToRect(cellTemplate, ScoreCellMinFontSize);
+            return grid;
         }
 
         private static GameObject CreateDimmedPanel(Transform canvas, string name)
@@ -256,13 +314,13 @@ namespace MiniGame.Golf.Editor
         {
             GameObject boxObj = UIDialogBuilder.CreateUIObject("Box", parent);
             var rect = boxObj.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchorMin = rect.anchorMax = rect.pivot = CenterAnchor;
             rect.sizeDelta = new Vector2(BoxWidth, height);
             boxObj.AddComponent<Image>().color = BoxColor;
 
             var layout = boxObj.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(40, 40, 40, 40);
-            layout.spacing = 28f;
+            layout.padding = new RectOffset(BoxPadding, BoxPadding, BoxPadding, BoxPadding);
+            layout.spacing = BoxSpacing;
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = false;
             layout.childControlHeight = false;
@@ -271,12 +329,12 @@ namespace MiniGame.Golf.Editor
             return boxObj.transform;
         }
 
-        private static Transform CreateRow(Transform parent, string name)
+        private static Transform CreateRow(Transform parent, string name, float height = RowHeight)
         {
             GameObject rowObj = UIDialogBuilder.CreateUIObject(name, parent);
-            rowObj.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, RowHeight);
+            rowObj.GetComponent<RectTransform>().sizeDelta = new Vector2(RowWidth, height);
             var layout = rowObj.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 20f;
+            layout.spacing = RowSpacing;
             layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childControlWidth = false;
             layout.childControlHeight = false;
@@ -285,19 +343,21 @@ namespace MiniGame.Golf.Editor
             return rowObj.transform;
         }
 
+        private static void CreateSectionLabel(Transform box, string name, string label)
+        {
+            CreateText(box, name, label, LabelFontSize, RowWidth, LabelRowHeight);
+        }
+
         private static Button CreateChoiceButton(Transform parent, string name, string label, float width)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, width, RowHeight, ChoiceColor);
-            obj.GetComponentInChildren<Text>().fontSize = ButtonFontSize;
-            return obj.GetComponent<Button>();
+            return GolfSceneBuilder.CreateButton(parent, name, label, width, RowHeight, ChoiceColor, ButtonFontSize)
+                .GetComponent<Button>();
         }
 
         private static GameObject CreatePrimaryButton(Transform parent, string name, string label)
         {
-            GameObject obj = UIDialogBuilder.CreateButton(parent, name, label, PrimaryButtonWidth, PrimaryButtonHeight,
-                PrimaryColor);
-            obj.GetComponentInChildren<Text>().fontSize = PrimaryButtonFontSize;
-            return obj;
+            return GolfSceneBuilder.CreateButton(parent, name, label, PrimaryButtonWidth, PrimaryButtonHeight,
+                PrimaryColor, PrimaryButtonFontSize);
         }
 
         private static Text CreateText(Transform parent, string name, string content, int fontSize, float width, float height)
@@ -327,25 +387,6 @@ namespace MiniGame.Golf.Editor
             text.resizeTextMaxSize = text.fontSize;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Truncate;
-        }
-
-        private static void SetCenter(RectTransform rect, float y)
-        {
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(0f, y);
-        }
-
-        private static void SetArray(Object target, string property, Object[] values)
-        {
-            var so = new SerializedObject(target);
-            SerializedProperty array = so.FindProperty(property);
-            array.arraySize = values.Length;
-            for (int i = 0; i < values.Length; i++)
-            {
-                array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
-            }
-
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
     }
 }

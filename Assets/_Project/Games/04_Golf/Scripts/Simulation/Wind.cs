@@ -4,7 +4,7 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1ホールの間変わらない風（§9.4）。向きは地面の平面（X＝左右／Y＝奥行きZ）で、風が吹いていく方向。
+    /// 1ホールの間変わらない風。向きは地面の平面（X＝左右／Y＝奥行きZ）で、風が吹いていく方向。
     /// </summary>
     public readonly struct Wind
     {

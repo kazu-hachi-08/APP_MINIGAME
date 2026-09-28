@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 3タップゲージの表示（§7.4）。ゲージ自体がボタンで、押すとスイングを始める。
+    /// 3タップゲージの表示。ゲージ自体がボタンで、押すとスイングを始める。
     /// マーカー・インパクトゾーン・決めたパワーの位置を、ゲージの幅に対する割合で置く。
     /// </summary>
     public class ShotGaugeView : MonoBehaviour

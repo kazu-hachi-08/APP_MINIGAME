@@ -6,8 +6,8 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 試合前の設定（§11.1）。モード（1ホール／3ホール）・人数（2〜4人）・各プレイヤーの人間/NPC を選ぶ。
-    /// 登録ホールが3つ未満なら3ホールモードは押せない（§6.2）。全員NPCでは開始できない。
+    /// 試合前の設定。モード（1ホール／3ホール）・人数（2〜4人）・各プレイヤーの人間/NPC を選ぶ。
+    /// 登録ホールが3つ未満なら3ホールモードは押せない。全員NPCでは開始できない。
     /// </summary>
     public class GolfSetupPanel : MonoBehaviour
     {
@@ -85,26 +85,35 @@ namespace MiniGame.Golf
 
         private void Refresh()
         {
-            _oneHoleButton.image.color = _holeCount == OneHole ? _selectedColor : _unselectedColor;
-            _threeHoleButton.image.color = _holeCount == GolfRules.LongModeHoleCount ? _selectedColor : _unselectedColor;
+            _oneHoleButton.image.color = SelectionColor(_holeCount == OneHole);
+            _threeHoleButton.image.color = SelectionColor(_holeCount == GolfRules.LongModeHoleCount);
 
             for (int i = 0; i < _countButtons.Length; i++)
             {
-                _countButtons[i].image.color = MinPlayers + i == _playerCount ? _selectedColor : _unselectedColor;
+                _countButtons[i].image.color = SelectionColor(MinPlayers + i == _playerCount);
             }
 
-            for (int i = 0; i < _typeButtons.Length; i++)
-            {
-                _typeButtons[i].gameObject.SetActive(i < _playerCount);
-                _typeButtons[i].image.color = _types[i] == GolfPlayerType.Human ? _unselectedColor : _npcColor;
-                _typeButtons[i].GetComponentInChildren<Text>().text =
-                    $"{GolfPlayerColors.Colored(i, GolfPlayerColors.Name(i))}\n{GolfPlayerColors.TypeName(_types[i])}";
-            }
+            for (int i = 0; i < _typeButtons.Length; i++) RefreshTypeButton(i);
 
             _startButton.interactable = HasHuman();
         }
 
-        /// <summary>§11.1 全員NPCは不可（最低1人は人間）</summary>
+        /// <summary>人数より後ろの席は隠す。NPC の席は色を変えて、人間の席と見分けやすくする</summary>
+        private void RefreshTypeButton(int seat)
+        {
+            Button button = _typeButtons[seat];
+            button.gameObject.SetActive(seat < _playerCount);
+            button.image.color = _types[seat] == GolfPlayerType.Human ? _unselectedColor : _npcColor;
+            button.GetComponentInChildren<Text>().text =
+                $"{GolfPlayerColors.Colored(seat, GolfPlayerColors.Name(seat))}\n{GolfPlayerColors.TypeName(_types[seat])}";
+        }
+
+        private Color SelectionColor(bool selected)
+        {
+            return selected ? _selectedColor : _unselectedColor;
+        }
+
+        /// <summary>全員NPCは不可（最低1人は人間）</summary>
         private bool HasHuman()
         {
             for (int i = 0; i < _playerCount; i++)

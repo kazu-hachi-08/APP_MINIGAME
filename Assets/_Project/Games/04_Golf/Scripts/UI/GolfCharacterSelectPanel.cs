@@ -6,13 +6,16 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル（§21.4）。
+    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル。
     /// モルックの CharacterSelectPanel と同じ流れ。1台を回して遊ぶ前提なので、画面は「今選んでいる1人」だけを大きく見せる。
     /// NPCはランダムで選んだ状態から始め、そのまま決定しても人間が代わりに変えてもよい。
-    /// オンライン（§21.5）では自分の席の1人だけを選び、決定後は全員が揃うまで待機表示にする。
+    /// オンラインでは自分の席の1人だけを選び、決定後は全員が揃うまで待機表示にする。
     /// </summary>
     public class GolfCharacterSelectPanel : MonoBehaviour
     {
+        // 人間はまず基準のバランス型（カタログの先頭）を見せる
+        private const int DefaultCharacterIndex = 0;
+
         [SerializeField] private GolfCharacterCatalog _catalog;
 
         [SerializeField] private Text _titleText;
@@ -99,7 +102,7 @@ namespace MiniGame.Golf
             for (int i = 0; i < types.Count; i++)
             {
                 // 人間は基準のバランス型から、NPCは毎回違う相手になるようランダムから始める
-                selected[i] = types[i] == GolfPlayerType.Human ? 0 : UnityEngine.Random.Range(0, _catalog.Count);
+                selected[i] = types[i] == GolfPlayerType.Human ? DefaultCharacterIndex : UnityEngine.Random.Range(0, _catalog.Count);
             }
 
             return selected;
@@ -156,8 +159,11 @@ namespace MiniGame.Golf
             _titleText.text = IsOnline ? "あなたのキャラを選んでね" : $"{SeatLabel()} のキャラを選んでね";
             // 端末を回したときに誰の番か一目で分かるよう、席の色で出す
             _titleText.color = GolfPlayerColors.Get(_seat);
+            ShowCharacter(_catalog.Get(_selected[_seat]));
+        }
 
-            GolfCharacterData character = _catalog.Get(_selected[_seat]);
+        private void ShowCharacter(GolfCharacterData character)
+        {
             _portrait.sprite = character.FrontSprite;
             _nameText.text = character.DisplayName;
             _distanceBar.Show(character.DistanceMultiplier);

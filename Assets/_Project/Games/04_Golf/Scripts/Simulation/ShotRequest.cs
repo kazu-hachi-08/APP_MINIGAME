@@ -3,7 +3,7 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1打の入力（§7.6）。入力処理とゲームロジックの境目で、NPC・オンラインの相手も同じ形で打つ。
+    /// 1打の入力。入力処理とゲームロジックの境目で、NPC・オンラインの相手も同じ形で打つ。
     /// </summary>
     public readonly struct ShotRequest
     {

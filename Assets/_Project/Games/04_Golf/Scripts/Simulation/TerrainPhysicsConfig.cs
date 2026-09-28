@@ -2,7 +2,7 @@ using System;
 
 namespace MiniGame.Golf
 {
-    /// <summary>1種類の地面での転がり・跳ね返りと、そこから打つときの影響（§8.4）</summary>
+    /// <summary>1種類の地面での転がり・跳ね返りと、そこから打つときの影響</summary>
     [Serializable]
     public class TerrainPhysics
     {
@@ -39,7 +39,7 @@ namespace MiniGame.Golf
     }
 
     /// <summary>
-    /// 地面の種類ごとの転がり・跳ね返り（§8.4）。
+    /// 地面の種類ごとの転がり・跳ね返り。
     /// BallPhysicsConfig と同じく UnityEngine に依存させず、ScriptableObject（GolfTerrainSettings）の中に表示する。
     /// </summary>
     [Serializable]

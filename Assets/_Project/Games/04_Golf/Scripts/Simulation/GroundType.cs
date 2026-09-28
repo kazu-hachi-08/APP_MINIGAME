@@ -1,7 +1,7 @@
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 地面の種類（ライ。§8.4）。タイルアセットに数値で保存されるため、並びを変えずに末尾へ足すこと。
+    /// 地面の種類（ライ）。タイルアセットに数値で保存されるため、並びを変えずに末尾へ足すこと。
     /// </summary>
     public enum GroundType
     {

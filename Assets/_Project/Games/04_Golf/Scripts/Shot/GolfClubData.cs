@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1本のクラブ（§7.5）。飛び方の数値は手応えを見ながら詰めるため、クラブごとのアセットに切り出す。
+    /// 1本のクラブ。飛び方の数値は手応えを見ながら詰めるため、クラブごとのアセットに切り出す。
     /// 計算に使う値はテストしやすいようエンジン非依存の ClubConfig にまとめて持つ。
     /// </summary>
     [CreateAssetMenu(fileName = "GolfClubData", menuName = "MiniGame/Golf/Club Data")]

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 画面中央に大きく出す演出メッセージ（§13.3）。「ポン」と弾んで出て、少し見せてから消える。
+    /// 画面中央に大きく出す演出メッセージ。「ポン」と弾んで出て、少し見せてから消える。
     /// バーディー以上は脈打たせて、特別な結果だと分かるようにする。
     /// </summary>
     public class GolfMessageView : MonoBehaviour

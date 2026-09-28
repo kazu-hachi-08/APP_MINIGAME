@@ -1,7 +1,7 @@
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 3タップゲージの動きと結果（§7.4）。
+    /// 3タップゲージの動きと結果。
     /// マーカーの位置は 0（左端）〜1（右端）。入力やUIから切り離し、タップと経過時間だけで進めるので EditModeテストで検証できる。
     /// </summary>
     public sealed class ShotGauge
@@ -54,7 +54,7 @@ namespace MiniGame.Golf
             ImpactOffset = 0f;
         }
 
-        /// <summary>§7.4 ライでインパクトゾーンの幅を変える（バンカーは狭い）。構えるたびに呼ぶ</summary>
+        /// <summary>ライでインパクトゾーンの幅を変える（バンカーは狭い）。構えるたびに呼ぶ</summary>
         public void SetZoneScale(float scale)
         {
             _zoneHalfWidth = _baseZoneHalfWidth * scale;
@@ -94,7 +94,7 @@ namespace MiniGame.Golf
             else if (State == GaugeState.Returning)
             {
                 Marker -= _speed * deltaTime;
-                // §7.4 タップしなかったら、ゾーンを通り過ぎた最後の位置（左端）で打ったことにする
+                // タップしなかったら、ゾーンを通り過ぎた最後の位置（左端）で打ったことにする
                 if (Marker <= 0f)
                 {
                     Marker = 0f;

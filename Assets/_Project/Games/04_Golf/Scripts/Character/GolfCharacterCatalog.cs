@@ -14,17 +14,10 @@ namespace MiniGame.Golf
 
         public int Count => _characters.Length;
 
-        public GolfCharacterData Default => _characters[0];
-
         /// <summary>範囲外の番号はクランプする。相手端末から壊れた番号が届いても落ちないようにするため</summary>
         public GolfCharacterData Get(int index)
         {
             return _characters[Mathf.Clamp(index, 0, _characters.Length - 1)];
-        }
-
-        public int IndexOf(GolfCharacterData character)
-        {
-            return System.Array.IndexOf(_characters, character);
         }
     }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 今持っているクラブ（§7.5）。
+    /// 今持っているクラブ。
     /// グリーン上では自動でパターにし、それ以外ではカップまでの距離に届く一番短いクラブを初期値にする。
     /// </summary>
     public class ClubSelector : MonoBehaviour

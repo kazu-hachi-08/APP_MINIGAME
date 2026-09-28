@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 手番ではない人のボールの表示（§5）。ボール同士は当たらないので、止まっている位置に描くだけにする。
+    /// 手番ではない人のボールの表示。ボール同士は当たらないので、止まっている位置に描くだけにする。
     /// 人数は試合ごとに変わるので、最大人数ぶんを最初に作っておき、使わない分は隠す。
     /// </summary>
     public class OtherBallsView : MonoBehaviour

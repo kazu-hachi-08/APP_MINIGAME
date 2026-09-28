@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// NPC の3段階の強さ（§10.3）。強さの差は遊びながら詰めるため、アセットに切り出す。
+    /// NPC の3段階の強さ。強さの差は遊びながら詰めるため、アセットに切り出す。
     /// 計算に使う値はテストしやすいようエンジン非依存の NpcDifficultyConfig にまとめて持つ。
     /// </summary>
     [CreateAssetMenu(fileName = "GolfNpcDifficulty", menuName = "MiniGame/Golf/Npc Difficulty")]

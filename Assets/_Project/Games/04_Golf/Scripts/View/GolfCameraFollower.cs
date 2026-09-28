@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// カメラの追従（§4.3）。狙っている間はゴルファーの背中越し（Perspective）に打つ方向を見せ、
+    /// カメラの追従。狙っている間はゴルファーの背中越し（Perspective）に打つ方向を見せ、
     /// 打ってフォロースルーを見せ終えたら真上視点（Orthographic）に戻ってボールを追う。
     /// 高さでずれるボール本体ではなく地面の位置を追うことで、飛んでいる間もカメラが上下に揺れないようにする。
     /// 「全体」ボタンを押している間だけ、ホール全体を真上から見せる。
@@ -155,24 +155,23 @@ namespace MiniGame.Golf
 
         private void SetTopDown(bool snap)
         {
-            _camera.orthographic = true;
-            _camera.orthographicSize = _baseSize;
-            transform.rotation = Quaternion.identity;
-
-            Vector2 ground = _ball.GroundPosition;
-            MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap);
+            LookDownAt(_ball.GroundPosition, snap);
         }
 
         private void SetFlyover()
         {
+            Vector2 cup = _holeLoader.CurrentCourse.CupPosition;
+            Vector2 ball = _ball.GroundPosition;
+            LookDownAt(Vector2.Lerp(cup, ball, Mathf.SmoothStep(0f, 1f, _flyoverProgress)), snap: true);
+        }
+
+        /// <summary>通常の広さの真上視点で、地面の位置より少し奥（打つ先）までを映す</summary>
+        private void LookDownAt(Vector2 ground, bool snap)
+        {
             _camera.orthographic = true;
             _camera.orthographicSize = _baseSize;
             transform.rotation = Quaternion.identity;
-
-            Vector2 cup = _holeLoader.CurrentCourse.CupPosition;
-            Vector2 ball = _ball.GroundPosition;
-            Vector2 ground = Vector2.Lerp(cup, ball, Mathf.SmoothStep(0f, 1f, _flyoverProgress));
-            MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap: true);
+            MoveTo(new Vector3(ground.x, ground.y + _lookAhead, _topDownZ), snap);
         }
 
         /// <summary>押している間は見ているだけなので、なめらかさより即座に全体が見えることを優先する</summary>

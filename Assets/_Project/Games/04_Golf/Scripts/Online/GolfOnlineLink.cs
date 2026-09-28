@@ -7,11 +7,11 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// オンライン対戦の送受信（§14）。送るのは「試合開始時のホールと風」「打った瞬間の入力」「止まった後の結果」の3つだけ。
+    /// オンライン対戦の送受信。送るのは「試合開始時のホールと風」「打った瞬間の入力」「止まった後の結果」の3つだけ。
     ///
     /// BallSimulator は端末ごとの小数の誤差でずれることがあるため、入力は他の端末で演出を再生するためだけに使い、
     /// 位置と打数は打った人の端末の結果で上書きする。打つ順番はボール位置から全端末で同じ計算になるので送らない。
-    /// キャラ選択（§21.5）では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
+    /// キャラ選択では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
     /// モルックと同じく NetworkObject を使わず名前付きメッセージだけで済ませ、クライアント同士はホストが中継する。
     /// </summary>
     public class GolfOnlineLink : MonoBehaviour
@@ -72,16 +72,7 @@ namespace MiniGame.Golf
         public void SendSetup(GolfMatchSetup setup)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
-            writer.WriteValueSafe(setup.HoleIndices.Count);
-            for (int i = 0; i < setup.HoleIndices.Count; i++)
-            {
-                Wind wind = setup.Winds[i];
-                writer.WriteValueSafe(setup.HoleIndices[i]);
-                writer.WriteValueSafe(wind.Direction.X);
-                writer.WriteValueSafe(wind.Direction.Y);
-                writer.WriteValueSafe(wind.Strength);
-            }
-
+            WriteSetup(writer, setup);
             Send(SetupMessage, writer, Network.LocalClientId);
         }
 
@@ -104,20 +95,14 @@ namespace MiniGame.Golf
         private void SendShot(GolfShotMessage shot, ulong originId)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
-            writer.WriteValueSafe(shot.Direction);
-            writer.WriteValueSafe(shot.ClubIndex);
-            writer.WriteValueSafe(shot.Power);
-            writer.WriteValueSafe(shot.ImpactOffset);
-            writer.WriteValueSafe((int)shot.Spin);
+            WriteShot(writer, shot);
             Send(ShotMessage, writer, originId);
         }
 
         private void SendResult(GolfShotResultMessage result, ulong originId)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
-            writer.WriteValueSafe(result.Position);
-            writer.WriteValueSafe(result.Strokes);
-            writer.WriteValueSafe(result.IsInCup);
+            WriteResult(writer, result);
             Send(ResultMessage, writer, originId);
         }
 
@@ -160,7 +145,54 @@ namespace MiniGame.Golf
 
         // ---- 受信 ----
 
+        /// <summary>ホストから届くだけなので中継はしない</summary>
         private void ReceiveSetup(ulong senderId, FastBufferReader reader)
+        {
+            OnSetupReceived?.Invoke(ReadSetup(reader));
+        }
+
+        private void ReceiveShot(ulong senderId, FastBufferReader reader)
+        {
+            GolfShotMessage shot = ReadShot(reader);
+
+            if (Network.IsServer) SendShot(shot, senderId);
+            OnShotReceived?.Invoke(shot);
+        }
+
+        private void ReceiveResult(ulong senderId, FastBufferReader reader)
+        {
+            GolfShotResultMessage result = ReadResult(reader);
+
+            if (Network.IsServer) SendResult(result, senderId);
+            OnResultReceived?.Invoke(result);
+        }
+
+        private void ReceiveCharacter(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out int seat);
+            reader.ReadValueSafe(out int characterIndex);
+
+            if (Network.IsServer) SendCharacter(seat, characterIndex, senderId);
+            OnCharacterReceived?.Invoke(seat, characterIndex);
+        }
+
+        // ---- 書き込み・読み込み ----
+        // 書く順番と読む順番がずれると別の値として読まれてしまうので、メッセージごとに対で並べておく
+
+        private static void WriteSetup(FastBufferWriter writer, GolfMatchSetup setup)
+        {
+            writer.WriteValueSafe(setup.HoleIndices.Count);
+            for (int i = 0; i < setup.HoleIndices.Count; i++)
+            {
+                Wind wind = setup.Winds[i];
+                writer.WriteValueSafe(setup.HoleIndices[i]);
+                writer.WriteValueSafe(wind.Direction.X);
+                writer.WriteValueSafe(wind.Direction.Y);
+                writer.WriteValueSafe(wind.Strength);
+            }
+        }
+
+        private static GolfMatchSetup ReadSetup(FastBufferReader reader)
         {
             reader.ReadValueSafe(out int count);
             var holeIndices = new int[count];
@@ -174,40 +206,41 @@ namespace MiniGame.Golf
                 winds[i] = new Wind(new System.Numerics.Vector2(directionX, directionY), strength);
             }
 
-            OnSetupReceived?.Invoke(new GolfMatchSetup(holeIndices, winds));
+            return new GolfMatchSetup(holeIndices, winds);
         }
 
-        private void ReceiveShot(ulong senderId, FastBufferReader reader)
+        private static void WriteShot(FastBufferWriter writer, GolfShotMessage shot)
+        {
+            writer.WriteValueSafe(shot.Direction);
+            writer.WriteValueSafe(shot.ClubIndex);
+            writer.WriteValueSafe(shot.Power);
+            writer.WriteValueSafe(shot.ImpactOffset);
+            writer.WriteValueSafe((int)shot.Spin);
+        }
+
+        private static GolfShotMessage ReadShot(FastBufferReader reader)
         {
             reader.ReadValueSafe(out Vector2 direction);
             reader.ReadValueSafe(out int clubIndex);
             reader.ReadValueSafe(out float power);
             reader.ReadValueSafe(out float impactOffset);
             reader.ReadValueSafe(out int spin);
-            var shot = new GolfShotMessage(direction, clubIndex, power, impactOffset, (ShotSpin)spin);
-
-            if (Network.IsServer) SendShot(shot, senderId);
-            OnShotReceived?.Invoke(shot);
+            return new GolfShotMessage(direction, clubIndex, power, impactOffset, (ShotSpin)spin);
         }
 
-        private void ReceiveResult(ulong senderId, FastBufferReader reader)
+        private static void WriteResult(FastBufferWriter writer, GolfShotResultMessage result)
+        {
+            writer.WriteValueSafe(result.Position);
+            writer.WriteValueSafe(result.Strokes);
+            writer.WriteValueSafe(result.IsInCup);
+        }
+
+        private static GolfShotResultMessage ReadResult(FastBufferReader reader)
         {
             reader.ReadValueSafe(out Vector2 position);
             reader.ReadValueSafe(out int strokes);
             reader.ReadValueSafe(out bool isInCup);
-            var result = new GolfShotResultMessage(position, strokes, isInCup);
-
-            if (Network.IsServer) SendResult(result, senderId);
-            OnResultReceived?.Invoke(result);
-        }
-
-        private void ReceiveCharacter(ulong senderId, FastBufferReader reader)
-        {
-            reader.ReadValueSafe(out int seat);
-            reader.ReadValueSafe(out int characterIndex);
-
-            if (Network.IsServer) SendCharacter(seat, characterIndex, senderId);
-            OnCharacterReceived?.Invoke(seat, characterIndex);
+            return new GolfShotResultMessage(position, strokes, isInCup);
         }
     }
 }

@@ -14,10 +14,18 @@ namespace MiniGame.Golf.Tests
         private static readonly ClubConfig Wedge = new ClubConfig(7f, 50f, 0.5f);
         private static readonly ClubConfig Putter = new ClubConfig(5f, 0f, 0.1f, true);
 
-        private static void Hit(BallSimulator simulator, Vector2 direction, float power, ClubConfig club = null,
-            float impactOffset = 0f)
+        /// <summary>地面・傾斜を省略するとどこでも平らなフェアウェイ</summary>
+        private static BallSimulator Create(Vector2 start, IGroundMap ground = null, ISlopeMap slope = null)
         {
-            simulator.Launch(new ShotRequest(direction, club ?? Iron, power, impactOffset));
+            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), ground, slope);
+            simulator.Place(start);
+            return simulator;
+        }
+
+        private static void Hit(BallSimulator simulator, Vector2 direction, float power, ClubConfig club = null,
+            float impactOffset = 0f, ShotSpin spin = ShotSpin.None)
+        {
+            simulator.Launch(new ShotRequest(direction, club ?? Iron, power, impactOffset, spin));
         }
 
         private static void Putt(BallSimulator simulator, Vector2 direction, float power)
@@ -25,12 +33,23 @@ namespace MiniGame.Golf.Tests
             Hit(simulator, direction, power, Putter);
         }
 
-        private static BallSimulator Shoot(float power, ClubConfig club = null, float impactOffset = 0f)
+        private static BallSimulator Shoot(float power, ClubConfig club = null, float impactOffset = 0f,
+            ShotSpin spin = ShotSpin.None)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(Vector2.Zero);
-            Hit(simulator, Forward, power, club, impactOffset);
+            BallSimulator simulator = Create(Vector2.Zero);
+            Hit(simulator, Forward, power, club, impactOffset, spin);
             return simulator;
+        }
+
+        /// <summary>最初に地面に着いた位置。打ち出し直後は高さ0なので、先に1回進める</summary>
+        private static Vector2 FirstLanding(BallSimulator simulator)
+        {
+            do
+            {
+                simulator.Advance();
+            } while (simulator.IsMoving && simulator.Height > 0f);
+
+            return simulator.Position;
         }
 
         private static float MaxHeight(BallSimulator simulator)
@@ -100,8 +119,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 打った方向へ飛ぶ()
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(new Vector2(3f, 5f));
+            BallSimulator simulator = Create(new Vector2(3f, 5f));
             Hit(simulator, new Vector2(1f, 0f), 1f);
 
             simulator.AdvanceToRest();
@@ -125,7 +143,7 @@ namespace MiniGame.Golf.Tests
             Assert.LessOrEqual(simulator.ElapsedTime, config.MaxSimulationTime + config.SimulationStep);
         }
 
-        // --- 地面の種類（Phase 2） ---
+        // --- 地面の種類 ---
 
         private sealed class UniformGround : IGroundMap
         {
@@ -138,8 +156,7 @@ namespace MiniGame.Golf.Tests
 
         private static float RestDistanceOn(GroundType ground, bool putt = false)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), new UniformGround(ground));
-            simulator.Place(Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero, new UniformGround(ground));
             if (putt)
             {
                 Putt(simulator, Forward, 1f);
@@ -175,8 +192,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void パットは高さを持たずに転がる()
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero);
             Putt(simulator, Forward, 0.5f);
 
             while (simulator.IsMoving)
@@ -188,13 +204,12 @@ namespace MiniGame.Golf.Tests
             Assert.Greater(simulator.Position.Y, 0f);
         }
 
-        // --- カップイン（Phase 2） ---
+        // --- カップイン ---
 
         private static BallSimulator PuttToward(Vector2 cup, float power)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), new UniformGround(GroundType.Green));
+            BallSimulator simulator = Create(Vector2.Zero, new UniformGround(GroundType.Green));
             simulator.SetCup(cup);
-            simulator.Place(Vector2.Zero);
             Putt(simulator, cup, power);
             simulator.AdvanceToRest();
             return simulator;
@@ -231,34 +246,17 @@ namespace MiniGame.Golf.Tests
         public void 空中から直接カップに落ちるとカップインする()
         {
             // 同じ入力なら同じ場所に落ちるので、1回目の最初の着地点にカップを置く
-            BallSimulator probe = Shoot(1f);
-            do
-            {
-                probe.Advance();
-            } while (probe.Height > 0f);
+            Vector2 landing = FirstLanding(Shoot(1f));
 
-            Vector2 landing = probe.Position;
-
-            var simulator = new BallSimulator(new BallPhysicsConfig());
+            BallSimulator simulator = Create(Vector2.Zero);
             simulator.SetCup(landing);
-            simulator.Place(Vector2.Zero);
             Hit(simulator, Forward, 1f);
             simulator.AdvanceToRest();
 
             Assert.IsTrue(simulator.IsInCup);
         }
 
-        // --- クラブ・インパクト・着地予測（Phase 3） ---
-
-        private static Vector2 FirstLanding(BallSimulator simulator)
-        {
-            do
-            {
-                simulator.Advance();
-            } while (simulator.IsMoving && simulator.Height > 0f);
-
-            return simulator.Position;
-        }
+        // --- クラブ・インパクト・着地予測 ---
 
         [Test]
         public void クラブで飛距離が変わる()
@@ -331,13 +329,11 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 着地予測はフルパワーでまっすぐ打った最初の着地点になる()
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(new Vector2(1f, 2f));
+            BallSimulator simulator = Create(new Vector2(1f, 2f));
 
             Vector2 predicted = simulator.PredictFullPower(Driver, Forward);
 
-            var actual = new BallSimulator(new BallPhysicsConfig());
-            actual.Place(new Vector2(1f, 2f));
+            BallSimulator actual = Create(new Vector2(1f, 2f));
             Hit(actual, Forward, 1f, Driver);
             Assert.AreEqual(FirstLanding(actual), predicted);
             // 予測しても元のボールは動かない
@@ -348,8 +344,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void パターの予測は止まる位置になる()
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero);
 
             Vector2 predicted = simulator.PredictFullPower(Putter, Forward);
 
@@ -358,7 +353,7 @@ namespace MiniGame.Golf.Tests
             Assert.AreEqual(actual.Position, predicted);
         }
 
-        // --- 池・OB・風・ライ（Phase 4） ---
+        // --- 池・OB・風・ライ ---
 
         /// <summary>奥行き boundaryY から先が指定の地面、手前はフェアウェイ</summary>
         private sealed class BeyondGround : IGroundMap
@@ -375,18 +370,10 @@ namespace MiniGame.Golf.Tests
             public GroundType GetGround(Vector2 position) => position.Y >= _boundaryY ? _beyond : GroundType.Fairway;
         }
 
-        private static BallSimulator CreateOn(IGroundMap ground, Vector2 start)
-        {
-            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), ground);
-            simulator.Place(start);
-            return simulator;
-        }
-
         private static BallSimulator CreateWithWind(Wind wind)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
+            BallSimulator simulator = Create(Vector2.Zero);
             simulator.SetWind(wind);
-            simulator.Place(Vector2.Zero);
             return simulator;
         }
 
@@ -394,7 +381,7 @@ namespace MiniGame.Golf.Tests
         public void 池に落ちると止まり池に入る直前の地点から打ち直す()
         {
             // 手前5ユニットから先が池。アイアンのフルショットは池の上を飛んで池に落ちる
-            BallSimulator simulator = CreateOn(new BeyondGround(5f, GroundType.Water), Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero, new BeyondGround(5f, GroundType.Water));
             Hit(simulator, Forward, 1f);
 
             simulator.AdvanceToRest();
@@ -408,7 +395,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 転がって池に入っても止まる()
         {
-            BallSimulator simulator = CreateOn(new BeyondGround(1f, GroundType.Water), Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero, new BeyondGround(1f, GroundType.Water));
             Putt(simulator, Forward, 1f);
 
             simulator.AdvanceToRest();
@@ -423,7 +410,7 @@ namespace MiniGame.Golf.Tests
         public void OBになると打つ前の場所から打ち直す()
         {
             var start = new Vector2(1f, 2f);
-            BallSimulator simulator = CreateOn(new BeyondGround(7f, GroundType.OutOfBounds), start);
+            BallSimulator simulator = Create(start, new BeyondGround(7f, GroundType.OutOfBounds));
             Hit(simulator, Forward, 1f);
 
             simulator.AdvanceToRest();
@@ -436,7 +423,7 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 置き直すと池OBの状態は消える()
         {
-            BallSimulator simulator = CreateOn(new BeyondGround(5f, GroundType.Water), Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero, new BeyondGround(5f, GroundType.Water));
             Hit(simulator, Forward, 1f);
             simulator.AdvanceToRest();
 
@@ -481,15 +468,14 @@ namespace MiniGame.Golf.Tests
         public void 着地予測に風は含めない()
         {
             BallSimulator windy = CreateWithWind(new Wind(new Vector2(1f, 0f), 5f));
-            var calm = new BallSimulator(new BallPhysicsConfig());
-            calm.Place(Vector2.Zero);
+            BallSimulator calm = Create(Vector2.Zero);
 
             Assert.AreEqual(calm.PredictFullPower(Driver, Forward), windy.PredictFullPower(Driver, Forward));
         }
 
         private static float CarryFrom(GroundType lie)
         {
-            BallSimulator simulator = CreateOn(new UniformGround(lie), Vector2.Zero);
+            BallSimulator simulator = Create(Vector2.Zero, new UniformGround(lie));
             Hit(simulator, Forward, 1f);
             return FirstLanding(simulator).Length();
         }
@@ -515,7 +501,7 @@ namespace MiniGame.Golf.Tests
             Assert.AreEqual(terrain.Bunker.ShotDistanceRate, rate, 0.05f);
         }
 
-        // --- グリーンの傾斜（Phase 5） ---
+        // --- グリーンの傾斜 ---
 
         /// <summary>どこでも同じ向き・強さの傾斜</summary>
         private sealed class UniformSlope : ISlopeMap
@@ -529,10 +515,7 @@ namespace MiniGame.Golf.Tests
 
         private static BallSimulator CreateOnSlopedGreen(Vector2 slope)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(),
-                new UniformGround(GroundType.Green), new UniformSlope(slope));
-            simulator.Place(Vector2.Zero);
-            return simulator;
+            return Create(Vector2.Zero, new UniformGround(GroundType.Green), new UniformSlope(slope));
         }
 
         private static Vector2 PuttOnSlope(Vector2 slope, float power = 0.6f)
@@ -579,10 +562,8 @@ namespace MiniGame.Golf.Tests
         /// <summary>右下りの強い傾斜で、3ユニット先のカップへ degrees（右回りが正）の向きにパットする</summary>
         private static bool HolesOutOnSideSlope(int degrees)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(),
-                new UniformGround(GroundType.Green), new UniformSlope(new Vector2(3f, 0f)));
+            BallSimulator simulator = CreateOnSlopedGreen(new Vector2(3f, 0f));
             simulator.SetCup(new Vector2(0f, 3f));
-            simulator.Place(Vector2.Zero);
             float radians = degrees * MathF.PI / 180f;
             Putt(simulator, new Vector2(MathF.Sin(radians), MathF.Cos(radians)), 0.8f);
             simulator.AdvanceToRest();
@@ -616,17 +597,14 @@ namespace MiniGame.Golf.Tests
         public void パターの予測に傾斜は含めない()
         {
             BallSimulator sloped = CreateOnSlopedGreen(new Vector2(1f, 0f));
-            var flat = new BallSimulator(new BallPhysicsConfig(), new TerrainPhysicsConfig(), new UniformGround(GroundType.Green));
-            flat.Place(Vector2.Zero);
+            BallSimulator flat = Create(Vector2.Zero, new UniformGround(GroundType.Green));
 
             Assert.AreEqual(flat.PredictFullPower(Putter, Forward), sloped.PredictFullPower(Putter, Forward));
         }
 
         private static float RestDistance(ClubConfig club, ShotSpin spin)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.Place(Vector2.Zero);
-            simulator.Launch(new ShotRequest(Forward, club, 1f, 0f, spin));
+            BallSimulator simulator = Shoot(1f, club, 0f, spin);
             simulator.AdvanceToRest();
             return simulator.Position.Y;
         }
@@ -647,9 +625,7 @@ namespace MiniGame.Golf.Tests
         public void スピンは着地点を変えない()
         {
             BallSimulator none = Shoot(1f);
-            var back = new BallSimulator(new BallPhysicsConfig());
-            back.Place(Vector2.Zero);
-            back.Launch(new ShotRequest(Forward, Iron, 1f, 0f, ShotSpin.Back));
+            BallSimulator back = Shoot(1f, Iron, 0f, ShotSpin.Back);
 
             Assert.AreEqual(FirstLanding(none), FirstLanding(back));
         }
@@ -660,17 +636,21 @@ namespace MiniGame.Golf.Tests
             Assert.AreEqual(RestDistance(Putter, ShotSpin.None), RestDistance(Putter, ShotSpin.Back));
         }
 
-        // ------------------------------------------------------------------
-        // キャラの能力倍率
-        // ------------------------------------------------------------------
+        // --- キャラの能力倍率 ---
+
         private static readonly CharacterAbility Power = new CharacterAbility(1.15f, 0.75f);
         private static readonly CharacterAbility Technique = new CharacterAbility(0.9f, 1.35f);
 
+        private static BallSimulator CreateAs(CharacterAbility character)
+        {
+            BallSimulator simulator = Create(Vector2.Zero);
+            simulator.SetCharacter(character);
+            return simulator;
+        }
+
         private static BallSimulator ShootAs(CharacterAbility character, ClubConfig club, float impactOffset = 0f)
         {
-            var simulator = new BallSimulator(new BallPhysicsConfig());
-            simulator.SetCharacter(character);
-            simulator.Place(Vector2.Zero);
+            BallSimulator simulator = CreateAs(character);
             Hit(simulator, Forward, 1f, club, impactOffset);
             return simulator;
         }
@@ -720,11 +700,8 @@ namespace MiniGame.Golf.Tests
         [Test]
         public void 着地予測と試し打ちにもキャラの能力が効く()
         {
-            var balance = new BallSimulator(new BallPhysicsConfig());
-            balance.Place(Vector2.Zero);
-            var power = new BallSimulator(new BallPhysicsConfig());
-            power.SetCharacter(Power);
-            power.Place(Vector2.Zero);
+            BallSimulator balance = CreateAs(CharacterAbility.Default);
+            BallSimulator power = CreateAs(Power);
 
             Assert.Greater(power.PredictFullPower(Driver, Forward).Length(),
                 balance.PredictFullPower(Driver, Forward).Length());

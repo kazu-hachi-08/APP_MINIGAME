@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 常に出すHUD（§13.1）。ホール・パー・全員の打数・今のライ・カップまでの残り距離と、直前のショットの結果を出す。
+    /// 常に出すHUD。ホール・パー・全員の打数・今のライ・カップまでの残り距離と、直前のショットの結果を出す。
     /// 風は WindView、池ポチャ・カップインなどの大きな演出は GolfMessageView が出すので、ここは文字情報だけにする。
     /// 打数は GolfGameManager（GolfPlayerSlot）が数えたものを読むだけにする。
     /// </summary>
@@ -22,6 +22,9 @@ namespace MiniGame.Golf
 
         // ゾーンの中心付近は曲がりがほとんど見えないので「ナイスショット」と出す
         private const float NiceShotRange = 0.2f;
+
+        // ずれは ±1 がゾーンの端。ゾーンを外したらミスショット
+        private const float ZoneEdge = 1f;
 
         private string _impactResult = string.Empty;
         private string _lastResult = string.Empty;
@@ -66,12 +69,18 @@ namespace MiniGame.Golf
             }
             else
             {
-                string hint = _input.CanAim ? HintMessage : string.Empty;
-                _text.text = header + $"{GroundName(_ball.Ground)}  残り {RemainingYards()}y\n" + _lastResult + hint;
+                _text.text = header + RestingInfo();
             }
         }
 
-        /// <summary>§4.1「▶P1 2打  P2 3打」。手番の人に ▶ を付け、名前はプレイヤー色にする</summary>
+        /// <summary>止まっている間は、次のショットを考える材料（ライ・残り距離・前のショット結果）と操作の案内を出す</summary>
+        private string RestingInfo()
+        {
+            string hint = _input.CanAim ? HintMessage : string.Empty;
+            return $"{GroundName(_ball.Ground)}  残り {RemainingYards()}y\n" + _lastResult + hint;
+        }
+
+        /// <summary>「▶P1 2打  P2 3打」。手番の人に ▶ を付け、名前はプレイヤー色にする</summary>
         private string StrokesLine()
         {
             var line = new StringBuilder();
@@ -88,8 +97,12 @@ namespace MiniGame.Golf
 
         private int RemainingYards()
         {
-            float units = Vector2.Distance(_ball.GroundPosition, _ball.CupPosition);
-            return Mathf.RoundToInt(units * _settings.YardsPerUnit);
+            return YardsBetween(_ball.GroundPosition, _ball.CupPosition);
+        }
+
+        private int YardsBetween(Vector2 from, Vector2 to)
+        {
+            return Mathf.RoundToInt(Vector2.Distance(from, to) * _settings.YardsPerUnit);
         }
 
         /// <summary>前の人のショット結果が残らないよう、手番が替わったら消す</summary>
@@ -120,14 +133,13 @@ namespace MiniGame.Golf
                 return;
             }
 
-            float units = Vector2.Distance(_ball.LaunchPosition, _ball.GroundPosition);
-            _lastResult = $"{_impactResult} 飛距離 {Mathf.RoundToInt(units * _settings.YardsPerUnit)}y\n";
+            _lastResult = $"{_impactResult} 飛距離 {YardsBetween(_ball.LaunchPosition, _ball.GroundPosition)}y\n";
         }
 
         /// <summary>ずれの符号は ShotRequest.ImpactOffset と同じ（+ が右）</summary>
         private static string ImpactName(float offset)
         {
-            if (Mathf.Abs(offset) > 1f) return "ミスショット";
+            if (Mathf.Abs(offset) > ZoneEdge) return "ミスショット";
             if (Mathf.Abs(offset) <= NiceShotRange) return "ナイスショット";
             return offset > 0f ? "スライス" : "フック";
         }

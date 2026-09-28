@@ -62,14 +62,7 @@ namespace MiniGame.Golf.Editor
             }
 
             var catalog = ScriptableObject.CreateInstance<GolfCharacterCatalog>();
-            var so = new SerializedObject(catalog);
-            SerializedProperty list = so.FindProperty("_characters");
-            list.arraySize = characters.Length;
-            for (int i = 0; i < characters.Length; i++)
-            {
-                list.GetArrayElementAtIndex(i).objectReferenceValue = characters[i];
-            }
-            so.ApplyModifiedPropertiesWithoutUndo();
+            GolfSceneBuilder.SetArray(catalog, "_characters", characters);
 
             AssetDatabase.CreateAsset(catalog, CatalogPath);
             AssetDatabase.SaveAssets();
