@@ -31,6 +31,10 @@ namespace MiniGame.Molkky
         private int _lobStepsLeft;
 
         public bool IsThrown { get; private set; }
+
+        /// <summary>手番のキャラの倍率を掛けた棒の長さ（地面単位）。見た目（StickView）もこの長さで描く</summary>
+        public float Length { get; private set; }
+
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
         public Vector2 GroundPosition => _body.position;
         public float RotationDegrees => _body.rotation;
@@ -65,7 +69,7 @@ namespace MiniGame.Molkky
 
             _capsule = GetComponent<CapsuleCollider2D>();
             _capsule.direction = CapsuleDirection2D.Horizontal;
-            _capsule.size = new Vector2(_settings.StickLength, _settings.StickThickness);
+            SetLength(_settings.StickLength);
             _capsule.sharedMaterial = new PhysicsMaterial2D("Stick") { bounciness = _settings.Bounciness, friction = 0f };
 
             PlaceOnLine(0f);
@@ -90,6 +94,21 @@ namespace MiniGame.Molkky
             transform.SetPositionAndRotation(_body.position, Quaternion.Euler(0f, 0f, rotation));
 
             IsThrown = false;
+        }
+
+        /// <summary>
+        /// 手番のキャラの棒の長さにする。当たり判定が変わるので、オンラインでは相手の手番でも必ず呼ぶ
+        /// （揃えないと相手端末と倒れるピンが変わる）
+        /// </summary>
+        public void SetCharacter(MolkkyCharacterData character)
+        {
+            SetLength(_settings.StickLength * character.StickLengthMultiplier);
+        }
+
+        private void SetLength(float length)
+        {
+            Length = length;
+            _capsule.size = new Vector2(Length, _settings.StickThickness);
         }
 
         /// <summary>投げ方を変え、構えている棒をその場で向き直す</summary>

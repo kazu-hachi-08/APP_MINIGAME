@@ -13,6 +13,7 @@ namespace MiniGame.Molkky
     public class MolkkyGameManager : BaseMiniGameManager
     {
         private const string LocalPlayerName = "あなた";
+        private const string SurvivorVictoryLine = "最後まで残った！";
 
         [Header("Molkky")]
         [SerializeField] private PinRack _pinRack;
@@ -32,6 +33,7 @@ namespace MiniGame.Molkky
         [SerializeField] private MolkkyCharacterCatalog _characterCatalog;
         [SerializeField] private CharacterSelectPanel _characterSelectPanel;
         [SerializeField] private ThrowerView _throwerView;
+        [SerializeField] private VictoryShowView _victoryShow;
 
         [Header("Online (§19)")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
@@ -65,6 +67,8 @@ namespace MiniGame.Molkky
         public MolkkyPhase Phase { get; private set; }
 
         private PlayerSlot CurrentPlayer => _players[_currentIndex];
+
+        private MolkkyCharacterData CurrentCharacter => _characterCatalog.Get(CurrentPlayer.CharacterIndex);
 
         private bool IsRemoteTurn => _isOnline && _currentIndex != _localIndex;
 
@@ -191,7 +195,7 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
-            _throwerView.SetCharacter(_characterCatalog.Get(CurrentPlayer.CharacterIndex));
+            ApplyCurrentCharacter();
             // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
             _input.SetArc(ThrowArc.Low);
@@ -214,6 +218,18 @@ namespace MiniGame.Molkky
             }
         }
 
+        /// <summary>
+        /// 人間・NPC・相手端末のどの手番でも適用する。棒の長さは当たり判定なので、
+        /// 相手の手番でも揃えておかないと再生で倒れるピンが相手端末とずれる
+        /// </summary>
+        private void ApplyCurrentCharacter()
+        {
+            MolkkyCharacterData character = CurrentCharacter;
+            _throwerView.SetCharacter(character);
+            _stick.SetCharacter(character);
+            _input.SetCharacter(character);
+        }
+
         /// <summary>1台を回すときだけ人間の番をタップ待ちにする。NPCとオンラインは端末を渡さないので自動で閉じる</summary>
         private IEnumerator PlayTurnBanner()
         {
@@ -225,7 +241,7 @@ namespace MiniGame.Molkky
 
         private IEnumerator NpcThrowRoutine()
         {
-            ThrowRequest request = _npc.CreateRequest(CurrentPlayer);
+            ThrowRequest request = _npc.CreateRequest(CurrentPlayer, CurrentCharacter);
             _stick.SetStyle(request.Style);
             _stick.PlaceOnLine(request.PositionX);
 
@@ -347,7 +363,12 @@ namespace MiniGame.Molkky
             bool isWin = result.Outcome == ThrowOutcome.Win;
             yield return new WaitForSeconds(isWin ? _winDisplayDuration : _scoreDisplayDuration);
 
-            if (TryFinish(result)) yield break;
+            PlayerSlot winner = FindWinner(result);
+            if (winner != null)
+            {
+                yield return FinishRoutine(winner, result);
+                yield break;
+            }
 
             Phase = MolkkyPhase.PinReset;
             _scorePopup.Hide();
@@ -374,20 +395,30 @@ namespace MiniGame.Molkky
             }
         }
 
-        /// <summary>50点ちょうど、または残り1人なら試合を終える</summary>
-        private bool TryFinish(ThrowResult result)
+        /// <summary>50点ちょうど、または残り1人なら勝者を返す。まだ続くなら null</summary>
+        private PlayerSlot FindWinner(ThrowResult result)
         {
-            PlayerSlot winner = result.Outcome == ThrowOutcome.Win
+            return result.Outcome == ThrowOutcome.Win
                 ? CurrentPlayer
                 : MolkkyRules.FindSoleSurvivor(_players);
-            if (winner == null) return false;
+        }
 
+        /// <summary>勝ったキャラの勝利演出を見せてから結果画面を出す（キャラクター計画 Phase C4）</summary>
+        private IEnumerator FinishRoutine(PlayerSlot winner, ThrowResult result)
+        {
             Phase = MolkkyPhase.GameSet;
             _scorePopup.Hide();
 
-            string detail = result.Outcome == ThrowOutcome.Win ? "50点ちょうど！" : "他のプレイヤーが失格";
+            bool exactWin = result.Outcome == ThrowOutcome.Win;
+            MolkkyCharacterData character = _characterCatalog.Get(winner.CharacterIndex);
+            // 失格で勝ったときに「ぴったり50点！」と言わせないよう、キャラ別のセリフは50点ちょうどのときだけ使う
+            string line = exactWin ? character.VictoryLine : SurvivorVictoryLine;
+            int winnerIndex = _players.IndexOf(winner);
+            _audio.PlayVictory();
+            yield return _victoryShow.Play(character, MolkkyPlayerColors.Get(winnerIndex), winner.Name, line);
+
+            string detail = exactWin ? "50点ちょうど！" : "他のプレイヤーが失格";
             FinishGame(IsLocalVictory(winner), $"{winner.Name} の勝ち", detail);
-            return true;
         }
 
         /// <summary>オンラインは自分が勝ったか、1台プレイはNPCが勝ったら人間側の負けとして GAME OVER を出す</summary>

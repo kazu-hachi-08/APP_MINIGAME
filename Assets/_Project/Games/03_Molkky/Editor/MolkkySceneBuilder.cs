@@ -169,6 +169,8 @@ namespace MiniGame.Molkky.Editor
             TurnBannerView turnBanner = CreateTurnBanner(canvasObj.transform);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvasObj.transform);
             CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvasObj.transform, characterCatalog);
+            // 結果ダイアログ（BuildDialogs）より先に作り、演出の後に出る結果画面が手前に来るようにする
+            VictoryShowView victoryShow = CreateVictoryShow(canvasObj.transform);
 
             var pauseButtonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_Pause", "II", 110, 110,
                 new Color(0.15f, 0.17f, 0.22f, 0.8f));
@@ -213,7 +215,7 @@ namespace MiniGame.Molkky.Editor
                 ("_styleButton", styleButton), ("_arcButton", arcButton), ("_modeSelectPanel", modeSelectPanel),
                 ("_onlineSession", onlineSession), ("_onlineLink", onlineLink),
                 ("_characterCatalog", characterCatalog), ("_characterSelectPanel", characterSelectPanel),
-                ("_throwerView", throwerView));
+                ("_throwerView", throwerView), ("_victoryShow", victoryShow));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -545,6 +547,52 @@ namespace MiniGame.Molkky.Editor
 
             panelObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>
+        /// 勝利演出（キャラクター計画 Phase C4）。画面全体をボタンにしてどこをタップしても飛ばせるようにする。
+        /// 上から 吹き出し → 立ち絵 → 名前 の順に縦に並べる
+        /// </summary>
+        private static VictoryShowView CreateVictoryShow(Transform canvas)
+        {
+            var showObj = UIDialogBuilder.CreateUIObject("VictoryShow", canvas);
+            UIDialogBuilder.SetStretchAll(showObj.GetComponent<RectTransform>());
+            var background = showObj.AddComponent<Image>();
+            var tapArea = showObj.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            var bubbleObj = UIDialogBuilder.CreateUIObject("Bubble", showObj.transform);
+            var bubbleRect = bubbleObj.GetComponent<RectTransform>();
+            bubbleRect.anchorMin = bubbleRect.anchorMax = bubbleRect.pivot = new Vector2(0.5f, 0.5f);
+            bubbleRect.anchoredPosition = new Vector2(0f, 560f);
+            bubbleRect.sizeDelta = new Vector2(860f, 200f);
+            var bubbleImage = bubbleObj.AddComponent<Image>();
+            bubbleImage.color = Color.white;
+            bubbleImage.raycastTarget = false;
+            Text line = CreateText(bubbleObj.transform, "LineText", 72,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 180f), new Color(0.1f, 0.1f, 0.12f));
+            FitToOneLine(line, 40);
+
+            var portraitObj = UIDialogBuilder.CreateUIObject("Portrait", showObj.transform);
+            var portraitRect = portraitObj.GetComponent<RectTransform>();
+            portraitRect.anchorMin = portraitRect.anchorMax = portraitRect.pivot = new Vector2(0.5f, 0.5f);
+            portraitRect.anchoredPosition = new Vector2(0f, -40f);
+            portraitRect.sizeDelta = new Vector2(500f, 750f);
+            var portrait = portraitObj.AddComponent<Image>();
+            portrait.preserveAspect = true;
+            portrait.raycastTarget = false;
+
+            Text nameText = CreateText(showObj.transform, "NameText", 80,
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -520f), new Vector2(1000f, 120f), Color.white);
+            nameText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            FitToOneLine(nameText, 48);
+
+            var show = showObj.AddComponent<VictoryShowView>();
+            SetRefs(show, ("_background", background), ("_tapArea", tapArea), ("_portraitRect", portraitRect),
+                ("_portrait", portrait), ("_nameText", nameText), ("_bubbleRect", bubbleRect), ("_lineText", line));
+
+            showObj.SetActive(false);
+            return show;
         }
 
         /// <summary>能力1行（ラベル＋5マス）</summary>

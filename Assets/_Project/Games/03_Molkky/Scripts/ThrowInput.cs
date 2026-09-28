@@ -41,6 +41,10 @@ namespace MiniGame.Molkky
         private bool _tracking;
         private Vector2 _lastPosition;
 
+        // 手番のキャラの能力倍率（キャラクター計画 §1）。バランス型＝1
+        private float _powerMultiplier = 1f;
+        private float _controlMultiplier = 1f;
+
         public bool IsAccepting { get; set; }
 
         /// <summary>投擲ライン上の現在位置（地面座標のX）</summary>
@@ -58,6 +62,16 @@ namespace MiniGame.Molkky
         public void ResetPosition(float x)
         {
             SetPosition(x);
+        }
+
+        /// <summary>
+        /// 手番のキャラの能力を投擲に反映する。ThrowRequest.Speed に焼き込むので、
+        /// オンラインの相手端末は受け取った初速をそのまま使えばよく、追加の同期はいらない
+        /// </summary>
+        public void SetCharacter(MolkkyCharacterData character)
+        {
+            _powerMultiplier = character.PowerMultiplier;
+            _controlMultiplier = character.ControlMultiplier;
         }
 
         public void SetStyle(ThrowStyle style)
@@ -162,8 +176,10 @@ namespace MiniGame.Molkky
             if (Mathf.Abs(angle) > _settings.MaxThrowAngle * _cancelAngleRatio) return;
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
-            float power = Mathf.InverseLerp(_minFlickSpeed, _maxFlickSpeed, flickSpeed);
-            float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed, power);
+            // コントロールが高いほど最大の強さに必要なフリックが速くなり、同じ指の速さの差で強さが変わりにくくなる
+            float maxFlickSpeed = _maxFlickSpeed * _controlMultiplier;
+            float power = Mathf.InverseLerp(_minFlickSpeed, maxFlickSpeed, flickSpeed);
+            float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed * _powerMultiplier, power);
 
             ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style, Arc));
         }
