@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 低め／山なりの切り替えボタン（§7.6）。今の軌道を表示し、押すと ThrowInput に切り替えを頼む。
+    /// 低め／山なりの切り替えボタン。今の軌道を表示し、押すと ThrowInput に切り替えを頼む。
     /// 表示・非表示は GameManager が人間の構え中だけ出すよう制御する。
     /// </summary>
     public class ThrowArcButton : MonoBehaviour

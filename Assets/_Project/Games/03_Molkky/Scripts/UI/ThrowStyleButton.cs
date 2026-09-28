@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 縦投げ／横投げの切り替えボタン（§7.5）。今の投げ方を表示し、押すと ThrowInput に切り替えを頼む。
+    /// 縦投げ／横投げの切り替えボタン。今の投げ方を表示し、押すと ThrowInput に切り替えを頼む。
     /// 表示・非表示は GameManager が人間の構え中だけ出すよう制御する。
     /// </summary>
     public class ThrowStyleButton : MonoBehaviour

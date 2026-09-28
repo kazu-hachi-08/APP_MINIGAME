@@ -5,12 +5,12 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 12本のピンの生成・初期配置・立て直し・倒れたピンの集計（§6.2 / §6.8）。
+    /// 12本のピンの生成・初期配置・立て直し・倒れたピンの集計。
     /// ピンは Prefab にせずコードで作る。Prefab/Scene の競合を減らし、本数や配置をここだけで管理するため。
     /// </summary>
     public class PinRack : MonoBehaviour
     {
-        // 手前の列から順に並べる（§6.2 の図と同じ並び）
+        // 公式ルールの初期配置。手前の列から順に並べる。生成順＝この順で、オンラインの状態配列の並びにもなる
         private static readonly int[][] InitialRows =
         {
             new[] { 1, 2 },
@@ -48,15 +48,20 @@ namespace MiniGame.Molkky
             {
                 foreach (int number in row)
                 {
-                    var obj = new GameObject($"Pin_{number}", typeof(Rigidbody2D), typeof(CircleCollider2D), typeof(Pin));
-                    obj.transform.SetParent(transform, false);
-
-                    var pin = obj.GetComponent<Pin>();
-                    pin.Initialize(number, _settings, material);
-                    pin.Fell += p => PinFell?.Invoke(p);
-                    _pins.Add(pin);
+                    _pins.Add(CreatePin(number, material));
                 }
             }
+        }
+
+        private Pin CreatePin(int number, PhysicsMaterial2D material)
+        {
+            var obj = new GameObject($"Pin_{number}", typeof(Rigidbody2D), typeof(CircleCollider2D), typeof(Pin));
+            obj.transform.SetParent(transform, false);
+
+            var pin = obj.GetComponent<Pin>();
+            pin.Initialize(number, _settings, material);
+            pin.Fell += p => PinFell?.Invoke(p);
+            return pin;
         }
 
         /// <summary>全ピンを初期配置に戻す</summary>
@@ -70,6 +75,7 @@ namespace MiniGame.Molkky
 
                 for (int i = 0; i < count; i++)
                 {
+                    // 列の中央が X=0 に来るよう左右対称に並べる
                     float x = (i - (count - 1) * 0.5f) * _settings.PinSpacing;
                     _pins[pinIndex].StandAt(new Vector2(x, z));
                     pinIndex++;
@@ -166,6 +172,7 @@ namespace MiniGame.Molkky
                         if (distance >= minDistance) continue;
 
                         Vector2 dir = distance > 0f ? delta / distance : Vector2.right;
+                        // 片方だけ動かすと倒れた場所から大きくずれるので、重なりを半分ずつ分け合う
                         Vector2 push = dir * (minDistance - distance) * 0.5f;
                         _pins[a].StandAt(_pins[a].GroundPosition - push);
                         _pins[b].StandAt(_pins[b].GroundPosition + push);

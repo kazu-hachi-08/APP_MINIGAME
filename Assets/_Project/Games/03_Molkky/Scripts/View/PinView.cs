@@ -4,7 +4,7 @@ namespace MiniGame.Molkky
 {
     /// <summary>
     /// ピン1本の見た目。ロジック用の Pin の地面座標を DepthProjector で擬似3Dへ変換して表示する。
-    /// 倒れたら横倒しにするが、数字は常に正立させて読めるようにする（§5.2）。
+    /// 倒れたら横倒しにするが、数字は常に正立させて読めるようにする。
     /// </summary>
     public class PinView : MonoBehaviour
     {
@@ -12,6 +12,9 @@ namespace MiniGame.Molkky
 
         // 数字を立っているピンの上寄りに置く。前の列のピンに下半分が隠れても読めるようにするため
         private const float StandingLabelHeightRatio = 0.72f;
+
+        // 倒れたピンは根元（地面座標）を軸に倒れたように見せたいので、本体と数字を倒れた側へずらす
+        private const float FallenOffsetRatio = 0.25f;
 
         private Pin _pin;
         private DepthProjector _projector;
@@ -69,17 +72,8 @@ namespace MiniGame.Molkky
         {
             if (_pin == null) return;
 
-            Vector2 ground = _pin.GroundPosition;
-            transform.position = _projector.Project(ground);
-            transform.localScale = Vector3.one * _projector.ScaleAt(ground.y);
-
-            int order = _projector.SortingOrderAt(ground.y);
-            _bodyRenderer.sortingOrder = order;
-            _labelRenderer.sortingOrder = order + 1;
-
-            // 倒れていたピンが立て直された瞬間から、起き上がるアニメーションを始める
-            if (_wasFallen && !_pin.IsFallen) _standUpStartTime = Time.time;
-            _wasFallen = _pin.IsFallen;
+            PlaceOnGround();
+            TrackStandUp();
 
             if (_pin.IsFallen)
             {
@@ -91,11 +85,30 @@ namespace MiniGame.Molkky
             }
         }
 
+        private void PlaceOnGround()
+        {
+            Vector2 ground = _pin.GroundPosition;
+            transform.position = _projector.Project(ground);
+            transform.localScale = Vector3.one * _projector.ScaleAt(ground.y);
+
+            // 数字が本体に隠れないよう、本体のすぐ上の描画順にする
+            int order = _projector.SortingOrderAt(ground.y);
+            _bodyRenderer.sortingOrder = order;
+            _labelRenderer.sortingOrder = order + 1;
+        }
+
+        /// <summary>倒れていたピンが立て直された瞬間から、起き上がるアニメーションを始める</summary>
+        private void TrackStandUp()
+        {
+            if (_wasFallen && !_pin.IsFallen) _standUpStartTime = Time.time;
+            _wasFallen = _pin.IsFallen;
+        }
+
         private void ShowStanding()
         {
             float width = _style.PinWidth;
             // 起き上がり中は背の低い状態から伸ばし、少し行き過ぎてから戻して「ピョコッ」と立たせる
-            float rise = EaseOutBack(Mathf.Clamp01((Time.time - _standUpStartTime) / _style.StandUpDuration));
+            float rise = MolkkyEasing.OutBack(Mathf.Clamp01((Time.time - _standUpStartTime) / _style.StandUpDuration));
             float height = Mathf.LerpUnclamped(width, _style.PinHeight, rise);
 
             _bodyRenderer.sprite = _style.StandingSprite;
@@ -116,10 +129,11 @@ namespace MiniGame.Molkky
             _bodyRenderer.sprite = _style.FallenSprite;
             // スプライトは頭（斜めに切った側）が右向きなので、左に倒れたら反転する
             _bodyRenderer.flipX = side < 0f;
-            _body.localPosition = new Vector3(side * length * 0.25f, width * 0.5f, 0f);
+            var center = new Vector3(side * length * FallenOffsetRatio, width * 0.5f, 0f);
+            _body.localPosition = center;
             SetSize(length, width);
             _bodyRenderer.color = _style.FallenColor;
-            _label.localPosition = new Vector3(side * length * 0.25f, width * 0.5f, 0f);
+            _label.localPosition = center;
         }
 
         /// <summary>スプライトの元の大きさに関係なく、地面単位の幅・高さで表示する</summary>
@@ -127,13 +141,6 @@ namespace MiniGame.Molkky
         {
             Vector2 spriteSize = _bodyRenderer.sprite.bounds.size;
             _body.localScale = new Vector3(width / spriteSize.x, height / spriteSize.y, 1f);
-        }
-
-        private static float EaseOutBack(float t)
-        {
-            const float overshoot = 1.70158f;
-            float u = t - 1f;
-            return 1f + (overshoot + 1f) * u * u * u + overshoot * u * u;
         }
     }
 }

@@ -1,6 +1,6 @@
 namespace MiniGame.Molkky
 {
-    /// <summary>1投の結果の種類。得点演出（§12.2）の出し分けに使う</summary>
+    /// <summary>1投の結果の種類。得点演出の出し分けに使う</summary>
     public enum ThrowOutcome
     {
         Miss,

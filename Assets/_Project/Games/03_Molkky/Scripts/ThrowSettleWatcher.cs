@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 棒と全ピンが止まったかどうかの判定（§8.5）。止まらない場合に備えて最大時間でも打ち切る。
+    /// 棒と全ピンが止まったかどうかの判定。止まらない場合に備えて最大時間でも打ち切る。
     /// </summary>
     public class ThrowSettleWatcher : MonoBehaviour
     {

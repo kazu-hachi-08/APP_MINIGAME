@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 勝ったキャラが立ち絵とセリフで喜ぶ演出（仕様書 §20.5）。結果画面の前に挟む。
+    /// 勝ったキャラが立ち絵とセリフで喜ぶ演出。結果画面の前に挟む。
     /// 立ち絵が下からスライドインして跳ね、吹き出しでセリフを出す。タップで最後の状態まで飛ばせる。
     /// 終わった後も表示は残し、結果画面の背景として勝者が見えるようにする。
     /// </summary>
@@ -64,9 +64,7 @@ namespace MiniGame.Molkky
 
         private void Setup(MolkkyCharacterData character, Color color, string playerName, string line)
         {
-            Color background = Color.Lerp(Color.black, color, _backgroundTint);
-            background.a = _backgroundAlpha;
-            _background.color = background;
+            _background.color = MolkkyPlayerColors.TintedBackground(color, _backgroundTint, _backgroundAlpha);
 
             _portrait.sprite = character.FrontSprite;
             _nameText.text = playerName;
@@ -92,7 +90,7 @@ namespace MiniGame.Molkky
             if (elapsed < _slideDuration)
             {
                 // 最後に減速して止まる動きにし、勢いよく飛び出してきた感じを出す
-                float t = 1f - Mathf.Pow(1f - elapsed / _slideDuration, 3f);
+                float t = MolkkyEasing.OutCubic(elapsed / _slideDuration);
                 return -_slideDistance * (1f - t);
             }
 

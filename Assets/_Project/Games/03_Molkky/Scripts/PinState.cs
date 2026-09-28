@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// ピン1本の投擲後の状態。オンライン対戦で、投げた側の端末の結果を相手端末へそのまま写すために使う（§19.2）。
+    /// ピン1本の投擲後の状態。オンライン対戦で、投げた側の端末の結果を相手端末へそのまま写すために使う。
     /// </summary>
     public readonly struct PinState
     {

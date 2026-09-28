@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 投擲ラインの手前に、手番のキャラの背中を表示する（仕様書 §20.3）。
+    /// 投擲ラインの手前に、手番のキャラの背中を表示する。
     /// 棒の左右位置に追従するが、投げた後は投げた場所に残す（棒を追いかけてピンの方へ歩いていかないように）。
     /// </summary>
     public class ThrowerView : MonoBehaviour

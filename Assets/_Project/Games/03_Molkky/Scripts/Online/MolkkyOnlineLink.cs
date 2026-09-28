@@ -7,17 +7,17 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// オンライン対戦の送受信（§19.2）。送るのは「投げた瞬間の ThrowRequest ＋ 投げる直前の全ピンの状態」と
+    /// オンライン対戦の送受信。送るのは「投げた瞬間の ThrowRequest ＋ 投げる直前の全ピンの状態」と
     /// 「静止後の全ピンの状態」の2つだけ。
     ///
     /// 相手端末は ThrowRequest で物理を再生して見せる。投げる直前のピン状態も一緒に送るのは、
     /// 手番の合間に端末ごとにピン位置が少しずつずれ、再生で倒れるピンが投げた側と食い違うのを防ぐため。
     /// それでも物理は端末ごとにずれうるので、得点は投げた側の端末のピン状態で決める。得点ルールは MolkkyRules が純粋関数なので、
     /// 同じピン状態を渡せば全端末で同じ点数になり、点数そのものは送らない。
-    /// キャラ選択（仕様書 §20.6）では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
+    /// キャラ選択では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
     /// 卓球と同じく NetworkObject を使わず名前付きメッセージだけで済ませる。
     ///
-    /// NGOではクライアント同士が直接送れないため、2〜4人ともホスト中継にする（§19.6）。
+    /// NGOではクライアント同士が直接送れないため、2〜4人ともホスト中継にする。
     /// クライアントはホストへ送り、ホストは受け取った内容を送り主以外の全クライアントへ転送する。
     /// </summary>
     public class MolkkyOnlineLink : MonoBehaviour
@@ -87,11 +87,7 @@ namespace MiniGame.Molkky
         private void SendThrow(ThrowRequest request, PinState[] startStates, ulong originId)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
-            writer.WriteValueSafe(request.PositionX);
-            writer.WriteValueSafe(request.AngleDegrees);
-            writer.WriteValueSafe(request.Speed);
-            writer.WriteValueSafe((int)request.Style);
-            writer.WriteValueSafe((int)request.Arc);
+            WriteRequest(writer, request);
             WriteStates(writer, startStates);
             Send(ThrowMessage, writer, originId);
         }
@@ -108,6 +104,25 @@ namespace MiniGame.Molkky
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
             WriteCharacter(writer, seat, characterIndex);
             Send(CharacterMessage, writer, originId);
+        }
+
+        private static void WriteRequest(FastBufferWriter writer, ThrowRequest request)
+        {
+            writer.WriteValueSafe(request.PositionX);
+            writer.WriteValueSafe(request.AngleDegrees);
+            writer.WriteValueSafe(request.Speed);
+            writer.WriteValueSafe((int)request.Style);
+            writer.WriteValueSafe((int)request.Arc);
+        }
+
+        private static ThrowRequest ReadRequest(FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out float positionX);
+            reader.ReadValueSafe(out float angle);
+            reader.ReadValueSafe(out float speed);
+            reader.ReadValueSafe(out int style);
+            reader.ReadValueSafe(out int arc);
+            return new ThrowRequest(positionX, angle, speed, (ThrowStyle)style, (ThrowArc)arc);
         }
 
         private static void WriteCharacter(FastBufferWriter writer, int seat, int characterIndex)
@@ -182,12 +197,7 @@ namespace MiniGame.Molkky
 
         private void ReceiveThrow(ulong senderId, FastBufferReader reader)
         {
-            reader.ReadValueSafe(out float positionX);
-            reader.ReadValueSafe(out float angle);
-            reader.ReadValueSafe(out float speed);
-            reader.ReadValueSafe(out int style);
-            reader.ReadValueSafe(out int arc);
-            var request = new ThrowRequest(positionX, angle, speed, (ThrowStyle)style, (ThrowArc)arc);
+            ThrowRequest request = ReadRequest(reader);
             PinState[] startStates = ReadStates(reader);
 
             if (Network.IsServer) SendThrow(request, startStates, senderId);

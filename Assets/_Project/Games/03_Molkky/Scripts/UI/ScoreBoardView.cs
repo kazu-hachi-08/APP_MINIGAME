@@ -6,12 +6,18 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 画面上部のスコアボード（§12.1）と「あと○点」（§12.3）。
+    /// 画面上部のスコアボードと「あと○点」。
     /// プレイヤーごとにプレイヤー色の枠を並べ、手番は明るく大きく、失格はグレーで見せる。
     /// 点数は数字をカウントさせて、何点動いたか（特に25点に戻ったこと）が目で追えるようにする。
     /// </summary>
     public class ScoreBoardView : MonoBehaviour
     {
+        // 「あと○点」の数字だけを周りの文字より大きくして、残り点数を一目で読めるようにする
+        private const int RemainingNumberFontSize = 56;
+
+        // 次にミスしたら失格になるミス数。ここから警告色にする
+        private const int WarningMissCount = MolkkyRules.MaxConsecutiveMisses - 1;
+
         [Tooltip("P1〜P4 の枠。人数ぶんだけ表示する")]
         [SerializeField] private RectTransform[] _cells;
         [SerializeField] private Image[] _cellBackgrounds;
@@ -71,18 +77,21 @@ namespace MiniGame.Molkky
 
             _nameTexts[index].text = isCurrent ? $"▶{player.Name}" : player.Name;
             _missTexts[index].text = player.IsDisqualified ? "失格" : new string('×', player.MissCount);
-            _missTexts[index].color = player.MissCount >= MolkkyRules.MaxConsecutiveMisses - 1 ? _warningColor : Color.white;
+            _missTexts[index].color = player.MissCount >= WarningMissCount ? _warningColor : Color.white;
 
             CountTo(index, player.Score);
         }
 
         private void ShowRemaining(PlayerSlot current, int currentIndex)
         {
-            string name = $"<color=#{ColorUtility.ToHtmlStringRGB(MolkkyPlayerColors.Get(currentIndex))}>{current.Name}</color>";
-            string warning = current.MissCount == MolkkyRules.MaxConsecutiveMisses - 1
-                ? $"  <color=#{ColorUtility.ToHtmlStringRGB(_warningColor)}>失格注意!</color>"
-                : "";
-            _remainingText.text = $"{name}  あと <size=56>{current.Remaining}</size> 点{warning}";
+            string name = Colorize(current.Name, MolkkyPlayerColors.Get(currentIndex));
+            string warning = current.MissCount == WarningMissCount ? $"  {Colorize("失格注意!", _warningColor)}" : "";
+            _remainingText.text = $"{name}  あと <size={RemainingNumberFontSize}>{current.Remaining}</size> 点{warning}";
+        }
+
+        private static string Colorize(string text, Color color)
+        {
+            return $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>";
         }
 
         private void CountTo(int index, int target)

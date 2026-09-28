@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 1回の投擲内容（§7.4）。入力とNPCが同じものを作ることで、投擲処理を共通化する。
+    /// 1回の投擲内容。入力とNPCが同じものを作ることで、投擲処理を共通化する。
     /// </summary>
     public readonly struct ThrowRequest
     {

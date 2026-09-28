@@ -4,6 +4,8 @@ namespace MiniGame.Molkky.Tests
 {
     public class MolkkyRulesTests
     {
+        private static readonly int[] NoPins = new int[0];
+
         [Test]
         public void 一本倒すとその数字が得点になる()
         {
@@ -53,9 +55,9 @@ namespace MiniGame.Molkky.Tests
         {
             var player = new PlayerSlot("P1");
 
-            MolkkyRules.ApplyThrow(player, new int[0]);
-            MolkkyRules.ApplyThrow(player, new int[0]);
-            ThrowResult result = MolkkyRules.ApplyThrow(player, new int[0]);
+            MolkkyRules.ApplyThrow(player, NoPins);
+            MolkkyRules.ApplyThrow(player, NoPins);
+            ThrowResult result = MolkkyRules.ApplyThrow(player, NoPins);
 
             Assert.AreEqual(ThrowOutcome.Disqualified, result.Outcome);
             Assert.IsTrue(player.IsDisqualified);
@@ -66,10 +68,10 @@ namespace MiniGame.Molkky.Tests
         {
             var player = new PlayerSlot("P1");
 
-            MolkkyRules.ApplyThrow(player, new int[0]);
-            MolkkyRules.ApplyThrow(player, new int[0]);
+            MolkkyRules.ApplyThrow(player, NoPins);
+            MolkkyRules.ApplyThrow(player, NoPins);
             MolkkyRules.ApplyThrow(player, new[] { 1 });
-            ThrowResult result = MolkkyRules.ApplyThrow(player, new int[0]);
+            ThrowResult result = MolkkyRules.ApplyThrow(player, NoPins);
 
             Assert.AreEqual(ThrowOutcome.Miss, result.Outcome);
             Assert.AreEqual(1, player.MissCount);
