@@ -11,6 +11,8 @@ namespace MiniGame.Molkky
     {
         private const int CircleResolution = 64;
 
+        private static readonly Vector2 CenterPivot = new Vector2(0.5f, 0.5f);
+
         private static Sprite _square;
         private static Sprite _circle;
 
@@ -22,7 +24,7 @@ namespace MiniGame.Molkky
                 {
                     Texture2D texture = Texture2D.whiteTexture;
                     _square = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
-                        new Vector2(0.5f, 0.5f), texture.width);
+                        CenterPivot, texture.width);
                 }
 
                 return _square;
@@ -36,7 +38,7 @@ namespace MiniGame.Molkky
                 if (_circle == null)
                 {
                     _circle = Sprite.Create(CreateCircleTexture(), new Rect(0, 0, CircleResolution, CircleResolution),
-                        new Vector2(0.5f, 0.5f), CircleResolution);
+                        CenterPivot, CircleResolution);
                 }
 
                 return _circle;

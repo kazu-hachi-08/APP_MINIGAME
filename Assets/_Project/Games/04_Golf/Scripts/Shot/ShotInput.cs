@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 方向・クラブ・ゲージの入力をまとめて ShotRequest にする（§7.1、§7.6）。
+    /// 方向・クラブ・ゲージの入力をまとめて ShotRequest にする。
     /// 方向は画面の左右ドラッグと◀▶ボタン、ゲージはゲージのボタンで開始して以降は画面のどこをタップしてもよい。
     /// マウスでもタッチでも同じ操作になるよう、Input System の Pointer で読む。
     /// </summary>
@@ -68,7 +68,7 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>手番の人のボールを置いたら、カップの方向・距離に合うクラブで構え直す（§7.2、§7.5）。ゾーンの幅はライで変える（§7.4）</summary>
+        /// <summary>手番の人のボールを置いたら、カップの方向・距離に合うクラブで構え直す。バンカーなど悪いライから打ちにくくするため、ゾーンの幅はライで変える</summary>
         public void PrepareShot()
         {
             Gauge.Reset();
@@ -143,8 +143,7 @@ namespace MiniGame.Golf
             float x = pointer.position.ReadValue().x;
             if (pointer.press.wasPressedThisFrame)
             {
-                _dragging = !IsPointerOverUI(pointer);
-                _lastPointerX = x;
+                BeginDrag(pointer, x);
                 return 0f;
             }
 
@@ -158,7 +157,15 @@ namespace MiniGame.Golf
 
             float deltaX = x - _lastPointerX;
             _lastPointerX = x;
+            // 画面幅で割って、解像度の違う端末でも同じ量のドラッグで同じ角度だけ回るようにする
             return -deltaX / Screen.width * _dragDegreesPerScreenWidth;
+        }
+
+        /// <summary>◀▶ボタンを押したタップで方向まで回ってしまわないよう、UIの上で押したときはドラッグにしない</summary>
+        private void BeginDrag(Pointer pointer, float x)
+        {
+            _dragging = !IsPointerOverUI(pointer);
+            _lastPointerX = x;
         }
 
         private void Rotate(float degrees)

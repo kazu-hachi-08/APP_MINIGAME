@@ -7,7 +7,7 @@ namespace MiniGame.TableTennis.Editor
     /// <summary>
     /// 卓球ゲームのドット絵素材（ボール・ラケット・キャラクター・台の質感）をコードから生成するエディタユーティリティ。
     /// 外部素材に依存せず同じ絵をいつでも作り直せるようにするためコード生成にしている
-    /// （第1弾の SoccerArtGenerator と同じ方針）。生成物は通常のPNGなので手描き素材へ差し替えても構わない。
+    /// （SoccerArtGenerator と同じ方針）。生成物は通常のPNGなので手描き素材へ差し替えても構わない。
     /// </summary>
     public static class TableTennisArtGenerator
     {
@@ -28,7 +28,7 @@ namespace MiniGame.TableTennis.Editor
         public const string BounceRingName = "BounceRing";
         public const string BackgroundName = "Background";
 
-        // 選手・ラケット選択（§25）。選手はシャツの色、ラケットはラバーの色で見分ける
+        // 選手・ラケット選択用。選手はシャツの色、ラケットはラバーの色で見分ける
         public const string MarioName = "Character_Mario";
         public const string KokiniwaName = "Character_Kokiniwa";
         public const string YokozunaName = "Character_Yokozuna";
@@ -39,15 +39,30 @@ namespace MiniGame.TableTennis.Editor
         public const string PowerRacketName = "Racket_Power";
         public const string TechniqueRacketName = "Racket_Technique";
 
+        // 各素材のピクセル寸法
+        private const int BallSize = 24;
+        private const int RacketWidth = 40;
+        private const int RacketHeight = 48;
+        private const int CharacterWidth = 48;
+        private const int CharacterHeight = 64;
+        private const int TableTileSize = 64;
+        private const int NetTileSize = 32;
+        private const int BounceRingSize = 32;
+        private const int BackgroundWidth = 48;
+        private const int BackgroundHeight = 80;
+
         private static readonly Color32 MarioShirt = new Color32(214, 84, 76, 255);
         private static readonly Color32 KokiniwaShirt = new Color32(64, 168, 110, 255);
         private static readonly Color32 YokozunaShirt = new Color32(150, 88, 196, 255);
+        private static readonly Color32 NpcShirt = new Color32(70, 118, 208, 255);
 
         private static readonly Color32 StandardRubber = new Color32(206, 62, 58, 255);
         private static readonly Color32 PowerRubber = new Color32(40, 40, 48, 255);
         private static readonly Color32 TechniqueRubber = new Color32(52, 110, 200, 255);
+        private static readonly Color32 NpcRubber = new Color32(48, 52, 64, 255);
 
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
+        private static readonly Color32 Black = new Color32(0, 0, 0, 255);
 
         [MenuItem("Tools/MiniGame/Generate Table Tennis Art", false, 4)]
         public static void GenerateAll()
@@ -57,35 +72,10 @@ namespace MiniGame.TableTennis.Editor
                 Directory.CreateDirectory(SpriteDirectory);
             }
 
-            SaveSprite(BallName, BuildBall(), 24, 24, SpriteAlignment.Center, repeat: false);
-            SaveSprite(ShadowName, BuildShadow(), 24, 24, SpriteAlignment.Center, repeat: false);
-
-            SaveSprite(PlayerRacketName, BuildRacket(new Color32(206, 62, 58, 255)), 40, 48,
-                SpriteAlignment.Center, repeat: false);
-            SaveSprite(NpcRacketName, BuildRacket(new Color32(48, 52, 64, 255)), 40, 48,
-                SpriteAlignment.Center, repeat: false);
-
-            SaveSprite(PlayerCharacterName, BuildCharacter(back: true, shirt: new Color32(214, 84, 76, 255)),
-                48, 64, SpriteAlignment.BottomCenter, repeat: false);
-            SaveSprite(NpcCharacterName, BuildCharacter(back: false, shirt: new Color32(70, 118, 208, 255)),
-                48, 64, SpriteAlignment.BottomCenter, repeat: false);
-
-            SaveCharacterPair(MarioName, MarioShirt);
-            SaveCharacterPair(KokiniwaName, KokiniwaShirt);
-            SaveCharacterPair(YokozunaName, YokozunaShirt);
-
-            SaveSprite(StandardRacketName, BuildRacket(StandardRubber), 40, 48, SpriteAlignment.Center, repeat: false);
-            SaveSprite(PowerRacketName, BuildRacket(PowerRubber), 40, 48, SpriteAlignment.Center, repeat: false);
-            SaveSprite(TechniqueRacketName, BuildRacket(TechniqueRubber), 40, 48, SpriteAlignment.Center, repeat: false);
-
-            // 台とネットはメッシュへ貼るので繰り返し可能にする
-            SaveSprite(TableSurfaceName, BuildTableSurface(), 64, 64, SpriteAlignment.Center, repeat: true);
-            SaveSprite(NetName, BuildNet(), 32, 32, SpriteAlignment.Center, repeat: true);
-
-            SaveSprite(BounceRingName, BuildBounceRing(), 32, 32, SpriteAlignment.Center, repeat: false);
-
-            // 背景は画面いっぱいに引き伸ばして使うので繰り返し不要
-            SaveSprite(BackgroundName, BuildBackground(), 48, 80, SpriteAlignment.Center, repeat: false);
+            GenerateBallSprites();
+            GenerateRacketSprites();
+            GenerateCharacterSprites();
+            GenerateCourtSprites();
 
             AssetDatabase.Refresh();
             Debug.Log($"[TableTennisArtGenerator] 卓球の素材を生成しました: {SpriteDirectory}");
@@ -101,51 +91,110 @@ namespace MiniGame.TableTennis.Editor
             }
         }
 
-        /// <summary>1人の選手につき、手前用（背中）と奥用（正面）の2枚を作る</summary>
-        private static void SaveCharacterPair(string name, Color32 shirt)
-        {
-            SaveSprite(name + BackSuffix, BuildCharacter(back: true, shirt: shirt), 48, 64,
-                SpriteAlignment.BottomCenter, repeat: false);
-            SaveSprite(name + FrontSuffix, BuildCharacter(back: false, shirt: shirt), 48, 64,
-                SpriteAlignment.BottomCenter, repeat: false);
-        }
-
         public static Sprite Load(string spriteName)
         {
             return AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteDirectory}/{spriteName}.png");
         }
 
+        private static void GenerateBallSprites()
+        {
+            SaveSprite(BallName, BuildBall(), BallSize, BallSize, SpriteAlignment.Center, repeat: false);
+            SaveSprite(ShadowName, BuildShadow(), BallSize, BallSize, SpriteAlignment.Center, repeat: false);
+            SaveSprite(BounceRingName, BuildBounceRing(), BounceRingSize, BounceRingSize, SpriteAlignment.Center, repeat: false);
+        }
+
+        private static void GenerateRacketSprites()
+        {
+            // シーンに最初から置く自分のラケットは、初期選択のスタンダードと同じ色にしておく
+            SaveRacket(PlayerRacketName, StandardRubber);
+            SaveRacket(NpcRacketName, NpcRubber);
+
+            SaveRacket(StandardRacketName, StandardRubber);
+            SaveRacket(PowerRacketName, PowerRubber);
+            SaveRacket(TechniqueRacketName, TechniqueRubber);
+        }
+
+        private static void GenerateCharacterSprites()
+        {
+            // シーンに最初から置く自分の選手は、初期選択の MARIO と同じ色にしておく
+            SaveCharacter(PlayerCharacterName, back: true, shirt: MarioShirt);
+            SaveCharacter(NpcCharacterName, back: false, shirt: NpcShirt);
+
+            SaveCharacterPair(MarioName, MarioShirt);
+            SaveCharacterPair(KokiniwaName, KokiniwaShirt);
+            SaveCharacterPair(YokozunaName, YokozunaShirt);
+        }
+
+        private static void GenerateCourtSprites()
+        {
+            // 台とネットはメッシュへ貼るので繰り返し可能にする
+            SaveSprite(TableSurfaceName, BuildTableSurface(), TableTileSize, TableTileSize, SpriteAlignment.Center, repeat: true);
+            SaveSprite(NetName, BuildNet(), NetTileSize, NetTileSize, SpriteAlignment.Center, repeat: true);
+
+            // 背景は画面いっぱいに引き伸ばして使うので繰り返し不要
+            SaveSprite(BackgroundName, BuildBackground(), BackgroundWidth, BackgroundHeight, SpriteAlignment.Center, repeat: false);
+        }
+
+        private static void SaveRacket(string name, Color32 rubber)
+        {
+            SaveSprite(name, BuildRacket(rubber), RacketWidth, RacketHeight, SpriteAlignment.Center, repeat: false);
+        }
+
+        /// <summary>床に立たせる位置を足元で合わせられるよう、原点を足元にする</summary>
+        private static void SaveCharacter(string name, bool back, Color32 shirt)
+        {
+            SaveSprite(name, BuildCharacter(back, shirt), CharacterWidth, CharacterHeight,
+                SpriteAlignment.BottomCenter, repeat: false);
+        }
+
+        /// <summary>1人の選手につき、手前用（背中）と奥用（正面）の2枚を作る</summary>
+        private static void SaveCharacterPair(string name, Color32 shirt)
+        {
+            SaveCharacter(name + BackSuffix, back: true, shirt: shirt);
+            SaveCharacter(name + FrontSuffix, back: false, shirt: shirt);
+        }
+
         // ------------------------------------------------------------------
         // ボール（回転が読み取れるよう縫い目を入れる）
         // ------------------------------------------------------------------
+        private const float BallRadius = 11f;
+        private const float BallEdgeWidth = 1.2f;
+        private const int BallLightOffset = 3;        // 光源（左上）の中心からのずれ
+        private const float BallLightFalloff = 1.8f;  // 半径の何倍で暗部に落ちるか
+        private const int BallSeamCenterOffset = 8;   // 縫い目を描く円の中心の左ずれ
+        private const float BallSeamRadius = 13f;
+        private const float BallSeamHalfWidth = 1.1f;
+
+        private static readonly Color32 BallBright = new Color32(255, 252, 238, 255);
+        private static readonly Color32 BallShade = new Color32(214, 200, 170, 255);
+        private static readonly Color32 BallEdge = new Color32(150, 138, 116, 255);
+        private static readonly Color32 BallSeam = new Color32(228, 96, 80, 255);
+
         private static Color32[] BuildBall()
         {
-            const int size = 24;
-            const float radius = 11f;
+            const int size = BallSize;
+            const int center = size / 2;
             var pixels = NewCanvas(size, size);
-
-            var bright = new Color32(255, 252, 238, 255);
-            var shade = new Color32(214, 200, 170, 255);
-            var edge = new Color32(150, 138, 116, 255);
-            var seam = new Color32(228, 96, 80, 255);
 
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float distance = Distance(x, y, size / 2, size / 2);
-                    if (distance > radius) continue;
+                    float distance = Distance(x, y, center, center);
+                    if (distance > BallRadius) continue;
 
                     // 左上から光が当たっているように見せる
-                    float light = Mathf.Clamp01(1f - Distance(x, y, size / 2 - 3, size / 2 - 3) / (radius * 1.8f));
-                    Color32 color = Lerp(shade, bright, light);
+                    float lightDistance = Distance(x, y, center - BallLightOffset, center - BallLightOffset);
+                    float light = Mathf.Clamp01(1f - lightDistance / (BallRadius * BallLightFalloff));
+                    Color32 color = Lerp(BallShade, BallBright, light);
 
-                    if (distance > radius - 1.2f) color = edge;
+                    if (distance > BallRadius - BallEdgeWidth) color = BallEdge;
 
                     // 別の円の輪郭でボールを横切らせ、縫い目（回転の目印）にする
-                    if (distance < radius - 1.2f && Mathf.Abs(Distance(x, y, size / 2 - 8, size / 2) - 13f) < 1.1f)
+                    float seamDistance = Distance(x, y, center - BallSeamCenterOffset, center);
+                    if (distance < BallRadius - BallEdgeWidth && Mathf.Abs(seamDistance - BallSeamRadius) < BallSeamHalfWidth)
                     {
-                        color = seam;
+                        color = BallSeam;
                     }
 
                     SetPixel(pixels, size, size, x, y, color);
@@ -158,18 +207,18 @@ namespace MiniGame.TableTennis.Editor
         /// <summary>中心ほど濃い影。高さ表現で縮小・減光して使う</summary>
         private static Color32[] BuildShadow()
         {
-            const int size = 24;
-            const float radius = 11f;
+            const int size = BallSize;
+            const int center = size / 2;
             var pixels = NewCanvas(size, size);
 
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float distance = Distance(x, y, size / 2, size / 2);
-                    if (distance > radius) continue;
+                    float distance = Distance(x, y, center, center);
+                    if (distance > BallRadius) continue;
 
-                    byte alpha = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(1f - distance / radius));
+                    byte alpha = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(1f - distance / BallRadius));
                     SetPixel(pixels, size, size, x, y, new Color32(0, 0, 0, alpha));
                 }
             }
@@ -177,28 +226,37 @@ namespace MiniGame.TableTennis.Editor
             return pixels;
         }
 
+        private static Color32[] BuildBounceRing()
+        {
+            const int size = BounceRingSize;
+            var pixels = NewCanvas(size, size);
+            OutlineCircle(pixels, size, size, size / 2, size / 2, 15f, 2, new Color32(255, 255, 255, 220));
+            return pixels;
+        }
+
         // ------------------------------------------------------------------
         // ラケット（ラバー面＋グリップ）
         // ------------------------------------------------------------------
+        private static readonly Color32 RacketWood = new Color32(196, 150, 96, 255);
+        private static readonly Color32 RacketWoodDark = new Color32(146, 106, 62, 255);
+        private static readonly Color32 RacketOutline = new Color32(38, 34, 44, 255);
+        private static readonly Color32 RubberHighlight = new Color32(255, 255, 255, 60);
+
         private static Color32[] BuildRacket(Color32 rubber)
         {
-            const int width = 40;
-            const int height = 48;
+            const int width = RacketWidth;
+            const int height = RacketHeight;
             var pixels = NewCanvas(width, height);
 
-            var wood = new Color32(196, 150, 96, 255);
-            var woodDark = new Color32(146, 106, 62, 255);
-            var outline = new Color32(38, 34, 44, 255);
+            // グリップ（先に描いてラバー面を上に重ねる）。左側を暗くして立体感を出す
+            FillRect(pixels, width, height, 16, 28, 8, 19, RacketWood);
+            FillRect(pixels, width, height, 16, 28, 3, 19, RacketWoodDark);
+            OutlineRect(pixels, width, height, 16, 28, 8, 19, 1, RacketOutline);
 
-            // グリップ（先に描いてラバー面を上に重ねる）
-            FillRect(pixels, width, height, 16, 28, 8, 19, wood);
-            FillRect(pixels, width, height, 16, 28, 3, 19, woodDark);
-            OutlineRect(pixels, width, height, 16, 28, 8, 19, 1, outline);
-
-            // ラバー面
+            // ラバー面と、左上のツヤ
             FillCircle(pixels, width, height, 20, 17, 16f, rubber);
-            OutlineCircle(pixels, width, height, 20, 17, 16f, 2, outline);
-            FillCircle(pixels, width, height, 14, 11, 4.5f, new Color32(255, 255, 255, 60));
+            OutlineCircle(pixels, width, height, 20, 17, 16f, 2, RacketOutline);
+            FillCircle(pixels, width, height, 14, 11, 4.5f, RubberHighlight);
 
             return pixels;
         }
@@ -206,66 +264,83 @@ namespace MiniGame.TableTennis.Editor
         // ------------------------------------------------------------------
         // キャラクター（足元原点。back=プレイヤーの背中側 / false=NPCの正面）
         // ------------------------------------------------------------------
+        private static readonly Color32 CharacterSkin = new Color32(238, 196, 158, 255);
+        private static readonly Color32 CharacterHair = new Color32(62, 48, 44, 255);
+        private static readonly Color32 CharacterPants = new Color32(52, 58, 72, 255);
+        private static readonly Color32 CharacterOutline = new Color32(34, 30, 38, 255);
+        private const float ShirtShadeAmount = 0.25f;
+
         private static Color32[] BuildCharacter(bool back, Color32 shirt)
         {
-            const int width = 48;
-            const int height = 64;
+            const int width = CharacterWidth;
+            const int height = CharacterHeight;
             var pixels = NewCanvas(width, height);
 
-            var skin = new Color32(238, 196, 158, 255);
-            var hair = new Color32(62, 48, 44, 255);
-            var pants = new Color32(52, 58, 72, 255);
-            var outline = new Color32(34, 30, 38, 255);
-            var shirtDark = Lerp(shirt, new Color32(0, 0, 0, 255), 0.25f);
-
             // 脚
-            FillRect(pixels, width, height, 16, 44, 7, 20, pants);
-            FillRect(pixels, width, height, 25, 44, 7, 20, pants);
+            FillRect(pixels, width, height, 16, 44, 7, 20, CharacterPants);
+            FillRect(pixels, width, height, 25, 44, 7, 20, CharacterPants);
 
-            // 胴（肩を広く、腰を細く）
-            for (int y = 22; y < 45; y++)
-            {
-                int halfWidth = Mathf.RoundToInt(Mathf.Lerp(13f, 9f, (y - 22) / 23f));
-                FillRect(pixels, width, height, 24 - halfWidth, y, halfWidth * 2, 1, y > 38 ? shirtDark : shirt);
-            }
+            DrawTorso(pixels, width, height, shirt);
 
-            // 腕（打球側の腕を前に出す）
-            FillRect(pixels, width, height, 8, 24, 6, 16, skin);
-            FillRect(pixels, width, height, 34, 24, 6, 16, skin);
+            // 腕
+            FillRect(pixels, width, height, 8, 24, 6, 16, CharacterSkin);
+            FillRect(pixels, width, height, 34, 24, 6, 16, CharacterSkin);
 
-            // 頭
-            FillCircle(pixels, width, height, 24, 14, 9f, skin);
-            FillCircle(pixels, width, height, 24, 11, 9f, hair);
+            // 頭（髪を少し上にずらして重ね、顔の部分だけ肌を残す）
+            FillCircle(pixels, width, height, 24, 14, 9f, CharacterSkin);
+            FillCircle(pixels, width, height, 24, 11, 9f, CharacterHair);
             if (!back)
             {
-                FillRect(pixels, width, height, 20, 15, 2, 2, outline);
-                FillRect(pixels, width, height, 26, 15, 2, 2, outline);
-                FillRect(pixels, width, height, 22, 19, 4, 1, outline);
+                DrawFace(pixels, width, height);
             }
 
             return pixels;
         }
 
+        /// <summary>肩を広く腰を細くした胴。裾だけ暗くしてズボンとの境目を見せる</summary>
+        private static void DrawTorso(Color32[] pixels, int width, int height, Color32 shirt)
+        {
+            const int top = 22;
+            const int bottom = 45;
+            const int hemTop = 38;
+            const float shoulderHalfWidth = 13f;
+            const float waistHalfWidth = 9f;
+            int centerX = width / 2;
+            Color32 shirtDark = Lerp(shirt, Black, ShirtShadeAmount);
+
+            for (int y = top; y < bottom; y++)
+            {
+                int halfWidth = Mathf.RoundToInt(Mathf.Lerp(shoulderHalfWidth, waistHalfWidth, (y - top) / (float)(bottom - top)));
+                FillRect(pixels, width, height, centerX - halfWidth, y, halfWidth * 2, 1, y > hemTop ? shirtDark : shirt);
+            }
+        }
+
+        private static void DrawFace(Color32[] pixels, int width, int height)
+        {
+            FillRect(pixels, width, height, 20, 15, 2, 2, CharacterOutline);
+            FillRect(pixels, width, height, 26, 15, 2, 2, CharacterOutline);
+            FillRect(pixels, width, height, 22, 19, 4, 1, CharacterOutline);
+        }
+
         // ------------------------------------------------------------------
         // 台の質感とネット（メッシュへ貼るタイル素材）
         // ------------------------------------------------------------------
+        private static readonly Color32 TableColor = new Color32(24, 86, 132, 255);
+        private const int TableNoiseAmplitude = 4;
+        private static readonly Color32 NetMeshColor = new Color32(236, 240, 248, 150);
+        private const int NetMeshSpacing = 4;
+
         private static Color32[] BuildTableSurface()
         {
-            const int size = 64;
+            const int size = TableTileSize;
             var pixels = NewCanvas(size, size);
-            var baseColor = new Color32(24, 86, 132, 255);
 
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
                     // 一定のノイズでわずかなムラを作り、べた塗りに見えないようにする
-                    int noise = (Hash(x, y) % 9) - 4;
-                    SetPixel(pixels, size, size, x, y, new Color32(
-                        (byte)Mathf.Clamp(baseColor.r + noise, 0, 255),
-                        (byte)Mathf.Clamp(baseColor.g + noise, 0, 255),
-                        (byte)Mathf.Clamp(baseColor.b + noise, 0, 255),
-                        255));
+                    SetPixel(pixels, size, size, x, y, AddNoise(TableColor, x, y, TableNoiseAmplitude));
                 }
             }
 
@@ -274,81 +349,64 @@ namespace MiniGame.TableTennis.Editor
 
         private static Color32[] BuildNet()
         {
-            const int size = 32;
+            const int size = NetTileSize;
             var pixels = NewCanvas(size, size);
-            var mesh = new Color32(236, 240, 248, 150);
 
-            for (int i = 0; i < size; i += 4)
+            for (int i = 0; i < size; i += NetMeshSpacing)
             {
-                FillRect(pixels, size, size, i, 0, 1, size, mesh);
-                FillRect(pixels, size, size, 0, i, size, 1, mesh);
+                FillRect(pixels, size, size, i, 0, 1, size, NetMeshColor);
+                FillRect(pixels, size, size, 0, i, size, 1, NetMeshColor);
             }
 
-            return pixels;
-        }
-
-        private static Color32[] BuildBounceRing()
-        {
-            const int size = 32;
-            var pixels = NewCanvas(size, size);
-            OutlineCircle(pixels, size, size, 16, 16, 15f, 2, new Color32(255, 255, 255, 220));
             return pixels;
         }
 
         // ------------------------------------------------------------------
         // 背景（体育館の壁と床。実寸ではなくBackgroundViewで画面全体に引き伸ばして使う）
         // ------------------------------------------------------------------
+        private static readonly Color32 WallTopColor = new Color32(30, 34, 46, 255);
+        private static readonly Color32 WallBottomColor = new Color32(46, 52, 68, 255);
+        private static readonly Color32 WallLineColor = new Color32(58, 64, 82, 255);
+        private static readonly Color32 FloorColor = new Color32(64, 46, 34, 255);
+        private static readonly Color32 BaseboardColor = new Color32(20, 22, 30, 255);
+        private const float FloorTopRatio = 0.62f;
+        private const int WallPanelSpacing = 12;
+        private const int BaseboardHeight = 2;
+        private const int FloorNoiseAmplitude = 3;
+
         private static Color32[] BuildBackground()
         {
-            const int width = 48;
-            const int height = 80;
+            const int width = BackgroundWidth;
+            const int height = BackgroundHeight;
             var pixels = NewCanvas(width, height);
 
-            var wallTop = new Color32(30, 34, 46, 255);
-            var wallBottom = new Color32(46, 52, 68, 255);
-            var wallLine = new Color32(58, 64, 82, 255);
-            var floorColor = new Color32(64, 46, 34, 255);
-            var baseboard = new Color32(20, 22, 30, 255);
-
             // 壁と床の境目のy座標（左上原点）。台の奥に壁、手前に床があるように見せる
-            int floorTop = Mathf.RoundToInt(height * 0.62f);
+            int floorTop = Mathf.RoundToInt(height * FloorTopRatio);
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    Color32 color;
-                    if (y < floorTop)
-                    {
-                        float t = y / (float)floorTop;
-                        color = Lerp(wallTop, wallBottom, t);
-
-                        // 一定間隔の縦ラインで体育館の壁パネルらしさを出す
-                        if (x % 12 == 0)
-                        {
-                            color = wallLine;
-                        }
-                    }
-                    else if (y < floorTop + 2)
-                    {
-                        color = baseboard;
-                    }
-                    else
-                    {
-                        // 単色べた塗りに見えないよう座標由来のノイズでムラを作る
-                        int noise = (Hash(x, y) % 7) - 3;
-                        color = new Color32(
-                            (byte)Mathf.Clamp(floorColor.r + noise, 0, 255),
-                            (byte)Mathf.Clamp(floorColor.g + noise, 0, 255),
-                            (byte)Mathf.Clamp(floorColor.b + noise, 0, 255),
-                            255);
-                    }
-
-                    SetPixel(pixels, width, height, x, y, color);
+                    SetPixel(pixels, width, height, x, y, BackgroundColorAt(x, y, floorTop));
                 }
             }
 
             return pixels;
+        }
+
+        private static Color32 BackgroundColorAt(int x, int y, int floorTop)
+        {
+            if (y < floorTop)
+            {
+                // 一定間隔の縦ラインで体育館の壁パネルらしさを出す
+                if (x % WallPanelSpacing == 0) return WallLineColor;
+                return Lerp(WallTopColor, WallBottomColor, y / (float)floorTop);
+            }
+
+            if (y < floorTop + BaseboardHeight) return BaseboardColor;
+
+            // 単色べた塗りに見えないよう座標由来のノイズでムラを作る
+            return AddNoise(FloorColor, x, y, FloorNoiseAmplitude);
         }
 
         // ------------------------------------------------------------------
@@ -407,26 +465,25 @@ namespace MiniGame.TableTennis.Editor
 
         private static void FillCircle(Color32[] pixels, int width, int height, int cx, int cy, float radius, Color32 color)
         {
-            for (int y = Mathf.FloorToInt(cy - radius) - 1; y <= Mathf.CeilToInt(cy + radius) + 1; y++)
-            {
-                for (int x = Mathf.FloorToInt(cx - radius) - 1; x <= Mathf.CeilToInt(cx + radius) + 1; x++)
-                {
-                    if (Distance(x, y, cx, cy) <= radius)
-                    {
-                        SetPixel(pixels, width, height, x, y, color);
-                    }
-                }
-            }
+            DrawRing(pixels, width, height, cx, cy, float.NegativeInfinity, radius, color);
         }
 
         private static void OutlineCircle(Color32[] pixels, int width, int height, int cx, int cy, float radius, int thickness, Color32 color)
         {
-            for (int y = Mathf.FloorToInt(cy - radius) - 1; y <= Mathf.CeilToInt(cy + radius) + 1; y++)
+            DrawRing(pixels, width, height, cx, cy, radius - thickness, radius, color);
+        }
+
+        /// <summary>中心からの距離が innerRadius 以上 outerRadius 以下の画素を塗る</summary>
+        private static void DrawRing(Color32[] pixels, int width, int height, int cx, int cy,
+            float innerRadius, float outerRadius, Color32 color)
+        {
+            // 画素中心で距離を測るため、境界の1px外まで走査する
+            for (int y = Mathf.FloorToInt(cy - outerRadius) - 1; y <= Mathf.CeilToInt(cy + outerRadius) + 1; y++)
             {
-                for (int x = Mathf.FloorToInt(cx - radius) - 1; x <= Mathf.CeilToInt(cx + radius) + 1; x++)
+                for (int x = Mathf.FloorToInt(cx - outerRadius) - 1; x <= Mathf.CeilToInt(cx + outerRadius) + 1; x++)
                 {
                     float d = Distance(x, y, cx, cy);
-                    if (d >= radius - thickness && d <= radius)
+                    if (d >= innerRadius && d <= outerRadius)
                     {
                         SetPixel(pixels, width, height, x, y, color);
                     }
@@ -444,6 +501,17 @@ namespace MiniGame.TableTennis.Editor
         private static Color32 Lerp(Color32 from, Color32 to, float t)
         {
             return Color32.Lerp(from, to, Mathf.Clamp01(t));
+        }
+
+        /// <summary>RGBを -amplitude〜+amplitude の範囲で一律にずらす（不透明で返す）</summary>
+        private static Color32 AddNoise(Color32 baseColor, int x, int y, int amplitude)
+        {
+            int noise = (Hash(x, y) % (amplitude * 2 + 1)) - amplitude;
+            return new Color32(
+                (byte)Mathf.Clamp(baseColor.r + noise, 0, 255),
+                (byte)Mathf.Clamp(baseColor.g + noise, 0, 255),
+                (byte)Mathf.Clamp(baseColor.b + noise, 0, 255),
+                255);
         }
 
         /// <summary>毎回同じ絵になるよう、乱数ではなく座標から決まるノイズを使う</summary>

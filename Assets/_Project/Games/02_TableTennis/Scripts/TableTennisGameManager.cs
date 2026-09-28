@@ -27,6 +27,11 @@ namespace MiniGame.TableTennis
             PointBreak
         }
 
+        /// <summary>自分の打球以外（NPCのサーブ・相手端末の打球）は打球の強さを持たないため、固定の強さで打球音を鳴らす</summary>
+        private const float FullHitStrength = 1f;
+
+        private const float NpcReturnHitStrength = 0.8f;
+
         [Header("References")]
         [SerializeField] private BallMotion _ball;
         [SerializeField] private PlayerSwing _playerSwing;
@@ -92,6 +97,11 @@ namespace MiniGame.TableTennis
         private CharacterData _peerCharacter;
 
         private string OpponentLabel => _isOnline ? "RIVAL" : "NPC";
+
+        /// <summary>選手の情報が無いオンライン対戦などでは無効化されるため、有効かどうかも見る</summary>
+        private bool IsSpecialActive => _special != null && _special.enabled;
+
+        private string ScoreSummary => $"{_score.PlayerPoints} - {_score.OpponentPoints}";
 
         private void Awake()
         {
@@ -160,10 +170,11 @@ namespace MiniGame.TableTennis
             }
         }
 
+        // ---- 試合開始まで（モード・選手・難易度の選択） ----
+
         protected override void OnGameReady()
         {
-            _score = new MatchScore(_pointsToWin, _serveChangeInterval, CourtSide.Player);
-            UpdateScoreText();
+            ResetScore(CourtSide.Player);
             SetShotInfo("フリックして打つ（上:ドライブ 下:カット）", 0f);
 
             if (_modeSelectPanel != null)
@@ -215,8 +226,7 @@ namespace MiniGame.TableTennis
         private void HandleDifficultySelected(int level)
         {
             _npc.SetDifficulty(level);
-            StartGame();
-            StartCoroutine(NextServeRoutine());
+            BeginMatch();
         }
 
         /// <summary>
@@ -228,10 +238,7 @@ namespace MiniGame.TableTennis
             _isOnline = true;
             _isHost = isHost;
 
-            // 相手の打球は相手端末から届くので、NPCの思考は止めて表示だけリモートへ渡す
-            _npc.enabled = false;
-            _remoteOpponent.TakeOverViews();
-            _referee.IgnoreOwnShotOutcome = true;
+            SwitchToRemoteOpponent();
             _onlineLink.Begin();
 
             if (_loadoutPanel == null)
@@ -242,6 +249,20 @@ namespace MiniGame.TableTennis
                 return;
             }
 
+            ShowOnlineLoadoutSelect();
+        }
+
+        /// <summary>相手の打球は相手端末から届くので、NPCの思考は止めて表示だけリモートへ渡す</summary>
+        private void SwitchToRemoteOpponent()
+        {
+            _npc.enabled = false;
+            _remoteOpponent.TakeOverViews();
+            _referee.IgnoreOwnShotOutcome = true;
+        }
+
+        /// <summary>オンラインでは自分の選手だけを選び、相手の端末へ伝える</summary>
+        private void ShowOnlineLoadoutSelect()
+        {
             _loadoutPanel.Show(false, (player, _) =>
             {
                 _loadoutApplier.ApplyPlayer(player);
@@ -282,11 +303,8 @@ namespace MiniGame.TableTennis
 
             SetMessage(string.Empty);
             SetupOnlineSpecials();
-            _score = new MatchScore(_pointsToWin, _serveChangeInterval, _isHost ? CourtSide.Player : CourtSide.Opponent);
-            UpdateScoreText();
-
-            StartGame();
-            StartCoroutine(NextServeRoutine());
+            ResetScore(_isHost ? CourtSide.Player : CourtSide.Opponent);
+            BeginMatch();
         }
 
         /// <summary>
@@ -305,6 +323,20 @@ namespace MiniGame.TableTennis
 
             _special.SetSpecials(_localCharacter, _peerCharacter, true);
         }
+
+        private void ResetScore(CourtSide firstServer)
+        {
+            _score = new MatchScore(_pointsToWin, _serveChangeInterval, firstServer);
+            UpdateScoreText();
+        }
+
+        private void BeginMatch()
+        {
+            StartGame();
+            StartCoroutine(NextServeRoutine());
+        }
+
+        // ---- 試合中の共通処理 ----
 
         /// <summary>
         /// オンラインでは相手の端末は止まらないため、時間は止めずに打球の受け付けだけ止める
@@ -329,32 +361,50 @@ namespace MiniGame.TableTennis
             _playerSwing.IsServing = _phase == RallyPhase.Serving;
 
             // NPCが動くのはラリー中だけ（サーブ待ちやトス中は構えに戻す）
-            _npc.IsActive = IsPlaying && _phase == RallyPhase.Rallying;
+            bool isRallying = IsPlaying && _phase == RallyPhase.Rallying;
+            _npc.IsActive = isRallying;
 
             if (_special != null)
             {
-                _special.CanAppear = IsPlaying && _phase == RallyPhase.Rallying;
+                _special.CanAppear = isRallying;
             }
         }
 
-        /// <summary>サーブ権を確認し、プレイヤーならトス、相手なら送り出しでラリーを始める</summary>
-        private IEnumerator NextServeRoutine()
+        /// <summary>ラリー外（サーブ前・得点表示中）へ移し、ボールと判定を止める</summary>
+        private void HaltRally()
         {
             _phase = RallyPhase.PointBreak;
             _ball.Stop();
             _referee.Stop();
+        }
+
+        // ---- サーブ ----
+
+        /// <summary>サーブ権を確認し、プレイヤーならトス、相手なら送り出しでラリーを始める</summary>
+        private IEnumerator NextServeRoutine()
+        {
+            HaltRally();
             _npc.ResetForRally();
 
             CourtSide server = _score.CurrentServer;
-            string serveLabel = server == CourtSide.Player ? "YOUR SERVE" : $"{OpponentLabel} SERVE";
-
-            // 黄色ボールのラリーは、取れば強必殺技がもらえることをサーブ前に知らせる
-            bool isChance = _special != null && _special.PrepareRally(_score.TotalPoints);
-            SetMessage(isChance ? $"CHANCE BALL!\n{serveLabel}" : serveLabel);
+            AnnounceServe(server);
             yield return new WaitForSeconds(_serveDelay);
+
             SetMessage(string.Empty);
             SetShotInfo(server == CourtSide.Player ? "トスを打つ" : string.Empty, _shotInfoDuration);
+            StartServe(server);
+        }
 
+        /// <summary>黄色ボールのラリーは、取れば強必殺技がもらえることをサーブ前に知らせる</summary>
+        private void AnnounceServe(CourtSide server)
+        {
+            string serveLabel = server == CourtSide.Player ? "YOUR SERVE" : $"{OpponentLabel} SERVE";
+            bool isChance = _special != null && _special.PrepareRally(_score.TotalPoints);
+            SetMessage(isChance ? $"CHANCE BALL!\n{serveLabel}" : serveLabel);
+        }
+
+        private void StartServe(CourtSide server)
+        {
             if (server == CourtSide.Player)
             {
                 // トスを打った時点でラリー開始とする（HandleShot）
@@ -371,9 +421,22 @@ namespace MiniGame.TableTennis
                 _phase = RallyPhase.Rallying;
                 _npc.Serve();
                 _referee.BeginRally(CourtSide.Opponent);
-                _audio.PlayHit(1f);
+                _audio.PlayHit(FullHitStrength);
             }
         }
+
+        private IEnumerator RetossRoutine()
+        {
+            SetShotInfo("トスをやり直します", _shotInfoDuration);
+            yield return new WaitForSeconds(_retossDelay);
+
+            if (_phase == RallyPhase.Serving)
+            {
+                _serve.TossForPlayer();
+            }
+        }
+
+        // ---- ラリー中のイベント ----
 
         /// <summary>台に落ちた音は、奥行きが読み取りにくい擬似3Dで距離感の手がかりにもなる</summary>
         private void HandleBounced(Vector3 contact)
@@ -404,17 +467,6 @@ namespace MiniGame.TableTennis
             }
         }
 
-        private IEnumerator RetossRoutine()
-        {
-            SetShotInfo("トスをやり直します", _shotInfoDuration);
-            yield return new WaitForSeconds(_retossDelay);
-
-            if (_phase == RallyPhase.Serving)
-            {
-                _serve.TossForPlayer();
-            }
-        }
-
         private void HandleShot(FlickData flick, ShotResult shot)
         {
             _audio.PlayHit(shot.Strength);
@@ -439,6 +491,32 @@ namespace MiniGame.TableTennis
             SetShotInfo(BuildShotInfo(shot), _shotInfoDuration);
         }
 
+        private void HandleMissed(SwingJudgement judgement)
+        {
+            SetShotInfo($"空振り！　{TimingLabel(judgement.Timing)}", _shotInfoDuration);
+        }
+
+        /// <summary>NPCが返球できたら、打球したものとしてラリー判定を継続する</summary>
+        private void HandleNpcReturned()
+        {
+            _audio.PlayHit(NpcReturnHitStrength);
+            _referee.NotifyHit(CourtSide.Opponent);
+        }
+
+        private void HandleSpecialGranted(CourtSide side, SpecialData special)
+        {
+            string opponentLabel = _isOnline ? $"{OpponentLabel}が獲得" : $"{OpponentLabel}が次の返球で使う";
+            string label = side == CourtSide.Player ? "SPボタンで次の打球に" : opponentLabel;
+            SetShotInfo($"{special.DisplayName} 獲得！\n{label}", _shotInfoDuration);
+        }
+
+        private void HandleNpcSpecialUsed(SpecialData special)
+        {
+            SetShotInfo($"{OpponentLabel}の{special.DisplayName}！", _shotInfoDuration);
+        }
+
+        // ---- オンライン対戦の受信 ----
+
         /// <summary>相手端末で打たれた球を、こちらの BallMotion で同じように飛ばす</summary>
         private void HandleRemoteShot(RemoteShot shot)
         {
@@ -452,23 +530,16 @@ namespace MiniGame.TableTennis
             {
                 _phase = RallyPhase.Rallying;
                 _referee.BeginRally(CourtSide.Opponent);
-            }
-            else
-            {
-                _referee.NotifyHit(CourtSide.Opponent);
-            }
-
-            if (shot.IsServe)
-            {
                 _ball.LaunchServe(shot.From, shot.ServeBouncePoint, shot.ServeTarget, shot.Spin, shot.ServeForwardSpeed);
             }
             else
             {
+                _referee.NotifyHit(CourtSide.Opponent);
                 _ball.Launch(shot.From, shot.Velocity, shot.Spin);
             }
 
             // 跳ね方の変化は早送り中のバウンドにも効かせたいので、早送りより先に反映する
-            if (_special != null && _special.enabled)
+            if (IsSpecialActive)
             {
                 _special.ReceiveOpponentShot(shot.Special);
             }
@@ -477,7 +548,7 @@ namespace MiniGame.TableTennis
             _ball.FastForward(shot.Elapsed);
 
             _remoteOpponent.PlaySwing(shot.From);
-            _audio.PlayHit(1f);
+            _audio.PlayHit(FullHitStrength);
         }
 
         /// <summary>相手端末が判定した得点（こちらの審判は自分の打球の結果を判定しない）</summary>
@@ -501,37 +572,13 @@ namespace MiniGame.TableTennis
                 _loadoutPanel.Hide();
             }
 
-            _phase = RallyPhase.PointBreak;
-            _ball.Stop();
-            _referee.Stop();
+            HaltRally();
             SetMessage(string.Empty);
 
-            FinishGame(false, $"{_score.PlayerPoints} - {_score.OpponentPoints}", "相手との接続が切れました");
+            FinishGame(false, ScoreSummary, "相手との接続が切れました");
         }
 
-        /// <summary>NPCが返球できたら、打球したものとしてラリー判定を継続する</summary>
-        private void HandleNpcReturned()
-        {
-            _audio.PlayHit(0.8f);
-            _referee.NotifyHit(CourtSide.Opponent);
-        }
-
-        private void HandleSpecialGranted(CourtSide side, SpecialData special)
-        {
-            string opponentLabel = _isOnline ? $"{OpponentLabel}が獲得" : $"{OpponentLabel}が次の返球で使う";
-            string label = side == CourtSide.Player ? "SPボタンで次の打球に" : opponentLabel;
-            SetShotInfo($"{special.DisplayName} 獲得！\n{label}", _shotInfoDuration);
-        }
-
-        private void HandleNpcSpecialUsed(SpecialData special)
-        {
-            SetShotInfo($"{OpponentLabel}の{special.DisplayName}！", _shotInfoDuration);
-        }
-
-        private void HandleMissed(SwingJudgement judgement)
-        {
-            SetShotInfo($"空振り！　{TimingLabel(judgement.Timing)}", _shotInfoDuration);
-        }
+        // ---- 得点と試合終了 ----
 
         private void HandlePointDecided(CourtSide scorer, PointReason reason)
         {
@@ -546,9 +593,7 @@ namespace MiniGame.TableTennis
 
         private void ApplyPoint(CourtSide scorer, PointReason reason)
         {
-            _phase = RallyPhase.PointBreak;
-            _ball.Stop();
-            _referee.Stop();
+            HaltRally();
 
             _score.AddPoint(scorer);
             UpdateScoreText();
@@ -557,7 +602,7 @@ namespace MiniGame.TableTennis
             SetMessage($"{ReasonLabel(reason)}\n{SideLabel(scorer)} POINT");
 
             // 獲得の表示が打球欄に出るよう、打球欄を消した後に呼ぶ
-            if (_special != null && _special.enabled)
+            if (IsSpecialActive)
             {
                 _special.EndRally(scorer);
             }
@@ -592,11 +637,11 @@ namespace MiniGame.TableTennis
             yield return new WaitForSeconds(_gameSetDuration);
             SetMessage(string.Empty);
 
-            FinishGame(
-                isVictory,
-                $"{_score.PlayerPoints} - {_score.OpponentPoints}",
-                isVictory ? $"{_pointsToWin}点先取！" : (_isOnline ? "相手の勝ち" : "NPCの勝ち"));
+            string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : (_isOnline ? "相手の勝ち" : "NPCの勝ち");
+            FinishGame(isVictory, ScoreSummary, resultMessage);
         }
+
+        // ---- 表示 ----
 
         private string SideLabel(CourtSide side)
         {
@@ -611,7 +656,7 @@ namespace MiniGame.TableTennis
             bool playerServes = _score.CurrentServer == CourtSide.Player;
             string playerMark = playerServes ? "●" : "  ";
             string opponentMark = playerServes ? "  " : "●";
-            _scoreText.text = $"{playerMark} YOU {_score.PlayerPoints} - {_score.OpponentPoints} {OpponentLabel} {opponentMark}";
+            _scoreText.text = $"{playerMark} YOU {ScoreSummary} {OpponentLabel} {opponentMark}";
         }
 
         /// <summary>
@@ -626,6 +671,7 @@ namespace MiniGame.TableTennis
 
         private static string DescribeSpin(Vector2 spin)
         {
+            // わずかな回転まで表示すると、ほぼ無回転の球でも回転名が出て紛らわしいため
             const float deadZone = 0.1f;
 
             string vertical = spin.y > deadZone ? "トップスピン"

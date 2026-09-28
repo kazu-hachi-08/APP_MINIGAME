@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// ピン1本の物理と転倒判定（§8.3〜8.4）。見た目は PinView が担当し、ここは地面平面の2D物理だけを持つ。
+    /// ピン1本の物理と転倒判定。見た目は PinView が担当し、ここは地面平面の2D物理だけを持つ。
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(CircleCollider2D))]
     public class Pin : MonoBehaviour
@@ -42,47 +42,44 @@ namespace MiniGame.Molkky
             circle.radius = settings.PinRadius;
             circle.sharedMaterial = material;
 
-            ApplyBody(settings.PinMassStanding, settings.PinDampingStanding);
+            ApplyBody(false);
         }
 
         /// <summary>指定位置に立て直す</summary>
         public void StandAt(Vector2 position)
         {
-            _body.position = position;
-            transform.position = position;
-            Stop();
+            MoveTo(position);
 
             IsFallen = false;
             _armed = false;
-            ApplyBody(_settings.PinMassStanding, _settings.PinDampingStanding);
+            ApplyBody(false);
         }
 
         /// <summary>
-        /// 相手端末が計算した結果で上書きする（§19.2）。
+        /// 相手端末が計算した結果で上書きする。
         /// 倒れる音は自分の端末の演出中に鳴っているので、ここでは Fell を通知しない
         /// </summary>
         public void ApplyState(PinState state)
         {
-            _body.position = state.Position;
-            transform.position = state.Position;
-            Stop();
+            MoveTo(state.Position);
 
             _armed = false;
             IsFallen = state.IsFallen;
             FallDirection = state.FallDirection;
-            if (IsFallen)
-            {
-                ApplyBody(_settings.PinMassFallen, _settings.PinDampingFallen);
-            }
-            else
-            {
-                ApplyBody(_settings.PinMassStanding, _settings.PinDampingStanding);
-            }
+            ApplyBody(IsFallen);
         }
 
         public PinState CaptureState()
         {
             return new PinState(_body.position, IsFallen, FallDirection);
+        }
+
+        /// <summary>transform も同時に動かす。物理ステップを待たずに見た目（PinView）へ反映させるため</summary>
+        private void MoveTo(Vector2 position)
+        {
+            _body.position = position;
+            transform.position = position;
+            Stop();
         }
 
         public void Stop()
@@ -128,14 +125,14 @@ namespace MiniGame.Molkky
             FallDirection = direction.sqrMagnitude > 0f ? direction.normalized : Vector2.up;
 
             // 倒れたピンは軽く・滑りやすくして、他のピンを巻き込む連鎖を起こしやすくする
-            ApplyBody(_settings.PinMassFallen, _settings.PinDampingFallen);
+            ApplyBody(true);
             Fell?.Invoke(this);
         }
 
-        private void ApplyBody(float mass, float damping)
+        private void ApplyBody(bool fallen)
         {
-            _body.mass = mass;
-            _body.linearDamping = damping;
+            _body.mass = fallen ? _settings.PinMassFallen : _settings.PinMassStanding;
+            _body.linearDamping = fallen ? _settings.PinDampingFallen : _settings.PinDampingStanding;
         }
     }
 }

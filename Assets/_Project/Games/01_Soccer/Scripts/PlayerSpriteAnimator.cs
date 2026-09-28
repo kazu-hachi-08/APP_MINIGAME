@@ -10,7 +10,7 @@ namespace MiniGame.Soccer
     [RequireComponent(typeof(SpriteRenderer))]
     public class PlayerSpriteAnimator : MonoBehaviour
     {
-        // 各方向 0 = 待機 / 1, 2 = 走り
+        // 各方向 0 = 待機 / 1, 2 = 走り（走りは2コマを交互に出す）
         [SerializeField] private Sprite[] _downFrames = new Sprite[3];
         [SerializeField] private Sprite[] _upFrames = new Sprite[3];
         [SerializeField] private Sprite[] _sideFrames = new Sprite[3];
@@ -18,11 +18,14 @@ namespace MiniGame.Soccer
         [SerializeField] private float _movingSpeedThreshold = 0.2f;
         [SerializeField] private float _frameInterval = 0.12f;
 
+        private const int IdleFrameIndex = 0;
+        private const int FirstRunFrameIndex = 1;
+
         private Rigidbody2D _rigidbody;
         private SpriteRenderer _renderer;
         private Sprite[] _currentFrames;
         private float _frameTimer;
-        private int _runFrame;
+        private int _runFrameIndex;  // 走り2コマのどちらを出しているか（0 / 1）
 
         // オンライン対戦のゲスト端末は物理を動かさないため、Rigidbodyの速度の代わりに届いた速度で向きとコマを決める
         private bool _useExternalVelocity;
@@ -53,12 +56,22 @@ namespace MiniGame.Soccer
             }
             else
             {
-                // 止まったら必ず待機コマへ戻す
-                _frameTimer = 0f;
-                _runFrame = 0;
+                ResetRunFrame();
             }
 
-            Sprite sprite = isMoving ? _currentFrames[1 + _runFrame] : _currentFrames[0];
+            ApplySprite(isMoving);
+        }
+
+        /// <summary>止まったら必ず待機コマへ戻し、次に走り出したときも1コマ目から始める</summary>
+        private void ResetRunFrame()
+        {
+            _frameTimer = 0f;
+            _runFrameIndex = 0;
+        }
+
+        private void ApplySprite(bool isMoving)
+        {
+            Sprite sprite = isMoving ? _currentFrames[FirstRunFrameIndex + _runFrameIndex] : _currentFrames[IdleFrameIndex];
             if (sprite != null)
             {
                 _renderer.sprite = sprite;
@@ -86,7 +99,7 @@ namespace MiniGame.Soccer
             while (_frameTimer >= _frameInterval)
             {
                 _frameTimer -= _frameInterval;
-                _runFrame = 1 - _runFrame;
+                _runFrameIndex = 1 - _runFrameIndex;
             }
         }
     }

@@ -4,8 +4,8 @@ using UnityEngine.Tilemaps;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 読み込んだホールの地面の種類・ティー・カップを問い合わせる窓口（§15）。ホールのプレハブのルートに付ける。
-    /// Tilemap の外側はすべて OB（§9.2）。
+    /// 読み込んだホールの地面の種類・ティー・カップを問い合わせる窓口。ホールのプレハブのルートに付ける。
+    /// Tilemap の外側はすべて OB。
     /// </summary>
     public class HoleCourse : MonoBehaviour, IGroundMap, ISlopeMap
     {
@@ -51,7 +51,7 @@ namespace MiniGame.Golf
 
             Matrix4x4 matrix = _slope.GetTransformMatrix(cell);
             Vector3 rotatedSlope = matrix.MultiplyVector(new Vector3(tile.Slope.x, tile.Slope.y, 0f));
-            
+
             return new System.Numerics.Vector2(rotatedSlope.x, rotatedSlope.y);
         }
     }

@@ -20,7 +20,7 @@ namespace MiniGame.Soccer
         /// <summary>この端末が試合でどの立場か</summary>
         private enum MatchRole
         {
-            /// <summary>CPU戦（従来どおり）</summary>
+            /// <summary>CPU戦</summary>
             Offline,
 
             /// <summary>オンラインのホスト。HOMEを操作し、試合全体を計算する</summary>
@@ -29,6 +29,21 @@ namespace MiniGame.Soccer
             /// <summary>オンラインのゲスト。AWAYを操作し、表示だけ行う</summary>
             Guest
         }
+
+        private const string HomeLabel = "HOME";
+        private const string AwayLabel = "AWAY";
+        private const string YouSuffix = "(YOU)";
+
+        private const string KickOffMessage = "KICK OFF!";
+        private const string TimeUpMessage = "TIME UP";
+        private const string StuckResetMessage = "RESET";
+
+        private const string WinDetail = "勝利！";
+        private const string LoseDetail = "敗北...";
+        private const string DrawDetail = "引き分け";
+        private const string DisconnectedDetail = "相手との接続が切れました";
+
+        private const int SecondsPerMinute = 60;
 
         [Header("Soccer References")]
         [SerializeField] private Ball _ball;
@@ -75,7 +90,10 @@ namespace MiniGame.Soccer
         public float RemainingSeconds => _remainingSeconds;
 
         private bool IsOnline => _role != MatchRole.Offline;
+        private bool IsHost => _role == MatchRole.Host;
         private bool IsGuest => _role == MatchRole.Guest;
+
+        // ---- Unity ライフサイクル ----
 
         private void OnEnable()
         {
@@ -123,6 +141,19 @@ namespace MiniGame.Soccer
             }
         }
 
+        protected override void Update()
+        {
+            base.Update();
+
+            // ゲストの時間・停滞監視はホストが行い、結果だけが届く
+            if (IsGuest) return;
+
+            TickMatchTimer();
+            MonitorStuckBall();
+        }
+
+        // ---- 試合開始 ----
+
         protected override void OnGameReady()
         {
             _remainingSeconds = _matchDurationSeconds;
@@ -156,31 +187,32 @@ namespace MiniGame.Soccer
 
             if (isHost)
             {
-                // AWAYの操作選手はCPUではなく、ゲストから届いた入力で動かす
-                _awaySwitcher.SetInput(_remoteInput);
-                _awaySwitcher.enabled = true;
-
-                ResetPositions();
-                StartCoroutine(KickOffRoutine());
+                StartAsHost();
             }
             else
             {
-                // キックオフ等の進行はホストから届くので、ここでは表示の準備だけして待つ
-                _guestView.Begin();
-                StartGame();
+                StartAsGuest();
             }
         }
 
-        protected override void Update()
+        private void StartAsHost()
         {
-            base.Update();
+            // AWAYの操作選手はCPUではなく、ゲストから届いた入力で動かす
+            _awaySwitcher.SetInput(_remoteInput);
+            _awaySwitcher.enabled = true;
 
-            // ゲストの時間・停滞監視はホストが行い、結果だけが届く
-            if (IsGuest) return;
-
-            TickMatchTimer();
-            MonitorStuckBall();
+            ResetPositions();
+            StartCoroutine(KickOffRoutine());
         }
+
+        private void StartAsGuest()
+        {
+            // キックオフ等の進行はホストから届くので、ここでは表示の準備だけして待つ
+            _guestView.Begin();
+            StartGame();
+        }
+
+        // ---- 試合進行（時間・停滞監視） ----
 
         /// <summary>
         /// 試合時間のカウントダウン（プレイ中のみ進み、ゴール演出中などは止まる）
@@ -199,6 +231,141 @@ namespace MiniGame.Soccer
             UpdateTimerText();
         }
 
+        /// <summary>
+        /// バグ等で選手・ボールが動かなくなり試合が続行不能になった場合の救済措置。
+        /// ボールの速度がほぼ0の状態が一定時間続いたら、ゴール時と同じリセットで復帰する
+        /// </summary>
+        private void MonitorStuckBall()
+        {
+            if (!IsPlaying || _ball == null || _isSequenceRunning || !IsBallAlmostStopped())
+            {
+                _stuckTimer = 0f;
+                return;
+            }
+
+            _stuckTimer += Time.deltaTime;
+            if (_stuckTimer >= _stuckTimeLimit)
+            {
+                _stuckTimer = 0f;
+                StartCoroutine(StuckRecoveryRoutine());
+            }
+        }
+
+        private bool IsBallAlmostStopped()
+        {
+            return _ball.Velocity.sqrMagnitude <= _stuckSpeedThreshold * _stuckSpeedThreshold;
+        }
+
+        private IEnumerator StuckRecoveryRoutine()
+        {
+            _isSequenceRunning = true;
+            ChangeState(MiniGameState.Event);
+
+            yield return StartCoroutine(ShowMessageRoutine(StuckResetMessage, _stuckMessageDuration));
+
+            ResetPositions();
+            yield return StartCoroutine(KickOffRoutine());
+
+            _isSequenceRunning = false;
+        }
+
+        // ---- ゴール・キックオフ ----
+
+        /// <summary>
+        /// GoalTrigger からゴール検知時に呼び出される
+        /// </summary>
+        public void OnGoalScored(TeamSide scoringTeam)
+        {
+            if (!IsPlaying || _isSequenceRunning || IsGuest) return;
+            StartCoroutine(GoalRoutine(scoringTeam));
+        }
+
+        private IEnumerator GoalRoutine(TeamSide scoringTeam)
+        {
+            _isSequenceRunning = true;
+            ChangeState(MiniGameState.Event);
+
+            AddScore(scoringTeam);
+            UpdateScoreText();
+
+            // ゴールの揺れ演出は GoalTrigger が鳴らし済みなので、ここでは歓声と画面演出だけ
+            PlayGoalCheerAndEffect();
+
+            if (IsHost)
+            {
+                _onlineLink.SendGoal(scoringTeam);
+            }
+
+            string scorerLabel = scoringTeam == TeamSide.Home ? HomeLabel : AwayLabel;
+            yield return StartCoroutine(ShowMessageRoutine($"GOAL! ({scorerLabel})", _goalMessageDuration));
+
+            ResetPositions();
+            yield return StartCoroutine(KickOffRoutine());
+
+            _isSequenceRunning = false;
+        }
+
+        private void AddScore(TeamSide scoringTeam)
+        {
+            if (scoringTeam == TeamSide.Home)
+            {
+                _homeScore++;
+            }
+            else
+            {
+                _awayScore++;
+            }
+        }
+
+        private void PlayGoalCheerAndEffect()
+        {
+            PlaySeLocal(SeId.GoalCheer);
+
+            if (_goalEffect != null)
+            {
+                _goalEffect.Play();
+            }
+        }
+
+        private IEnumerator KickOffRoutine()
+        {
+            ChangeState(MiniGameState.Countdown);
+
+            PlaySe(SeId.Whistle);
+
+            yield return StartCoroutine(ShowMessageRoutine(KickOffMessage, _kickOffMessageDuration));
+            StartGame();
+        }
+
+        private void ResetPositions()
+        {
+            if (_ball != null)
+            {
+                _ball.ResetBall(_ballStartPosition);
+            }
+
+            // キックオフを毎回同じ陣形から始めるため、両チーム全員を基準ポジションへ戻す
+            var aiPlayers = Object.FindObjectsByType<AIPlayerController>(FindObjectsSortMode.None);
+            foreach (var ai in aiPlayers)
+            {
+                ai.ResetToHomePosition();
+            }
+
+            // キックオフ時に操作する選手を毎回同じにし、直前の操作対象を引きずらないようにする
+            if (_playerSwitcher != null)
+            {
+                _playerSwitcher.ResetPlayers();
+            }
+
+            // AWAYの切り替えはオンラインのホストでだけ動いている
+            if (_awaySwitcher != null && _awaySwitcher.enabled)
+            {
+                _awaySwitcher.ResetPlayers();
+            }
+        }
+
+        // ---- 試合終了 ----
+
         private IEnumerator TimeUpRoutine()
         {
             _isSequenceRunning = true;
@@ -206,9 +373,9 @@ namespace MiniGame.Soccer
 
             PlaySe(SeId.Whistle);
 
-            yield return StartCoroutine(ShowMessageRoutine("TIME UP", _timeUpMessageDuration));
+            yield return StartCoroutine(ShowMessageRoutine(TimeUpMessage, _timeUpMessageDuration));
 
-            if (_role == MatchRole.Host)
+            if (IsHost)
             {
                 _onlineLink.SendMatchEnd(_homeScore, _awayScore);
             }
@@ -225,14 +392,19 @@ namespace MiniGame.Soccer
             int myScore = IsGuest ? awayScore : homeScore;
             int opponentScore = IsGuest ? homeScore : awayScore;
 
-            FinishGame(myScore > opponentScore, $"HOME {homeScore} - {awayScore} AWAY", BuildResultDetail(myScore, opponentScore));
+            FinishGame(myScore > opponentScore, BuildScoreSummary(homeScore, awayScore), BuildResultDetail(myScore, opponentScore));
+        }
+
+        private static string BuildScoreSummary(int homeScore, int awayScore)
+        {
+            return $"{HomeLabel} {homeScore} - {awayScore} {AwayLabel}";
         }
 
         private static string BuildResultDetail(int myScore, int opponentScore)
         {
-            if (myScore > opponentScore) return "勝利！";
-            if (myScore < opponentScore) return "敗北...";
-            return "引き分け";
+            if (myScore > opponentScore) return WinDetail;
+            if (myScore < opponentScore) return LoseDetail;
+            return DrawDetail;
         }
 
         protected override void OnGameOver(bool isVictory)
@@ -255,11 +427,10 @@ namespace MiniGame.Soccer
                 _remoteInput.Clear();
             }
 
-            if (InputManager.HasInstance)
-            {
-                InputManager.Instance.InputEnabled = false;
-            }
+            SetLocalInputEnabled(false);
         }
+
+        // ---- ポーズ ----
 
         /// <summary>
         /// オンラインでは相手の端末は止まらないため、試合は止めずに自分の操作だけ止めてPAUSE画面を出す
@@ -311,100 +482,7 @@ namespace MiniGame.Soccer
             }
         }
 
-        /// <summary>
-        /// バグ等で選手・ボールが動かなくなり試合が続行不能になった場合の救済措置。
-        /// ボールの速度がほぼ0の状態が一定時間続いたら、ゴール時と同じリセットで復帰する
-        /// </summary>
-        private void MonitorStuckBall()
-        {
-            if (!IsPlaying || _ball == null || _isSequenceRunning)
-            {
-                _stuckTimer = 0f;
-                return;
-            }
-
-            if (_ball.Velocity.sqrMagnitude <= _stuckSpeedThreshold * _stuckSpeedThreshold)
-            {
-                _stuckTimer += Time.deltaTime;
-                if (_stuckTimer >= _stuckTimeLimit)
-                {
-                    _stuckTimer = 0f;
-                    StartCoroutine(StuckRecoveryRoutine());
-                }
-            }
-            else
-            {
-                _stuckTimer = 0f;
-            }
-        }
-
-        private IEnumerator StuckRecoveryRoutine()
-        {
-            _isSequenceRunning = true;
-            ChangeState(MiniGameState.Event);
-
-            yield return StartCoroutine(ShowMessageRoutine("RESET", _stuckMessageDuration));
-
-            ResetPositions();
-            yield return StartCoroutine(KickOffRoutine());
-
-            _isSequenceRunning = false;
-        }
-
-        /// <summary>
-        /// GoalTrigger からゴール検知時に呼び出される
-        /// </summary>
-        public void OnGoalScored(TeamSide scoringTeam)
-        {
-            if (!IsPlaying || _isSequenceRunning || IsGuest) return;
-            StartCoroutine(GoalRoutine(scoringTeam));
-        }
-
-        private IEnumerator GoalRoutine(TeamSide scoringTeam)
-        {
-            _isSequenceRunning = true;
-            ChangeState(MiniGameState.Event);
-
-            if (scoringTeam == TeamSide.Home)
-            {
-                _homeScore++;
-            }
-            else
-            {
-                _awayScore++;
-            }
-            UpdateScoreText();
-
-            // ゴールの揺れ演出は GoalTrigger が鳴らし済みなので、ここでは歓声と画面演出だけ
-            PlaySeLocal(SeId.GoalCheer);
-            if (_goalEffect != null)
-            {
-                _goalEffect.Play();
-            }
-
-            if (_role == MatchRole.Host)
-            {
-                _onlineLink.SendGoal(scoringTeam);
-            }
-
-            string scorerLabel = scoringTeam == TeamSide.Home ? "HOME" : "AWAY";
-            yield return StartCoroutine(ShowMessageRoutine($"GOAL! ({scorerLabel})", _goalMessageDuration));
-
-            ResetPositions();
-            yield return StartCoroutine(KickOffRoutine());
-
-            _isSequenceRunning = false;
-        }
-
-        private IEnumerator KickOffRoutine()
-        {
-            ChangeState(MiniGameState.Countdown);
-
-            PlaySe(SeId.Whistle);
-
-            yield return StartCoroutine(ShowMessageRoutine("KICK OFF!", _kickOffMessageDuration));
-            StartGame();
-        }
+        // ---- メッセージ・SE（ホストはゲストにも同じものを出す） ----
 
         private IEnumerator ShowMessageRoutine(string message, float duration)
         {
@@ -413,12 +491,11 @@ namespace MiniGame.Soccer
             ShowMessage(string.Empty);
         }
 
-        /// <summary>ホストでは同じメッセージをゲストの画面にも出す</summary>
         private void ShowMessage(string message)
         {
             SetMessage(message);
 
-            if (_role == MatchRole.Host)
+            if (IsHost)
             {
                 _onlineLink.SendText(message);
             }
@@ -433,12 +510,11 @@ namespace MiniGame.Soccer
             _messageText.gameObject.SetActive(visible);
         }
 
-        /// <summary>ホストでは同じSEをゲストでも鳴らす</summary>
         private void PlaySe(SeId id)
         {
             PlaySeLocal(id);
 
-            if (_role == MatchRole.Host)
+            if (IsHost)
             {
                 _onlineLink.SendSe(id);
             }
@@ -457,7 +533,7 @@ namespace MiniGame.Soccer
         /// <summary>キック音は Ball がホストで鳴らすので、ゲストにも同じ音を鳴らしてもらう</summary>
         private void HandleBallKicked(float speed)
         {
-            if (_role == MatchRole.Host)
+            if (IsHost)
             {
                 _onlineLink.SendKick(speed);
             }
@@ -487,12 +563,7 @@ namespace MiniGame.Soccer
         /// <summary>ゴール演出（ゲストはゴール判定をしないので、ゴールの揺れもここで出す）</summary>
         private void PlayGoalEffects(TeamSide scoringTeam)
         {
-            PlaySeLocal(SeId.GoalCheer);
-
-            if (_goalEffect != null)
-            {
-                _goalEffect.Play();
-            }
+            PlayGoalCheerAndEffect();
 
             foreach (var goal in Object.FindObjectsByType<GoalTrigger>(FindObjectsSortMode.None))
             {
@@ -510,6 +581,8 @@ namespace MiniGame.Soccer
             FinishMatch(homeScore, awayScore);
         }
 
+        // ---- オンライン（共通） ----
+
         /// <summary>試合中に相手との接続が切れたら、そこで試合を打ち切る</summary>
         private void HandlePeerDisconnected()
         {
@@ -519,7 +592,7 @@ namespace MiniGame.Soccer
             _isSequenceRunning = false;
             SetMessage(string.Empty);
 
-            FinishGame(false, $"HOME {_homeScore} - {_awayScore} AWAY", "相手との接続が切れました");
+            FinishGame(false, BuildScoreSummary(_homeScore, _awayScore), DisconnectedDetail);
         }
 
         // ---- 表示 ----
@@ -529,8 +602,8 @@ namespace MiniGame.Soccer
             if (_scoreText == null) return;
 
             // オンラインではどちらのチームを操作しているか分かるよう、自分側に YOU を付ける
-            string homeLabel = _role == MatchRole.Host ? "HOME(YOU)" : "HOME";
-            string awayLabel = IsGuest ? "AWAY(YOU)" : "AWAY";
+            string homeLabel = IsHost ? HomeLabel + YouSuffix : HomeLabel;
+            string awayLabel = IsGuest ? AwayLabel + YouSuffix : AwayLabel;
             _scoreText.text = $"{homeLabel} {_homeScore} - {_awayScore} {awayLabel}";
         }
 
@@ -540,34 +613,7 @@ namespace MiniGame.Soccer
 
             // 残り0.1秒でも「1」と見せたいので切り上げる
             int totalSeconds = Mathf.CeilToInt(_remainingSeconds);
-            _timerText.text = $"{totalSeconds / 60}:{totalSeconds % 60:00}";
-        }
-
-        private void ResetPositions()
-        {
-            if (_ball != null)
-            {
-                _ball.ResetBall(_ballStartPosition);
-            }
-
-            // 22人全員をフォーメーションの基準ポジションへ戻す（Phase 5: 11 vs 11）
-            var aiPlayers = Object.FindObjectsByType<AIPlayerController>(FindObjectsSortMode.None);
-            foreach (var ai in aiPlayers)
-            {
-                ai.ResetToHomePosition();
-            }
-
-            // 操作対象をキックオフ時の選手へ戻す（Phase 6: 選手切り替え）
-            if (_playerSwitcher != null)
-            {
-                _playerSwitcher.ResetPlayers();
-            }
-
-            // AWAYの切り替えはオンラインのホストでだけ動いている
-            if (_awaySwitcher != null && _awaySwitcher.enabled)
-            {
-                _awaySwitcher.ResetPlayers();
-            }
+            _timerText.text = $"{totalSeconds / SecondsPerMinute}:{totalSeconds % SecondsPerMinute:00}";
         }
     }
 }

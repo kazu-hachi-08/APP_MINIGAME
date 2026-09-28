@@ -4,7 +4,7 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1人分の人間/NPC・ボール位置・今のホールの打数・各ホールのスコア（§15）。
+    /// 1人分の人間/NPC・ボール位置・今のホールの打数・各ホールのスコア。
     /// ボールの実体（GolfBall）は1つだけで手番の人の位置に置き直すので、止まっている位置はここで覚えておく。
     /// </summary>
     public sealed class GolfPlayerSlot
@@ -69,7 +69,7 @@ namespace MiniGame.Golf
             Strokes += strokes;
         }
 
-        /// <summary>§14.2 オンラインでは打った人の端末の打数（罰打を含む）で上書きする</summary>
+        /// <summary>オンラインでは打った人の端末の打数（罰打を含む）で上書きする</summary>
         public void SetStrokes(int strokes)
         {
             Strokes = strokes;
@@ -81,7 +81,7 @@ namespace MiniGame.Golf
             _holeScores.Add(Strokes);
         }
 
-        /// <summary>§6.4 打ち切りの打数は、罰打で上限を超えていても上限として記録する</summary>
+        /// <summary>打ち切りの打数は、罰打で上限を超えていても上限として記録する</summary>
         public void GiveUp(int recordedStrokes)
         {
             IsGivenUp = true;

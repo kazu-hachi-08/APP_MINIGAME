@@ -9,6 +9,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class TableLayout : MonoBehaviour
     {
+        /// <summary>台の幅に対するネットの幅の倍率</summary>
+        private const float NetWidthRatio = 1.2f;
+
         [Header("Table Size (m)")]
         [SerializeField] private float _halfWidth = 0.7625f;
         [SerializeField] private float _halfLength = 1.37f;
@@ -37,7 +40,7 @@ namespace MiniGame.TableTennis
         public float OpponentEndZ => _halfLength;
 
         /// <summary>ネットは台より少し広い（実際の卓球と同じく台の外へはみ出す）</summary>
-        public float NetHalfWidth => _halfWidth * 1.2f;
+        public float NetHalfWidth => _halfWidth * NetWidthRatio;
 
         /// <summary>
         /// 奥行きの割合（0:手前端 / 1:奥端）。台の外側も扱えるようクランプしない。

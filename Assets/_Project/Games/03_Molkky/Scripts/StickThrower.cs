@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// モルック（棒）の物理（§8.2）。ThrowRequest から初速を与える。
+    /// モルック（棒）の物理。ThrowRequest から初速を与える。
     /// 高さは見た目用の放物線で、当たり判定には使わない（調整を軽くするため）。
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
@@ -53,6 +53,7 @@ namespace MiniGame.Molkky
                 float t = (Time.time - _throwTime) / _airTime;
                 if (t >= 1f) return 0f;
 
+                // t*(1-t) は t=0.5 で最大 0.25 になるので、4倍して頂点がちょうど _peakHeight になるようにする
                 return 4f * _peakHeight * t * (1f - t);
             }
         }
@@ -80,8 +81,7 @@ namespace MiniGame.Molkky
         {
             _body.simulated = true;
             _body.bodyType = RigidbodyType2D.Kinematic;
-            _body.linearVelocity = Vector2.zero;
-            _body.angularVelocity = 0f;
+            StopMotion();
             _capsule.enabled = true;
             // 山なりの途中で打ち切られた（Freeze 等）場合に、減速なしのまま次の投擲へ持ち越さない
             _body.linearDamping = _settings.StickDamping;
@@ -124,7 +124,7 @@ namespace MiniGame.Molkky
             PlaceOnLine(request.PositionX);
 
             _body.bodyType = RigidbodyType2D.Dynamic;
-            // 縦投げは進行方向と平行、横投げは進行方向に対して横向きで飛ぶ（§8.2）
+            // 縦投げは進行方向と平行、横投げは進行方向に対して横向きで飛ぶ
             _body.rotation = BaseRotation(Style) - request.AngleDegrees;
             _body.linearVelocity = request.Direction * request.Speed;
 
@@ -133,22 +133,33 @@ namespace MiniGame.Molkky
 
             if (request.Arc == ThrowArc.High)
             {
-                _airTime = _settings.LobAirTime;
-                _peakHeight = _settings.LobPeakHeight;
-                // 空中は減速しないため、低めと同じ初速だと約1.7倍飛んでしまう。初速を落として飛距離を揃える
-                _body.linearVelocity *= _settings.LobSpeedRatio;
-                // 空中では当たらないようにして、手前のピンを飛び越えさせる（§8.2）
-                _capsule.enabled = false;
-                // 空中は地面の摩擦を受けないので減速させない。着地時の減速と二重に削られて、ピンを倒せなくなるのを防ぐ
-                _body.linearDamping = 0f;
-                _isLobbing = true;
-                _lobStepsLeft = Mathf.CeilToInt(_airTime / Time.fixedDeltaTime);
+                StartLob();
             }
             else
             {
-                _airTime = _settings.StickAirTime;
-                _peakHeight = _settings.StickPeakHeight * request.Speed / _settings.MaxThrowSpeed;
+                StartLowArc(request.Speed);
             }
+        }
+
+        /// <summary>低めは見た目だけ弾ませる。強く投げたほど高く見えるよう、最高点を初速に比例させる</summary>
+        private void StartLowArc(float speed)
+        {
+            _airTime = _settings.StickAirTime;
+            _peakHeight = _settings.StickPeakHeight * speed / _settings.MaxThrowSpeed;
+        }
+
+        private void StartLob()
+        {
+            _airTime = _settings.LobAirTime;
+            _peakHeight = _settings.LobPeakHeight;
+            // 空中は減速しないため、低めと同じ初速だと約1.7倍飛んでしまう。初速を落として飛距離を揃える
+            _body.linearVelocity *= _settings.LobSpeedRatio;
+            // 空中では当たらないようにして、手前のピンを飛び越えさせる
+            _capsule.enabled = false;
+            // 空中は地面の摩擦を受けないので減速させない。着地時の減速と二重に削られて、ピンを倒せなくなるのを防ぐ
+            _body.linearDamping = 0f;
+            _isLobbing = true;
+            _lobStepsLeft = Mathf.CeilToInt(_airTime / Time.fixedDeltaTime);
         }
 
         private void FixedUpdate()
@@ -174,9 +185,14 @@ namespace MiniGame.Molkky
         /// </summary>
         public void Freeze()
         {
+            StopMotion();
+            _body.simulated = false;
+        }
+
+        private void StopMotion()
+        {
             _body.linearVelocity = Vector2.zero;
             _body.angularVelocity = 0f;
-            _body.simulated = false;
         }
 
         private static float BaseRotation(ThrowStyle style)

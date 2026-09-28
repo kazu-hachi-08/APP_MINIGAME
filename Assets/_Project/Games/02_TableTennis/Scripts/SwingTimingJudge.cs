@@ -44,6 +44,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class SwingTimingJudge : MonoBehaviour
     {
+        /// <summary>スイートスポットが接触範囲の端に重なる設定でも0除算にならないようにする下限</summary>
+        private const float MinTolerance = 0.0001f;
+
         [Header("接触範囲 (m)")]
         [Tooltip("ラケットより手前側で当たる範囲")]
         [SerializeField] private float _contactRangeNear = 0.45f;
@@ -122,7 +125,7 @@ namespace MiniGame.TableTennis
                 ? _contactRangeFar - _sweetSpotDepth
                 : _sweetSpotDepth + _contactRangeNear) * rangeScale;
 
-            float depthQuality = 1f - Mathf.Clamp01(Mathf.Abs(error) / Mathf.Max(0.0001f, tolerance));
+            float depthQuality = 1f - Mathf.Clamp01(Mathf.Abs(error) / Mathf.Max(MinTolerance, tolerance));
 
             // 芯を外すほど品質を下げる。奥行きのズレほどは効かせない
             float offsetRatio = Mathf.Clamp01(Mathf.Max(

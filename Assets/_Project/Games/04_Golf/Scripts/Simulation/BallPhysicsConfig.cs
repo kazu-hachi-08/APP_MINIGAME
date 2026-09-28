@@ -3,7 +3,7 @@ using System;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// BallSimulator の調整値（§8.7）。
+    /// BallSimulator の調整値。
     /// UnityEngine に依存させず EditModeテストや dotnet で検証できるよう、ScriptableObject（GolfPhysicsSettings）とは分けて
     /// public フィールドの Serializable クラスにしている。インスペクタでは GolfPhysicsSettings の中に表示される。
     /// 距離は1タイル＝1ユニット、時間は秒。

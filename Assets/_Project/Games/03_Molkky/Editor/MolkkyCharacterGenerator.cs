@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Molkky.Editor
 {
     /// <summary>
-    /// キャラのデータアセットとカタログを初期値で生成するエディタユーティリティ（仕様書 §20.2）。
+    /// キャラのデータアセットとカタログを初期値で生成するエディタユーティリティ。
     /// 既にあるアセットは上書きしない。Inspector で調整した倍率やセリフを消さないため。
     /// </summary>
     public static class MolkkyCharacterGenerator
@@ -15,7 +15,7 @@ namespace MiniGame.Molkky.Editor
 
         /// <summary>
         /// MolkkyArtGenerator.CharacterIds と同じ並び。先頭のバランス型が初期選択になる。
-        /// 倍率は仕様書 §20.2 の初期値。生成後はアセットの数値を直接調整する
+        /// ここは初期値なので、生成後の調整はアセットの数値を直接変える
         /// </summary>
         private static readonly (string Name, float Power, float Control, float StickLength, string VictoryLine)[] Defaults =
         {

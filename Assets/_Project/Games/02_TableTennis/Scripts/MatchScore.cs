@@ -4,7 +4,7 @@ namespace MiniGame.TableTennis
 {
     /// <summary>
     /// 得点とサーブ権だけを持つ単純なスコア管理（MonoBehaviour ではない）。
-    /// ルールは MVP 通り「11点先取・2ポイントごとにサーブ交代」のみで、デュースは扱わない。
+    /// ルールは「規定点先取・一定ポイントごとにサーブ交代」のみで、デュースは扱わない。
     /// </summary>
     public class MatchScore
     {

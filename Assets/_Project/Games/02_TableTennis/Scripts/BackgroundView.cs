@@ -25,15 +25,17 @@ namespace MiniGame.TableTennis
             if (_camera == null) return;
 
             // 毎フレーム計算するほどの処理ではないため、画面回転などで値が変わったときだけ再計算する
-            if (Mathf.Approximately(_camera.orthographicSize, _lastOrthoSize) &&
-                Mathf.Approximately(_camera.aspect, _lastAspect))
-            {
-                return;
-            }
+            if (!HasCameraChanged()) return;
 
             _lastOrthoSize = _camera.orthographicSize;
             _lastAspect = _camera.aspect;
             Fit();
+        }
+
+        private bool HasCameraChanged()
+        {
+            return !Mathf.Approximately(_camera.orthographicSize, _lastOrthoSize) ||
+                   !Mathf.Approximately(_camera.aspect, _lastAspect);
         }
 
         private void Fit()

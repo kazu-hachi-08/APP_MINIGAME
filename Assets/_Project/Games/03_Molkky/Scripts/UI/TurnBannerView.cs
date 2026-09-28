@@ -5,8 +5,8 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 「○○の番」の全画面表示（§10.2）。1台を回して遊ぶとき、前の人の指がそのまま投擲にならないよう
-    /// 人間の番はタップするまで待つ。NPCの番は短く出して自動で閉じる（§9.5）。
+    /// 「○○の番」の全画面表示。1台を回して遊ぶとき、前の人の指がそのまま投擲にならないよう
+    /// 人間の番はタップするまで待つ。NPCの番は短く出して自動で閉じる。
     /// </summary>
     public class TurnBannerView : MonoBehaviour
     {
@@ -28,16 +28,7 @@ namespace MiniGame.Molkky
 
         public IEnumerator Play(string title, Color color, bool waitForTap, float autoCloseSeconds)
         {
-            _titleText.text = title;
-            _titleText.color = color;
-            // 画面全体を手番の人の色に寄せ、端末を渡された人が「自分の番だ」と一目で分かるようにする
-            Color background = Color.Lerp(Color.black, color, _backgroundTint);
-            background.a = _backgroundAlpha;
-            _background.color = background;
-            _hintText.gameObject.SetActive(waitForTap);
-            _tapArea.interactable = waitForTap;
-            _tapped = false;
-            gameObject.SetActive(true);
+            Setup(title, color, waitForTap);
 
             if (waitForTap)
             {
@@ -49,6 +40,18 @@ namespace MiniGame.Molkky
             }
 
             gameObject.SetActive(false);
+        }
+
+        private void Setup(string title, Color color, bool waitForTap)
+        {
+            _titleText.text = title;
+            _titleText.color = color;
+            // 画面全体を手番の人の色に寄せ、端末を渡された人が「自分の番だ」と一目で分かるようにする
+            _background.color = MolkkyPlayerColors.TintedBackground(color, _backgroundTint, _backgroundAlpha);
+            _hintText.gameObject.SetActive(waitForTap);
+            _tapArea.interactable = waitForTap;
+            _tapped = false;
+            gameObject.SetActive(true);
         }
     }
 }

@@ -6,13 +6,16 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル（仕様書 §20.4）。
+    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル。
     /// 1台を回して遊ぶ前提なので、画面は「今選んでいる1人」だけを大きく見せる。
     /// NPCはランダムで選んだ状態から始め、そのまま決定しても人間が代わりに変えてもよい。
-    /// オンライン（§20.6）では自分の席の1人だけを選び、決定後は全員が揃うまで待機表示にする。
+    /// オンラインでは自分の席の1人だけを選び、決定後は全員が揃うまで待機表示にする。
     /// </summary>
     public class CharacterSelectPanel : MonoBehaviour
     {
+        private const string OnlineTitle = "あなたのキャラを選んでね";
+        private const string WaitingTitle = "他のプレイヤーを待っています";
+
         [SerializeField] private MolkkyCharacterCatalog _catalog;
 
         [SerializeField] private Text _titleText;
@@ -135,7 +138,7 @@ namespace MiniGame.Molkky
         private void ConfirmOnline()
         {
             SetSelecting(false);
-            _titleText.text = "他のプレイヤーを待っています";
+            _titleText.text = WaitingTitle;
             _onOnlineConfirmed(_selected[_seat]);
         }
 
@@ -154,11 +157,19 @@ namespace MiniGame.Molkky
 
         private void Refresh()
         {
-            _titleText.text = IsOnline ? "あなたのキャラを選んでね" : $"{SeatLabel()} のキャラを選んでね";
+            RefreshTitle();
+            ShowCharacter(_catalog.Get(_selected[_seat]));
+        }
+
+        private void RefreshTitle()
+        {
+            _titleText.text = IsOnline ? OnlineTitle : $"{SeatLabel()} のキャラを選んでね";
             // 端末を回したときに誰の番か一目で分かるよう、席の色で出す
             _titleText.color = MolkkyPlayerColors.Get(_seat);
+        }
 
-            MolkkyCharacterData character = _catalog.Get(_selected[_seat]);
+        private void ShowCharacter(MolkkyCharacterData character)
+        {
             _portrait.sprite = character.FrontSprite;
             _nameText.text = character.DisplayName;
             _powerBar.Show(character.PowerMultiplier);

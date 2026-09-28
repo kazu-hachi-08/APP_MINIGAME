@@ -8,13 +8,25 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 試合の進行（§12）。設定 → ホール開始 →「○○の番」→ ショット → 結果 を繰り返し、ホールごとにスコアカードを出す。
+    /// 試合の進行。設定 → ホール開始 →「○○の番」→ ショット → 結果 を繰り返し、ホールごとにスコアカードを出す。
     /// ボールの実体は1つだけで、手番の人の止まっていた位置に置き直して打たせる（他の人のボールは OtherBallsView が表示だけする）。
-    /// オンライン（§14）の送受信は GolfOnlineLink に任せ、ここは「いつ送り、届いたものをどう反映するか」だけを持つ。
-    /// PAUSE と結果画面は共通基盤（BaseMiniGameManager）の PauseDialog / ResultDialog を使う（§13.5）。
+    /// オンラインの送受信は GolfOnlineLink に任せ、ここは「いつ送り、届いたものをどう反映するか」だけを持つ。
+    /// PAUSE と結果画面は共通基盤（BaseMiniGameManager）の PauseDialog / ResultDialog を使う。
     /// </summary>
     public class GolfGameManager : BaseMiniGameManager
     {
+        /// <summary>試合前・試合後など、手番の人がいない状態</summary>
+        private const int NoPlayer = -1;
+
+        private const string OneHoleTitle = "1ホール勝負";
+        private const string FinalResultTitle = "最終結果";
+        private const string ShowResultLabel = "結果を見る";
+        private const string NextHoleLabel = "次のホールへ";
+        private const string GiveUpResult = "ギブアップ（パー×2）";
+        private const string RemoteTurnHint = "打つのを待っています";
+        private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
+        private const string DisconnectedDetail = "試合を終了しました";
+
         [SerializeField] private GolfBall _ball;
         [SerializeField] private HoleLoader _holeLoader;
         [SerializeField] private ShotInput _input;
@@ -37,7 +49,7 @@ namespace MiniGame.Golf
         [Tooltip("NPCの「○○の番」を自動で閉じるまでの時間（秒）。端末の受け渡しが要らないので短くする")]
         [SerializeField] private float _npcBannerSeconds = 1f;
 
-        [Header("Online (§14)")]
+        [Header("Online")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private GolfOnlineLink _onlineLink;
@@ -72,7 +84,7 @@ namespace MiniGame.Golf
         public IReadOnlyList<GolfPlayerSlot> Slots => _slots;
 
         /// <summary>手番の人の添字。試合前は -1</summary>
-        public int CurrentPlayer { get; private set; } = -1;
+        public int CurrentPlayer { get; private set; } = NoPlayer;
 
         /// <summary>何ホール目か（0始まり）と全ホール数。HUD の「H1/3」表示に使う</summary>
         public int HoleNumber { get; private set; }
@@ -174,8 +186,8 @@ namespace MiniGame.Golf
         }
 
         /// <summary>
-        /// §14.1 オンラインは部屋に集まった人数で、全員人間。ホストがホールと風を決めて配り、クライアントは届くのを待つ。
-        /// §21.5 各端末で自分のキャラだけを選び、ホールと風・全席のキャラ番号が揃ったら始める。
+        /// オンラインは部屋に集まった人数で、全員人間。ホストがホールと風を決めて配り、クライアントは届くのを待つ。
+        /// 各端末で自分のキャラだけを選び、ホールと風・全席のキャラ番号が揃ったら始める。
         /// 席番号＝1ホール目のティーの順番なので、ホストから打つ
         /// </summary>
         private void HandleOnlineStarted(int localSeat, int playerCount)
@@ -185,14 +197,17 @@ namespace MiniGame.Golf
             Phase = GolfPhase.CharacterSelect;
             _onlineLink.Begin();
 
-            if (_onlineSession.IsHost)
-            {
-                _receivedSetup = CreateSetup(Mathf.Min(_onlineHoleCount, _holeLoader.Holes.Count));
-                _onlineLink.SendSetup(_receivedSetup);
-            }
+            if (_onlineSession.IsHost) CreateAndSendOnlineSetup();
 
             _characterSelectPanel.ShowOnline(localSeat, playerCount, HandleLocalCharacterConfirmed);
             StartCoroutine(PlayOnlineMatch(playerCount));
+        }
+
+        /// <summary>ホストも自分で決めた設定を「届いたもの」として持ち、クライアントと同じ待ち方で始める</summary>
+        private void CreateAndSendOnlineSetup()
+        {
+            _receivedSetup = CreateSetup(Mathf.Min(_onlineHoleCount, _holeLoader.Holes.Count));
+            _onlineLink.SendSetup(_receivedSetup);
         }
 
         private void HandleLocalCharacterConfirmed(int characterIndex)
@@ -247,7 +262,7 @@ namespace MiniGame.Golf
             ShowGameSet();
         }
 
-        /// <summary>§6.3 1ホール目のティーは席順</summary>
+        /// <summary>1ホール目のティーは席順</summary>
         private void SetUpPlayers(IReadOnlyList<GolfPlayerType> types, IReadOnlyList<int> characters)
         {
             _slots.Clear();
@@ -260,7 +275,7 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>§6.2 ホールは登録ホールから重複なしでランダム、§9.4 風はホールごとにランダム</summary>
+        /// <summary>ホールは登録ホールから重複なしでランダム、風はホールごとにランダム</summary>
         private GolfMatchSetup CreateSetup(int holeCount)
         {
             List<int> indices = GolfRules.PickHoles(_holeLoader.Holes.Count, holeCount, new System.Random());
@@ -283,22 +298,9 @@ namespace MiniGame.Golf
 
         private IEnumerator PlayHole(GolfHoleData hole, Wind wind)
         {
-            Phase = GolfPhase.HoleStart;
-            _holeLoader.Load(hole, wind);
-            foreach (GolfPlayerSlot slot in _slots) slot.StartHole(ToNumerics(_ball.GroundPosition));
-
-            CurrentPlayer = GolfRules.NextPlayer(_slots, _teeOrder, ToNumerics(_ball.CupPosition));
-            PlaceCurrentBall();
+            StartHole(hole, wind);
             yield return PlayHoleIntro(hole);
-            if (_isOnline)
-            {
-                yield return _turnBanner.PlayAuto(HoleTitle(), HoleDetail(hole), Color.white, string.Empty,
-                    _onlineBannerSeconds);
-            }
-            else
-            {
-                yield return _turnBanner.Play(HoleTitle(), HoleDetail(hole), Color.white);
-            }
+            yield return PlayHoleBanner(hole);
 
             string lastResult = string.Empty;
             while (CurrentPlayer >= 0)
@@ -310,52 +312,69 @@ namespace MiniGame.Golf
                 Phase = GolfPhase.ShotResult;
                 yield return new WaitForSeconds(hasMessage ? _message.ShowSeconds : _shotResultDelay);
 
-                CurrentPlayer = GolfRules.NextPlayer(_slots, _teeOrder, ToNumerics(_ball.CupPosition));
+                SelectNextPlayer();
             }
 
+            yield return ShowHoleScoreCard();
+        }
+
+        private void StartHole(GolfHoleData hole, Wind wind)
+        {
+            Phase = GolfPhase.HoleStart;
+            _holeLoader.Load(hole, wind);
+            foreach (GolfPlayerSlot slot in _slots) slot.StartHole(ToNumerics(_ball.GroundPosition));
+
+            SelectNextPlayer();
+            PlaceCurrentBall();
+        }
+
+        /// <summary>打つ順番はボール位置から決まるので、オンラインでも送らずに全端末で同じ人になる。全員終わったら負の値になる</summary>
+        private void SelectNextPlayer()
+        {
+            CurrentPlayer = GolfRules.NextPlayer(_slots, _teeOrder, ToNumerics(_ball.CupPosition));
+        }
+
+        /// <summary>オンラインは端末の受け渡しが無いのでタップ待ちにせず、時間で閉じる</summary>
+        private IEnumerator PlayHoleBanner(GolfHoleData hole)
+        {
+            return _isOnline
+                ? _turnBanner.PlayAuto(HoleTitle(), HoleDetail(hole), Color.white, string.Empty, _onlineBannerSeconds)
+                : _turnBanner.Play(HoleTitle(), HoleDetail(hole), Color.white);
+        }
+
+        /// <summary>
+        /// スコアカードを出し、「次へ」が押されるまで待つ。
+        /// 最後のホールは順位付きで出し、そのまま全ホールの結果として見せる
+        /// </summary>
+        private IEnumerator ShowHoleScoreCard()
+        {
             Phase = GolfPhase.HoleResult;
             bool next = false;
-            // 最後のホールは順位付きで出し、そのまま全ホールの結果として見せる
             bool isLastHole = HoleNumber + 1 >= _holes.Count;
-            string title = isLastHole ? "最終結果" : $"ホール{HoleNumber + 1} 終了";
-            string nextLabel = isLastHole ? "結果を見る" : "次のホールへ";
+            string title = isLastHole ? FinalResultTitle : $"ホール{HoleNumber + 1} 終了";
+            string nextLabel = isLastHole ? ShowResultLabel : NextHoleLabel;
             _scoreCard.Show(title, _holes, _slots, isLastHole, nextLabel, () => next = true, null);
-            yield return new WaitUntil(() => next);
+            return new WaitUntil(() => next);
         }
 
         /// <summary>前のショットの結果と「○○の番」を出し、打ってボールが止まり、位置と打数が確定するまで待つ</summary>
         private IEnumerator PlayTurn(string lastResult)
         {
-            Phase = GolfPhase.TurnStart;
-            PlaceCurrentBall();
-            // 人間・NPC・相手端末のどの手番でも渡す。予測線・NPC の狙い・相手のショットの再生もこのキャラの能力で計算するため
-            GolfCharacterData character = _characters.Get(Current.CharacterIndex);
-            _ball.SetCharacter(character);
-            _golferView.SetCharacter(character);
-            TurnStarted?.Invoke();
+            StartTurn();
 
-            string name = GolfPlayerColors.FullName(Current);
+            string playerName = GolfPlayerColors.FullName(Current);
             Color color = GolfPlayerColors.Get(Current.Seat);
-            _shotFinished = false;
-
             if (Current.IsNpc)
             {
-                yield return _turnBanner.PlayAuto($"{name} の番", lastResult, color, GolfPlayerColors.TypeName(Current.Type),
-                    _npcBannerSeconds);
-
-                Phase = GolfPhase.Aiming;
-                yield return _npcGolfer.TakeShot(Current.Type);
+                yield return PlayNpcTurnStart(playerName, lastResult, color);
             }
             else if (_isOnline)
             {
-                yield return PlayOnlineTurnStart(name, lastResult, color);
+                yield return PlayOnlineTurnStart(playerName, lastResult, color);
             }
             else
             {
-                yield return _turnBanner.Play($"{name} の番", lastResult, color);
-
-                Phase = GolfPhase.Aiming;
-                SetAcceptingShot(true);
+                yield return PlayLocalTurnStart(playerName, lastResult, color);
             }
 
             yield return new WaitUntil(() => _shotFinished);
@@ -371,12 +390,48 @@ namespace MiniGame.Golf
             }
         }
 
+        private void StartTurn()
+        {
+            Phase = GolfPhase.TurnStart;
+            PlaceCurrentBall();
+            ApplyCurrentCharacter();
+            TurnStarted?.Invoke();
+            _shotFinished = false;
+        }
+
+        /// <summary>人間・NPC・相手端末のどの手番でも渡す。予測線・NPC の狙い・相手のショットの再生もこのキャラの能力で計算するため</summary>
+        private void ApplyCurrentCharacter()
+        {
+            GolfCharacterData character = _characters.Get(Current.CharacterIndex);
+            _ball.SetCharacter(character);
+            _golferView.SetCharacter(character);
+        }
+
+        /// <summary>NPC は端末の受け渡しが要らないので、バナーは時間で閉じてそのまま打たせる</summary>
+        private IEnumerator PlayNpcTurnStart(string playerName, string lastResult, Color color)
+        {
+            yield return _turnBanner.PlayAuto($"{playerName} の番", lastResult, color, GolfPlayerColors.TypeName(Current.Type),
+                _npcBannerSeconds);
+
+            Phase = GolfPhase.Aiming;
+            yield return _npcGolfer.TakeShot(Current.Type);
+        }
+
+        /// <summary>1台プレイは端末を次の人へ渡すので、バナーをタップしてから打てるようにする</summary>
+        private IEnumerator PlayLocalTurnStart(string playerName, string lastResult, Color color)
+        {
+            yield return _turnBanner.Play($"{playerName} の番", lastResult, color);
+
+            Phase = GolfPhase.Aiming;
+            SetAcceptingShot(true);
+        }
+
         /// <summary>自分の番なら打てるようにし、他の人の番なら届いた入力でボールを飛ばして見せる</summary>
-        private IEnumerator PlayOnlineTurnStart(string name, string lastResult, Color color)
+        private IEnumerator PlayOnlineTurnStart(string playerName, string lastResult, Color color)
         {
             bool isLocal = IsLocalOnlineTurn;
-            string title = isLocal ? $"{name}（あなた）の番" : $"{name} の番";
-            string hint = isLocal ? string.Empty : "打つのを待っています";
+            string title = isLocal ? $"{playerName}（あなた）の番" : $"{playerName} の番";
+            string hint = isLocal ? string.Empty : RemoteTurnHint;
             yield return _turnBanner.PlayAuto(title, lastResult, color, hint, _onlineBannerSeconds);
 
             Phase = GolfPhase.Aiming;
@@ -410,7 +465,7 @@ namespace MiniGame.Golf
         }
 
         /// <summary>
-        /// §14.2 自分の端末の再生は小数の誤差でずれることがあるので、打った人の端末の結果で上書きする。
+        /// 自分の端末の再生は小数の誤差でずれることがあるので、打った人の端末の結果で上書きする。
         /// 再生が終わるまで待ってから上書きするのは、ボールが途中で瞬間移動して見えないようにするため
         /// </summary>
         private IEnumerator ApplyRemoteResult()
@@ -442,7 +497,7 @@ namespace MiniGame.Golf
         /// </summary>
         private string FinishShot(GolfHoleData hole, out bool hasMessage)
         {
-            string name = GolfPlayerColors.Name(Current.Seat);
+            string playerName = GolfPlayerColors.Name(Current.Seat);
             hasMessage = true;
 
             if (_shotInCup)
@@ -450,7 +505,7 @@ namespace MiniGame.Golf
                 Current.HoleOut();
                 _message.ShowHoleOut(Current.Strokes, hole.Par);
                 _audio.PlayHoleOut(Current.Strokes, hole.Par);
-                return $"{name} {GolfRules.ScoreName(Current.Strokes, hole.Par)}（{Current.Strokes}打）";
+                return $"{playerName} {GolfRules.ScoreName(Current.Strokes, hole.Par)}（{Current.Strokes}打）";
             }
 
             if (GolfRules.ShouldGiveUp(Current.Strokes, hole.Par))
@@ -458,7 +513,7 @@ namespace MiniGame.Golf
                 Current.GiveUp(GolfRules.StrokeLimit(hole.Par));
                 _message.ShowGiveUp();
                 _audio.PlayGiveUp();
-                return $"{name} ギブアップ（パー×2）";
+                return $"{playerName} {GiveUpResult}";
             }
 
             hasMessage = false;
@@ -472,12 +527,9 @@ namespace MiniGame.Golf
         private void ShowGameSet()
         {
             Phase = GolfPhase.GameSet;
-            CurrentPlayer = -1;
+            CurrentPlayer = NoPlayer;
 
-            var totals = new int[_slots.Count];
-            for (int i = 0; i < _slots.Count; i++) totals[i] = _slots[i].Total;
-            int[] ranks = GolfRules.Ranks(totals);
-
+            int[] ranks = RankByTotal();
             var winners = new List<string>();
             bool isVictory = false;
             int winnerTotal = 0;
@@ -487,11 +539,24 @@ namespace MiniGame.Golf
 
                 winners.Add(GolfPlayerColors.FullName(_slots[i]));
                 winnerTotal = _slots[i].Total;
-                isVictory |= _isOnline ? i == _localSeat : !_slots[i].IsNpc;
+                isVictory |= IsVictoryFor(i);
             }
 
             string score = winners.Count > 1 ? $"{string.Join("・", winners)} が同率1位" : $"{winners[0]} の優勝！";
             FinishGame(isVictory, score, $"合計 {winnerTotal}打（{GolfRules.FormatToPar(winnerTotal - TotalPar())}）");
+        }
+
+        private int[] RankByTotal()
+        {
+            var totals = new int[_slots.Count];
+            for (int i = 0; i < _slots.Count; i++) totals[i] = _slots[i].Total;
+            return GolfRules.Ranks(totals);
+        }
+
+        /// <summary>その席の優勝を、この端末では「勝ち」として演出するか</summary>
+        private bool IsVictoryFor(int seat)
+        {
+            return _isOnline ? seat == _localSeat : !_slots[seat].IsNpc;
         }
 
         private int TotalPar()
@@ -502,7 +567,7 @@ namespace MiniGame.Golf
         }
 
         /// <summary>
-        /// §14.3 オンラインでは他の人の端末は止まらないので、時間は止めずに自分のショット受付だけ止める。
+        /// オンラインでは他の人の端末は止まらないので、時間は止めずに自分のショット受付だけ止める。
         /// 1台プレイは時間ごと止める（ゲージ・ボール・NPC が止まる）
         /// </summary>
         public override void PauseGame()
@@ -532,7 +597,7 @@ namespace MiniGame.Golf
 
         private string HoleTitle()
         {
-            return _holes.Count > 1 ? $"ホール {HoleNumber + 1}/{_holes.Count}" : "1ホール勝負";
+            return _holes.Count > 1 ? $"ホール {HoleNumber + 1}/{_holes.Count}" : OneHoleTitle;
         }
 
         private string HoleDetail(GolfHoleData hole)
@@ -590,20 +655,26 @@ namespace MiniGame.Golf
             SetOnlineCharacter(seat, characterIndex);
         }
 
-        /// <summary>§14.3 試合中（キャラ選択・待機中も含む）に1人でも切れたら全員その時点で終了する。再接続はしない</summary>
+        /// <summary>試合中（キャラ選択・待機中も含む）に1人でも切れたら全員その時点で終了する。再接続はしない</summary>
         private void HandlePeerDisconnected()
         {
             if (!_isOnline || Phase == GolfPhase.GameSet) return;
 
             StopAllCoroutines();
             Phase = GolfPhase.GameSet;
-            CurrentPlayer = -1;
+            CurrentPlayer = NoPlayer;
             SetAcceptingShot(false);
+            HideMatchPanels();
+            FinishGame(false, DisconnectedTitle, DisconnectedDetail);
+        }
+
+        /// <summary>止めたコルーチンが閉じるはずだった表示を、結果画面の手前に残さないよう閉じる</summary>
+        private void HideMatchPanels()
+        {
             _turnBanner.gameObject.SetActive(false);
             _scoreCard.gameObject.SetActive(false);
             // キャラ選択・待機中に切れたときも、選択パネルを残したまま結果画面を出さないようにする
             _characterSelectPanel.Hide();
-            FinishGame(false, "他のプレイヤーとの接続が切れました", "試合を終了しました");
         }
 
         private static Vector2 ToUnity(System.Numerics.Vector2 v) => new Vector2(v.X, v.Y);

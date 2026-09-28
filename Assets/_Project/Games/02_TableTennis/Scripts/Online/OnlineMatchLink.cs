@@ -95,6 +95,12 @@ namespace MiniGame.TableTennis
         {
             if (!_active) return;
 
+            TickRacketSend();
+        }
+
+        /// <summary>ラケット位置は表示用なので、毎フレームではなく一定間隔で送って通信量を抑える</summary>
+        private void TickRacketSend()
+        {
             _racketSendTimer -= Time.unscaledDeltaTime;
             if (_racketSendTimer > 0f) return;
 
@@ -107,7 +113,7 @@ namespace MiniGame.TableTennis
         /// <summary>自分の打球を送る。引数は自分視点の座標のまま渡してよい</summary>
         public void SendShot(Vector3 from, ShotResult shot, SpecialSlot special)
         {
-            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            using var writer = CreateWriter();
             writer.WriteValueSafe(Network.ServerTime.Time);
             writer.WriteValueSafe(Mirror(from));
             writer.WriteValueSafe(Mirror(shot.Velocity));
@@ -123,7 +129,7 @@ namespace MiniGame.TableTennis
         /// <summary>自分の端末で決まった得点を送る。得点者は自分視点のまま渡してよい</summary>
         public void SendPoint(CourtSide scorer, PointReason reason)
         {
-            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            using var writer = CreateWriter();
             writer.WriteValueSafe((int)scorer.Opposite());
             writer.WriteValueSafe((int)reason);
             Send(PointMessage, writer, NetworkDelivery.ReliableSequenced);
@@ -135,7 +141,7 @@ namespace MiniGame.TableTennis
         /// </summary>
         public void SendLoadout(int characterIndex, int racketIndex)
         {
-            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            using var writer = CreateWriter();
             writer.WriteValueSafe(characterIndex);
             writer.WriteValueSafe(racketIndex);
             Send(LoadoutMessage, writer, NetworkDelivery.Reliable);
@@ -143,11 +149,16 @@ namespace MiniGame.TableTennis
 
         private void SendRacket(Vector3 courtPosition)
         {
-            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            using var writer = CreateWriter();
             writer.WriteValueSafe(Mirror(courtPosition));
 
             // 表示用で最新の値だけ届けばよいので、再送しない配信にする
             Send(RacketMessage, writer, NetworkDelivery.Unreliable);
+        }
+
+        private static FastBufferWriter CreateWriter()
+        {
+            return new FastBufferWriter(MessageBufferSize, Allocator.Temp);
         }
 
         private void Send(string messageName, FastBufferWriter writer, NetworkDelivery delivery)
@@ -163,6 +174,14 @@ namespace MiniGame.TableTennis
         {
             reader.ReadValueSafe(out double sentTime);
 
+            RemoteShot shot = ReadShot(ref reader);
+            shot.Elapsed = LatencySince(sentTime);
+            OnShotReceived?.Invoke(shot);
+        }
+
+        /// <summary>SendShot と同じ順番で読み出す</summary>
+        private static RemoteShot ReadShot(ref FastBufferReader reader)
+        {
             var shot = new RemoteShot();
             reader.ReadValueSafe(out shot.From);
             reader.ReadValueSafe(out shot.Velocity);
@@ -173,11 +192,14 @@ namespace MiniGame.TableTennis
             reader.ReadValueSafe(out shot.ServeForwardSpeed);
             reader.ReadValueSafe(out int special);
             shot.Special = (SpecialSlot)special;
+            return shot;
+        }
 
+        /// <summary>送信からの経過時間。遅延補正の早送りに使うので、詰まったときの上限で抑える</summary>
+        private float LatencySince(double sentTime)
+        {
             float elapsed = (float)(Network.ServerTime.Time - sentTime);
-            shot.Elapsed = Mathf.Clamp(elapsed, 0f, _maxLatencyCompensation);
-
-            OnShotReceived?.Invoke(shot);
+            return Mathf.Clamp(elapsed, 0f, _maxLatencyCompensation);
         }
 
         private void ReceivePoint(ulong senderId, FastBufferReader reader)

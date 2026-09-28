@@ -13,6 +13,22 @@ namespace MiniGame.Golf
     {
         private const int SampleRate = 44100;
 
+        // 毎回同じ高さだと単調に聞こえるので、打球音のピッチを少しだけ揺らす幅
+        private const float ShotPitchMin = 0.95f;
+        private const float ShotPitchMax = 1.05f;
+
+        /// <summary>パーの拍手は同じ歓声クリップを高めに鳴らし、バーディー以上の大歓声と聞き分けられるようにする</summary>
+        private const float SmallCheerPitch = 1.2f;
+
+        // 打球音。基音に対して非整数倍の倍音を足すと、木ではなく金属らしく聞こえる
+        private const float HitDuration = 0.25f;
+        private const float HitOvertoneRatio = 2.4f;
+        private const float HitOvertoneGain = 0.25f;
+        private const float HitOvertoneDecayRatio = 1.5f;
+
+        /// <summary>打撃の最初だけノイズを乗せて「当たった瞬間」を強調するための減衰速度</summary>
+        private const float AttackNoiseDecay = 200f;
+
         [SerializeField] private GolfBall _ball;
         [SerializeField] private ClubSelector _clubs;
 
@@ -69,7 +85,7 @@ namespace MiniGame.Golf
             }
             else if (strokes == par)
             {
-                Play(_cheerClip, _smallCheerVolume, 1.2f);
+                Play(_cheerClip, _smallCheerVolume, SmallCheerPitch);
             }
         }
 
@@ -78,11 +94,11 @@ namespace MiniGame.Golf
             Play(_giveUpClip, _penaltyVolume, 1f);
         }
 
-        /// <summary>パターは「コツン」、それ以外は「カキーン」。毎回少し高さを変えて単調にしない</summary>
+        /// <summary>パターは「コツン」、それ以外は「カキーン」</summary>
         private void HandleLaunched()
         {
             bool isPutter = _clubs.Current.Config.IsPutter;
-            Play(isPutter ? _puttClip : _shotClip, _shotVolume, UnityEngine.Random.Range(0.95f, 1.05f));
+            Play(isPutter ? _puttClip : _shotClip, _shotVolume, UnityEngine.Random.Range(ShotPitchMin, ShotPitchMax));
         }
 
         private void HandlePenalized(GroundType ground)
@@ -97,21 +113,24 @@ namespace MiniGame.Golf
             AudioManager.Instance.PlaySeClip(clip, volume, pitch);
         }
 
-        /// <summary>クラブがボールを打つ音。基音＋2.4倍の倍音（金属らしい非整数倍）にノイズのアタックを重ねる</summary>
+        /// <summary>クラブがボールを打つ音。基音＋非整数倍の倍音にノイズのアタックを重ねる</summary>
         private static AudioClip CreateHit(string name, float frequency, float decay, float noise)
         {
-            return CreateClip(name, 0.25f, t =>
+            return CreateClip(name, HitDuration, t =>
                 Mathf.Sin(2f * Mathf.PI * frequency * t) * 0.5f * Mathf.Exp(-t * decay)
-                + Mathf.Sin(2f * Mathf.PI * frequency * 2.4f * t) * 0.25f * Mathf.Exp(-t * decay * 1.5f)
-                + (UnityEngine.Random.value * 2f - 1f) * noise * Mathf.Exp(-t * 200f));
+                + Mathf.Sin(2f * Mathf.PI * frequency * HitOvertoneRatio * t) * HitOvertoneGain
+                    * Mathf.Exp(-t * decay * HitOvertoneDecayRatio)
+                + WhiteNoise() * noise * Mathf.Exp(-t * AttackNoiseDecay));
         }
 
         /// <summary>カップの中で2〜3回跳ねる「カラン、コロン」。間隔を詰めながら音を小さくする</summary>
         private static AudioClip CreateCupIn()
         {
+            const float duration = 0.45f;
+            const float bounceDecay = 25f;
             float[] starts = { 0f, 0.09f, 0.15f };
             float[] frequencies = { 1300f, 1100f, 1200f };
-            return CreateClip("Se_GfCupIn", 0.45f, t =>
+            return CreateClip("Se_GfCupIn", duration, t =>
             {
                 float sum = 0f;
                 for (int i = 0; i < starts.Length; i++)
@@ -120,7 +139,7 @@ namespace MiniGame.Golf
                     if (local < 0f) continue;
 
                     float gain = 0.5f / (i + 1);
-                    sum += Mathf.Sin(2f * Mathf.PI * frequencies[i] * local) * gain * Mathf.Exp(-local * 25f);
+                    sum += Mathf.Sin(2f * Mathf.PI * frequencies[i] * local) * gain * Mathf.Exp(-local * bounceDecay);
                 }
 
                 return sum;
@@ -135,16 +154,20 @@ namespace MiniGame.Golf
         {
             const float duration = 2f;
             const float clapRate = 0.004f;
+            // 一次ローパスで高音を削り、ざわめきらしいこもった音にする。小さいほどこもる
+            const float lowPassRate = 0.12f;
+            // 1サンプルごとに掛ける減衰。拍手1回が短く「パチッ」と切れる長さにする
+            const float clapDecay = 0.992f;
             float filtered = 0f;
             float clap = 0f;
             return CreateClip("Se_GfCheer", duration, t =>
             {
-                filtered = Mathf.Lerp(filtered, UnityEngine.Random.value * 2f - 1f, 0.12f);
+                filtered = Mathf.Lerp(filtered, WhiteNoise(), lowPassRate);
                 if (UnityEngine.Random.value < clapRate) clap = 1f;
-                clap *= 0.992f;
+                clap *= clapDecay;
 
                 float envelope = Mathf.Sin(Mathf.PI * Mathf.Sqrt(t / duration));
-                float clapNoise = (UnityEngine.Random.value * 2f - 1f) * clap * 0.5f;
+                float clapNoise = WhiteNoise() * clap * 0.5f;
                 return (filtered * 0.8f + clapNoise) * envelope;
             });
         }
@@ -153,14 +176,20 @@ namespace MiniGame.Golf
         private static AudioClip CreateSplash()
         {
             const float duration = 0.6f;
+            const float plopDuration = 0.15f;
+            const float plopFrequencyFrom = 400f;
+            const float plopFrequencyTo = 120f;
+            const float lowPassRate = 0.3f;
+            const float noiseDecay = 6f;
             float phase = 0f;
             float filtered = 0f;
             return CreateClip("Se_GfSplash", duration, t =>
             {
-                phase += 2f * Mathf.PI * Mathf.Lerp(400f, 120f, t / 0.15f) / SampleRate;
-                float plop = t < 0.15f ? Mathf.Sin(phase) * 0.5f * (1f - t / 0.15f) : 0f;
-                filtered = Mathf.Lerp(filtered, UnityEngine.Random.value * 2f - 1f, 0.3f);
-                return plop + filtered * 0.6f * Mathf.Exp(-t * 6f);
+                // 周波数が時間で変わるので、sin(2πft) ではなく位相を積算しないと音程が不自然に跳ねる
+                phase += 2f * Mathf.PI * Mathf.Lerp(plopFrequencyFrom, plopFrequencyTo, t / plopDuration) / SampleRate;
+                float plop = t < plopDuration ? Mathf.Sin(phase) * 0.5f * (1f - t / plopDuration) : 0f;
+                filtered = Mathf.Lerp(filtered, WhiteNoise(), lowPassRate);
+                return plop + filtered * 0.6f * Mathf.Exp(-t * noiseDecay);
             });
         }
 
@@ -169,18 +198,20 @@ namespace MiniGame.Golf
         {
             const float beep = 0.18f;
             const float gap = 0.07f;
+            const float frequency = 160f;
             return CreateClip("Se_GfOutOfBounds", beep * 2f + gap, t =>
             {
                 bool silent = t > beep && t < beep + gap;
                 if (silent) return 0f;
 
-                return Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 160f * t)) * 0.3f;
+                return Mathf.Sign(Mathf.Sin(2f * Mathf.PI * frequency * t)) * 0.3f;
             });
         }
 
         /// <summary>音程が下がっていく「ヒューン」。ギブアップのがっかり感を出す</summary>
         private static AudioClip CreateSlide(string name, float from, float to, float duration)
         {
+            // 周波数が時間で変わるので、sin(2πft) ではなく位相を積算しないと音程が不自然に跳ねる
             float phase = 0f;
             return CreateClip(name, duration, t =>
             {
@@ -188,6 +219,11 @@ namespace MiniGame.Golf
                 phase += 2f * Mathf.PI * frequency / SampleRate;
                 return Mathf.Sin(phase) * 0.5f * (1f - t / duration * 0.7f);
             });
+        }
+
+        private static float WhiteNoise()
+        {
+            return UnityEngine.Random.value * 2f - 1f;
         }
 
         private static AudioClip CreateClip(string name, float duration, Func<float, float> wave)

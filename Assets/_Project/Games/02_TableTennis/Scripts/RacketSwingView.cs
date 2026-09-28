@@ -9,6 +9,10 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class RacketSwingView : MonoBehaviour
     {
+        // 強く振るほど大きく振り抜いて見せるための、打球の強さ0〜1に対する振りの倍率
+        private const float WeakShotSwingScale = 0.7f;
+        private const float StrongShotSwingScale = 1.2f;
+
         [SerializeField] private TableLayout _table;
         [SerializeField] private RacketController _racket;
         [SerializeField] private PlayerSwing _playerSwing;
@@ -21,7 +25,7 @@ namespace MiniGame.TableTennis
 
         [SerializeField] private float _swingAngle = 55f;
 
-        [Tooltip("空振りしたときの控えめな振り（ワールド単位・度）")]
+        [Tooltip("空振りしたときの振りの倍率。打てたときより控えめに見せる")]
         [SerializeField] private float _missDistanceScale = 0.6f;
 
         /// <summary>負の値なら再生していない</summary>
@@ -44,8 +48,7 @@ namespace MiniGame.TableTennis
 
         private void HandleShot(FlickData flick, ShotResult shot)
         {
-            // 強く振るほど大きく振り抜いて見えるようにする
-            PlaySwing(flick.Direction, Mathf.Lerp(0.7f, 1.2f, shot.Strength));
+            PlaySwing(flick.Direction, Mathf.Lerp(WeakShotSwingScale, StrongShotSwingScale, shot.Strength));
         }
 
         private void HandleMissed(SwingJudgement judgement)

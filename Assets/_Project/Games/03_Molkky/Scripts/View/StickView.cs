@@ -3,11 +3,16 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 棒と影の見た目（§4.2 / §5.1）。
+    /// 棒と影の見た目。
     /// 棒は高さぶん浮かせて描き、影は地面に置く。影との距離で「どれだけ高く飛んでいるか」を読み取れるようにする。
     /// </summary>
     public class StickView : MonoBehaviour
     {
+        // 同じ奥行きのピン（本体＋数字で2枠）より手前に棒を描く
+        private const int StickSortingOffset = 2;
+        // 影は同じ奥行きのピンの下に敷く
+        private const int ShadowSortingOffset = -1;
+
         [SerializeField] private StickThrower _stick;
         [SerializeField] private DepthProjector _projector;
         [SerializeField] private MolkkyPhysicsSettings _settings;
@@ -53,13 +58,21 @@ namespace MiniGame.Molkky
 
             // 地面から浮いて見えるよう、棒の太さの半分だけ持ち上げる
             PlaceAlongStick(_stickRenderer, ground, height + _settings.StickThickness * 0.5f, scale);
-            _stickRenderer.sortingOrder = order + 2;
+            _stickRenderer.sortingOrder = order + StickSortingOffset;
 
             PlaceAlongStick(_shadowRenderer, ground, 0f, scale);
-            _shadowRenderer.sortingOrder = order - 1;
+            _shadowRenderer.sortingOrder = order + ShadowSortingOffset;
 
+            FadeShadow(height);
+        }
+
+        /// <summary>高く飛ぶほど影を薄くして、高さの手がかりを増やす</summary>
+        private void FadeShadow(float height)
+        {
             float fade = Mathf.Lerp(1f, _minShadowAlphaRatio, height / _shadowFadeHeight);
-            _shadowRenderer.color = new Color(_shadowColor.r, _shadowColor.g, _shadowColor.b, _shadowColor.a * fade);
+            Color color = _shadowColor;
+            color.a *= fade;
+            _shadowRenderer.color = color;
         }
 
         /// <summary>

@@ -20,6 +20,17 @@ namespace MiniGame.Molkky.Tests
         // 手番の合間に端末ごとに生じていたピン位置のずれ（採点表示中の滑り・棒の押し出し）を模した量
         private const float DriftAmount = 0.03f;
 
+        // 受け側は投げる瞬間のフレーム位置を投げた側とわざとずらす（端末ごとのフレームのタイミング差を模す）
+        private const int ObserverFrameOffset = 3;
+
+        // 本番の MolkkyOnlineLink と同じ送信バッファの大きさ
+        private const int MessageBufferSize = 512;
+
+        private const int SentPinCount = 12;
+
+        // ピンごとにずれの向きを変えるための角度の刻み（ラジアン）
+        private const float DriftAngleStep = 2.4f;
+
         private static readonly ThrowRequest[] Throws =
         {
             new ThrowRequest(0f, 0f, 8f, ThrowStyle.Horizontal),
@@ -33,15 +44,15 @@ namespace MiniGame.Molkky.Tests
         [Test]
         public void 投擲メッセージにピン状態を載せても送受信で値が変わらない()
         {
-            PinState[] sent = Enumerable.Range(0, 12)
+            PinState[] sent = Enumerable.Range(0, SentPinCount)
                 .Select(i => new PinState(new Vector2(i * 0.123f, 3.5f + i * 0.01f), i % 3 == 0, new Vector2(0.6f, -0.8f)))
                 .ToArray();
 
-            MethodInfo write = typeof(MolkkyOnlineLink).GetMethod("WriteStates", BindingFlags.NonPublic | BindingFlags.Static);
-            MethodInfo read = typeof(MolkkyOnlineLink).GetMethod("ReadStates", BindingFlags.NonPublic | BindingFlags.Static);
+            MethodInfo write = GetLinkMethod("WriteStates");
+            MethodInfo read = GetLinkMethod("ReadStates");
 
-            // 本番と同じ 512 バイトのバッファに、投擲内容（float×3 + int×2）と一緒に収まることも確かめる
-            using var writer = new FastBufferWriter(512, Allocator.Temp);
+            // 本番と同じ大きさのバッファに、投擲内容（float×3 + int×2）と一緒に収まることも確かめる
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
             writer.WriteValueSafe(0f);
             writer.WriteValueSafe(0f);
             writer.WriteValueSafe(0f);
@@ -69,10 +80,10 @@ namespace MiniGame.Molkky.Tests
         [Test]
         public void キャラメッセージの席番号とキャラ番号が送受信で変わらない()
         {
-            MethodInfo write = typeof(MolkkyOnlineLink).GetMethod("WriteCharacter", BindingFlags.NonPublic | BindingFlags.Static);
-            MethodInfo read = typeof(MolkkyOnlineLink).GetMethod("ReadCharacter", BindingFlags.NonPublic | BindingFlags.Static);
+            MethodInfo write = GetLinkMethod("WriteCharacter");
+            MethodInfo read = GetLinkMethod("ReadCharacter");
 
-            using var writer = new FastBufferWriter(512, Allocator.Temp);
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
             write.Invoke(null, new object[] { writer, 3, 2 });
 
             using var reader = new FastBufferReader(writer, Allocator.Temp);
@@ -115,14 +126,13 @@ namespace MiniGame.Molkky.Tests
                 var thrower = new RunResult();
                 yield return RunThrow(request, null, 0, 0, thrower);
 
-                // 相手側（B・修正後）：自分の配置は少しずれているが、届いた配置を適用してから再生する。
-                // 投げる瞬間のフレーム位置も A とわざとずらす
+                // 相手側（B・修正後）：自分の配置は少しずれているが、届いた配置を適用してから再生する
                 var observer = new RunResult();
-                yield return RunThrow(request, thrower.StartStates, DriftAmount, i + 3, observer);
+                yield return RunThrow(request, thrower.StartStates, DriftAmount, i + ObserverFrameOffset, observer);
 
                 // 比較用（B・修正前）：届いた配置を使わず、ずれた自分の配置のまま再生する
                 var legacy = new RunResult();
-                yield return RunThrow(request, null, DriftAmount, i + 3, legacy);
+                yield return RunThrow(request, null, DriftAmount, i + ObserverFrameOffset, legacy);
 
                 string a = Describe(thrower.Fallen);
                 string b = Describe(observer.Fallen);
@@ -159,7 +169,7 @@ namespace MiniGame.Molkky.Tests
             ApplyDrift(rack, drift);
             for (int f = 0; f < framesBeforeThrow; f++) yield return null;
 
-            // 修正後の MolkkyGameManager と同じく、投げる側は自分の配置を取り直して適用、受け側は届いた配置を適用する
+            // MolkkyGameManager と同じく、投げる側は自分の配置を取り直して適用、受け側は届いた配置を適用する
             PinState[] start = receivedStates ?? rack.CaptureStates();
             rack.ApplyStates(start);
             result.StartStates = start;
@@ -220,12 +230,17 @@ namespace MiniGame.Molkky.Tests
             PinState[] states = rack.CaptureStates();
             for (int i = 0; i < states.Length; i++)
             {
-                float angle = i * 2.4f;
+                float angle = i * DriftAngleStep;
                 var offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * drift;
                 states[i] = new PinState(states[i].Position + offset, false, Vector2.zero);
             }
 
             rack.ApplyStates(states);
+        }
+
+        private static MethodInfo GetLinkMethod(string name)
+        {
+            return typeof(MolkkyOnlineLink).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
         }
 
         private static void SetField(object target, string name, object value)

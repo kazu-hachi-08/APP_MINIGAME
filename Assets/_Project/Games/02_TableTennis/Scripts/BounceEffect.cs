@@ -9,6 +9,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class BounceEffect : MonoBehaviour
     {
+        // 台に寝ているように見せるための縦のつぶし率
+        private const float RingFlatten = 0.4f;
+
         [SerializeField] private TableLayout _table;
         [SerializeField] private BallMotion _ball;
         [SerializeField] private SpriteRenderer _renderer;
@@ -72,10 +75,14 @@ namespace MiniGame.TableTennis
                 return;
             }
 
-            float size = Mathf.Lerp(_startSize, _endSize, progress) * _depthScale / _spriteUnitSize;
+            ApplyRing(progress);
+        }
 
-            // 台に寝ているように見せるため縦につぶす
-            transform.localScale = new Vector3(size, size * 0.4f, 1f);
+        /// <summary>進み具合に応じて輪を広げながら薄くする</summary>
+        private void ApplyRing(float progress)
+        {
+            float size = Mathf.Lerp(_startSize, _endSize, progress) * _depthScale / _spriteUnitSize;
+            transform.localScale = new Vector3(size, size * RingFlatten, 1f);
 
             Color color = _renderer.color;
             _renderer.color = new Color(color.r, color.g, color.b, 1f - progress);

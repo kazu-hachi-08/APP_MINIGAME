@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 1投ごとの得点ポップアップ（§12.2）。結果の種類ごとに色を変え、ポンと弾む登場で目を引く。
+    /// 1投ごとの得点ポップアップ。結果の種類ごとに色を変え、ポンと弾む登場で目を引く。
     /// 勝利のときだけ脈打たせ続けて、特別な瞬間だと分かるようにする。
     /// </summary>
     public class ScorePopupView : MonoBehaviour
@@ -50,7 +50,7 @@ namespace MiniGame.Molkky
         {
             for (float t = 0f; t < _popDuration; t += Time.deltaTime)
             {
-                transform.localScale = Vector3.one * Mathf.LerpUnclamped(_startScale, targetScale, EaseOutBack(t / _popDuration));
+                transform.localScale = Vector3.one * Mathf.LerpUnclamped(_startScale, targetScale, MolkkyEasing.OutBack(t / _popDuration));
                 yield return null;
             }
 
@@ -62,14 +62,6 @@ namespace MiniGame.Molkky
                 transform.localScale = Vector3.one * targetScale * (1f + Mathf.Sin(t * _pulseSpeed) * _pulseAmount);
                 yield return null;
             }
-        }
-
-        /// <summary>少し行き過ぎてから戻る補間。「ポン」と弾む見た目にする</summary>
-        private static float EaseOutBack(float t)
-        {
-            const float overshoot = 1.70158f;
-            float u = t - 1f;
-            return 1f + (overshoot + 1f) * u * u * u + overshoot * u * u;
         }
 
         private Color ColorOf(ThrowOutcome outcome)
@@ -84,7 +76,7 @@ namespace MiniGame.Molkky
             }
         }
 
-        /// <summary>1投の結果を §12.2 の文言にする</summary>
+        /// <summary>1投の結果を表示用の文言にする</summary>
         private static string FormatResult(ThrowResult result)
         {
             switch (result.Outcome)

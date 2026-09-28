@@ -79,16 +79,20 @@ namespace MiniGame.TableTennis
         {
             if (!CanSwing || !_ball.IsFlying) return;
 
-            // 打球可能範囲に来る見込みのないフリックは、仕様通り無視する
             if (!IsWorthSwinging()) return;
 
+            BeginSwing(flick);
+
+            // すでに打点へ来ているなら、振り終わりを待たずその場で当てる
+            TryContact();
+        }
+
+        private void BeginSwing(FlickData flick)
+        {
             _swingFlick = flick;
             _swinging = true;
             _swingEndTime = Time.time + SwingDuration;
             _reachedSwingRange = false;
-
-            // すでに打点へ来ているなら、振り終わりを待たずその場で当てる
-            TryContact();
         }
 
         private void FixedUpdate()
@@ -167,6 +171,15 @@ namespace MiniGame.TableTennis
         {
             _swinging = false;
 
+            ShotResult shot = _shotCalculator.Calculate(_swingFlick, ApplyPerfectTiming(judgement), _ball.CourtPosition, IsServing);
+            LaunchBall(shot);
+
+            OnShot?.Invoke(_swingFlick, shot);
+        }
+
+        /// <summary>タイミングを必ずジャストにする必殺技は、打球計算の前に判定結果を書き換えて効かせる</summary>
+        private SwingJudgement ApplyPerfectTiming(SwingJudgement judgement)
+        {
             SpecialData special = _shotCalculator.PendingSpecial;
             if (special != null && special.PerfectTiming)
             {
@@ -174,8 +187,11 @@ namespace MiniGame.TableTennis
                 judgement.Quality = 1f;
             }
 
-            ShotResult shot = _shotCalculator.Calculate(_swingFlick, judgement, _ball.CourtPosition, IsServing);
+            return judgement;
+        }
 
+        private void LaunchBall(ShotResult shot)
+        {
             if (shot.IsServe)
             {
                 _ball.LaunchServe(_ball.CourtPosition, shot.ServeBouncePoint, shot.ServeTarget, shot.Spin, shot.ServeForwardSpeed);
@@ -184,8 +200,6 @@ namespace MiniGame.TableTennis
             {
                 _ball.Launch(_ball.CourtPosition, shot.Velocity, shot.Spin);
             }
-
-            OnShot?.Invoke(_swingFlick, shot);
         }
 
         private void EndSwing()

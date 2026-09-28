@@ -3,7 +3,7 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 地面の平面座標からグリーンの傾斜を引く窓口（§8.5）。IGroundMap と同じく、BallSimulator を Tilemap に依存させないために分ける。
+    /// 地面の平面座標からグリーンの傾斜を引く窓口。IGroundMap と同じく、BallSimulator を Tilemap に依存させないために分ける。
     /// </summary>
     public interface ISlopeMap
     {

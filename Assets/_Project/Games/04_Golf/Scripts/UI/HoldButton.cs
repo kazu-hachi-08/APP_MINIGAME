@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 押している間だけ IsHeld が true になるボタン（§7.2 の◀▶）。
+    /// 押している間だけ IsHeld が true になるボタン（方向の◀▶）。
     /// Button の onClick は離した瞬間にしか届かないため、押しっぱなしを読めるようにする。
     /// </summary>
     public class HoldButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler

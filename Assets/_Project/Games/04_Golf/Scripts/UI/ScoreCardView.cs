@@ -6,8 +6,8 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// スコアカード（§13.4）。ホール数と人数で表の大きさが変わるので、セルは表示のたびにテンプレートから作る。
-    /// 試合の終わりは順位を付けて出す（§6.6）。
+    /// スコアカード。ホール数と人数で表の大きさが変わるので、セルは表示のたびにテンプレートから作る。
+    /// 試合の終わりは順位を付けて出す。
     /// </summary>
     public class ScoreCardView : MonoBehaviour
     {
@@ -54,11 +54,7 @@ namespace MiniGame.Golf
         private void BuildTable(IReadOnlyList<GolfHoleData> holes, IReadOnlyList<GolfPlayerSlot> slots, bool showRanks)
         {
             ClearCells();
-            int columns = holes.Count + ExtraColumns;
-            _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            _grid.constraintCount = columns;
-            _grid.cellSize = new Vector2(_gridWidth / columns, _rowHeight);
-
+            SetColumnCount(holes.Count + ExtraColumns);
             AddHeaderRow(holes.Count);
             AddParRow(holes);
 
@@ -67,6 +63,14 @@ namespace MiniGame.Golf
             {
                 AddPlayerRow(holes, slots[i], ranks != null ? $"{ranks[i]}位 " : string.Empty);
             }
+        }
+
+        /// <summary>表の横幅は固定のまま、列が増えるほどセルを細くする</summary>
+        private void SetColumnCount(int columns)
+        {
+            _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            _grid.constraintCount = columns;
+            _grid.cellSize = new Vector2(_gridWidth / columns, _rowHeight);
         }
 
         private void AddHeaderRow(int holeCount)

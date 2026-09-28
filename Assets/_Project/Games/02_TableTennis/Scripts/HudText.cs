@@ -107,11 +107,16 @@ namespace MiniGame.TableTennis
             for (float time = 0f; time < _fadeDuration; time += Time.deltaTime)
             {
                 float alpha = 1f - time / _fadeDuration;
-                _text.color = new Color(_baseColor.r, _baseColor.g, _baseColor.b, _baseColor.a * alpha);
+                _text.color = BaseColorWithAlpha(_baseColor.a * alpha);
                 yield return null;
             }
 
-            _text.color = new Color(_baseColor.r, _baseColor.g, _baseColor.b, 0f);
+            _text.color = BaseColorWithAlpha(0f);
+        }
+
+        private Color BaseColorWithAlpha(float alpha)
+        {
+            return new Color(_baseColor.r, _baseColor.g, _baseColor.b, alpha);
         }
 
         private void StopRoutine()

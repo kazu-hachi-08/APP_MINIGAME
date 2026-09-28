@@ -13,10 +13,5 @@ namespace MiniGame.TableTennis
         {
             return side == CourtSide.Player ? CourtSide.Opponent : CourtSide.Player;
         }
-
-        public static string ToLabel(this CourtSide side)
-        {
-            return side == CourtSide.Player ? "YOU" : "NPC";
-        }
     }
 }

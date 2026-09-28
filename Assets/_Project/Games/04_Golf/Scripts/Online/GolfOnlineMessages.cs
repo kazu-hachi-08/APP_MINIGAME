@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MiniGame.Golf
 {
-    /// <summary>§14.2 試合開始時にホストが決めて配る、ホールの並び（カタログの添字）と各ホールの風</summary>
+    /// <summary>試合開始時にホストが決めて配る、ホールの並び（カタログの添字）と各ホールの風</summary>
     public sealed class GolfMatchSetup
     {
         public GolfMatchSetup(IReadOnlyList<int> holeIndices, IReadOnlyList<Wind> winds)
@@ -38,7 +38,7 @@ namespace MiniGame.Golf
         public ShotSpin Spin { get; }
     }
 
-    /// <summary>§14.2 止まった後に打った人の端末が確定させる結果。他の端末はこれで上書きする</summary>
+    /// <summary>止まった後に打った人の端末が確定させる結果。他の端末はこれで上書きする</summary>
     public readonly struct GolfShotResultMessage
     {
         public GolfShotResultMessage(Vector2 position, int strokes, bool isInCup)

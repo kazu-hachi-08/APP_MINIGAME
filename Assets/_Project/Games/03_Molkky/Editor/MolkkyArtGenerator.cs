@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Molkky.Editor
 {
     /// <summary>
-    /// モルックのドット絵素材（ピン・棒・影・背景・キャラ）をコードから生成するエディタユーティリティ（§14 Phase 8）。
+    /// モルックのドット絵素材（ピン・棒・影・背景・キャラ）をコードから生成するエディタユーティリティ。
     /// 外部素材に依存せず同じ絵をいつでも作り直せるよう、卓球の TableTennisArtGenerator と同じ方針でコード生成にしている。
     /// 生成物は通常のPNGなので、手描き素材へ差し替えても構わない（表示側は大きさを地面単位で合わせる）。
     /// </summary>
@@ -25,12 +25,30 @@ namespace MiniGame.Molkky.Editor
         /// <summary>キャラの仮素材の種類。MolkkyCharacterGenerator がこの並びでキャラを作る</summary>
         public static readonly string[] CharacterIds = { "Balance", "Power", "Precision", "Long" };
 
+        // 各素材のピクセル寸法。ピンは PinRackView の見た目の比率（幅0.4：高さ0.55）に合わせ、拡大時の歪みを小さくする
+        private const int PinWidth = 16;
+        private const int PinHeight = 22;
+        private const int StickWidth = 32;
+        private const int StickHeight = 8;
+        private const int ShadowWidth = 32;
+        private const int ShadowHeight = 12;
+        private const int BackdropWidth = 160;
+        private const int BackdropHeight = 96;
         private const int CharacterWidth = 16;
         private const int CharacterHeight = 24;
 
         /// <summary>背景の空の一番上の色。カメラの背景色もこれに合わせ、背景の上に隙間が出ても目立たないようにする</summary>
         public static readonly Color32 SkyTop = new Color32(120, 185, 235, 255);
         private static readonly Color32 SkyHorizon = new Color32(205, 230, 245, 255);
+        private static readonly Color32 Cloud = new Color32(255, 255, 255, 235);
+
+        // 遠くの木立は空に溶ける明るい色、手前の木立は濃い色にして奥行きを出す
+        private static readonly Color32 FarTree = new Color32(110, 162, 122, 255);
+        private static readonly Color32 FarTreeHighlight = new Color32(130, 180, 138, 255);
+        private static readonly Color32 NearTree = new Color32(56, 116, 66, 255);
+        private static readonly Color32 NearTreeHighlight = new Color32(82, 146, 84, 255);
+        private static readonly Color32 Hedge = new Color32(46, 98, 56, 255);
+        private static readonly Color32 HedgeTop = new Color32(70, 128, 72, 255);
 
         private static readonly Color32 WoodOutline = new Color32(110, 74, 40, 255);
         private static readonly Color32 WoodBase = new Color32(226, 188, 132, 255);
@@ -64,6 +82,9 @@ namespace MiniGame.Molkky.Editor
             (new Color32(230, 160, 60, 255), new Color32(70, 46, 30, 255), 4),
         };
 
+        // ピンの頭を斜めに切る深さ（ピクセル）
+        private const float PinCutDepth = 3f;
+
         [MenuItem("Tools/MiniGame/Generate Molkky Art", false, 5)]
         public static void GenerateAll()
         {
@@ -72,21 +93,8 @@ namespace MiniGame.Molkky.Editor
                 Directory.CreateDirectory(SpriteDirectory);
             }
 
-            // ピンは PinRackView の見た目の比率（幅0.4：高さ0.55）に合わせた大きさで描き、拡大時の歪みを小さくする
-            SaveSprite(PinStandingName, BuildPinStanding(), 16, 22, SpriteAlignment.Center);
-            SaveSprite(PinFallenName, BuildPinFallen(), 22, 16, SpriteAlignment.Center);
-            SaveSprite(StickName, BuildStick(), 32, 8, SpriteAlignment.Center);
-            SaveSprite(ShadowName, BuildShadow(), 32, 12, SpriteAlignment.Center);
-            SaveSprite(BackdropName, BuildBackdrop(), 160, 96, SpriteAlignment.BottomCenter);
-
-            // 足元をピボットにして、ThrowerView が地面の立ち位置にそのまま置けるようにする
-            for (int i = 0; i < CharacterIds.Length; i++)
-            {
-                SaveSprite(CharacterFrontName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], true),
-                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
-                SaveSprite(CharacterBackName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], false),
-                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
-            }
+            GeneratePropSprites();
+            GenerateCharacterSprites();
 
             AssetDatabase.Refresh();
             Debug.Log($"[MolkkyArtGenerator] モルックの素材を生成しました: {SpriteDirectory}");
@@ -95,6 +103,7 @@ namespace MiniGame.Molkky.Editor
         /// <summary>素材が未生成なら生成する（MolkkySceneBuilder から呼ばれる）</summary>
         public static void EnsureGenerated()
         {
+            // 後から追加したキャラ素材が無い既存環境でも作り直されるよう、最後に作るキャラまで確認する
             if (Load(PinStandingName) == null || Load(BackdropName) == null ||
                 Load(CharacterBackName(CharacterIds[CharacterIds.Length - 1])) == null)
             {
@@ -111,19 +120,41 @@ namespace MiniGame.Molkky.Editor
 
         public static string CharacterBackName(string id) => $"Char_{id}_Back";
 
+        private static void GeneratePropSprites()
+        {
+            SaveSprite(PinStandingName, BuildPinStanding(), PinWidth, PinHeight, SpriteAlignment.Center);
+            SaveSprite(PinFallenName, BuildPinFallen(), PinHeight, PinWidth, SpriteAlignment.Center);
+            SaveSprite(StickName, BuildStick(), StickWidth, StickHeight, SpriteAlignment.Center);
+            SaveSprite(ShadowName, BuildShadow(), ShadowWidth, ShadowHeight, SpriteAlignment.Center);
+            // 下端中央をピボットにして地面の奥に立てる
+            SaveSprite(BackdropName, BuildBackdrop(), BackdropWidth, BackdropHeight, SpriteAlignment.BottomCenter);
+        }
+
+        /// <summary>足元をピボットにして、ThrowerView が地面の立ち位置にそのまま置けるようにする</summary>
+        private static void GenerateCharacterSprites()
+        {
+            for (int i = 0; i < CharacterIds.Length; i++)
+            {
+                SaveSprite(CharacterFrontName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], true),
+                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
+                SaveSprite(CharacterBackName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], false),
+                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
+            }
+        }
+
         // ------------------------------------------------------------------
         // ピン（立っている）。頭を斜めに切った木の円柱で、上寄りに数字の面を置く
         // ------------------------------------------------------------------
         private static Color32[] BuildPinStanding()
         {
-            const int width = 16;
-            const int height = 22;
+            const int width = PinWidth;
+            const int height = PinHeight;
             var pixels = NewCanvas(width, height);
 
             for (int x = 0; x < width; x++)
             {
                 // 本物のモルックのピンと同じく頭を斜めに切る（左が高く右が低い）
-                int top = Mathf.RoundToInt(x * 3f / (width - 1));
+                int top = Mathf.RoundToInt(x * PinCutDepth / (width - 1));
                 for (int y = top; y < height; y++)
                 {
                     Color32 color = CylinderShade(x, width);
@@ -143,13 +174,13 @@ namespace MiniGame.Molkky.Editor
         // ------------------------------------------------------------------
         private static Color32[] BuildPinFallen()
         {
-            const int width = 22;
-            const int height = 16;
+            const int width = PinHeight;
+            const int height = PinWidth;
             var pixels = NewCanvas(width, height);
 
             for (int y = 0; y < height; y++)
             {
-                int right = width - 1 - Mathf.RoundToInt(y * 3f / (height - 1));
+                int right = width - 1 - Mathf.RoundToInt(y * PinCutDepth / (height - 1));
                 for (int x = 0; x <= right; x++)
                 {
                     Color32 color = CylinderShade(y, height);
@@ -166,9 +197,12 @@ namespace MiniGame.Molkky.Editor
         /// <summary>円柱の断面方向の陰影。片側を明るく、反対側を暗くして丸みを出す</summary>
         private static Color32 CylinderShade(int position, int size)
         {
+            const float lightEnd = 0.25f;
+            const float shadeStart = 0.72f;
+
             float t = position / (float)(size - 1);
-            if (t < 0.25f) return WoodLight;
-            if (t > 0.72f) return WoodShade;
+            if (t < lightEnd) return WoodLight;
+            if (t > shadeStart) return WoodShade;
             return WoodBase;
         }
 
@@ -177,21 +211,27 @@ namespace MiniGame.Molkky.Editor
         // ------------------------------------------------------------------
         private static Color32[] BuildStick()
         {
-            const int width = 32;
-            const int height = 8;
+            const int width = StickWidth;
+            const int height = StickHeight;
+            const int lightBottomY = 2;
+            const int shadeTopY = 5;
+            const int grainLength = 4;
+            const int grainRarity = 5;
+            const int endRingWidth = 3;
+
             var pixels = NewCanvas(width, height);
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    Color32 color = y <= 2 ? StickLight : (y >= 5 ? StickShade : StickBase);
+                    Color32 color = y <= lightBottomY ? StickLight : (y >= shadeTopY ? StickShade : StickBase);
 
                     // 木目。座標から決まるノイズで短い筋を入れる
-                    if (y >= 2 && y <= 5 && Hash(x / 4, y) % 5 == 0) color = StickShade;
+                    if (y >= lightBottomY && y <= shadeTopY && Hash(x / grainLength, y) % grainRarity == 0) color = StickShade;
 
                     // 両端の年輪
-                    if (x <= 2 || x >= width - 3) color = StickShade;
+                    if (x < endRingWidth || x >= width - endRingWidth) color = StickShade;
 
                     bool edge = y == 0 || y == height - 1 || x == 0 || x == width - 1;
                     // 角を1ピクセル削って丸みを出す
@@ -211,8 +251,11 @@ namespace MiniGame.Molkky.Editor
         // ------------------------------------------------------------------
         private static Color32[] BuildShadow()
         {
-            const int width = 32;
-            const int height = 12;
+            const int width = ShadowWidth;
+            const int height = ShadowHeight;
+            // 1より大きくして、中心付近は不透明のまま縁だけを薄くする
+            const float falloff = 1.3f;
+
             var pixels = NewCanvas(width, height);
             float cx = width * 0.5f;
             float cy = height * 0.5f;
@@ -227,7 +270,7 @@ namespace MiniGame.Molkky.Editor
                     if (d > 1f) continue;
 
                     // 中心ほど濃く、縁に向かって薄くする
-                    byte alpha = (byte)(255f * Mathf.Clamp01(1.3f * (1f - d)));
+                    byte alpha = (byte)(255f * Mathf.Clamp01(falloff * (1f - d)));
                     pixels[(height - 1 - y) * width + x] = new Color32(255, 255, 255, alpha);
                 }
             }
@@ -236,56 +279,73 @@ namespace MiniGame.Molkky.Editor
         }
 
         // ------------------------------------------------------------------
-        // 背景（空・雲・遠くの木立・手前の木立・生け垣）。下端中央をピボットにして地面の奥に立てる
+        // 背景（空・雲・遠くの木立・手前の木立・生け垣）
         // ------------------------------------------------------------------
         private static Color32[] BuildBackdrop()
         {
-            const int width = 160;
-            const int height = 96;
+            const int width = BackdropWidth;
+            const int height = BackdropHeight;
             var pixels = NewCanvas(width, height);
 
-            for (int y = 0; y < height; y++)
-            {
-                Color32 sky = Lerp(SkyTop, SkyHorizon, y / (float)(height - 1));
-                FillRect(pixels, width, height, 0, y, width, 1, sky);
-            }
+            FillSkyGradient(pixels, width, height);
 
             DrawCloud(pixels, width, height, 30, 22);
             DrawCloud(pixels, width, height, 104, 14);
             DrawCloud(pixels, width, height, 140, 34);
 
-            // 遠くの木立は空に溶ける明るい色、手前の木立は濃い色にして奥行きを出す
-            DrawTreeLine(pixels, width, height, 66, 8, 7, new Color32(110, 162, 122, 255), new Color32(130, 180, 138, 255), 1);
-            DrawTreeLine(pixels, width, height, 76, 13, 10, new Color32(56, 116, 66, 255), new Color32(82, 146, 84, 255), 7);
+            DrawTreeLine(pixels, width, height, 66, 8, 7, FarTree, FarTreeHighlight, 1);
+            DrawTreeLine(pixels, width, height, 76, 13, 10, NearTree, NearTreeHighlight, 7);
 
-            FillRect(pixels, width, height, 0, 90, width, 6, new Color32(46, 98, 56, 255));
-            FillRect(pixels, width, height, 0, 90, width, 1, new Color32(70, 128, 72, 255));
+            DrawHedge(pixels, width, height);
             return pixels;
+        }
+
+        private static void FillSkyGradient(Color32[] pixels, int width, int height)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Color32 sky = Lerp(SkyTop, SkyHorizon, y / (float)(height - 1));
+                FillRect(pixels, width, height, 0, y, width, 1, sky);
+            }
         }
 
         private static void DrawCloud(Color32[] pixels, int width, int height, int cx, int cy)
         {
-            var cloud = new Color32(255, 255, 255, 235);
-            FillCircle(pixels, width, height, cx, cy, 6f, cloud);
-            FillCircle(pixels, width, height, cx + 7, cy - 2, 7f, cloud);
-            FillCircle(pixels, width, height, cx + 14, cy, 5f, cloud);
-            FillRect(pixels, width, height, cx - 4, cy, 22, 5, cloud);
+            FillCircle(pixels, width, height, cx, cy, 6f, Cloud);
+            FillCircle(pixels, width, height, cx + 7, cy - 2, 7f, Cloud);
+            FillCircle(pixels, width, height, cx + 14, cy, 5f, Cloud);
+            FillRect(pixels, width, height, cx - 4, cy, 22, 5, Cloud);
         }
 
         /// <summary>丸い樹冠を横に並べ、その下を塗りつぶして木立にする。樹冠の高さは座標ノイズでばらつかせる</summary>
         private static void DrawTreeLine(Color32[] pixels, int width, int height, int baseY, int spacing, int radius,
             Color32 color, Color32 highlight, int seed)
         {
+            const int heightJitter = 6;
+            const int radiusJitter = 4;
+            const int highlightOffset = 2;
+            const float highlightRatio = 0.45f;
+
             for (int x = -spacing; x < width + spacing; x += spacing)
             {
-                int cy = baseY - Hash(x, seed) % 6;
-                float r = radius + Hash(seed, x) % 4;
+                int cy = baseY - Hash(x, seed) % heightJitter;
+                float r = radius + Hash(seed, x) % radiusJitter;
                 FillCircle(pixels, width, height, x, cy, r, color);
                 // 左上を明るくして、日が当たっているように見せる
-                FillCircle(pixels, width, height, x - 2, cy - 2, r * 0.45f, highlight);
+                FillCircle(pixels, width, height, x - highlightOffset, cy - highlightOffset, r * highlightRatio, highlight);
             }
 
             FillRect(pixels, width, height, 0, baseY, width, height - baseY, color);
+        }
+
+        /// <summary>背景の最下段。上端だけ明るくして、地面との境目をはっきりさせる</summary>
+        private static void DrawHedge(Color32[] pixels, int width, int height)
+        {
+            const int hedgeTopY = 90;
+            const int hedgeHeight = 6;
+
+            FillRect(pixels, width, height, 0, hedgeTopY, width, hedgeHeight, Hedge);
+            FillRect(pixels, width, height, 0, hedgeTopY, width, 1, HedgeTop);
         }
 
         // ------------------------------------------------------------------
@@ -296,32 +356,59 @@ namespace MiniGame.Molkky.Editor
         {
             const int width = CharacterWidth;
             const int height = CharacterHeight;
-            const int center = width / 2;
             var pixels = NewCanvas(width, height);
-            int half = look.HalfWidth;
 
-            // 脚と靴
-            FillRect(pixels, width, height, center - 3, 17, 2, 6, Pants);
-            FillRect(pixels, width, height, center + 1, 17, 2, 6, Pants);
-            FillRect(pixels, width, height, center - 3, 22, 2, 1, Shoes);
-            FillRect(pixels, width, height, center + 1, 22, 2, 1, Shoes);
-
-            // 腕（肌）と胴（服）
-            FillRect(pixels, width, height, center - half - 1, 10, 1, 6, Skin);
-            FillRect(pixels, width, height, center + half, 10, 1, 6, Skin);
-            FillRect(pixels, width, height, center - half, 9, half * 2, 8, look.Shirt);
-
-            // 頭。正面は髪を上だけにして顔を見せ、背中は髪で全部覆う
-            FillEllipse(pixels, width, height, center, 5f, 3.6f, 4f, front ? Skin : look.Hair);
-            if (front)
-            {
-                FillRect(pixels, width, height, center - 4, 1, 8, 2, look.Hair);
-                SetPixel(pixels, width, height, center - 2, 5, CharacterOutline);
-                SetPixel(pixels, width, height, center + 1, 5, CharacterOutline);
-            }
+            DrawLegs(pixels, width, height);
+            DrawBody(pixels, width, height, look.Shirt, look.HalfWidth);
+            DrawHead(pixels, width, height, look.Hair, front);
 
             AddOutline(pixels, width, height, CharacterOutline);
             return pixels;
+        }
+
+        private static void DrawLegs(Color32[] pixels, int width, int height)
+        {
+            const int center = CharacterWidth / 2;
+            const int legWidth = 2;
+            const int legTopY = 17;
+            const int legHeight = 6;
+            const int shoeY = 22;
+
+            FillRect(pixels, width, height, center - 3, legTopY, legWidth, legHeight, Pants);
+            FillRect(pixels, width, height, center + 1, legTopY, legWidth, legHeight, Pants);
+            FillRect(pixels, width, height, center - 3, shoeY, legWidth, 1, Shoes);
+            FillRect(pixels, width, height, center + 1, shoeY, legWidth, 1, Shoes);
+        }
+
+        /// <summary>腕（肌）と胴（服）。胴の幅をキャラごとに変えて体格の違いを出す</summary>
+        private static void DrawBody(Color32[] pixels, int width, int height, Color32 shirt, int halfWidth)
+        {
+            const int center = CharacterWidth / 2;
+            const int armTopY = 10;
+            const int armHeight = 6;
+            const int torsoTopY = 9;
+            const int torsoHeight = 8;
+
+            FillRect(pixels, width, height, center - halfWidth - 1, armTopY, 1, armHeight, Skin);
+            FillRect(pixels, width, height, center + halfWidth, armTopY, 1, armHeight, Skin);
+            FillRect(pixels, width, height, center - halfWidth, torsoTopY, halfWidth * 2, torsoHeight, shirt);
+        }
+
+        /// <summary>正面は髪を上だけにして顔を見せ、背中は髪で全部覆う</summary>
+        private static void DrawHead(Color32[] pixels, int width, int height, Color32 hair, bool front)
+        {
+            const int center = CharacterWidth / 2;
+            const float headCenterY = 5f;
+            const float headRadiusX = 3.6f;
+            const float headRadiusY = 4f;
+            const int eyeY = 5;
+
+            FillEllipse(pixels, width, height, center, headCenterY, headRadiusX, headRadiusY, front ? Skin : hair);
+            if (!front) return;
+
+            FillRect(pixels, width, height, center - 4, 1, 8, 2, hair);
+            SetPixel(pixels, width, height, center - 2, eyeY, CharacterOutline);
+            SetPixel(pixels, width, height, center + 1, eyeY, CharacterOutline);
         }
 
         /// <summary>塗った部分を1ピクセルの縁で囲む。背景の芝の上でも輪郭が埋もれないようにする</summary>

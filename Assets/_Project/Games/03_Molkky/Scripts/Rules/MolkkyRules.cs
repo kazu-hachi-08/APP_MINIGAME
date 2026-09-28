@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// モルックの得点ルール（§6）。
+    /// モルックの得点ルール。
     /// 物理と無関係なので MonoBehaviour にせず、EditModeテストで検証できる純粋クラスにしている。
     /// </summary>
     public static class MolkkyRules
@@ -26,18 +26,9 @@ namespace MiniGame.Molkky
             int points = CalculatePoints(fallenNumbers);
             int single = fallenNumbers.Count == 1 ? fallenNumbers[0] : 0;
 
-            if (points == 0)
-            {
-                player.MissCount++;
-                if (player.MissCount >= MaxConsecutiveMisses)
-                {
-                    player.IsDisqualified = true;
-                    return new ThrowResult(ThrowOutcome.Disqualified, 0, 0, 0);
-                }
+            if (points == 0) return RegisterMiss(player);
 
-                return new ThrowResult(ThrowOutcome.Miss, 0, 0, 0);
-            }
-
+            // ミスの連続回数で失格を判定するので、1本でも倒したら数え直す
             player.MissCount = 0;
             player.Score += points;
 
@@ -55,6 +46,18 @@ namespace MiniGame.Molkky
             return new ThrowResult(ThrowOutcome.Scored, points, fallenNumbers.Count, single);
         }
 
+        private static ThrowResult RegisterMiss(PlayerSlot player)
+        {
+            player.MissCount++;
+            if (player.MissCount >= MaxConsecutiveMisses)
+            {
+                player.IsDisqualified = true;
+                return new ThrowResult(ThrowOutcome.Disqualified, 0, 0, 0);
+            }
+
+            return new ThrowResult(ThrowOutcome.Miss, 0, 0, 0);
+        }
+
         /// <summary>次に投げるプレイヤーの番号。失格者は飛ばす。投げられる人がいなければ -1</summary>
         public static int NextPlayerIndex(IReadOnlyList<PlayerSlot> players, int currentIndex)
         {
@@ -67,7 +70,7 @@ namespace MiniGame.Molkky
             return -1;
         }
 
-        /// <summary>失格していないプレイヤーが1人だけならその人（§6.7）。それ以外は null</summary>
+        /// <summary>失格していないプレイヤーが1人だけならその人。それ以外は null</summary>
         public static PlayerSlot FindSoleSurvivor(IReadOnlyList<PlayerSlot> players)
         {
             PlayerSlot survivor = null;

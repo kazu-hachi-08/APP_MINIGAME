@@ -23,6 +23,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class RallyReferee : MonoBehaviour
     {
+        /// <summary>卓球のルール通り、同じコートで2回バウンドしたら受ける側の失点</summary>
+        private const int BouncesToLosePoint = 2;
+
         [SerializeField] private BallMotion _ball;
 
         public event Action<CourtSide, PointReason> OnPointDecided;
@@ -99,7 +102,7 @@ namespace MiniGame.TableTennis
 
             _serveBounceAllowed = false;
             _bouncesSinceHit++;
-            if (_bouncesSinceHit >= 2)
+            if (_bouncesSinceHit >= BouncesToLosePoint)
             {
                 // 相手コートで2回バウンド ＝ 相手が返球できなかった
                 Award(_lastHitter, PointReason.NotReturned);

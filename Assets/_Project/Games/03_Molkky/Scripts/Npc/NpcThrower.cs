@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// NPCの投擲（§9）。狙うピンを決め、そこへ届く ThrowRequest を作り、難易度に応じたブレを加える。
+    /// NPCの投擲。狙うピンを決め、そこへ届く ThrowRequest を作り、難易度に応じたブレを加える。
     /// 人間と同じ ThrowRequest を返すので、投げる処理（StickThrower）は共通のまま使える。
     /// </summary>
     public class NpcThrower : MonoBehaviour
@@ -29,9 +29,9 @@ namespace MiniGame.Molkky
             MolkkyNpcDifficulty difficulty = GetDifficulty(player.Kind);
             Pin target = ChooseTarget(player.Remaining, difficulty, out bool single);
             // 1本狙いは当たり幅の細い縦投げ、密集地はまとめて倒せる横投げにする
-            return single
-                ? Aim(target.GroundPosition, _singleOvershoot, ThrowStyle.Vertical, difficulty, character)
-                : Aim(target.GroundPosition, _denseOvershoot, ThrowStyle.Horizontal, difficulty, character);
+            float overshoot = single ? _singleOvershoot : _denseOvershoot;
+            ThrowStyle style = single ? ThrowStyle.Vertical : ThrowStyle.Horizontal;
+            return Aim(target.GroundPosition, overshoot, style, difficulty, character);
         }
 
         private MolkkyNpcDifficulty GetDifficulty(PlayerKind kind)
@@ -41,7 +41,10 @@ namespace MiniGame.Molkky
             return _difficulties[index];
         }
 
-        /// <summary>§9.2 の狙い決め。single は「1本だけ倒したい狙い」かどうか</summary>
+        /// <summary>
+        /// 残り点数ぴったりのピン → （混んでいれば）小さい数字の孤立したピン → 密集地 の順で狙いを決める。
+        /// single は「1本だけ倒したい狙い」かどうか
+        /// </summary>
         private Pin ChooseTarget(int remaining, MolkkyNpcDifficulty difficulty, out bool single)
         {
             single = true;
@@ -126,7 +129,7 @@ namespace MiniGame.Molkky
             return count;
         }
 
-        /// <summary>§9.3：狙うピンに近い位置から、ピンの少し先まで届く強さで投げる</summary>
+        /// <summary>狙うピンに近い位置から、ピンの少し先まで届く強さで投げる</summary>
         private ThrowRequest Aim(Vector2 target, float overshoot, ThrowStyle style, MolkkyNpcDifficulty difficulty,
             MolkkyCharacterData character)
         {
@@ -137,15 +140,21 @@ namespace MiniGame.Molkky
             // linearDamping で減速する物体は、初速 ÷ 減速率 のあたりで止まる。そこから逆算して必要な初速を出す
             float speed = _settings.StickDamping * (toTarget.magnitude + overshoot);
 
-            // コントロールが高いキャラほどブレを小さくする
-            float angleNoise = difficulty.AngleNoise / character.ControlMultiplier;
-            float speedNoise = difficulty.SpeedNoise / character.ControlMultiplier;
-            angle += Random.Range(-angleNoise, angleNoise);
-            speed *= 1f + Random.Range(-speedNoise, speedNoise);
+            AddNoise(ref angle, ref speed, difficulty, character);
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
             speed = Mathf.Clamp(speed, _settings.MinThrowSpeed, _settings.MaxThrowSpeed * character.PowerMultiplier);
             return new ThrowRequest(x, angle, speed, style);
+        }
+
+        /// <summary>コントロールが高いキャラほどブレを小さくする。人間のフリックの揺らぎの代わり</summary>
+        private static void AddNoise(ref float angle, ref float speed, MolkkyNpcDifficulty difficulty,
+            MolkkyCharacterData character)
+        {
+            float angleNoise = difficulty.AngleNoise / character.ControlMultiplier;
+            float speedNoise = difficulty.SpeedNoise / character.ControlMultiplier;
+            angle += Random.Range(-angleNoise, angleNoise);
+            speed *= 1f + Random.Range(-speedNoise, speedNoise);
         }
     }
 }

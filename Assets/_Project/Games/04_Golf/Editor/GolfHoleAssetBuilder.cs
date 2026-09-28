@@ -10,7 +10,7 @@ using Object = UnityEngine.Object;
 namespace MiniGame.Golf.Editor
 {
     /// <summary>
-    /// 地面タイル・ホールのプレハブ・GolfHoleData・GolfHoleCatalog を作る（§9、Phase 2・4・10）。
+    /// 地面タイル・ホールのプレハブ・GolfHoleData・GolfHoleCatalog を作る。
     /// どれも「無ければ作る」だけにして、Tilemap を塗り替えたホールや調整済みの値を上書きしない。
     /// 例外はタイルの見た目で、画像（GolfTileArtBuilder）に毎回揃える。
     /// </summary>
@@ -27,7 +27,7 @@ namespace MiniGame.Golf.Editor
 
         private const float CupDiameter = 0.5f;
 
-        // 横は §19 の目安どおり16タイル（x = -8〜7）。縦はパーに合わせて伸ばす
+        // 横は全ホール共通で16タイル（x = -8〜7）。縦はパーに合わせて伸ばす
         private const int HoleMinX = -8;
         private const int HoleMaxX = 7;
 
@@ -49,14 +49,14 @@ namespace MiniGame.Golf.Editor
             public string DataPath => $"{FolderPath}/{Id}.asset";
         }
 
-        // §9.5 ホール1：パー3・まっすぐ・グリーン手前にバンカー。横16×縦32タイル
+        // ホール1：パー3・まっすぐ・グリーン手前にバンカー。横16×縦32タイル
         private static readonly Vector2 Hole01Cup = new Vector2(0f, 26f);
         private const float Hole01GreenRadius = 4f;
         private static readonly RectInt Hole01TeeBox = new RectInt(-2, 0, 4, 4);
         private static readonly RectInt Hole01Fairway = new RectInt(-4, 4, 8, 16);
         private static readonly RectInt Hole01Bunker = new RectInt(-3, 20, 6, 2);
 
-        // §9.5 ホール2：パー4・左から右へ曲がるドッグレッグ・曲がり角の内側に池。横16×縦44タイル。
+        // ホール2：パー4・左から右へ曲がるドッグレッグ・曲がり角の内側に池。横16×縦44タイル。
         // カップへまっすぐ打つとスライスで池に入り、安全に打つと左の角に残る
         private static readonly Vector2 Hole02Cup = new Vector2(3f, 38f);
         private const float Hole02GreenRadius = 4f;
@@ -67,7 +67,7 @@ namespace MiniGame.Golf.Editor
         private static readonly RectInt Hole02Water = new RectInt(1, 8, 6, 15);
         private static readonly RectInt Hole02Bunker = new RectInt(-3, 36, 2, 3);
 
-        // §9.5 ホール3：パー5・長い・両側すぐOB。横16×縦60タイル。グリーンの傾斜は Phase 5 で塗る
+        // ホール3：パー5・長い・両側すぐOB。横16×縦60タイル
         private static readonly Vector2 Hole03Cup = new Vector2(0f, 54f);
         private const float Hole03GreenRadius = 4f;
         private static readonly RectInt Hole03TeeBox = new RectInt(-2, 0, 4, 4);
@@ -171,7 +171,7 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 見た目は画像で決めるので、既存のタイルも毎回画像に揃える（Phase 9 までの単色タイルもここで置き換わる）。
+        /// 見た目は画像で決めるので、既存のタイルも毎回画像に揃える（古い単色のタイルもここで置き換わる）。
         /// 画像そのものを差し替えたいときは Tiles/Art の PNG を上書きする。
         /// </summary>
         private static void ApplyArt(GolfTerrainTile tile, GroundType type)
@@ -179,16 +179,9 @@ namespace MiniGame.Golf.Editor
             tile.sprite = GolfTileArtBuilder.EnsureSprite(type);
             tile.color = Color.white;
 
+            // 波打つのは池だけ。ほかのタイルはコマを空にして、1枚絵のまま表示する
             Sprite[] frames = type == GroundType.Water ? GolfTileArtBuilder.EnsureWaterFrames() : new Sprite[0];
-            var so = new SerializedObject(tile);
-            SerializedProperty framesProperty = so.FindProperty("_animationFrames");
-            framesProperty.arraySize = frames.Length;
-            for (int i = 0; i < frames.Length; i++)
-            {
-                framesProperty.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
-            }
-
-            so.ApplyModifiedPropertiesWithoutUndo();
+            GolfSceneBuilder.SetArray(tile, "_animationFrames", frames);
             EditorUtility.SetDirty(tile);
         }
 

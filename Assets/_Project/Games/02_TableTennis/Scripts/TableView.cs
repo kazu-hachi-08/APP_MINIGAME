@@ -11,6 +11,9 @@ namespace MiniGame.TableTennis
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class TableView : MonoBehaviour
     {
+        // 脚は台の端ではなく少し内側に立っている方が卓球台らしく見える
+        private const float LegXRatio = 0.72f;
+
         [SerializeField] private TableLayout _table;
         [SerializeField] private Material _material;
 
@@ -90,7 +93,7 @@ namespace MiniGame.TableTennis
         /// <summary>手前側の脚。奥の脚は天板に隠れるため描かない</summary>
         private void BuildLegs()
         {
-            float legX = _table.HalfWidth * 0.72f;
+            float legX = _table.HalfWidth * LegXRatio;
             CreateLeg("TableLegLeft", -legX);
             CreateLeg("TableLegRight", legX);
         }
@@ -120,9 +123,8 @@ namespace MiniGame.TableTennis
 
         private void BuildCenterLine()
         {
-            var line = CreateLine("CenterLine", _lineColor, _lineSortingOrder, loop: false, positionCount: 2);
-            line.SetPosition(0, ToLocal(0f, _table.PlayerEndZ));
-            line.SetPosition(1, ToLocal(0f, _table.OpponentEndZ));
+            CreateSegment("CenterLine", _lineColor, _lineSortingOrder,
+                ToLocal(0f, _table.PlayerEndZ), ToLocal(0f, _table.OpponentEndZ));
         }
 
         /// <summary>ネットは台の中央（z=0）に立てた面として描き、上端と支柱を線で締める</summary>
@@ -138,17 +140,12 @@ namespace MiniGame.TableTennis
                 ToLocal(halfWidth, 0f, 0f),
                 _netColor, _netSprite, _netTiling, _netSortingOrder);
 
-            var top = CreateLine("NetTop", _netColor, _netSortingOrder, loop: false, positionCount: 2);
-            top.SetPosition(0, ToLocal(-halfWidth, 0f, netHeight));
-            top.SetPosition(1, ToLocal(halfWidth, 0f, netHeight));
-
-            var leftPost = CreateLine("NetPostLeft", _netColor, _netSortingOrder, loop: false, positionCount: 2);
-            leftPost.SetPosition(0, ToLocal(-halfWidth, 0f, 0f));
-            leftPost.SetPosition(1, ToLocal(-halfWidth, 0f, netHeight));
-
-            var rightPost = CreateLine("NetPostRight", _netColor, _netSortingOrder, loop: false, positionCount: 2);
-            rightPost.SetPosition(0, ToLocal(halfWidth, 0f, 0f));
-            rightPost.SetPosition(1, ToLocal(halfWidth, 0f, netHeight));
+            CreateSegment("NetTop", _netColor, _netSortingOrder,
+                ToLocal(-halfWidth, 0f, netHeight), ToLocal(halfWidth, 0f, netHeight));
+            CreateSegment("NetPostLeft", _netColor, _netSortingOrder,
+                ToLocal(-halfWidth, 0f, 0f), ToLocal(-halfWidth, 0f, netHeight));
+            CreateSegment("NetPostRight", _netColor, _netSortingOrder,
+                ToLocal(halfWidth, 0f, 0f), ToLocal(halfWidth, 0f, netHeight));
         }
 
         // ------------------------------------------------------------------
@@ -197,6 +194,14 @@ namespace MiniGame.TableTennis
                 material.mainTexture = sprite.texture;
             }
             return material;
+        }
+
+        /// <summary>2点を結ぶ1本の線</summary>
+        private void CreateSegment(string name, Color color, int sortingOrder, Vector3 from, Vector3 to)
+        {
+            var line = CreateLine(name, color, sortingOrder, loop: false, positionCount: 2);
+            line.SetPosition(0, from);
+            line.SetPosition(1, to);
         }
 
         private LineRenderer CreateLine(string name, Color color, int sortingOrder, bool loop, int positionCount)

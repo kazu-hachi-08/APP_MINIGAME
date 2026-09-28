@@ -17,7 +17,8 @@ namespace MiniGame.TableTennis
         {
             for (int i = 0; i < _levelButtons.Length; i++)
             {
-                int level = i + 1;
+                // ボタンは弱い順に並べている前提
+                int level = NpcDifficultyTable.MinLevel + i;
                 _levelButtons[i].onClick.AddListener(() => Select(level));
             }
         }

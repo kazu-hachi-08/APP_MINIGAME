@@ -15,6 +15,10 @@ namespace MiniGame.Molkky
         private const string LocalPlayerName = "あなた";
         private const string SurvivorVictoryLine = "最後まで残った！";
         private const int NotSelected = -1;
+        private const string ExactWinDetail = "50点ちょうど！";
+        private const string SurvivorWinDetail = "他のプレイヤーが失格";
+        private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
+        private const string DisconnectedDetail = "試合を終了しました";
 
         [Header("Molkky")]
         [SerializeField] private PinRack _pinRack;
@@ -36,7 +40,7 @@ namespace MiniGame.Molkky
         [SerializeField] private ThrowerView _throwerView;
         [SerializeField] private VictoryShowView _victoryShow;
 
-        [Header("Online (§19)")]
+        [Header("Online")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private MolkkyOnlineLink _onlineLink;
@@ -45,7 +49,7 @@ namespace MiniGame.Molkky
         [SerializeField] private float _npcBannerDuration = 0.8f;
         [Tooltip("オンライン対戦の「○○の番」表示時間。端末を回さないのでタップ待ちにしない")]
         [SerializeField] private float _onlineBannerDuration = 0.8f;
-        [Tooltip("NPCが投げる前の間。考えている感じを出す（§9.5）")]
+        [Tooltip("NPCが投げる前の間。考えている感じを出す")]
         [SerializeField] private float _npcThinkTime = 0.8f;
         [SerializeField] private float _scoreDisplayDuration = 1.2f;
         [Tooltip("50点ちょうどの演出を見せてから結果画面を出すまでの時間。通常の得点より長く余韻を残す")]
@@ -116,16 +120,15 @@ namespace MiniGame.Molkky
             _players.Clear();
             for (int i = 0; i < kinds.Count; i++)
             {
-                string name = $"P{i + 1} {_characterCatalog.Get(characters[i]).DisplayName}";
-                _players.Add(new PlayerSlot(name, kinds[i], characters[i]));
+                _players.Add(new PlayerSlot(BuildPlayerName($"P{i + 1}", characters[i]), kinds[i], characters[i]));
             }
 
             StartGame();
         }
 
         /// <summary>
-        /// オンラインは部屋に集まった人数で遊ぶので人数設定は出さない。席番号＝手番の順で、先攻はホスト（§19.4）。
-        /// 各端末で自分のキャラだけを選び、全席のキャラ番号が揃ったら始める（仕様書 §20.6）
+        /// オンラインは部屋に集まった人数で遊ぶので人数設定は出さない。席番号＝手番の順で、先攻はホスト。
+        /// 各端末で自分のキャラだけを選び、全席のキャラ番号が揃ったら始める
         /// </summary>
         private void HandleOnlineStarted(int localSeat, int playerCount)
         {
@@ -174,11 +177,15 @@ namespace MiniGame.Molkky
             for (int i = 0; i < _onlineCharacters.Length; i++)
             {
                 string owner = i == _localIndex ? LocalPlayerName : $"P{i + 1}";
-                string name = $"{owner} {_characterCatalog.Get(_onlineCharacters[i]).DisplayName}";
-                _players.Add(new PlayerSlot(name, PlayerKind.Human, _onlineCharacters[i]));
+                _players.Add(new PlayerSlot(BuildPlayerName(owner, _onlineCharacters[i]), PlayerKind.Human, _onlineCharacters[i]));
             }
 
             StartGame();
+        }
+
+        private string BuildPlayerName(string owner, int characterIndex)
+        {
+            return $"{owner} {_characterCatalog.Get(characterIndex).DisplayName}";
         }
 
         protected override void OnGameStart()
@@ -226,7 +233,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// オンラインでは相手の端末は止まらないため、時間は止めずに自分の投擲受付だけ止める（§19.4）。
+        /// オンラインでは相手の端末は止まらないため、時間は止めずに自分の投擲受付だけ止める。
         /// PAUSE中は IsPlaying が false になり、HandleThrowRequested で投擲が弾かれる
         /// </summary>
         public override void PauseGame()
@@ -297,7 +304,7 @@ namespace MiniGame.Molkky
 
         /// <summary>
         /// 相手の手番：届いた ThrowRequest で自分の端末でも物理を動かして見せ、
-        /// 相手端末の結果が届いたらピンを上書きして採点する（§19.2 / 案1）。
+        /// 相手端末の結果が届いたらピンを上書きして採点する。
         /// 投げる前に相手端末のピン配置へ揃えるのは、配置が少しでもずれていると再生で倒れるピンが変わるため
         /// </summary>
         private IEnumerator RemoteThrowRoutine()
@@ -309,8 +316,7 @@ namespace MiniGame.Molkky
 
             yield return new WaitUntil(() => _remoteResults.Count > 0);
             _settleWatcher.Cancel();
-            _stick.Freeze();
-            _pinRack.ApplyStates(_remoteResults.Dequeue());
+            FreezeAt(_remoteResults.Dequeue());
 
             yield return ScoringRoutine();
         }
@@ -339,8 +345,7 @@ namespace MiniGame.Molkky
         {
             if (Phase != MolkkyPhase.Aiming || !IsPlaying || CurrentPlayer.IsNpc || IsRemoteTurn) return;
 
-            _input.IsAccepting = false;
-            SetThrowButtonsVisible(false);
+            StopAcceptingThrow();
             if (_isOnline) SendThrowWithStartStates(request);
             ExecuteThrow(request);
         }
@@ -354,6 +359,12 @@ namespace MiniGame.Molkky
             PinState[] startStates = _pinRack.CaptureStates();
             _pinRack.ApplyStates(startStates);
             _onlineLink.SendThrow(request, startStates);
+        }
+
+        private void StopAcceptingThrow()
+        {
+            _input.IsAccepting = false;
+            SetThrowButtonsVisible(false);
         }
 
         private void SetThrowButtonsVisible(bool visible)
@@ -389,6 +400,14 @@ namespace MiniGame.Molkky
         {
             PinState[] states = _pinRack.CaptureStates();
             _onlineLink.SendResult(states);
+            FreezeAt(states);
+        }
+
+        /// <summary>
+        /// ピンを確定した状態で置き直すときは棒の当たり判定も外す。自分の端末で止まった棒と重なってピンが押し出されないようにするため
+        /// </summary>
+        private void FreezeAt(PinState[] states)
+        {
             _stick.Freeze();
             _pinRack.ApplyStates(states);
         }
@@ -400,7 +419,7 @@ namespace MiniGame.Molkky
 
             List<int> fallen = _pinRack.CollectFallenNumbers();
             ThrowResult result = MolkkyRules.ApplyThrow(CurrentPlayer, fallen);
-            Debug.Log($"[Molkky] {CurrentPlayer.Name}: 倒れたピン [{string.Join(", ", fallen)}] → {result.Outcome} +{result.Points} (合計 {CurrentPlayer.Score})");
+            LogThrow(fallen, result);
 
             _scoreBoard.Show(_players, _currentIndex);
             PlayResultEffect(result);
@@ -415,20 +434,30 @@ namespace MiniGame.Molkky
                 yield break;
             }
 
-            Phase = MolkkyPhase.PinReset;
-            _scorePopup.Hide();
-            _pinRack.StandUpFallen();
-            if (fallen.Count > 0) _audio.PlayPinReset();
-            // 棒がピンの間に残っていると立て直したピンを押してしまうので、先に投擲ラインへ戻す
-            _input.ResetPosition(0f);
-
-            yield return new WaitForSeconds(_pinResetDuration);
+            yield return PinResetRoutine(fallen.Count > 0);
 
             _currentIndex = MolkkyRules.NextPlayerIndex(_players, _currentIndex);
             yield return TurnStartRoutine();
         }
 
-        /// <summary>得点ポップアップ・音・スコア枠の揺れで、1投の結果を伝える（§14 Phase 7）</summary>
+        private void LogThrow(List<int> fallen, ThrowResult result)
+        {
+            Debug.Log($"[Molkky] {CurrentPlayer.Name}: 倒れたピン [{string.Join(", ", fallen)}] → {result.Outcome} +{result.Points} (合計 {CurrentPlayer.Score})");
+        }
+
+        private IEnumerator PinResetRoutine(bool anyFallen)
+        {
+            Phase = MolkkyPhase.PinReset;
+            _scorePopup.Hide();
+            _pinRack.StandUpFallen();
+            if (anyFallen) _audio.PlayPinReset();
+            // 棒がピンの間に残っていると立て直したピンを押してしまうので、先に投擲ラインへ戻す
+            _input.ResetPosition(0f);
+
+            yield return new WaitForSeconds(_pinResetDuration);
+        }
+
+        /// <summary>得点ポップアップ・音・スコア枠の揺れで、1投の結果を伝える</summary>
         private void PlayResultEffect(ThrowResult result)
         {
             _scorePopup.ShowResult(result);
@@ -448,7 +477,7 @@ namespace MiniGame.Molkky
                 : MolkkyRules.FindSoleSurvivor(_players);
         }
 
-        /// <summary>勝ったキャラの勝利演出を見せてから結果画面を出す（仕様書 §20.5）</summary>
+        /// <summary>勝ったキャラの勝利演出を見せてから結果画面を出す</summary>
         private IEnumerator FinishRoutine(PlayerSlot winner, ThrowResult result)
         {
             Phase = MolkkyPhase.GameSet;
@@ -462,7 +491,7 @@ namespace MiniGame.Molkky
             _audio.PlayVictory();
             yield return _victoryShow.Play(character, MolkkyPlayerColors.Get(winnerIndex), winner.Name, line);
 
-            string detail = exactWin ? "50点ちょうど！" : "他のプレイヤーが失格";
+            string detail = exactWin ? ExactWinDetail : SurvivorWinDetail;
             FinishGame(IsLocalVictory(winner), $"{winner.Name} の勝ち", detail);
         }
 
@@ -474,20 +503,21 @@ namespace MiniGame.Molkky
             return !winner.IsNpc;
         }
 
-        /// <summary>試合中に誰か1人でも切れたら全員その時点で終了する（§19.4）。再接続はしない（§19.5）</summary>
+        /// <summary>
+        /// 試合中に誰か1人でも切れたら全員その時点で終了する。再接続はしない（途中から状態を揃え直す仕組みを持たないため）
+        /// </summary>
         private void HandlePeerDisconnected()
         {
             if (!_isOnline || Phase == MolkkyPhase.GameSet) return;
 
             StopAllCoroutines();
             Phase = MolkkyPhase.GameSet;
-            _input.IsAccepting = false;
-            SetThrowButtonsVisible(false);
+            StopAcceptingThrow();
             _scorePopup.Hide();
             // キャラ選択・待機中に切れたときも、選択パネルを残したまま結果画面を出さないようにする
             _characterSelectPanel.Hide();
 
-            FinishGame(false, "他のプレイヤーとの接続が切れました", "試合を終了しました");
+            FinishGame(false, DisconnectedTitle, DisconnectedDetail);
         }
     }
 }

@@ -105,17 +105,9 @@ namespace MiniGame.Soccer
         private Vector2 ComputeDashDirection()
         {
             Vector2 facing = _playerController.FacingDirection;
+            if (!TryFindBall(_aimRange, out var ball)) return facing;
 
-            Collider2D[] hits = Physics2D.OverlapCircleAll(_rigidbody.position, _aimRange, _ballLayerMask);
-            foreach (var hit in hits)
-            {
-                if (hit.TryGetComponent<Ball>(out var ball))
-                {
-                    return KickAim.TowardBall(_rigidbody.position, facing, ball.Position, _aimAngle, _aimRange);
-                }
-            }
-
-            return facing;
+            return KickAim.TowardBall(_rigidbody.position, facing, ball.Position, _aimAngle, _aimRange);
         }
 
         private void TickDash()
@@ -151,17 +143,23 @@ namespace MiniGame.Soccer
         private void TryKnockBall()
         {
             if (_hasKnockedThisTackle) return;
+            if (!TryFindBall(_tackleRadius, out var ball)) return;
 
-            Collider2D[] hits = Physics2D.OverlapCircleAll(_rigidbody.position, _tackleRadius, _ballLayerMask);
+            StaggerBallCarrier(ball.Position);
+            ball.Kick(_dashDirection, _knockSpeed);
+            _hasKnockedThisTackle = true;
+        }
+
+        private bool TryFindBall(float radius, out Ball ball)
+        {
+            Collider2D[] hits = Physics2D.OverlapCircleAll(_rigidbody.position, radius, _ballLayerMask);
             foreach (var hit in hits)
             {
-                if (!hit.TryGetComponent<Ball>(out var ball)) continue;
-
-                StaggerBallCarrier(ball.Position);
-                ball.Kick(_dashDirection, _knockSpeed);
-                _hasKnockedThisTackle = true;
-                break;
+                if (hit.TryGetComponent(out ball)) return true;
             }
+
+            ball = null;
+            return false;
         }
 
         /// <summary>
@@ -171,6 +169,15 @@ namespace MiniGame.Soccer
         {
             if (_teamMember == null) return;
 
+            TeamMember nearestOpponent = FindNearestOpponent(ballPosition);
+            if (nearestOpponent != null && nearestOpponent.TryGetComponent<TackleReaction>(out var reaction))
+            {
+                reaction.Stagger();
+            }
+        }
+
+        private TeamMember FindNearestOpponent(Vector2 ballPosition)
+        {
             TeamMember nearestOpponent = null;
             float nearestDistance = _carrierSearchRadius;
 
@@ -187,10 +194,7 @@ namespace MiniGame.Soccer
                 }
             }
 
-            if (nearestOpponent != null && nearestOpponent.TryGetComponent<TackleReaction>(out var reaction))
-            {
-                reaction.Stagger();
-            }
+            return nearestOpponent;
         }
     }
 }

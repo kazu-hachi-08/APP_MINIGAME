@@ -4,13 +4,16 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// ボールの飛行・風・バウンド・転がり・停止・カップイン・池とOBの計算（§8）。
+    /// ボールの飛行・風・バウンド・転がり・停止・カップイン・池とOBの計算。
     /// Rigidbody2D を使わず固定の時間刻みで自前計算するので、同じ入力からは必ず同じ結果になり、
     /// 着地予測や NPC の試し打ちにもそのまま使える。MonoBehaviour にしないのは EditModeテストで検証するため。
     /// 座標は地面の平面（X＝左右／Y＝奥行きZ）、Height は地面からの高さH。
     /// </summary>
     public sealed class BallSimulator
     {
+        // ImpactOffset の ±1 がインパクトゾーンの端。これを超えたらミスショット
+        private const float ImpactZoneEdge = 1f;
+
         private readonly BallPhysicsConfig _config;
         private readonly TerrainPhysicsConfig _terrain;
         private readonly IGroundMap _ground;
@@ -22,7 +25,7 @@ namespace MiniGame.Golf
         // 手番のキャラの能力。既定はバランス型と同じ 1 倍なので、渡さなければキャラ導入前と同じ飛び方になる
         private CharacterAbility _character = CharacterAbility.Default;
 
-        // 空中にいる間だけ足す風の加速度（§8.2）。ホールの間は変わらない
+        // 空中にいる間だけ足す風の加速度。ホールの間は変わらない
         private Vector2 _windAcceleration;
 
         // 進行方向の右向きを正とする曲がりの加速度。打ち上げたショットは最初の着地まで、パットは止まるまで効かせる
@@ -32,7 +35,7 @@ namespace MiniGame.Golf
         // 最初の着地で地面方向の速さに掛ける倍率（スピン）。一度使ったら 1 に戻し、2回目以降のバウンドには効かせない
         private float _spinRollRate = 1f;
 
-        // 打ち直しの位置（§6.5）。OB は打つ前の場所、池は入る直前に通った池・OB以外の地点
+        // 打ち直しの位置。OB は打つ前の場所、池は入る直前に通った池・OB以外の地点
         private Vector2 _launchPosition;
         private Vector2 _lastSafePosition;
 
@@ -107,34 +110,47 @@ namespace MiniGame.Golf
             ClubConfig club = shot.Club;
             float power = Math.Clamp(shot.Power, 0f, 1f);
             float curve = shot.ImpactOffset;
+            ApplyMissShot(ref curve, ref power);
 
-            // §7.4 ゾーンの外はミスショット：大きく曲がり、飛距離も落ちる
-            if (Math.Abs(curve) > 1f)
-            {
-                curve = Math.Sign(curve) * _config.MissShotCurve;
-                power *= _config.MissShotPowerRate;
-            }
-
-            // 飛距離はおおよそ初速の2乗に比例するので、平方根を掛けて飛距離の割合が §8.4 の値になるようにする
-            // パターは強さのさじ加減だけを競うので、キャラの飛距離は効かせない
-            float distanceRate = club.IsPutter ? 1f : _character.DistanceRate;
-            float speed = club.MaxLaunchSpeed * distanceRate * power * MathF.Sqrt(Lie.ShotDistanceRate);
+            float speed = LaunchSpeed(club, power);
             _launchPosition = Position;
             _lastSafePosition = Position;
-
-            if (club.IsPutter)
-            {
-                StartMoving(shot.Direction, speed, 0f);
-            }
-            else
-            {
-                float angle = club.LaunchAngleDegrees * MathF.PI / 180f;
-                StartMoving(shot.Direction, speed * MathF.Cos(angle), speed * MathF.Sin(angle));
-            }
+            StartMoving(shot.Direction, club, speed);
 
             _curveAcceleration = curve * club.CurveFactor / _character.StraightnessRate * _config.CurveAccelerationScale;
             _isPutt = club.IsPutter;
             _spinRollRate = club.IsPutter ? 1f : SpinRollRate(shot.Spin);
+        }
+
+        /// <summary>ゾーンの外はミスショット：大きく曲がり、飛距離も落ちる</summary>
+        private void ApplyMissShot(ref float curve, ref float power)
+        {
+            if (Math.Abs(curve) > ImpactZoneEdge)
+            {
+                curve = Math.Sign(curve) * _config.MissShotCurve;
+                power *= _config.MissShotPowerRate;
+            }
+        }
+
+        private float LaunchSpeed(ClubConfig club, float power)
+        {
+            // 飛距離はおおよそ初速の2乗に比例するので、平方根を掛けて飛距離の割合がライの ShotDistanceRate どおりになるようにする
+            // パターは強さのさじ加減だけを競うので、キャラの飛距離は効かせない
+            float distanceRate = club.IsPutter ? 1f : _character.DistanceRate;
+            return club.MaxLaunchSpeed * distanceRate * power * MathF.Sqrt(Lie.ShotDistanceRate);
+        }
+
+        /// <summary>パターは高さを持たせず転がし、それ以外は打ち出し角で水平・垂直の速さに分ける</summary>
+        private void StartMoving(Vector2 direction, ClubConfig club, float speed)
+        {
+            if (club.IsPutter)
+            {
+                StartMoving(direction, speed, 0f);
+                return;
+            }
+
+            float angle = club.LaunchAngleDegrees * MathF.PI / 180f;
+            StartMoving(direction, speed * MathF.Cos(angle), speed * MathF.Sin(angle));
         }
 
         private float SpinRollRate(ShotSpin spin)
@@ -148,7 +164,7 @@ namespace MiniGame.Golf
         }
 
         /// <summary>
-        /// 今の位置からクラブをフルパワー・まっすぐで打ったときの着地点（§7.3）。パターは止まる位置。
+        /// 今の位置からクラブをフルパワー・まっすぐで打ったときの着地点。パターは止まる位置。
         /// 別の計算機で試し打ちするので、このボールの状態は変わらない。風と傾斜は読むのがプレイヤーの仕事なので含めない。
         /// </summary>
         public Vector2 PredictFullPower(ClubConfig club, Vector2 direction)
@@ -160,41 +176,52 @@ namespace MiniGame.Golf
         public Vector2 Predict(ClubConfig club, Vector2 direction, float power)
         {
             // 傾斜を渡さないことで、傾斜なしのまっすぐな予測にする
-            var probe = new BallSimulator(_config, _terrain, _ground);
-            probe.SetCharacter(_character);
-            probe.Place(Position);
+            BallSimulator probe = CreateProbe(null);
             probe.Launch(new ShotRequest(direction, club, power, 0f));
 
             if (club.IsPutter)
             {
                 probe.AdvanceToRest();
-                return probe.Position;
             }
-
-            // 最初に地面に着いた瞬間で止める。打ち出し直後は高さ0なので、先に1回進める
-            do
+            else
             {
-                probe.Advance();
-            } while (probe.IsMoving && probe.Height > 0f);
+                probe.AdvanceToFirstLanding();
+            }
 
             return probe.Position;
         }
 
         /// <summary>
-        /// 今の位置から shot を打って止まるまで計算した結果（§10 NPC の試し打ち）。別の計算機で打つので、このボールの状態は変わらない。
+        /// 今の位置から shot を打って止まるまで計算した結果（NPC の試し打ち）。別の計算機で打つので、このボールの状態は変わらない。
         /// 風と傾斜を入れるかは、NPC の難易度で「読むかどうか」を変えられるように選べる。
         /// </summary>
         public ShotOutcome TrySimulate(ShotRequest shot, bool withWind, bool withSlope)
         {
-            var probe = new BallSimulator(_config, _terrain, _ground, withSlope ? _slope : null);
+            BallSimulator probe = CreateProbe(withSlope ? _slope : null);
             if (_hasCup) probe.SetCup(_cupPosition);
             if (withWind) probe._windAcceleration = _windAcceleration;
-            probe.SetCharacter(_character);
 
-            probe.Place(Position);
             probe.Launch(shot);
             probe.AdvanceToRest();
             return new ShotOutcome(probe.Position, probe.IsInHazard, probe.IsInCup);
+        }
+
+        /// <summary>今の位置・キャラを引き継いだ試し打ち用の計算機。カップと風は呼び出し側が必要なときだけ渡す</summary>
+        private BallSimulator CreateProbe(ISlopeMap slope)
+        {
+            var probe = new BallSimulator(_config, _terrain, _ground, slope);
+            probe.SetCharacter(_character);
+            probe.Place(Position);
+            return probe;
+        }
+
+        /// <summary>最初に地面に着いた瞬間で止める。打ち出し直後は高さ0なので、先に1回進める</summary>
+        private void AdvanceToFirstLanding()
+        {
+            do
+            {
+                Advance();
+            } while (IsMoving && Height > 0f);
         }
 
         /// <summary>SimulationStep 秒だけ進める。表示側は経過時間ぶんこれを繰り返し呼ぶ</summary>
@@ -263,7 +290,7 @@ namespace MiniGame.Golf
             // 着地で回転が落ちるとみなし、バウンド以降は曲げない
             _curveAcceleration = 0f;
 
-            // §8.6 ダイレクトイン：着地した瞬間にカップの上なら速さに関係なく入れる
+            // ダイレクトイン：着地した瞬間にカップの上なら速さに関係なく入れる
             if (IsOverCup())
             {
                 HoleOut();
@@ -272,6 +299,12 @@ namespace MiniGame.Golf
 
             if (TryEnterHazard()) return;
 
+            Bounce();
+        }
+
+        /// <summary>地面に応じて跳ね返す。スピンは最初の着地でだけ効かせる</summary>
+        private void Bounce()
+        {
             TerrainPhysics terrain = _terrain.Get(Ground);
             float bounceSpeed = -VerticalVelocity * terrain.BounceRestitution;
             GroundVelocity *= terrain.BounceSpeedRetention * _spinRollRate;
@@ -300,7 +333,7 @@ namespace MiniGame.Golf
         }
 
         /// <summary>
-        /// §8.5 転がっている間だけ、いるマスの下り方向へ加速させる。
+        /// 転がっている間だけ、いるマスの下り方向へ加速させる。
         /// 減速より弱い傾斜なら、上りで止まったボールはそこで止まったままにする（止まった後は計算しない）
         /// </summary>
         private void ApplySlope(float dt)
@@ -316,7 +349,7 @@ namespace MiniGame.Golf
             if (!IsHazard(Ground)) _lastSafePosition = Position;
         }
 
-        /// <summary>§8.4 池・OBは着地した瞬間か転がって入った瞬間にボールを止め、打ち直しの位置を決める</summary>
+        /// <summary>池・OBは着地した瞬間か転がって入った瞬間にボールを止め、打ち直しの位置を決める</summary>
         private bool TryEnterHazard()
         {
             GroundType ground = Ground;

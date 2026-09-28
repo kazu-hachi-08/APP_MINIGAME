@@ -3,7 +3,7 @@ using System;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 1本のクラブの飛び方（§7.5）。
+    /// 1本のクラブの飛び方。
     /// BallPhysicsConfig と同じく UnityEngine に依存させず、ScriptableObject（GolfClubData）の中に表示する。
     /// </summary>
     [Serializable]

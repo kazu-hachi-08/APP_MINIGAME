@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace MiniGame.Golf
 {
-    /// <summary>プレイヤーの識別色（§5：モルックと同じ P1赤・P2青・P3黄・P4緑）。ボール・HUD・スコアカードで共有する</summary>
+    /// <summary>プレイヤーの識別色（モルックと同じ P1赤・P2青・P3黄・P4緑）。ボール・HUD・スコアカードで共有する</summary>
     public static class GolfPlayerColors
     {
         private static readonly Color[] Colors =

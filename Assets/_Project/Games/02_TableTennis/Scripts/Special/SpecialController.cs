@@ -37,6 +37,81 @@ namespace MiniGame.TableTennis
             public Text Label;
         }
 
+        /// <summary>
+        /// 片側（プレイヤー / NPC）の技とストック。
+        /// 両者で同じ「獲得・消費・ラリー継続」の処理を書き分けずに済むよう、1つにまとめている。
+        /// </summary>
+        private class SpecialStock
+        {
+            public SpecialData Weak;
+            public SpecialData Strong;
+            public bool HasWeak;
+            public bool HasStrong;
+
+            /// <summary>ラリーが終わるまで効果が続く技（スターラリーなど）を使用中なら、その技</summary>
+            public SpecialData RallySpecial;
+
+            public void SetCharacter(CharacterData character)
+            {
+                Weak = character.WeakSpecial;
+                Strong = character.StrongSpecial;
+            }
+
+            /// <summary>技を持っていない枠なら獲得して true を返す（ストックは弱・強それぞれ1個まで）</summary>
+            public bool TryGrant(bool strong, out SpecialData special)
+            {
+                special = strong ? Strong : Weak;
+                if (special == null || (strong ? HasStrong : HasWeak)) return false;
+
+                if (strong)
+                {
+                    HasStrong = true;
+                }
+                else
+                {
+                    HasWeak = true;
+                }
+
+                return true;
+            }
+
+            /// <summary>
+            /// 実際に打った技のストックを減らす。
+            /// ラリー継続中の技は最初の1球で消費済みなので、2球目以降は減らさない
+            /// </summary>
+            public void Consume(SpecialData special)
+            {
+                if (special == RallySpecial) return;
+
+                if (special == Strong)
+                {
+                    HasStrong = false;
+                }
+                else if (special == Weak)
+                {
+                    HasWeak = false;
+                }
+            }
+
+            /// <summary>ラリー中ずっと続く技なら、次の打球にも乗せ直せるよう覚えておく</summary>
+            public void KeepIfLastsForRally(SpecialData special)
+            {
+                if (special.LastsForRally)
+                {
+                    RallySpecial = special;
+                }
+            }
+
+            /// <summary>NPCが次に使う技。ラリー継続中の技、強必殺技、弱必殺技の順に優先する</summary>
+            public SpecialData PickNext()
+            {
+                if (RallySpecial != null) return RallySpecial;
+                if (HasStrong) return Strong;
+                if (HasWeak) return Weak;
+                return null;
+            }
+        }
+
         [SerializeField] private BallMotion _ball;
         [SerializeField] private SpriteRenderer _ballRenderer;
         [SerializeField] private PlayerSwing _playerSwing;
@@ -73,19 +148,8 @@ namespace MiniGame.TableTennis
 
         private bool _isOnline;
 
-        private SpecialData _playerWeak;
-        private SpecialData _playerStrong;
-        private SpecialData _npcWeak;
-        private SpecialData _npcStrong;
-
-        private bool _playerHasWeak;
-        private bool _playerHasStrong;
-        private bool _npcHasWeak;
-        private bool _npcHasStrong;
-
-        /// <summary>ラリーが終わるまで効果が続く技（スターラリーなど）を使用中なら、その技</summary>
-        private SpecialData _playerRallySpecial;
-        private SpecialData _npcRallySpecial;
+        private readonly SpecialStock _playerStock = new SpecialStock();
+        private readonly SpecialStock _npcStock = new SpecialStock();
 
         private bool _chanceRally;
 
@@ -97,8 +161,8 @@ namespace MiniGame.TableTennis
         private void Awake()
         {
             _ballBaseColor = _ballRenderer.color;
-            _weakButton.Button.onClick.AddListener(() => Arm(_playerWeak, _playerHasWeak));
-            _strongButton.Button.onClick.AddListener(() => Arm(_playerStrong, _playerHasStrong));
+            _weakButton.Button.onClick.AddListener(() => Arm(_playerStock.Weak, _playerStock.HasWeak));
+            _strongButton.Button.onClick.AddListener(() => Arm(_playerStock.Strong, _playerStock.HasStrong));
             RefreshButtons();
         }
 
@@ -124,10 +188,8 @@ namespace MiniGame.TableTennis
         public void SetSpecials(CharacterData player, CharacterData npc, bool isOnline = false)
         {
             _isOnline = isOnline;
-            _playerWeak = player.WeakSpecial;
-            _playerStrong = player.StrongSpecial;
-            _npcWeak = npc.WeakSpecial;
-            _npcStrong = npc.StrongSpecial;
+            _playerStock.SetCharacter(player);
+            _npcStock.SetCharacter(npc);
         }
 
         /// <summary>サーブ前に呼ぶ。このラリーが黄色ボール（強必殺技の獲得ラリー）なら true を返す</summary>
@@ -143,7 +205,7 @@ namespace MiniGame.TableTennis
         {
             if (_chanceRally)
             {
-                GrantStrong(scorer);
+                Grant(scorer, strong: true);
             }
 
             _chanceRally = false;
@@ -159,22 +221,27 @@ namespace MiniGame.TableTennis
                 ResetBallLook();
             }
 
-            // 色は技ごとに変わるので、見え隠れは不透明度だけで表す
+            UpdateBallVisibility();
+        }
+
+        /// <summary>消える魔球の見え隠れ。色は技ごとに変わるので、不透明度だけで表す</summary>
+        private void UpdateBallVisibility()
+        {
             Color color = _ballRenderer.color;
-            color.a = _invisibleShot && IsOverReceiverCourt() ? 0f : 1f;
+            color.a = _invisibleShot && IsOverReceiverSide(_ball.CourtPosition.z) ? 0f : 1f;
             _ballRenderer.color = color;
         }
 
-        /// <summary>ネットを越えて、打った相手側のコートの上にいるか</summary>
-        private bool IsOverReceiverCourt()
+        /// <summary>ネットを越えて、打たれた側（受ける側）のコートにいるか</summary>
+        private bool IsOverReceiverSide(float courtZ)
         {
-            return _ball.CourtPosition.z * _ball.Velocity.z > 0f;
+            return courtZ * _ball.Velocity.z > 0f;
         }
 
         private void HandleBounced(Vector3 contact)
         {
             // 相手コートで跳ねたら見せる。サーブの自陣バウンドでは消えたままにしない（まだネットを越えていない）
-            if (contact.z * _ball.Velocity.z > 0f)
+            if (IsOverReceiverSide(contact.z))
             {
                 _invisibleShot = false;
             }
@@ -184,40 +251,25 @@ namespace MiniGame.TableTennis
 
         private void HandleMascotHit(CourtSide hitter)
         {
-            if (hitter == CourtSide.Player)
-            {
-                if (_playerWeak == null || _playerHasWeak) return;
-
-                _playerHasWeak = true;
-                RefreshButtons();
-                OnGranted?.Invoke(CourtSide.Player, _playerWeak);
-                return;
-            }
-
-            if (_npcWeak == null || _npcHasWeak) return;
-
-            _npcHasWeak = true;
-            RefillNpc();
-            OnGranted?.Invoke(CourtSide.Opponent, _npcWeak);
+            Grant(hitter, strong: false);
         }
 
-        private void GrantStrong(CourtSide scorer)
+        private void Grant(CourtSide side, bool strong)
         {
-            if (scorer == CourtSide.Player)
-            {
-                if (_playerStrong == null || _playerHasStrong) return;
+            bool isPlayer = side == CourtSide.Player;
+            SpecialStock stock = isPlayer ? _playerStock : _npcStock;
+            if (!stock.TryGrant(strong, out SpecialData special)) return;
 
-                _playerHasStrong = true;
+            if (isPlayer)
+            {
                 RefreshButtons();
-                OnGranted?.Invoke(CourtSide.Player, _playerStrong);
-                return;
+            }
+            else
+            {
+                RefillNpc();
             }
 
-            if (_npcStrong == null || _npcHasStrong) return;
-
-            _npcHasStrong = true;
-            RefillNpc();
-            OnGranted?.Invoke(CourtSide.Opponent, _npcStrong);
+            OnGranted?.Invoke(side, special);
         }
 
         // ---- プレイヤーの発動 ----
@@ -233,70 +285,46 @@ namespace MiniGame.TableTennis
 
         private void HandlePlayerShot(FlickData flick, ShotResult shot)
         {
-            if (shot.Special == null)
+            SpecialData special = shot.Special;
+            if (special == null)
             {
                 ResetBallLook();
                 return;
             }
 
-            ConsumePlayerStock(shot.Special);
-            ApplyShotLook(shot.Special);
+            _playerStock.Consume(special);
+            ApplyShotLook(special);
 
             // オンラインでは相手端末が打球と一緒に受け取って足止めなどを反映する
             if (!_isOnline)
             {
-                _npc.ReceiveSpecial(shot.Special);
+                _npc.ReceiveSpecial(special);
             }
 
-            // ラリー中ずっと続く技は、次の打球にも乗せ直す
-            if (shot.Special.LastsForRally)
-            {
-                _playerRallySpecial = shot.Special;
-            }
-
-            if (_playerRallySpecial != null && _shotCalculator.PendingSpecial == null)
-            {
-                _shotCalculator.PendingSpecial = _playerRallySpecial;
-            }
-
+            _playerStock.KeepIfLastsForRally(special);
+            RearmPlayerRallySpecial();
             RefreshButtons();
         }
 
-        private void ConsumePlayerStock(SpecialData special)
+        /// <summary>ラリー中ずっと続く技は、次の打球にも乗せ直す</summary>
+        private void RearmPlayerRallySpecial()
         {
-            if (special == _playerRallySpecial) return;
-
-            if (special == _playerStrong)
+            if (_playerStock.RallySpecial != null && _shotCalculator.PendingSpecial == null)
             {
-                _playerHasStrong = false;
-            }
-            else if (special == _playerWeak)
-            {
-                _playerHasWeak = false;
+                _shotCalculator.PendingSpecial = _playerStock.RallySpecial;
             }
         }
 
         // ---- NPCの発動 ----
 
-        /// <summary>NPCに次の返球で使う技を持たせる。強必殺技を優先する</summary>
+        /// <summary>NPCに次の返球で使う技を持たせる</summary>
         private void RefillNpc()
         {
             // オンラインでは相手が自分で使いどころを決める
             if (_isOnline) return;
             if (_npc.PendingSpecial != null) return;
 
-            if (_npcRallySpecial != null)
-            {
-                _npc.PendingSpecial = _npcRallySpecial;
-            }
-            else if (_npcHasStrong)
-            {
-                _npc.PendingSpecial = _npcStrong;
-            }
-            else if (_npcHasWeak)
-            {
-                _npc.PendingSpecial = _npcWeak;
-            }
+            _npc.PendingSpecial = _npcStock.PickNext();
         }
 
         private void HandleNpcReturned()
@@ -306,20 +334,16 @@ namespace MiniGame.TableTennis
 
         private void HandleNpcSpecialShot(SpecialData special)
         {
-            if (special != _npcRallySpecial)
+            // ラリー継続中の技の2球目以降は、新たに使ったことにしない
+            if (special != _npcStock.RallySpecial)
             {
-                if (special == _npcStrong) _npcHasStrong = false;
-                else if (special == _npcWeak) _npcHasWeak = false;
-
+                _npcStock.Consume(special);
                 OnNpcUsed?.Invoke(special);
             }
 
-            if (special.LastsForRally)
-            {
-                _npcRallySpecial = special;
-            }
-
+            _npcStock.KeepIfLastsForRally(special);
             ApplyShotLook(special);
+
             if (special.StunDuration > 0f)
             {
                 _playerRacket.Stun(special.StunDuration, special.StunMoveMultiplier);
@@ -334,7 +358,7 @@ namespace MiniGame.TableTennis
         public SpecialSlot SlotOf(SpecialData special)
         {
             if (special == null) return SpecialSlot.None;
-            return special == _playerStrong ? SpecialSlot.Strong : SpecialSlot.Weak;
+            return special == _playerStock.Strong ? SpecialSlot.Strong : SpecialSlot.Weak;
         }
 
         /// <summary>
@@ -343,10 +367,7 @@ namespace MiniGame.TableTennis
         /// </summary>
         public void ReceiveOpponentShot(SpecialSlot slot)
         {
-            SpecialData special = slot == SpecialSlot.Strong ? _npcStrong
-                : slot == SpecialSlot.Weak ? _npcWeak
-                : null;
-
+            SpecialData special = OpponentSpecialOf(slot);
             if (special == null)
             {
                 ResetBallLook();
@@ -355,6 +376,16 @@ namespace MiniGame.TableTennis
 
             // RefillNpc はオンラインだと何もしないので、NPCの打球と同じ処理をそのまま使える
             HandleNpcSpecialShot(special);
+        }
+
+        private SpecialData OpponentSpecialOf(SpecialSlot slot)
+        {
+            switch (slot)
+            {
+                case SpecialSlot.Strong: return _npcStock.Strong;
+                case SpecialSlot.Weak: return _npcStock.Weak;
+                default: return null;
+            }
         }
 
         // ---- 共通 ----
@@ -369,18 +400,18 @@ namespace MiniGame.TableTennis
 
         private void EndRallySpecials()
         {
-            if (_playerRallySpecial != null && _shotCalculator.PendingSpecial == _playerRallySpecial)
+            if (_playerStock.RallySpecial != null && _shotCalculator.PendingSpecial == _playerStock.RallySpecial)
             {
                 _shotCalculator.PendingSpecial = null;
             }
 
-            if (_npcRallySpecial != null && _npc.PendingSpecial == _npcRallySpecial)
+            if (_npcStock.RallySpecial != null && _npc.PendingSpecial == _npcStock.RallySpecial)
             {
                 _npc.PendingSpecial = null;
             }
 
-            _playerRallySpecial = null;
-            _npcRallySpecial = null;
+            _playerStock.RallySpecial = null;
+            _npcStock.RallySpecial = null;
             RefillNpc();
             RefreshButtons();
         }
@@ -393,8 +424,8 @@ namespace MiniGame.TableTennis
 
         private void RefreshButtons()
         {
-            RefreshButton(_weakButton, _playerWeak, _playerHasWeak, _readyColor);
-            RefreshButton(_strongButton, _playerStrong, _playerHasStrong, _strongReadyColor);
+            RefreshButton(_weakButton, _playerStock.Weak, _playerStock.HasWeak, _readyColor);
+            RefreshButton(_strongButton, _playerStock.Strong, _playerStock.HasStrong, _strongReadyColor);
         }
 
         private void RefreshButton(SpecialButton button, SpecialData special, bool hasStock, Color readyColor)

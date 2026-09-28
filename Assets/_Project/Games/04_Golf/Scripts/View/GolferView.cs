@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 背後視点で打つ人を見せる（背後視点 Phase B〜C）。表示だけの責任で、ショットの判定には関わらない。
+    /// 背後視点で打つ人を見せる。表示だけの責任で、ショットの判定には関わらない。
     /// 地面（XY 平面）に寝かさず Z 方向へ立て、打つ方向に正対させる。カメラへ向けるビルボードより、
     /// 背後視点のカメラと同じ向きに揃えた方が背中が歪まず安定して見える。
     /// 真上視点では立てたスプライトが線にしか見えないので、狙っている間とフォロースルーの間だけ表示する。
@@ -11,6 +11,9 @@ namespace MiniGame.Golf
     /// </summary>
     public class GolferView : MonoBehaviour
     {
+        // フォロースルーの減速の強さ（Ease-Out の次数）。大きいほど振り抜き始めが速く、フィニッシュでぴたりと止まる
+        private const float FollowThroughEasePower = 3f;
+
         [SerializeField] private GolfBall _ball;
         [SerializeField] private ShotInput _input;
         [SerializeField] private AimGuideView _aimGuide;
@@ -25,7 +28,7 @@ namespace MiniGame.Golf
         [Tooltip("立ち絵の高さ（ユニット）。ボールの直径 0.35 に対して人らしく見える大きさ")]
         [SerializeField] private float _height = 1.2f;
 
-        [Header("スイング（Phase C）")]
+        [Header("スイング")]
         [Tooltip("クラブの角度（度）。0で真下、正でボール側（右）へ振り上がる")]
         [SerializeField] private float _addressAngle = 35f;
 
@@ -92,14 +95,19 @@ namespace MiniGame.Golf
             _rig.SetVisible(visible);
             if (!visible) return;
 
-            Vector2 dir = _input.Direction;
+            StandBesideBall(_input.Direction);
+            _currentAngle = ClubAngle();
+            _rig.ApplyPose(_currentAngle, Mathf.InverseLerp(_addressAngle, _topAngle, _currentAngle),
+                Mathf.InverseLerp(_addressAngle, _followThroughAngle, _currentAngle));
+        }
+
+        /// <summary>右打ちの立ち位置（ボールの左）に立ち、打つ方向に正対する</summary>
+        private void StandBesideBall(Vector2 dir)
+        {
             Vector2 left = new Vector2(-dir.y, dir.x);
             transform.position = AddressPosition + left * _sideOffset - dir * _backOffset;
             // 前＝打つ方向、上＝空（-Z）。カメラと同じ規則なので、スプライトの右が画面の右になる
             transform.rotation = Quaternion.LookRotation(dir, Vector3.back);
-            _currentAngle = ClubAngle();
-            _rig.ApplyPose(_currentAngle, Mathf.InverseLerp(_addressAngle, _topAngle, _currentAngle),
-                Mathf.InverseLerp(_addressAngle, _followThroughAngle, _currentAngle));
         }
 
         /// <summary>
@@ -142,7 +150,7 @@ namespace MiniGame.Golf
             if (_followThroughSeconds <= 0f) return _followThroughAngle;
 
             float t = 1f - (_followThroughEndTime - Time.time) / _followThroughSeconds;
-            float eased = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f);
+            float eased = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), FollowThroughEasePower);
             return Mathf.Lerp(_impactAngle, _followThroughAngle, eased);
         }
     }

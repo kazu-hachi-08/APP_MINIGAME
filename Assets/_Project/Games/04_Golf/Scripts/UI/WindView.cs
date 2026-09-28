@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 風の向き（矢印）と強さ（m）の表示（§9.4）。カメラは回さないので、画面上の向きがそのままコース上の向きになる。
+    /// 風の向き（矢印）と強さ（m）の表示。カメラは回さないので、画面上の向きがそのままコース上の向きになる。
     /// </summary>
     public class WindView : MonoBehaviour
     {
@@ -22,7 +22,7 @@ namespace MiniGame.Golf
 
         private void OnDisable() => _holeLoader.HoleLoaded -= Refresh;
 
-        /// <summary>風はホールごとに変わる（§9.4）ので、ホールを読み込むたびに合わせる</summary>
+        /// <summary>風はホールごとに変わるので、ホールを読み込むたびに合わせる</summary>
         private void Refresh()
         {
             Wind wind = _holeLoader.CurrentWind;

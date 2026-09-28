@@ -4,11 +4,14 @@ namespace MiniGame.Soccer
 {
     /// <summary>
     /// NPC選手の簡易AI（ポジション維持・ボール追従・簡易攻守シフト・パス/シュート）
-    /// 高度な戦術AI（マークやフォーメーション連携等）はMVP対象外のため実装しない
+    /// 高度な戦術AI（マークやフォーメーション連携等）は、週末開発で作り切れる範囲を優先して入れていない
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class AIPlayerController : MonoBehaviour
     {
+        // シュートが毎回ゴール中央へ飛ぶと単調なので、ゴール幅の内側で上下にばらつかせる
+        private const float ShotSpreadY = 0.8f;
+
         [Header("Formation")]
         [SerializeField] private Vector2 _homePosition;
 
@@ -98,10 +101,7 @@ namespace MiniGame.Soccer
 
         private void FixedUpdate()
         {
-            if (_kickCooldownTimer > 0f)
-            {
-                _kickCooldownTimer -= Time.fixedDeltaTime;
-            }
+            TickKickCooldown();
 
             if (_movementSuppressed)
             {
@@ -109,7 +109,20 @@ namespace MiniGame.Soccer
                 return;
             }
 
-            Vector2 targetPosition = ComputeTargetPosition();
+            MoveToward(ComputeTargetPosition());
+            TryKickBall();
+        }
+
+        private void TickKickCooldown()
+        {
+            if (_kickCooldownTimer > 0f)
+            {
+                _kickCooldownTimer -= Time.fixedDeltaTime;
+            }
+        }
+
+        private void MoveToward(Vector2 targetPosition)
+        {
             Vector2 toTarget = targetPosition - _rigidbody.position;
 
             if (toTarget.magnitude <= _arriveThreshold)
@@ -120,50 +133,63 @@ namespace MiniGame.Soccer
             {
                 _rigidbody.linearVelocity = toTarget.normalized * _moveSpeed;
             }
+        }
 
-            TryKickBall();
+        /// <summary>
+        /// キックオフ演出中やゴール演出中は誰もボールに寄らず、フォーメーションを維持させるための判定
+        /// （全員がボールへ殺到してスクラム状態になり、プレイヤーが触れなくなるのを防ぐ）
+        /// </summary>
+        private bool IsBallInPlay()
+        {
+            return _ball != null && _gameManager != null && _gameManager.IsPlaying;
         }
 
         private Vector2 ComputeTargetPosition()
         {
-            // キックオフ演出中やゴール演出中は誰もボールに寄らず、フォーメーションを維持する
-            // （全員がボールへ殺到してスクラム状態になり、プレイヤーが触れなくなるのを防ぐ）
-            bool canChaseBall = _ball != null && _gameManager != null && _gameManager.IsPlaying;
+            bool canChaseBall = IsBallInPlay();
 
             if (_isGoalkeeper)
             {
                 return ComputeGoalkeeperTarget(canChaseBall);
             }
 
-            if (canChaseBall)
+            if (canChaseBall && ShouldChaseBall())
             {
-                float myDistance = Vector2.Distance(_rigidbody.position, _ball.Position);
-                if (myDistance <= _ballChaseRadius && IsClosestTeammateToBall(myDistance))
-                {
-                    return _ball.Position;
-                }
+                return _ball.Position;
             }
+
+            return ComputeFormationPosition(canChaseBall);
+        }
+
+        /// <summary>
+        /// 追いかけ圏内にいて、かつ味方の中で最もボールに近い1人だけがボールへ向かう
+        /// </summary>
+        private bool ShouldChaseBall()
+        {
+            float myDistance = Vector2.Distance(_rigidbody.position, _ball.Position);
+            return myDistance <= _ballChaseRadius && IsClosestTeammateToBall(myDistance);
+        }
+
+        private Vector2 ComputeFormationPosition(bool canChaseBall)
+        {
+            Vector2 basePosition = _homePosition;
+            if (!canChaseBall || _teamMember == null) return basePosition;
 
             // 自チームが攻めている（ボールが攻撃方向側にある）間は基準位置を少し前へシフトする
-            Vector2 basePosition = _homePosition;
-            if (canChaseBall && _teamMember != null)
+            if (_ball.Position.x * _teamMember.AttackDirection > 0f)
             {
-                if (_ball.Position.x * _teamMember.AttackDirection > 0f)
-                {
-                    basePosition += Vector2.right * (_teamMember.AttackDirection * _attackShiftDistance);
-                }
-
-                // ボールを追いかける1人以外も、役割（前線ほど強め）に応じてボール方向へ少しずつ引っ張られる。
-                // これにより「ボールに一番近い1人以外は棒立ち」に見えていた見た目を解消する
-                basePosition += (_ball.Position - basePosition) * ComputeFollowWeight();
+                basePosition += Vector2.right * (_teamMember.AttackDirection * _attackShiftDistance);
             }
 
+            // ボールを追いかける1人以外も、役割（前線ほど強め）に応じてボール方向へ少しずつ引っ張る。
+            // こうしないと「ボールに一番近い1人以外は棒立ち」に見えてしまう
+            basePosition += (_ball.Position - basePosition) * ComputeFollowWeight();
             return basePosition;
         }
 
         /// <summary>
-        /// 基準ポジションが自陣ゴールに近いほど大きい重みを返す前提で、
-        /// 前線の選手ほどボールへ強く反応し、自陣寄りの選手は大きく崩れないようにする
+        /// 前線の選手ほどボールへ強く反応させ、自陣寄りの選手は陣形を大きく崩さないようにするため、
+        /// 基準ポジションが相手ゴール寄りなほど大きい重みを返す
         /// </summary>
         private float ComputeFollowWeight()
         {
@@ -201,7 +227,7 @@ namespace MiniGame.Soccer
             var allMembers = Object.FindObjectsByType<TeamMember>(FindObjectsSortMode.None);
             foreach (var member in allMembers)
             {
-                if (member == _teamMember || member.Team != _teamMember.Team) continue;
+                if (!IsTeammate(member)) continue;
 
                 float otherDistance = Vector2.Distance(member.transform.position, _ball.Position);
                 if (otherDistance < myDistance) return false;
@@ -211,12 +237,20 @@ namespace MiniGame.Soccer
         }
 
         /// <summary>
+        /// 自チームの他の選手か（自分自身は含まない）
+        /// </summary>
+        private bool IsTeammate(TeamMember member)
+        {
+            return member != _teamMember && member.Team == _teamMember.Team;
+        }
+
+        /// <summary>
         /// ボールを保持している（最も近く、キック圏内にいる）間、適切な場面でパス・シュートを行う。
         /// 選択肢が無ければキックせず、そのままドリブル（追従）を続ける
         /// </summary>
         private void TryKickBall()
         {
-            if (_ball == null || _gameManager == null || !_gameManager.IsPlaying) return;
+            if (!IsBallInPlay()) return;
             if (_kickCooldownTimer > 0f) return;
             // 保持中のボールを蹴れると近づいただけで奪えてしまうため、奪取はPlayerController側の接触時間判定に任せる
             if (_ball.IsHeld) return;
@@ -224,27 +258,34 @@ namespace MiniGame.Soccer
             float myDistance = Vector2.Distance(_rigidbody.position, _ball.Position);
             if (myDistance > _kickRadius) return;
             if (!IsClosestTeammateToBall(myDistance)) return;
+            if (!TryChooseKick(out Vector2 direction, out float speed)) return;
 
-            Vector2 direction;
-            float speed;
+            _ball.Kick(direction, speed);
+            _kickCooldownTimer = _kickCooldown;
+        }
 
+        /// <summary>
+        /// シュートを優先し、打てなければ前方の味方へのパスを選ぶ
+        /// </summary>
+        private bool TryChooseKick(out Vector2 direction, out float speed)
+        {
             if (TryFindShotOpportunity(out Vector2 shotTarget))
             {
                 direction = shotTarget - _ball.Position;
                 speed = _shootSpeed;
+                return true;
             }
-            else if (TryFindPassTarget(out Vector2 passTarget))
+
+            if (TryFindPassTarget(out Vector2 passTarget))
             {
                 direction = passTarget - _ball.Position;
                 speed = _passSpeed;
-            }
-            else
-            {
-                return;
+                return true;
             }
 
-            _ball.Kick(direction, speed);
-            _kickCooldownTimer = _kickCooldown;
+            direction = Vector2.zero;
+            speed = 0f;
+            return false;
         }
 
         /// <summary>
@@ -257,7 +298,7 @@ namespace MiniGame.Soccer
 
             if (distanceToGoal <= _shootRange)
             {
-                shotTarget = goalCenter + new Vector2(0f, Random.Range(-0.8f, 0.8f));
+                shotTarget = goalCenter + new Vector2(0f, Random.Range(-ShotSpreadY, ShotSpreadY));
                 return true;
             }
 
@@ -279,7 +320,7 @@ namespace MiniGame.Soccer
             var allMembers = Object.FindObjectsByType<TeamMember>(FindObjectsSortMode.None);
             foreach (var member in allMembers)
             {
-                if (member == _teamMember || member.Team != _teamMember.Team) continue;
+                if (!IsTeammate(member)) continue;
 
                 Vector2 teammatePosition = member.transform.position;
                 if (Vector2.Distance(_rigidbody.position, teammatePosition) > _passRange) continue;

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 方向の線と着地予測の円（§7.3）。選んでいるクラブをフルパワー・まっすぐで打った着地点を示し、
+    /// 方向の線と着地予測の円。選んでいるクラブをフルパワー・まっすぐで打った着地点を示し、
     /// パターのときは円を出さず、転がる距離の目安を線の長さで見せる。風と曲がりは予測に含めない（読むのがプレイヤーの仕事）。
     /// </summary>
     public class AimGuideView : MonoBehaviour

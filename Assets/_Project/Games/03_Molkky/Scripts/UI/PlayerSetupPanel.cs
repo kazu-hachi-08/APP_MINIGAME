@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 試合前のプレイヤー設定（§10.1）。人数（2〜4人）と、各プレイヤーの人間/NPC（難易度）を決める。
+    /// 試合前のプレイヤー設定。人数（2〜4人）と、各プレイヤーの人間/NPC（難易度）を決める。
     /// 種別はボタンをタップするたびに 人間 → よわい → ふつう → つよい と切り替わる。
     /// </summary>
     public class PlayerSetupPanel : MonoBehaviour
@@ -72,19 +72,28 @@ namespace MiniGame.Molkky
 
         private void Refresh()
         {
+            RefreshCountButtons();
+            RefreshPlayerRows();
+
+            // 誰も操作しない試合にならないよう、人間が1人もいなければ始められなくする
+            _startButton.interactable = HasHuman();
+        }
+
+        private void RefreshCountButtons()
+        {
             for (int i = 0; i < _countButtons.Length; i++)
             {
                 _countButtons[i].image.color = MinPlayers + i == _count ? _selectedColor : _unselectedColor;
             }
+        }
 
+        private void RefreshPlayerRows()
+        {
             for (int i = 0; i < _playerRows.Length; i++)
             {
                 _playerRows[i].SetActive(i < _count);
                 _kindTexts[i].text = KindLabels[(int)_kinds[i]];
             }
-
-            // 全員NPCは不可（§10.1）
-            _startButton.interactable = HasHuman();
         }
 
         private bool HasHuman()

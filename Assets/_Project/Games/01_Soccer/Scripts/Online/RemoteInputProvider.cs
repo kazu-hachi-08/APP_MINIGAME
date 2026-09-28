@@ -20,6 +20,9 @@ namespace MiniGame.Soccer
     [DefaultExecutionOrder(-100)]
     public class RemoteInputProvider : MonoBehaviour, IInputProvider
     {
+        /// <summary>届いた値が1を超えていても、ローカル入力より速く走れないよう上限をそろえる</summary>
+        private const float MaxMoveMagnitude = 1f;
+
         private bool _pendingPass;
         private bool _pendingShoot;
         private bool _pendingSwitch;
@@ -41,7 +44,7 @@ namespace MiniGame.Soccer
 
         public void SetMove(Vector2 move)
         {
-            MoveVector = Vector2.ClampMagnitude(move, 1f);
+            MoveVector = Vector2.ClampMagnitude(move, MaxMoveMagnitude);
         }
 
         public void Press(SoccerButton button)
@@ -59,7 +62,7 @@ namespace MiniGame.Soccer
         public void Clear()
         {
             MoveVector = Vector2.zero;
-            _pendingPass = _pendingShoot = _pendingSwitch = _pendingTackle = false;
+            ClearPendingButtons();
         }
 
         private void Update()
@@ -69,6 +72,11 @@ namespace MiniGame.Soccer
             IsAction2Down = _pendingShoot;
             IsAction3Down = _pendingSwitch;
             IsAction4Down = _pendingTackle;
+            ClearPendingButtons();
+        }
+
+        private void ClearPendingButtons()
+        {
             _pendingPass = _pendingShoot = _pendingSwitch = _pendingTackle = false;
         }
     }

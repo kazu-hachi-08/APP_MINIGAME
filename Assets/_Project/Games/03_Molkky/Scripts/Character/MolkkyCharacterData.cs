@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// キャラ1体分の見た目と能力倍率（仕様書 §20.2）。
+    /// キャラ1体分の見た目と能力倍率。
     /// 1体1アセットに分け、2人で同時に数値調整してもコンフリクトしないようにしている。
     /// 倍率は バランス型=1 を基準にし、MolkkyPhysicsSettings の基準値は変えずに掛けて使う。
     /// </summary>

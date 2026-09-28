@@ -7,9 +7,9 @@ using UnityEngine.InputSystem;
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 投擲入力（§7）。横ドラッグで投擲ライン上の位置を動かし、上フリックで投げる。
+    /// 投擲入力。横ドラッグで投擲ライン上の位置を動かし、上フリックで投げる。
     /// 卓球の FlickInput を参考にしているが、モルックは「離した瞬間の勢い」で投げたいので、判定は指を離したときに行う。
-    /// 位置は指の絶対位置ではなく移動量で動かす。棒の真上を触らなくてよいので、指で棒が隠れない（§14 Phase 6）。
+    /// 位置は指の絶対位置ではなく移動量で動かす。棒の真上を触らなくてよいので、指で棒が隠れない。
     /// </summary>
     public class ThrowInput : MonoBehaviour
     {
@@ -34,14 +34,14 @@ namespace MiniGame.Molkky
         [Tooltip("最大の強さになるフリック速度（画面高さ/秒）")]
         [SerializeField] private float _maxFlickSpeed = 4f;
 
-        [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない（§7.3）")]
+        [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない")]
         [SerializeField] private float _cancelAngleRatio = 2f;
 
         private readonly List<Sample> _samples = new List<Sample>(16);
         private bool _tracking;
         private Vector2 _lastPosition;
 
-        // 手番のキャラの能力倍率（仕様書 §20.2）。バランス型＝1
+        // 手番のキャラの能力倍率。バランス型＝1
         private float _powerMultiplier = 1f;
         private float _controlMultiplier = 1f;
 
@@ -51,10 +51,9 @@ namespace MiniGame.Molkky
         public float PositionX { get; private set; }
 
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
-
-        public event Action<float> PositionChanged;
         public ThrowArc Arc { get; private set; } = ThrowArc.Low;
 
+        public event Action<float> PositionChanged;
         public event Action<ThrowStyle> StyleChanged;
         public event Action<ThrowArc> ArcChanged;
         public event Action<ThrowRequest> ThrowRequested;
@@ -147,7 +146,7 @@ namespace MiniGame.Molkky
         {
             if (Mathf.Abs(deltaPixels.x) <= Mathf.Abs(deltaPixels.y)) return;
 
-            float worldPerPixel = 2f * _camera.orthographicSize / Mathf.Max(1, Screen.height);
+            float worldPerPixel = 2f * _camera.orthographicSize / ScreenHeight;
             float groundPerWorld = 1f / _projector.ScaleAt(0f);
             SetPosition(PositionX + deltaPixels.x * worldPerPixel * groundPerWorld * _moveSensitivity);
         }
@@ -160,29 +159,43 @@ namespace MiniGame.Molkky
 
         private void TryThrow()
         {
-            if (_samples.Count < 2) return;
-
-            Sample oldest = _samples[0];
-            Sample newest = _samples[_samples.Count - 1];
-            float elapsed = newest.Time - oldest.Time;
-            if (elapsed <= Mathf.Epsilon) return;
-
-            // 解像度に依存しないよう画面の高さで割る
-            Vector2 delta = (newest.Position - oldest.Position) / Mathf.Max(1, Screen.height);
-            float flickSpeed = delta.magnitude / elapsed;
-            if (delta.y <= 0f || delta.magnitude < _minFlickDistance || flickSpeed < _minFlickSpeed) return;
+            if (!TryMeasureFlick(out Vector2 delta, out float flickSpeed)) return;
 
             float angle = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
             if (Mathf.Abs(angle) > _settings.MaxThrowAngle * _cancelAngleRatio) return;
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
+            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, FlickToThrowSpeed(flickSpeed), Style, Arc));
+        }
+
+        /// <summary>離す直前の動き（画面高さ比）と速さを測る。上向きで十分な距離・速さがなければ投げない</summary>
+        private bool TryMeasureFlick(out Vector2 delta, out float flickSpeed)
+        {
+            delta = Vector2.zero;
+            flickSpeed = 0f;
+            if (_samples.Count < 2) return false;
+
+            Sample oldest = _samples[0];
+            Sample newest = _samples[_samples.Count - 1];
+            float elapsed = newest.Time - oldest.Time;
+            if (elapsed <= Mathf.Epsilon) return false;
+
+            // 解像度に依存しないよう画面の高さで割る
+            delta = (newest.Position - oldest.Position) / ScreenHeight;
+            flickSpeed = delta.magnitude / elapsed;
+            return delta.y > 0f && delta.magnitude >= _minFlickDistance && flickSpeed >= _minFlickSpeed;
+        }
+
+        private float FlickToThrowSpeed(float flickSpeed)
+        {
             // コントロールが高いほど最大の強さに必要なフリックが速くなり、同じ指の速さの差で強さが変わりにくくなる
             float maxFlickSpeed = _maxFlickSpeed * _controlMultiplier;
             float power = Mathf.InverseLerp(_minFlickSpeed, maxFlickSpeed, flickSpeed);
-            float speed = Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed * _powerMultiplier, power);
-
-            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style, Arc));
+            return Mathf.Lerp(_settings.MinThrowSpeed, _settings.MaxThrowSpeed * _powerMultiplier, power);
         }
+
+        /// <summary>画面高さで割る処理の0除算を避けるため最低1にする</summary>
+        private static float ScreenHeight => Mathf.Max(1, Screen.height);
 
         private void AddSample(Vector2 position)
         {

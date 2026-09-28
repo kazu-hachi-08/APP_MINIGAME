@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// ゴルフの調整値（§8.7）。飛び方・転がり方の手応えはプレイしながら詰めるため、コードから切り出している。
+    /// ゴルフの調整値。飛び方・転がり方の手応えはプレイしながら詰めるため、コードから切り出している。
     /// ボールの計算に使う値は、テストしやすいようエンジン非依存の BallPhysicsConfig にまとめて持つ。
     /// </summary>
     [CreateAssetMenu(fileName = "GolfPhysicsSettings", menuName = "MiniGame/Golf/Physics Settings")]
@@ -14,7 +14,7 @@ namespace MiniGame.Golf
         [Tooltip("画面の距離表示用。1ユニット（1タイル）を何ヤードとして見せるか")]
         [SerializeField] private float _yardsPerUnit = 10f;
 
-        [Header("3タップゲージ（§7.4）。位置は 0＝左端〜1＝右端")]
+        [Header("3タップゲージ。位置は 0＝左端〜1＝右端")]
         [Tooltip("1秒あたりにマーカーが動く量。大きいほど難しい")]
         [SerializeField] private float _gaugeSpeed = 0.8f;
 

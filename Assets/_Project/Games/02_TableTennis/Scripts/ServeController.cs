@@ -4,7 +4,7 @@ namespace MiniGame.TableTennis
 {
     /// <summary>
     /// プレイヤーのサーブのボール出し（自動トス）だけを担当する。
-    /// 仕様通りトスは自動で行い、プレイヤーはラケット操作に集中する。
+    /// トスは自動で行い、プレイヤーはラケット操作に集中できるようにする。
     /// 相手のサーブは打球内容を自分で決める NpcController が受け持つ。
     /// </summary>
     public class ServeController : MonoBehaviour

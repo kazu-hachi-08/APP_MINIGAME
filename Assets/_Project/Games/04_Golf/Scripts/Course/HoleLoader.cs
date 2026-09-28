@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// GolfHoleCatalog のホールを生成し、ティーにボールを置く（§15）。
+    /// GolfHoleCatalog のホールを生成し、ティーにボールを置く。
     /// どのホールを何番目に、どの風で遊ぶかは GolfGameManager が決める（オンラインでは全端末で揃えるため）。
     /// </summary>
     public class HoleLoader : MonoBehaviour
@@ -35,7 +35,7 @@ namespace MiniGame.Golf
             HoleLoaded?.Invoke();
         }
 
-        /// <summary>§9.4 向きは全方向、強さはホールデータの範囲内でランダム</summary>
+        /// <summary>向きは全方向、強さはホールデータの範囲内でランダム</summary>
         public static Wind RandomWind(GolfHoleData hole)
         {
             float degrees = UnityEngine.Random.Range(0f, FullCircleDegrees);

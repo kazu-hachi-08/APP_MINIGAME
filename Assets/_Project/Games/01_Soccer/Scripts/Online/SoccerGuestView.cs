@@ -25,15 +25,18 @@ namespace MiniGame.Soccer
         [Tooltip("先読みする時間の上限（秒）。長いと壁際でボールが壁の外へはみ出して見える")]
         [SerializeField] private float _maxLead = 0.12f;
 
+        /// <summary>操作選手がまだ決まっていない状態。スナップショットが届くまではカメラもマーカーも動かさない</summary>
+        private const int NoPlayerIndex = -1;
+
         private TeamMember[] _players;
-        private Transform[] _transforms;
-        private PlayerSpriteAnimator[] _animators;
-        private TackleReaction[] _reactions;
+        private Transform[] _playerTransforms;
+        private PlayerSpriteAnimator[] _playerAnimators;
+        private TackleReaction[] _playerReactions;
         private bool[] _wasStaggered;
 
         private SoccerSnapshot _latest;
         private float _receivedAt;
-        private int _controlledIndex = -1;
+        private int _controlledIndex = NoPlayerIndex;
 
         /// <summary>ゲストとして試合に入ったときに呼ぶ。以降、この端末では試合を計算しない</summary>
         public void Begin()
@@ -56,16 +59,16 @@ namespace MiniGame.Soccer
         private void CacheComponents()
         {
             int count = _players.Length;
-            _transforms = new Transform[count];
-            _animators = new PlayerSpriteAnimator[count];
-            _reactions = new TackleReaction[count];
+            _playerTransforms = new Transform[count];
+            _playerAnimators = new PlayerSpriteAnimator[count];
+            _playerReactions = new TackleReaction[count];
             _wasStaggered = new bool[count];
 
             for (int i = 0; i < count; i++)
             {
-                _transforms[i] = _players[i].transform;
-                _animators[i] = _players[i].GetComponent<PlayerSpriteAnimator>();
-                _reactions[i] = _players[i].GetComponent<TackleReaction>();
+                _playerTransforms[i] = _players[i].transform;
+                _playerAnimators[i] = _players[i].GetComponent<PlayerSpriteAnimator>();
+                _playerReactions[i] = _players[i].GetComponent<TackleReaction>();
             }
         }
 
@@ -112,9 +115,9 @@ namespace MiniGame.Soccer
             for (int i = 0; i < count; i++)
             {
                 bool staggered = snapshot.Players[i].IsStaggered;
-                if (staggered && !_wasStaggered[i] && _reactions[i] != null)
+                if (staggered && !_wasStaggered[i] && _playerReactions[i] != null)
                 {
-                    _reactions[i].Stagger();
+                    _playerReactions[i].Stagger();
                 }
 
                 _wasStaggered[i] = staggered;
@@ -124,12 +127,12 @@ namespace MiniGame.Soccer
         /// <summary>ゲストはAWAYを操作するので、ホストが選んだAWAYの操作選手をカメラとマーカーで追う</summary>
         private void ApplyControlledPlayer(int index)
         {
-            if (index < 0 || index >= _transforms.Length || index == _controlledIndex) return;
+            if (index < 0 || index >= _playerTransforms.Length || index == _controlledIndex) return;
 
             _controlledIndex = index;
             if (_cameraFollow != null)
             {
-                _cameraFollow.SetTarget(_transforms[index]);
+                _cameraFollow.SetTarget(_playerTransforms[index]);
             }
         }
 
@@ -139,28 +142,34 @@ namespace MiniGame.Soccer
 
             // 届いてからの経過時間ぶん先読みして、通信遅延による遅れを小さくする
             float lead = Mathf.Min(_latest.Age + (Time.time - _receivedAt), _maxLead);
+
+            // フレームレートが違っても同じ速さで追いつくよう、指数減衰で補間率を決める
             float t = 1f - Mathf.Exp(-_followSpeed * Time.deltaTime);
 
-            int count = Mathf.Min(_latest.Players.Length, _transforms.Length);
+            ApplyPlayers(lead, t);
+            MoveToward(_ball.transform, _latest.BallPosition + _latest.BallVelocity * lead, t);
+        }
+
+        private void ApplyPlayers(float lead, float t)
+        {
+            int count = Mathf.Min(_latest.Players.Length, _playerTransforms.Length);
             for (int i = 0; i < count; i++)
             {
                 PlayerSnapshot state = _latest.Players[i];
-                MoveToward(_transforms[i], state.Position + state.Velocity * lead, t);
+                MoveToward(_playerTransforms[i], state.Position + state.Velocity * lead, t);
 
-                if (_animators[i] != null)
+                if (_playerAnimators[i] != null)
                 {
-                    _animators[i].SetExternalVelocity(state.Velocity);
+                    _playerAnimators[i].SetExternalVelocity(state.Velocity);
                 }
             }
-
-            MoveToward(_ball.transform, _latest.BallPosition + _latest.BallVelocity * lead, t);
         }
 
         private void LateUpdate()
         {
             if (_controlMarker == null || _controlledIndex < 0) return;
 
-            Vector3 position = _transforms[_controlledIndex].position;
+            Vector3 position = _playerTransforms[_controlledIndex].position;
             _controlMarker.position = new Vector3(position.x, position.y, _controlMarker.position.z);
         }
 

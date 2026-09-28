@@ -4,7 +4,7 @@ using UnityEngine.Tilemaps;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// グリーンの傾斜を持つタイル（§8.5）。
+    /// グリーンの傾斜を持つタイル。
     /// 見た目の回転と合わせるため、基準となる傾斜方向をインスペクターで設定し、
     /// Tilemap 上での回転に応じて傾斜方向を変える。
     /// </summary>

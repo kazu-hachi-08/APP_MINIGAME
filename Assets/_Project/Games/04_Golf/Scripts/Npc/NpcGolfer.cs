@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// NPC の手番（§10.4）。NpcShotPlanner で狙いを決め、人間と同じゲージを動かして打つ。
+    /// NPC の手番。NpcShotPlanner で狙いを決め、人間と同じゲージを動かして打つ。
     /// 人間の入力（ShotInput の Update）は止めたまま、方向とゲージだけを借りるので、線・ゲージ・HUD の表示はそのまま使える。
     /// </summary>
     public class NpcGolfer : MonoBehaviour
@@ -22,7 +22,7 @@ namespace MiniGame.Golf
 
         private readonly System.Random _random = new System.Random();
 
-        /// <summary>ShotInput.PrepareShot でクラブ（①）を選んだ後に呼ぶ。ボールを打つところまで進める</summary>
+        /// <summary>ShotInput.PrepareShot でクラブを選んだ後に呼ぶ。ボールを打つところまで進める</summary>
         public IEnumerator TakeShot(GolfPlayerType type)
         {
             var planner = new NpcShotPlanner(_ball.Simulation, _difficulty.Get(type), _random);

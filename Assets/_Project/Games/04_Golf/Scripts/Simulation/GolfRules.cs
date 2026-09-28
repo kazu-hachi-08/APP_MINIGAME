@@ -6,18 +6,18 @@ using System.Numerics;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 打つ順番・打数上限・罰打・順位・ホールの選び方（§6）。
-    /// 順番はボール位置だけで決まるので、オンラインでも全端末で同じ計算になる（§6.3）。MonoBehaviour にしないのは EditModeテストで検証するため。
+    /// 打つ順番・打数上限・罰打・順位・ホールの選び方。
+    /// 順番はボール位置だけで決まるので、オンラインでも全端末で同じ計算になる。MonoBehaviour にしないのは EditModeテストで検証するため。
     /// </summary>
     public static class GolfRules
     {
-        /// <summary>§6.5 池・OBはどちらも1打罰</summary>
+        /// <summary>池・OBはどちらも1打罰</summary>
         public const int PenaltyStrokes = 1;
 
-        /// <summary>§6.4 パットを外し続けても試合が長引かないよう、パー×2で打ち切る</summary>
+        /// <summary>パットを外し続けても試合が長引かないよう、パー×2で打ち切る</summary>
         private const int StrokeLimitPerPar = 2;
 
-        /// <summary>§6.2 3ホールモードのホール数</summary>
+        /// <summary>3ホールモードのホール数</summary>
         public const int LongModeHoleCount = 3;
 
         public static int StrokeLimit(int par) => par * StrokeLimitPerPar;
@@ -53,7 +53,7 @@ namespace MiniGame.Golf
             return farthest;
         }
 
-        /// <summary>§13.3 カップインしたときの呼び名。1打目のカップインはパーとの差に関係なくホールインワン</summary>
+        /// <summary>カップインしたときの呼び名。1打目のカップインはパーとの差に関係なくホールインワン</summary>
         public static string ScoreName(int strokes, int par)
         {
             if (strokes == 1) return "ホールインワン！";
@@ -72,21 +72,21 @@ namespace MiniGame.Golf
             }
         }
 
-        /// <summary>§6.6 パーとの差の表示（-1＝バーディー、±0＝パー、+1＝ボギー）</summary>
+        /// <summary>パーとの差の表示（-1＝バーディー、±0＝パー、+1＝ボギー）</summary>
         public static string FormatToPar(int diff)
         {
             if (diff == 0) return "±0";
             return diff > 0 ? $"+{diff}" : diff.ToString();
         }
 
-        /// <summary>§6.3 次のホールのティーの順番。直前のホールの打数が少ない順で、同じ打数なら前の順番を引き継ぐ</summary>
+        /// <summary>次のホールのティーの順番。直前のホールの打数が少ない順で、同じ打数なら前の順番を引き継ぐ</summary>
         public static List<int> NextTeeOrder(IReadOnlyList<int> previousOrder, IReadOnlyList<GolfPlayerSlot> slots)
         {
             // OrderBy は安定ソートなので、同じ打数の人は前の順番のまま残る
             return previousOrder.OrderBy(i => LastScore(slots[i])).ToList();
         }
 
-        /// <summary>§6.6 合計打数が少ないほど上位。同じ打数なら同じ順位（1始まり）</summary>
+        /// <summary>合計打数が少ないほど上位。同じ打数なら同じ順位（1始まり）</summary>
         public static int[] Ranks(IReadOnlyList<int> totals)
         {
             var ranks = new int[totals.Count];
@@ -98,7 +98,7 @@ namespace MiniGame.Golf
             return ranks;
         }
 
-        /// <summary>§6.2 登録ホールから重複なしでランダムに選んだ添字</summary>
+        /// <summary>登録ホールから重複なしでランダムに選んだ添字</summary>
         public static List<int> PickHoles(int availableCount, int pickCount, Random random)
         {
             if (pickCount > availableCount)

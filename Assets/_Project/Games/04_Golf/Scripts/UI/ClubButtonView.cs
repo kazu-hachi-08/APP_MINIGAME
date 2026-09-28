@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// クラブ名と最大飛距離を出し、タップでクラブを切り替えるボタン（§13.2）。
+    /// クラブ名と最大飛距離を出し、タップでクラブを切り替えるボタン。
     /// </summary>
     public class ClubButtonView : MonoBehaviour
     {
