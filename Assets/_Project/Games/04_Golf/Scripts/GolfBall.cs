@@ -17,6 +17,7 @@ namespace MiniGame.Golf
         [SerializeField] private float _dropDelay = 1.2f;
 
         private BallSimulator _simulator;
+        private CharacterAbility _character = CharacterAbility.Default;
         private float _accumulatedTime;
         private bool _isDropPending;
         private float _dropTimer;
@@ -58,8 +59,17 @@ namespace MiniGame.Golf
             _simulator = new BallSimulator(_settings.Ball, _terrainSettings.Terrain, ground, slope);
             _simulator.SetCup(ToNumerics(cupPosition));
             _simulator.SetWind(wind);
+            // ホールごとに計算機を作り直すので、手番のキャラの能力を引き継ぐ
+            _simulator.SetCharacter(_character);
             CupPosition = cupPosition;
             Place(teePosition);
+        }
+
+        /// <summary>手番のキャラを設定する。null はバランス型と同じ扱い</summary>
+        public void SetCharacter(GolfCharacterData character)
+        {
+            _character = character != null ? character.Ability : CharacterAbility.Default;
+            Simulator.SetCharacter(_character);
         }
 
         public void Place(Vector2 groundPosition)

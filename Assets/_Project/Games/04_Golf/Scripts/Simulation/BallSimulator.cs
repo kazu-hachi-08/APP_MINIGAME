@@ -19,6 +19,9 @@ namespace MiniGame.Golf
         private Vector2 _cupPosition;
         private bool _hasCup;
 
+        // 手番のキャラの能力。既定はバランス型と同じ 1 倍なので、渡さなければキャラ導入前と同じ飛び方になる
+        private CharacterAbility _character = CharacterAbility.Default;
+
         // 空中にいる間だけ足す風の加速度（§8.2）。ホールの間は変わらない
         private Vector2 _windAcceleration;
 
@@ -79,6 +82,15 @@ namespace MiniGame.Golf
             _windAcceleration = wind.Velocity * _config.WindAccelerationScale;
         }
 
+        /// <summary>
+        /// 手番のキャラの能力を設定する。着地予測・NPC の試し打ちにも引き継ぐので、
+        /// 予測線・NPC の狙い・相手端末の再生がすべてこのキャラの能力どおりになる
+        /// </summary>
+        public void SetCharacter(CharacterAbility character)
+        {
+            _character = character;
+        }
+
         /// <summary>ボールを止めた状態で置く（ティーや打ち直しの位置）</summary>
         public void Place(Vector2 position)
         {
@@ -104,7 +116,9 @@ namespace MiniGame.Golf
             }
 
             // 飛距離はおおよそ初速の2乗に比例するので、平方根を掛けて飛距離の割合が §8.4 の値になるようにする
-            float speed = club.MaxLaunchSpeed * power * MathF.Sqrt(Lie.ShotDistanceRate);
+            // パターは強さのさじ加減だけを競うので、キャラの飛距離は効かせない
+            float distanceRate = club.IsPutter ? 1f : _character.DistanceRate;
+            float speed = club.MaxLaunchSpeed * distanceRate * power * MathF.Sqrt(Lie.ShotDistanceRate);
             _launchPosition = Position;
             _lastSafePosition = Position;
 
@@ -118,7 +132,7 @@ namespace MiniGame.Golf
                 StartMoving(shot.Direction, speed * MathF.Cos(angle), speed * MathF.Sin(angle));
             }
 
-            _curveAcceleration = curve * club.CurveFactor * _config.CurveAccelerationScale;
+            _curveAcceleration = curve * club.CurveFactor / _character.StraightnessRate * _config.CurveAccelerationScale;
             _isPutt = club.IsPutter;
             _spinRollRate = club.IsPutter ? 1f : SpinRollRate(shot.Spin);
         }
@@ -147,6 +161,7 @@ namespace MiniGame.Golf
         {
             // 傾斜を渡さないことで、傾斜なしのまっすぐな予測にする
             var probe = new BallSimulator(_config, _terrain, _ground);
+            probe.SetCharacter(_character);
             probe.Place(Position);
             probe.Launch(new ShotRequest(direction, club, power, 0f));
 
@@ -174,6 +189,7 @@ namespace MiniGame.Golf
             var probe = new BallSimulator(_config, _terrain, _ground, withSlope ? _slope : null);
             if (_hasCup) probe.SetCup(_cupPosition);
             if (withWind) probe._windAcceleration = _windAcceleration;
+            probe.SetCharacter(_character);
 
             probe.Place(Position);
             probe.Launch(shot);

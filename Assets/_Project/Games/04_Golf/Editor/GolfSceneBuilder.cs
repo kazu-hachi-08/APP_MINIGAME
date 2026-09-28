@@ -130,6 +130,7 @@ namespace MiniGame.Golf.Editor
             var npcDifficulty = EnsureAsset<GolfNpcDifficulty>(NpcDifficultyPath);
             GolfHoleCatalog catalog = GolfHoleAssetBuilder.EnsureAssets();
             GolfClubData[] clubs = GolfClubAssetBuilder.EnsureClubs();
+            GolfCharacterCatalog characters = GolfCharacterGenerator.EnsureGenerated();
 
             Camera camera = CreateCamera();
             CreateEventSystem();
@@ -147,7 +148,7 @@ namespace MiniGame.Golf.Editor
             SetRefs(new GameObject("CourseScenery").AddComponent<CourseScenery>(), ("_holeLoader", holeLoader),
                 ("_cameraFollower", cameraFollower), ("_input", input));
             var manager = new GameObject("GolfGameManager").AddComponent<GolfGameManager>();
-            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower));
+            SetRefs(manager, ("_golferView", golfer), ("_cameraFollower", cameraFollower), ("_characters", characters));
             SetRefs(manager, ("_npcGolfer", CreateNpcGolfer(ball, input, clubSelector, npcDifficulty)),
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);

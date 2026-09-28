@@ -28,6 +28,10 @@ namespace MiniGame.Golf
         [SerializeField] private GolfMessageView _message;
         [SerializeField] private GolfAudio _audio;
         [SerializeField] private GolfCameraFollower _cameraFollower;
+        [SerializeField] private GolfCharacterCatalog _characters;
+
+        [Tooltip("仮：席ごとのキャラ番号（P1, P2, …）。キャラ選択パネル（Phase G3）ができるまで能力の確認に使う。足りない席はバランス型")]
+        [SerializeField] private int[] _debugCharacterIndices = new int[0];
 
         [Tooltip("ボールが止まってから次の人の番を出すまでの時間（秒）。止まった場所を見せる")]
         [SerializeField] private float _shotResultDelay = 1f;
@@ -210,9 +214,14 @@ namespace MiniGame.Golf
             _teeOrder.Clear();
             for (int i = 0; i < types.Count; i++)
             {
-                _slots.Add(new GolfPlayerSlot(i, types[i]));
+                _slots.Add(new GolfPlayerSlot(i, types[i], DebugCharacterIndex(i)));
                 _teeOrder.Add(i);
             }
+        }
+
+        private int DebugCharacterIndex(int seat)
+        {
+            return seat < _debugCharacterIndices.Length ? _debugCharacterIndices[seat] : 0;
         }
 
         /// <summary>§6.2 ホールは登録ホールから重複なしでランダム、§9.4 風はホールごとにランダム</summary>
@@ -283,6 +292,8 @@ namespace MiniGame.Golf
         {
             Phase = GolfPhase.TurnStart;
             PlaceCurrentBall();
+            // 人間・NPC・相手端末のどの手番でも渡す。予測線・NPC の狙い・相手のショットの再生もこのキャラの能力で計算するため
+            _ball.SetCharacter(_characters != null ? _characters.Get(Current.CharacterIndex) : null);
             TurnStarted?.Invoke();
 
             string name = GolfPlayerColors.Name(Current.Seat);
