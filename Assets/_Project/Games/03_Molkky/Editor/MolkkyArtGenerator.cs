@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.Molkky.Editor
 {
     /// <summary>
-    /// モルックのドット絵素材（ピン・棒・影・背景）をコードから生成するエディタユーティリティ（§14 Phase 8）。
+    /// モルックのドット絵素材（ピン・棒・影・背景・キャラ）をコードから生成するエディタユーティリティ（§14 Phase 8）。
     /// 外部素材に依存せず同じ絵をいつでも作り直せるよう、卓球の TableTennisArtGenerator と同じ方針でコード生成にしている。
     /// 生成物は通常のPNGなので、手描き素材へ差し替えても構わない（表示側は大きさを地面単位で合わせる）。
     /// </summary>
@@ -21,6 +21,12 @@ namespace MiniGame.Molkky.Editor
         public const string StickName = "Stick";
         public const string ShadowName = "Shadow";
         public const string BackdropName = "Backdrop";
+
+        /// <summary>キャラの仮素材の種類。MolkkyCharacterGenerator がこの並びでキャラを作る</summary>
+        public static readonly string[] CharacterIds = { "Balance", "Power", "Precision", "Long" };
+
+        private const int CharacterWidth = 16;
+        private const int CharacterHeight = 24;
 
         /// <summary>背景の空の一番上の色。カメラの背景色もこれに合わせ、背景の上に隙間が出ても目立たないようにする</summary>
         public static readonly Color32 SkyTop = new Color32(120, 185, 235, 255);
@@ -41,6 +47,23 @@ namespace MiniGame.Molkky.Editor
 
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
 
+        private static readonly Color32 Skin = new Color32(246, 206, 168, 255);
+        private static readonly Color32 Pants = new Color32(60, 64, 88, 255);
+        private static readonly Color32 Shoes = new Color32(40, 34, 30, 255);
+        private static readonly Color32 CharacterOutline = new Color32(34, 30, 38, 255);
+
+        /// <summary>
+        /// キャラごとの服・髪の色と体の幅。CharacterIds と同じ並び。
+        /// 席の色（赤青黄緑）と区別しやすいよう、服は少しくすんだ色にしている
+        /// </summary>
+        private static readonly (Color32 Shirt, Color32 Hair, int HalfWidth)[] CharacterLooks =
+        {
+            (new Color32(70, 150, 120, 255), new Color32(96, 60, 36, 255), 4),
+            (new Color32(200, 90, 50, 255), new Color32(40, 36, 40, 255), 5),
+            (new Color32(130, 100, 190, 255), new Color32(230, 196, 110, 255), 3),
+            (new Color32(230, 160, 60, 255), new Color32(70, 46, 30, 255), 4),
+        };
+
         [MenuItem("Tools/MiniGame/Generate Molkky Art", false, 5)]
         public static void GenerateAll()
         {
@@ -56,6 +79,15 @@ namespace MiniGame.Molkky.Editor
             SaveSprite(ShadowName, BuildShadow(), 32, 12, SpriteAlignment.Center);
             SaveSprite(BackdropName, BuildBackdrop(), 160, 96, SpriteAlignment.BottomCenter);
 
+            // 足元をピボットにして、ThrowerView が地面の立ち位置にそのまま置けるようにする
+            for (int i = 0; i < CharacterIds.Length; i++)
+            {
+                SaveSprite(CharacterFrontName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], true),
+                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
+                SaveSprite(CharacterBackName(CharacterIds[i]), BuildCharacter(CharacterLooks[i], false),
+                    CharacterWidth, CharacterHeight, SpriteAlignment.BottomCenter);
+            }
+
             AssetDatabase.Refresh();
             Debug.Log($"[MolkkyArtGenerator] モルックの素材を生成しました: {SpriteDirectory}");
         }
@@ -63,7 +95,8 @@ namespace MiniGame.Molkky.Editor
         /// <summary>素材が未生成なら生成する（MolkkySceneBuilder から呼ばれる）</summary>
         public static void EnsureGenerated()
         {
-            if (Load(PinStandingName) == null || Load(BackdropName) == null)
+            if (Load(PinStandingName) == null || Load(BackdropName) == null ||
+                Load(CharacterBackName(CharacterIds[CharacterIds.Length - 1])) == null)
             {
                 GenerateAll();
             }
@@ -73,6 +106,10 @@ namespace MiniGame.Molkky.Editor
         {
             return AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteDirectory}/{spriteName}.png");
         }
+
+        public static string CharacterFrontName(string id) => $"Char_{id}_Front";
+
+        public static string CharacterBackName(string id) => $"Char_{id}_Back";
 
         // ------------------------------------------------------------------
         // ピン（立っている）。頭を斜めに切った木の円柱で、上寄りに数字の面を置く
@@ -249,6 +286,65 @@ namespace MiniGame.Molkky.Editor
             }
 
             FillRect(pixels, width, height, 0, baseY, width, height - baseY, color);
+        }
+
+        // ------------------------------------------------------------------
+        // キャラ（仮素材）。頭・胴・腕・脚の単純な人型。正面は顔を、背中は後頭部（髪）を描く。
+        // 背中は投擲ラインの手前に小さく出るので、服の色と体の幅で見分けられるようにしている
+        // ------------------------------------------------------------------
+        private static Color32[] BuildCharacter((Color32 Shirt, Color32 Hair, int HalfWidth) look, bool front)
+        {
+            const int width = CharacterWidth;
+            const int height = CharacterHeight;
+            const int center = width / 2;
+            var pixels = NewCanvas(width, height);
+            int half = look.HalfWidth;
+
+            // 脚と靴
+            FillRect(pixels, width, height, center - 3, 17, 2, 6, Pants);
+            FillRect(pixels, width, height, center + 1, 17, 2, 6, Pants);
+            FillRect(pixels, width, height, center - 3, 22, 2, 1, Shoes);
+            FillRect(pixels, width, height, center + 1, 22, 2, 1, Shoes);
+
+            // 腕（肌）と胴（服）
+            FillRect(pixels, width, height, center - half - 1, 10, 1, 6, Skin);
+            FillRect(pixels, width, height, center + half, 10, 1, 6, Skin);
+            FillRect(pixels, width, height, center - half, 9, half * 2, 8, look.Shirt);
+
+            // 頭。正面は髪を上だけにして顔を見せ、背中は髪で全部覆う
+            FillEllipse(pixels, width, height, center, 5f, 3.6f, 4f, front ? Skin : look.Hair);
+            if (front)
+            {
+                FillRect(pixels, width, height, center - 4, 1, 8, 2, look.Hair);
+                SetPixel(pixels, width, height, center - 2, 5, CharacterOutline);
+                SetPixel(pixels, width, height, center + 1, 5, CharacterOutline);
+            }
+
+            AddOutline(pixels, width, height, CharacterOutline);
+            return pixels;
+        }
+
+        /// <summary>塗った部分を1ピクセルの縁で囲む。背景の芝の上でも輪郭が埋もれないようにする</summary>
+        private static void AddOutline(Color32[] pixels, int width, int height, Color32 color)
+        {
+            var source = (Color32[])pixels.Clone();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (source[i].a != 0) continue;
+
+                int x = i % width;
+                int y = i / width;
+                bool touches = IsFilled(source, width, height, x - 1, y) || IsFilled(source, width, height, x + 1, y) ||
+                               IsFilled(source, width, height, x, y - 1) || IsFilled(source, width, height, x, y + 1);
+                if (touches) pixels[i] = color;
+            }
+        }
+
+        private static bool IsFilled(Color32[] pixels, int width, int height, int x, int y)
+        {
+            if (x < 0 || x >= width || y < 0 || y >= height) return false;
+
+            return pixels[y * width + x].a != 0;
         }
 
         // ------------------------------------------------------------------

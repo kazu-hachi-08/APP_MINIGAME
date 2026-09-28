@@ -28,6 +28,11 @@ namespace MiniGame.Molkky
         [SerializeField] private ThrowStyleButton _styleButton;
         [SerializeField] private ThrowArcButton _arcButton;
 
+        [Header("Character")]
+        [SerializeField] private MolkkyCharacterCatalog _characterCatalog;
+        [SerializeField] private CharacterSelectPanel _characterSelectPanel;
+        [SerializeField] private ThrowerView _throwerView;
+
         [Header("Online (§19)")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
@@ -84,15 +89,27 @@ namespace MiniGame.Molkky
 
         private void ShowPlayerSetup()
         {
+            Phase = MolkkyPhase.PlayerSetup;
             _setupPanel.Show(HandlePlayersConfirmed);
         }
 
         private void HandlePlayersConfirmed(IReadOnlyList<PlayerKind> kinds)
         {
+            Phase = MolkkyPhase.CharacterSelect;
+            _characterSelectPanel.Show(kinds, characters => HandleCharactersConfirmed(kinds, characters), ShowPlayerSetup);
+        }
+
+        /// <summary>
+        /// 名前は「P1 パワー型」のように席番号＋キャラ名にする。同じキャラを複数人が選べるので、
+        /// キャラ名だけだと誰か分からなくなるため
+        /// </summary>
+        private void HandleCharactersConfirmed(IReadOnlyList<PlayerKind> kinds, IReadOnlyList<int> characters)
+        {
             _players.Clear();
             for (int i = 0; i < kinds.Count; i++)
             {
-                _players.Add(new PlayerSlot($"P{i + 1}", kinds[i]));
+                string name = $"P{i + 1} {_characterCatalog.Get(characters[i]).DisplayName}";
+                _players.Add(new PlayerSlot(name, kinds[i], characters[i]));
             }
 
             StartGame();
@@ -174,6 +191,7 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
+            _throwerView.SetCharacter(_characterCatalog.Get(CurrentPlayer.CharacterIndex));
             // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
             _input.SetArc(ThrowArc.Low);
