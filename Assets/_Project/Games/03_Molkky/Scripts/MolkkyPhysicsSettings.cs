@@ -17,8 +17,8 @@ namespace MiniGame.Molkky
         [SerializeField] private float _pinSpacing = 0.42f;
         [SerializeField] private float _pinRadius = 0.2f;
         [SerializeField] private float _throwLineHalfWidth = 1.5f;
-        [Tooltip("立て直し時にピンを寄せる範囲（x:左右 / y:奥行き）")]
-        [SerializeField] private Rect _fieldBounds = new Rect(-3f, 1.5f, 6f, 8f);
+        [Tooltip("立て直し時にピンを寄せる範囲（x:左右 / y:奥行き）。奥の端は棒の最大飛距離（約12）より手前に収め、立て直したピンに届くようにする")]
+        [SerializeField] private Rect _fieldBounds = new Rect(-3f, 1.5f, 6f, 10f);
 
         [Header("Throw")]
         [SerializeField] private float _minThrowSpeed = 3f;
