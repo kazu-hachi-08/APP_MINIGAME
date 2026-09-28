@@ -80,7 +80,7 @@ namespace MiniGame.Golf
         private static readonly Color ShoeColor = new Color(0.95f, 0.95f, 0.95f);
 
         // 頭（後ろ姿）：髪の丸の上に帽子を重ねる。帽子の後ろのアジャスターの穴から髪が見える。
-        // どちらも白で描き、キャラの帽子・髪の色を掛ける（キャラ選択 Phase G4）
+        // どちらも白で描き、キャラの帽子・髪の色を掛ける（§21.3）
         private const float CapBottom = -0.1f;
         private const float CapOpeningTop = 0.14f;
         private const float CapOpeningHalfWidth = 0.18f;

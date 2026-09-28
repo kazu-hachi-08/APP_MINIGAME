@@ -6,9 +6,10 @@ using UnityEngine.UI;
 namespace MiniGame.Golf
 {
     /// <summary>
-    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル（キャラ選択 Phase G3）。
+    /// 人数設定の後に、P1 → P2 → … の順で1人ずつキャラを選ぶパネル（§21.4）。
     /// モルックの CharacterSelectPanel と同じ流れ。1台を回して遊ぶ前提なので、画面は「今選んでいる1人」だけを大きく見せる。
     /// NPCはランダムで選んだ状態から始め、そのまま決定しても人間が代わりに変えてもよい。
+    /// オンライン（§21.5）では自分の席の1人だけを選び、決定後は全員が揃うまで待機表示にする。
     /// </summary>
     public class GolfCharacterSelectPanel : MonoBehaviour
     {
@@ -30,6 +31,9 @@ namespace MiniGame.Golf
         private int _seat;
         private Action<IReadOnlyList<int>> _onConfirmed;
         private Action _onBack;
+        private Action<int> _onOnlineConfirmed;
+
+        private bool IsOnline => _onOnlineConfirmed != null;
 
         private void Awake()
         {
@@ -45,11 +49,48 @@ namespace MiniGame.Golf
             _types = types;
             _onConfirmed = onConfirmed;
             _onBack = onBack;
+            _onOnlineConfirmed = null;
             _selected = CreateInitialSelection(types);
             _seat = 0;
 
+            Open();
+        }
+
+        /// <summary>
+        /// オンライン用：自分の席のキャラだけを選ぶ。決定したらキャラ番号を返し、Hide されるまで待機表示を続ける。
+        /// 「戻る」は出さない。人数設定が無いので戻り先が無いため
+        /// </summary>
+        public void ShowOnline(int seat, int playerCount, Action<int> onConfirmed)
+        {
+            _types = null;
+            _onConfirmed = null;
+            _onBack = null;
+            _onOnlineConfirmed = onConfirmed;
+            _selected = new int[playerCount];
+            _seat = seat;
+
+            Open();
+        }
+
+        public void Hide()
+        {
+            gameObject.SetActive(false);
+        }
+
+        private void Open()
+        {
             gameObject.SetActive(true);
+            _backButton.gameObject.SetActive(!IsOnline);
+            SetSelecting(true);
             Refresh();
+        }
+
+        /// <summary>決定後の待機中に◀▶や決定を押されて、送った後にキャラが変わらないよう操作を止める</summary>
+        private void SetSelecting(bool selecting)
+        {
+            _prevButton.interactable = selecting;
+            _nextButton.interactable = selecting;
+            _confirmButton.interactable = selecting;
         }
 
         private int[] CreateInitialSelection(IReadOnlyList<GolfPlayerType> types)
@@ -72,6 +113,12 @@ namespace MiniGame.Golf
 
         private void Confirm()
         {
+            if (IsOnline)
+            {
+                ConfirmOnline();
+                return;
+            }
+
             _seat++;
             if (_seat < _selected.Length)
             {
@@ -79,8 +126,16 @@ namespace MiniGame.Golf
                 return;
             }
 
-            gameObject.SetActive(false);
+            Hide();
             _onConfirmed?.Invoke(_selected);
+        }
+
+        /// <summary>待機表示にしてから通知する。最後の1人だった場合は通知の後すぐ Hide されるため、この順にする</summary>
+        private void ConfirmOnline()
+        {
+            SetSelecting(false);
+            _titleText.text = "他のプレイヤーを待っています";
+            _onOnlineConfirmed(_selected[_seat]);
         }
 
         private void Back()
@@ -92,13 +147,13 @@ namespace MiniGame.Golf
                 return;
             }
 
-            gameObject.SetActive(false);
+            Hide();
             _onBack?.Invoke();
         }
 
         private void Refresh()
         {
-            _titleText.text = $"{SeatLabel()} のキャラを選んでね";
+            _titleText.text = IsOnline ? "あなたのキャラを選んでね" : $"{SeatLabel()} のキャラを選んでね";
             // 端末を回したときに誰の番か一目で分かるよう、席の色で出す
             _titleText.color = GolfPlayerColors.Get(_seat);
 

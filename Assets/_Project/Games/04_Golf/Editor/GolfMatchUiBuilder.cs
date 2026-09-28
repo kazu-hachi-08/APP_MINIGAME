@@ -103,7 +103,7 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 人数設定の後に1人ずつキャラを選ぶパネル（キャラ選択 Phase G3）。
+        /// 人数設定の後に1人ずつキャラを選ぶパネル（§21.4）。
         /// 立ち絵を大きく中央に置き、左右の ◀ ▶ で切り替える。能力は2行のマス表示で見せる
         /// </summary>
         public static GolfCharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, GolfCharacterCatalog catalog)
