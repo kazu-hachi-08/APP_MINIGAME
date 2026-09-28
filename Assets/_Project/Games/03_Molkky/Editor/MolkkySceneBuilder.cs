@@ -136,7 +136,7 @@ namespace MiniGame.Molkky.Editor
                 ("_stickSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.StickName)),
                 ("_shadowSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.ShadowName)));
 
-            // 手番のキャラの背中。棒の左右位置に追従する（キャラクター計画 Phase C1）
+            // 手番のキャラの背中。棒の左右位置に追従する（仕様書 §20.3）
             var throwerViewObj = new GameObject("ThrowerView");
             throwerViewObj.transform.SetParent(viewRoot.transform);
             var throwerView = throwerViewObj.AddComponent<ThrowerView>();
@@ -483,7 +483,7 @@ namespace MiniGame.Molkky.Editor
         }
 
         /// <summary>
-        /// 人数設定の後に1人ずつキャラを選ぶパネル（キャラクター計画 Phase C2）。
+        /// 人数設定の後に1人ずつキャラを選ぶパネル（仕様書 §20.4）。
         /// 立ち絵を大きく中央に置き、左右の ◀ ▶ で切り替える。能力は3行のマス表示で見せる
         /// </summary>
         private static CharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, MolkkyCharacterCatalog catalog)
@@ -550,7 +550,7 @@ namespace MiniGame.Molkky.Editor
         }
 
         /// <summary>
-        /// 勝利演出（キャラクター計画 Phase C4）。画面全体をボタンにしてどこをタップしても飛ばせるようにする。
+        /// 勝利演出（仕様書 §20.5）。画面全体をボタンにしてどこをタップしても飛ばせるようにする。
         /// 上から 吹き出し → 立ち絵 → 名前 の順に縦に並べる
         /// </summary>
         private static VictoryShowView CreateVictoryShow(Transform canvas)

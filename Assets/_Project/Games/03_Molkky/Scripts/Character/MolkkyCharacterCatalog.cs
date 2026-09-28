@@ -4,7 +4,7 @@ namespace MiniGame.Molkky
 {
     /// <summary>
     /// 選べるキャラの一覧。PlayerSlot にはアセットではなくこの一覧の番号だけを持たせる。
-    /// オンライン対戦（Phase C5）で番号だけ送れば全端末で同じキャラになるようにするため（卓球の LoadoutCatalog と同じ考え方）。
+    /// オンライン対戦（仕様書 §20.6）で番号だけ送れば全端末で同じキャラになるようにするため（卓球の LoadoutCatalog と同じ考え方）。
     /// 先頭をバランス型にしておき、初期選択として使う。
     /// </summary>
     [CreateAssetMenu(fileName = "MolkkyCharacterCatalog", menuName = "MiniGame/Molkky/Character Catalog")]

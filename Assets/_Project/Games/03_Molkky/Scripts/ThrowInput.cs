@@ -41,7 +41,7 @@ namespace MiniGame.Molkky
         private bool _tracking;
         private Vector2 _lastPosition;
 
-        // 手番のキャラの能力倍率（キャラクター計画 §1）。バランス型＝1
+        // 手番のキャラの能力倍率（仕様書 §20.2）。バランス型＝1
         private float _powerMultiplier = 1f;
         private float _controlMultiplier = 1f;
 

@@ -66,6 +66,39 @@ namespace MiniGame.Molkky.Tests
             }
         }
 
+        [Test]
+        public void キャラメッセージの席番号とキャラ番号が送受信で変わらない()
+        {
+            MethodInfo write = typeof(MolkkyOnlineLink).GetMethod("WriteCharacter", BindingFlags.NonPublic | BindingFlags.Static);
+            MethodInfo read = typeof(MolkkyOnlineLink).GetMethod("ReadCharacter", BindingFlags.NonPublic | BindingFlags.Static);
+
+            using var writer = new FastBufferWriter(512, Allocator.Temp);
+            write.Invoke(null, new object[] { writer, 3, 2 });
+
+            using var reader = new FastBufferReader(writer, Allocator.Temp);
+            var (seat, characterIndex) = ((int, int))read.Invoke(null, new object[] { reader });
+
+            Assert.AreEqual(3, seat);
+            Assert.AreEqual(2, characterIndex);
+        }
+
+        [Test]
+        public void 範囲外のキャラ番号が届いても先頭か末尾のキャラにクランプされる()
+        {
+            // 生成済みアセットの有無に左右されないよう、テスト用のカタログをその場で作る
+            MolkkyCharacterData[] characters = Enumerable.Range(0, 4)
+                .Select(_ => ScriptableObject.CreateInstance<MolkkyCharacterData>())
+                .ToArray();
+            var catalog = ScriptableObject.CreateInstance<MolkkyCharacterCatalog>();
+            SetField(catalog, "_characters", characters);
+
+            Assert.AreSame(characters[0], catalog.Get(-5));
+            Assert.AreSame(characters[3], catalog.Get(catalog.Count + 10));
+
+            Object.DestroyImmediate(catalog);
+            foreach (MolkkyCharacterData character in characters) Object.DestroyImmediate(character);
+        }
+
         [UnityTest]
         public IEnumerator 相手端末の再生で倒れるピンが投げた側と一致する()
         {
