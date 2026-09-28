@@ -9,6 +9,15 @@
 
 * WebGLビルドを別リポジトリ（`minigame-web`）の GitHub Pages で公開している
 
+## ▶ Windows版をダウンロード
+
+**https://github.com/kazu-hachi-08/APP_MINIGAME/releases**
+
+* zipを展開して `MiniGame.exe` を起動する
+* 初回に「WindowsによってPCが保護されました」と出たら「詳細情報 → 実行」で起動できる
+* `test-` で始まるものはテスト版（Pre-release）
+* 公開手順: `Tools/Release/release-windows.ps1` の先頭コメントを参照
+
 ---
 
 ## ミニゲーム一覧
