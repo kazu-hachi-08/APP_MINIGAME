@@ -23,14 +23,15 @@ namespace MiniGame.Molkky
         [Tooltip("密集地を狙うとき、ピンをどれだけ越える強さで投げるか。強めに投げてまとめて倒す")]
         [SerializeField] private float _denseOvershoot = 1.5f;
 
-        public ThrowRequest CreateRequest(PlayerSlot player)
+        /// <summary>character は手番のキャラ。人間と同じく、パワーで届く距離、コントロールでブレの大きさが変わる</summary>
+        public ThrowRequest CreateRequest(PlayerSlot player, MolkkyCharacterData character)
         {
             MolkkyNpcDifficulty difficulty = GetDifficulty(player.Kind);
             Pin target = ChooseTarget(player.Remaining, difficulty, out bool single);
             // 1本狙いは当たり幅の細い縦投げ、密集地はまとめて倒せる横投げにする
             return single
-                ? Aim(target.GroundPosition, _singleOvershoot, ThrowStyle.Vertical, difficulty)
-                : Aim(target.GroundPosition, _denseOvershoot, ThrowStyle.Horizontal, difficulty);
+                ? Aim(target.GroundPosition, _singleOvershoot, ThrowStyle.Vertical, difficulty, character)
+                : Aim(target.GroundPosition, _denseOvershoot, ThrowStyle.Horizontal, difficulty, character);
         }
 
         private MolkkyNpcDifficulty GetDifficulty(PlayerKind kind)
@@ -126,7 +127,8 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>§9.3：狙うピンに近い位置から、ピンの少し先まで届く強さで投げる</summary>
-        private ThrowRequest Aim(Vector2 target, float overshoot, ThrowStyle style, MolkkyNpcDifficulty difficulty)
+        private ThrowRequest Aim(Vector2 target, float overshoot, ThrowStyle style, MolkkyNpcDifficulty difficulty,
+            MolkkyCharacterData character)
         {
             float x = Mathf.Clamp(target.x, -_settings.ThrowLineHalfWidth, _settings.ThrowLineHalfWidth);
             Vector2 toTarget = target - new Vector2(x, 0f);
@@ -135,11 +137,14 @@ namespace MiniGame.Molkky
             // linearDamping で減速する物体は、初速 ÷ 減速率 のあたりで止まる。そこから逆算して必要な初速を出す
             float speed = _settings.StickDamping * (toTarget.magnitude + overshoot);
 
-            angle += Random.Range(-difficulty.AngleNoise, difficulty.AngleNoise);
-            speed *= 1f + Random.Range(-difficulty.SpeedNoise, difficulty.SpeedNoise);
+            // コントロールが高いキャラほどブレを小さくする
+            float angleNoise = difficulty.AngleNoise / character.ControlMultiplier;
+            float speedNoise = difficulty.SpeedNoise / character.ControlMultiplier;
+            angle += Random.Range(-angleNoise, angleNoise);
+            speed *= 1f + Random.Range(-speedNoise, speedNoise);
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
-            speed = Mathf.Clamp(speed, _settings.MinThrowSpeed, _settings.MaxThrowSpeed);
+            speed = Mathf.Clamp(speed, _settings.MinThrowSpeed, _settings.MaxThrowSpeed * character.PowerMultiplier);
             return new ThrowRequest(x, angle, speed, style);
         }
     }

@@ -69,7 +69,7 @@ namespace MiniGame.Molkky
         private void PlaceAlongStick(SpriteRenderer renderer, Vector2 ground, float height, float scale)
         {
             float radians = _stick.RotationDegrees * Mathf.Deg2Rad;
-            Vector2 halfAxis = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * (_settings.StickLength * 0.5f);
+            Vector2 halfAxis = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * (_stick.Length * 0.5f);
             Vector2 back = _projector.Project(ground - halfAxis, height);
             Vector2 front = _projector.Project(ground + halfAxis, height);
             Vector2 delta = front - back;

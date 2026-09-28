@@ -13,6 +13,8 @@ namespace MiniGame.Molkky
     public class MolkkyGameManager : BaseMiniGameManager
     {
         private const string LocalPlayerName = "あなた";
+        private const string SurvivorVictoryLine = "最後まで残った！";
+        private const int NotSelected = -1;
 
         [Header("Molkky")]
         [SerializeField] private PinRack _pinRack;
@@ -27,6 +29,12 @@ namespace MiniGame.Molkky
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private ThrowStyleButton _styleButton;
         [SerializeField] private ThrowArcButton _arcButton;
+
+        [Header("Character")]
+        [SerializeField] private MolkkyCharacterCatalog _characterCatalog;
+        [SerializeField] private CharacterSelectPanel _characterSelectPanel;
+        [SerializeField] private ThrowerView _throwerView;
+        [SerializeField] private VictoryShowView _victoryShow;
 
         [Header("Online (§19)")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
@@ -50,6 +58,9 @@ namespace MiniGame.Molkky
         private bool _isOnline;
         private int _localIndex;
 
+        /// <summary>オンラインで各席が選んだキャラ番号。まだ届いていない席は NotSelected</summary>
+        private int[] _onlineCharacters;
+
         // 相手端末から届いた投擲・結果。自分の画面がまだ前の手番の演出中でも取りこぼさないよう、
         // 届いた時点では溜めておき、相手の手番の処理で古い順に取り出す。
         // 3人以上だと自分の演出中に次の人の投擲まで届くことがあるため、1件ではなくキューにしている
@@ -60,6 +71,8 @@ namespace MiniGame.Molkky
         public MolkkyPhase Phase { get; private set; }
 
         private PlayerSlot CurrentPlayer => _players[_currentIndex];
+
+        private MolkkyCharacterData CurrentCharacter => _characterCatalog.Get(CurrentPlayer.CharacterIndex);
 
         private bool IsRemoteTurn => _isOnline && _currentIndex != _localIndex;
 
@@ -84,15 +97,27 @@ namespace MiniGame.Molkky
 
         private void ShowPlayerSetup()
         {
+            Phase = MolkkyPhase.PlayerSetup;
             _setupPanel.Show(HandlePlayersConfirmed);
         }
 
         private void HandlePlayersConfirmed(IReadOnlyList<PlayerKind> kinds)
         {
+            Phase = MolkkyPhase.CharacterSelect;
+            _characterSelectPanel.Show(kinds, characters => HandleCharactersConfirmed(kinds, characters), ShowPlayerSetup);
+        }
+
+        /// <summary>
+        /// 名前は「P1 パワー型」のように席番号＋キャラ名にする。同じキャラを複数人が選べるので、
+        /// キャラ名だけだと誰か分からなくなるため
+        /// </summary>
+        private void HandleCharactersConfirmed(IReadOnlyList<PlayerKind> kinds, IReadOnlyList<int> characters)
+        {
             _players.Clear();
             for (int i = 0; i < kinds.Count; i++)
             {
-                _players.Add(new PlayerSlot($"P{i + 1}", kinds[i]));
+                string name = $"P{i + 1} {_characterCatalog.Get(characters[i]).DisplayName}";
+                _players.Add(new PlayerSlot(name, kinds[i], characters[i]));
             }
 
             StartGame();
@@ -100,18 +125,57 @@ namespace MiniGame.Molkky
 
         /// <summary>
         /// オンラインは部屋に集まった人数で遊ぶので人数設定は出さない。席番号＝手番の順で、先攻はホスト（§19.4）。
-        /// 名前は端末ごとに自分だけ「あなた」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// 各端末で自分のキャラだけを選び、全席のキャラ番号が揃ったら始める（仕様書 §20.6）
         /// </summary>
         private void HandleOnlineStarted(int localSeat, int playerCount)
         {
             _isOnline = true;
             _localIndex = localSeat;
+            _onlineCharacters = new int[playerCount];
+            System.Array.Fill(_onlineCharacters, NotSelected);
+            // 受信ハンドラを登録する前に Phase を変えておき、届いたキャラ番号を取りこぼさないようにする
+            Phase = MolkkyPhase.CharacterSelect;
             _onlineLink.Begin();
 
+            _characterSelectPanel.ShowOnline(localSeat, playerCount, HandleLocalCharacterConfirmed);
+        }
+
+        private void HandleLocalCharacterConfirmed(int characterIndex)
+        {
+            _onlineLink.SendCharacter(_localIndex, characterIndex);
+            SetOnlineCharacter(_localIndex, characterIndex);
+        }
+
+        private void HandleRemoteCharacter(int seat, int characterIndex)
+        {
+            if (!_isOnline || Phase != MolkkyPhase.CharacterSelect) return;
+            if (seat < 0 || seat >= _onlineCharacters.Length) return;
+
+            SetOnlineCharacter(seat, characterIndex);
+        }
+
+        /// <summary>範囲外の番号はここでクランプする。NotSelected と区別できなくなって待ち続けるのを防ぐため</summary>
+        private void SetOnlineCharacter(int seat, int characterIndex)
+        {
+            _onlineCharacters[seat] = Mathf.Clamp(characterIndex, 0, _characterCatalog.Count - 1);
+            if (System.Array.IndexOf(_onlineCharacters, NotSelected) >= 0) return;
+
+            StartOnlineGame();
+        }
+
+        /// <summary>
+        /// 名前は端末ごとに自分だけ「あなた」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// </summary>
+        private void StartOnlineGame()
+        {
+            _characterSelectPanel.Hide();
+
             _players.Clear();
-            for (int i = 0; i < playerCount; i++)
+            for (int i = 0; i < _onlineCharacters.Length; i++)
             {
-                _players.Add(new PlayerSlot(i == localSeat ? LocalPlayerName : $"P{i + 1}"));
+                string owner = i == _localIndex ? LocalPlayerName : $"P{i + 1}";
+                string name = $"{owner} {_characterCatalog.Get(_onlineCharacters[i]).DisplayName}";
+                _players.Add(new PlayerSlot(name, PlayerKind.Human, _onlineCharacters[i]));
             }
 
             StartGame();
@@ -143,6 +207,7 @@ namespace MiniGame.Molkky
             {
                 _onlineLink.OnThrowReceived += HandleRemoteThrow;
                 _onlineLink.OnResultReceived += HandleRemoteResult;
+                _onlineLink.OnCharacterReceived += HandleRemoteCharacter;
             }
 
             if (_onlineSession != null) _onlineSession.OnPeerDisconnected += HandlePeerDisconnected;
@@ -154,6 +219,7 @@ namespace MiniGame.Molkky
             {
                 _onlineLink.OnThrowReceived -= HandleRemoteThrow;
                 _onlineLink.OnResultReceived -= HandleRemoteResult;
+                _onlineLink.OnCharacterReceived -= HandleRemoteCharacter;
             }
 
             if (_onlineSession != null) _onlineSession.OnPeerDisconnected -= HandlePeerDisconnected;
@@ -174,6 +240,7 @@ namespace MiniGame.Molkky
         {
             Phase = MolkkyPhase.TurnStart;
             _scoreBoard.Show(_players, _currentIndex);
+            ApplyCurrentCharacter();
             // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
             _input.SetArc(ThrowArc.Low);
@@ -196,6 +263,18 @@ namespace MiniGame.Molkky
             }
         }
 
+        /// <summary>
+        /// 人間・NPC・相手端末のどの手番でも適用する。棒の長さは当たり判定なので、
+        /// 相手の手番でも揃えておかないと再生で倒れるピンが相手端末とずれる
+        /// </summary>
+        private void ApplyCurrentCharacter()
+        {
+            MolkkyCharacterData character = CurrentCharacter;
+            _throwerView.SetCharacter(character);
+            _stick.SetCharacter(character);
+            _input.SetCharacter(character);
+        }
+
         /// <summary>1台を回すときだけ人間の番をタップ待ちにする。NPCとオンラインは端末を渡さないので自動で閉じる</summary>
         private IEnumerator PlayTurnBanner()
         {
@@ -207,7 +286,7 @@ namespace MiniGame.Molkky
 
         private IEnumerator NpcThrowRoutine()
         {
-            ThrowRequest request = _npc.CreateRequest(CurrentPlayer);
+            ThrowRequest request = _npc.CreateRequest(CurrentPlayer, CurrentCharacter);
             _stick.SetStyle(request.Style);
             _stick.PlaceOnLine(request.PositionX);
 
@@ -329,7 +408,12 @@ namespace MiniGame.Molkky
             bool isWin = result.Outcome == ThrowOutcome.Win;
             yield return new WaitForSeconds(isWin ? _winDisplayDuration : _scoreDisplayDuration);
 
-            if (TryFinish(result)) yield break;
+            PlayerSlot winner = FindWinner(result);
+            if (winner != null)
+            {
+                yield return FinishRoutine(winner, result);
+                yield break;
+            }
 
             Phase = MolkkyPhase.PinReset;
             _scorePopup.Hide();
@@ -356,20 +440,30 @@ namespace MiniGame.Molkky
             }
         }
 
-        /// <summary>50点ちょうど、または残り1人なら試合を終える</summary>
-        private bool TryFinish(ThrowResult result)
+        /// <summary>50点ちょうど、または残り1人なら勝者を返す。まだ続くなら null</summary>
+        private PlayerSlot FindWinner(ThrowResult result)
         {
-            PlayerSlot winner = result.Outcome == ThrowOutcome.Win
+            return result.Outcome == ThrowOutcome.Win
                 ? CurrentPlayer
                 : MolkkyRules.FindSoleSurvivor(_players);
-            if (winner == null) return false;
+        }
 
+        /// <summary>勝ったキャラの勝利演出を見せてから結果画面を出す（仕様書 §20.5）</summary>
+        private IEnumerator FinishRoutine(PlayerSlot winner, ThrowResult result)
+        {
             Phase = MolkkyPhase.GameSet;
             _scorePopup.Hide();
 
-            string detail = result.Outcome == ThrowOutcome.Win ? "50点ちょうど！" : "他のプレイヤーが失格";
+            bool exactWin = result.Outcome == ThrowOutcome.Win;
+            MolkkyCharacterData character = _characterCatalog.Get(winner.CharacterIndex);
+            // 失格で勝ったときに「ぴったり50点！」と言わせないよう、キャラ別のセリフは50点ちょうどのときだけ使う
+            string line = exactWin ? character.VictoryLine : SurvivorVictoryLine;
+            int winnerIndex = _players.IndexOf(winner);
+            _audio.PlayVictory();
+            yield return _victoryShow.Play(character, MolkkyPlayerColors.Get(winnerIndex), winner.Name, line);
+
+            string detail = exactWin ? "50点ちょうど！" : "他のプレイヤーが失格";
             FinishGame(IsLocalVictory(winner), $"{winner.Name} の勝ち", detail);
-            return true;
         }
 
         /// <summary>オンラインは自分が勝ったか、1台プレイはNPCが勝ったら人間側の負けとして GAME OVER を出す</summary>
@@ -390,6 +484,8 @@ namespace MiniGame.Molkky
             _input.IsAccepting = false;
             SetThrowButtonsVisible(false);
             _scorePopup.Hide();
+            // キャラ選択・待機中に切れたときも、選択パネルを残したまま結果画面を出さないようにする
+            _characterSelectPanel.Hide();
 
             FinishGame(false, "他のプレイヤーとの接続が切れました", "試合を終了しました");
         }

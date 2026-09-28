@@ -11,10 +11,13 @@ namespace MiniGame.Golf
     {
         private readonly List<int> _holeScores = new List<int>();
 
-        public GolfPlayerSlot(int seat, GolfPlayerType type = GolfPlayerType.Human)
+        public GolfPlayerSlot(int seat, GolfPlayerType type = GolfPlayerType.Human, int characterIndex = 0,
+            string characterName = "")
         {
             Seat = seat;
             Type = type;
+            CharacterIndex = characterIndex;
+            CharacterName = characterName;
         }
 
         /// <summary>席順（0始まり）。P1〜P4 の表示と色に使う</summary>
@@ -22,6 +25,12 @@ namespace MiniGame.Golf
 
         public GolfPlayerType Type { get; }
         public bool IsNpc => Type != GolfPlayerType.Human;
+
+        /// <summary>GolfCharacterCatalog の番号。アセットではなく番号にして、オンラインでは番号だけ送れば済むようにする</summary>
+        public int CharacterIndex { get; }
+
+        /// <summary>「P1 パワー型」の表示用。UI がカタログを引かずに済むよう、作るときに一緒に渡しておく</summary>
+        public string CharacterName { get; }
 
         public Vector2 Position { get; set; }
 

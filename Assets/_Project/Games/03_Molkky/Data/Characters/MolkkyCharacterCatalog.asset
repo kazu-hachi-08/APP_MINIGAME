@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21c70cb0c60b73c4dbd726af78572b13, type: 3}
+  m_Name: MolkkyCharacterCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.Molkky.MolkkyCharacterCatalog
+  _characters:
+  - {fileID: 11400000, guid: ef229e234318f174d9b87e5e330acd3f, type: 2}
+  - {fileID: 11400000, guid: c8dff21df196b2b4ebd35b01b1acc80c, type: 2}
+  - {fileID: 11400000, guid: fbe0fb3e0d01078448c2716ad0614b72, type: 2}
+  - {fileID: 11400000, guid: 63d4366908ea44546a7a15df3f4f5e7c, type: 2}

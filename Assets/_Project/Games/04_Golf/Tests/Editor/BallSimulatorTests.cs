@@ -659,5 +659,79 @@ namespace MiniGame.Golf.Tests
         {
             Assert.AreEqual(RestDistance(Putter, ShotSpin.None), RestDistance(Putter, ShotSpin.Back));
         }
+
+        // ------------------------------------------------------------------
+        // キャラの能力倍率
+        // ------------------------------------------------------------------
+        private static readonly CharacterAbility Power = new CharacterAbility(1.15f, 0.75f);
+        private static readonly CharacterAbility Technique = new CharacterAbility(0.9f, 1.35f);
+
+        private static BallSimulator ShootAs(CharacterAbility character, ClubConfig club, float impactOffset = 0f)
+        {
+            var simulator = new BallSimulator(new BallPhysicsConfig());
+            simulator.SetCharacter(character);
+            simulator.Place(Vector2.Zero);
+            Hit(simulator, Forward, 1f, club, impactOffset);
+            return simulator;
+        }
+
+        [Test]
+        public void 倍率1のキャラはキャラを渡さないときと同じ位置に止まる()
+        {
+            BallSimulator plain = Shoot(1f, Iron, 0.5f);
+            BallSimulator balance = ShootAs(CharacterAbility.Default, Iron, 0.5f);
+            plain.AdvanceToRest();
+            balance.AdvanceToRest();
+
+            Assert.AreEqual(plain.Position, balance.Position);
+        }
+
+        [Test]
+        public void 飛距離の倍率が高いほど遠くへ飛ぶ()
+        {
+            float balance = FirstLanding(ShootAs(CharacterAbility.Default, Driver)).Length();
+            float power = FirstLanding(ShootAs(Power, Driver)).Length();
+
+            Assert.Greater(power, balance);
+        }
+
+        [Test]
+        public void パターにはキャラの飛距離が効かない()
+        {
+            BallSimulator balance = ShootAs(CharacterAbility.Default, Putter);
+            BallSimulator power = ShootAs(Power, Putter);
+            balance.AdvanceToRest();
+            power.AdvanceToRest();
+
+            Assert.AreEqual(balance.Position, power.Position);
+        }
+
+        [Test]
+        public void 曲がりにくさが高いほど同じずれでも横に曲がらない()
+        {
+            float balance = FirstLanding(ShootAs(CharacterAbility.Default, Iron, 0.5f)).X;
+            float technique = FirstLanding(ShootAs(Technique, Iron, 0.5f)).X;
+            float power = FirstLanding(ShootAs(Power, Iron, 0.5f)).X;
+
+            Assert.Less(technique, balance);
+            Assert.Greater(power, balance);
+        }
+
+        [Test]
+        public void 着地予測と試し打ちにもキャラの能力が効く()
+        {
+            var balance = new BallSimulator(new BallPhysicsConfig());
+            balance.Place(Vector2.Zero);
+            var power = new BallSimulator(new BallPhysicsConfig());
+            power.SetCharacter(Power);
+            power.Place(Vector2.Zero);
+
+            Assert.Greater(power.PredictFullPower(Driver, Forward).Length(),
+                balance.PredictFullPower(Driver, Forward).Length());
+
+            var shot = new ShotRequest(Forward, Driver, 1f, 0f);
+            Assert.Greater(power.TrySimulate(shot, false, false).Position.Length(),
+                balance.TrySimulate(shot, false, false).Position.Length());
+        }
     }
 }

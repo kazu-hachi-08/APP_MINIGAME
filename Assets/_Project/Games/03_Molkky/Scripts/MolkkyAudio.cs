@@ -34,6 +34,9 @@ namespace MiniGame.Molkky
         [Range(0f, 1f)] [SerializeField] private float _resetVolume = 0.4f;
         [Range(0f, 1f)] [SerializeField] private float _resultVolume = 0.6f;
 
+        [Tooltip("勝利演出で鳴らす勝利音のピッチ。50点のときより高くして別の音に聞こえるようにする")]
+        [SerializeField] private float _victoryPitch = 1.25f;
+
         [Header("Collision")]
         [Tooltip("この相対速度以下の接触は音を鳴らさない（転がって触れ合うだけの音を出さないため）")]
         [SerializeField] private float _minHitSpeed = 0.6f;
@@ -103,6 +106,12 @@ namespace MiniGame.Molkky
                     Play(_scoreClip, _resultVolume, 1f);
                     break;
             }
+        }
+
+        /// <summary>勝利演出でキャラが登場したときの音。50点のときの音と同じ曲を高めに鳴らし、盛り上がりを続ける</summary>
+        public void PlayVictory()
+        {
+            Play(_winClip, _resultVolume, _victoryPitch);
         }
 
         private void HandleStickHit(float relativeSpeed)

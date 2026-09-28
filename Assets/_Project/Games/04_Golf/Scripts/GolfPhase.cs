@@ -7,6 +7,7 @@ namespace MiniGame.Golf
     public enum GolfPhase
     {
         Setup,
+        CharacterSelect,
         HoleStart,
         TurnStart,
         Aiming,

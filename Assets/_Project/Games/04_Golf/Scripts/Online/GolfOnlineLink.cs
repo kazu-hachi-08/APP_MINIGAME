@@ -11,6 +11,7 @@ namespace MiniGame.Golf
     ///
     /// BallSimulator は端末ごとの小数の誤差でずれることがあるため、入力は他の端末で演出を再生するためだけに使い、
     /// 位置と打数は打った人の端末の結果で上書きする。打つ順番はボール位置から全端末で同じ計算になるので送らない。
+    /// キャラ選択（§21.5）では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
     /// モルックと同じく NetworkObject を使わず名前付きメッセージだけで済ませ、クライアント同士はホストが中継する。
     /// </summary>
     public class GolfOnlineLink : MonoBehaviour
@@ -18,6 +19,7 @@ namespace MiniGame.Golf
         private const string SetupMessage = "golf.setup";
         private const string ShotMessage = "golf.shot";
         private const string ResultMessage = "golf.result";
+        private const string CharacterMessage = "golf.character";
 
         /// <summary>1メッセージの最大バイト数。一番大きい開始メッセージ（3ホール×16バイト）が十分収まる大きさ</summary>
         private const int MessageBufferSize = 256;
@@ -28,6 +30,9 @@ namespace MiniGame.Golf
         public event Action<GolfMatchSetup> OnSetupReceived;
         public event Action<GolfShotMessage> OnShotReceived;
         public event Action<GolfShotResultMessage> OnResultReceived;
+
+        /// <summary>引数は席番号とキャラ番号</summary>
+        public event Action<int, int> OnCharacterReceived;
 
         private readonly List<ulong> _recipients = new List<ulong>();
         private bool _active;
@@ -44,6 +49,7 @@ namespace MiniGame.Golf
             messaging.RegisterNamedMessageHandler(SetupMessage, ReceiveSetup);
             messaging.RegisterNamedMessageHandler(ShotMessage, ReceiveShot);
             messaging.RegisterNamedMessageHandler(ResultMessage, ReceiveResult);
+            messaging.RegisterNamedMessageHandler(CharacterMessage, ReceiveCharacter);
             _active = true;
         }
 
@@ -57,6 +63,7 @@ namespace MiniGame.Golf
             messaging.UnregisterNamedMessageHandler(SetupMessage);
             messaging.UnregisterNamedMessageHandler(ShotMessage);
             messaging.UnregisterNamedMessageHandler(ResultMessage);
+            messaging.UnregisterNamedMessageHandler(CharacterMessage);
         }
 
         // ---- 送信 ----
@@ -88,6 +95,11 @@ namespace MiniGame.Golf
             SendResult(result, Network.LocalClientId);
         }
 
+        public void SendCharacter(int seat, int characterIndex)
+        {
+            SendCharacter(seat, characterIndex, Network.LocalClientId);
+        }
+
         /// <param name="originId">打った人の端末。ホストが中継するときに送り返さないため</param>
         private void SendShot(GolfShotMessage shot, ulong originId)
         {
@@ -107,6 +119,14 @@ namespace MiniGame.Golf
             writer.WriteValueSafe(result.Strokes);
             writer.WriteValueSafe(result.IsInCup);
             Send(ResultMessage, writer, originId);
+        }
+
+        private void SendCharacter(int seat, int characterIndex, ulong originId)
+        {
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            writer.WriteValueSafe(seat);
+            writer.WriteValueSafe(characterIndex);
+            Send(CharacterMessage, writer, originId);
         }
 
         /// <summary>クライアントはホストへ、ホストは送り主以外の全クライアントへ送る</summary>
@@ -179,6 +199,15 @@ namespace MiniGame.Golf
 
             if (Network.IsServer) SendResult(result, senderId);
             OnResultReceived?.Invoke(result);
+        }
+
+        private void ReceiveCharacter(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out int seat);
+            reader.ReadValueSafe(out int characterIndex);
+
+            if (Network.IsServer) SendCharacter(seat, characterIndex, senderId);
+            OnCharacterReceived?.Invoke(seat, characterIndex);
         }
     }
 }

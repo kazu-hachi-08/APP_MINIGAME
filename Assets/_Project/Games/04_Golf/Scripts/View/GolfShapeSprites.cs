@@ -79,14 +79,12 @@ namespace MiniGame.Golf
         private static readonly Color PantsShadeColor = new Color(0.22f, 0.22f, 0.25f);
         private static readonly Color ShoeColor = new Color(0.95f, 0.95f, 0.95f);
 
-        // 頭（後ろ姿）：上を帽子、下を髪にする。帽子の後ろのアジャスターの穴から髪が見える
+        // 頭（後ろ姿）：髪の丸の上に帽子を重ねる。帽子の後ろのアジャスターの穴から髪が見える。
+        // どちらも白で描き、キャラの帽子・髪の色を掛ける（§21.3）
         private const float CapBottom = -0.1f;
         private const float CapOpeningTop = 0.14f;
         private const float CapOpeningHalfWidth = 0.18f;
-        private static readonly Color CapColor = new Color(0.96f, 0.96f, 0.96f);
-        private static readonly Color CapShadeColor = new Color(0.75f, 0.76f, 0.8f);
-        private static readonly Color HairColor = new Color(0.22f, 0.15f, 0.1f);
-        private static readonly Color HairShadeColor = new Color(0.12f, 0.08f, 0.05f);
+        private static readonly Color HeadShadeColor = new Color(0.6f, 0.6f, 0.62f);
 
         private static Sprite _circle;
         private static Sprite _square;
@@ -98,6 +96,7 @@ namespace MiniGame.Golf
         private static Sprite _golferTorso;
         private static Sprite _golferLegs;
         private static Sprite _golferHead;
+        private static Sprite _golferCap;
 
         public static Sprite Square
         {
@@ -146,8 +145,11 @@ namespace MiniGame.Golf
         public static Sprite GolferLegs => Cached(ref _golferLegs, () => CreateSprite(GolferPartWidth, LegsHeight,
             GolferLegsPixel, new Vector2(0.5f, 0f), GolferPixelsPerUnit));
 
-        /// <summary>後ろから見た頭（帽子と髪）。直径1ユニットで中心がピボット</summary>
-        public static Sprite GolferHead => Cached(ref _golferHead, () => CreateRound(GolferHeadPixel));
+        /// <summary>後ろから見た頭（髪）。直径1ユニットで中心がピボット。白で描いて髪の色を掛ける</summary>
+        public static Sprite GolferHead => Cached(ref _golferHead, () => CreateRound(HeadShadePixel));
+
+        /// <summary>頭に重ねる帽子。頭と同じ大きさ・ピボットなので、頭の子に置けばそのまま重なる</summary>
+        public static Sprite GolferCap => Cached(ref _golferCap, () => CreateRound(GolferCapPixel));
 
         /// <summary>
         /// ??= だと破棄済み（再生終了で消えたテクスチャ）を null と見なさないため、Unity の == null で判定する
@@ -226,11 +228,16 @@ namespace MiniGame.Golf
             return fromLeg <= LegHalfWidth ? pants : Color.clear;
         }
 
-        private static Color GolferHeadPixel(Vector2 p)
+        private static Color HeadShadePixel(Vector2 p)
         {
             float light = Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / 1.6f);
+            return Color.Lerp(Color.white, HeadShadeColor, light);
+        }
+
+        private static Color GolferCapPixel(Vector2 p)
+        {
             bool isCap = p.y > CapBottom && !(p.y < CapOpeningTop && Mathf.Abs(p.x) < CapOpeningHalfWidth);
-            return isCap ? Color.Lerp(CapColor, CapShadeColor, light) : Color.Lerp(HairColor, HairShadeColor, light);
+            return isCap ? HeadShadePixel(p) : Color.clear;
         }
 
         private static Color FlagPixel(int x, int y)

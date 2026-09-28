@@ -6,6 +6,7 @@ namespace MiniGame.Molkky
     public enum MolkkyPhase
     {
         PlayerSetup,
+        CharacterSelect,
         TurnStart,
         Aiming,
         Throwing,

@@ -63,6 +63,7 @@ namespace MiniGame.Molkky.Editor
                 EnsureNpcDifficulty(NpcNormalPath, 4f, 0.15f, true, false),
                 EnsureNpcDifficulty(NpcStrongPath, 1.5f, 0.06f, true, true),
             };
+            MolkkyCharacterCatalog characterCatalog = MolkkyCharacterGenerator.EnsureGenerated();
 
             // 1. Camera
             var cameraObj = new GameObject("Main Camera");
@@ -135,6 +136,12 @@ namespace MiniGame.Molkky.Editor
                 ("_stickSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.StickName)),
                 ("_shadowSprite", MolkkyArtGenerator.Load(MolkkyArtGenerator.ShadowName)));
 
+            // 手番のキャラの背中。棒の左右位置に追従する（仕様書 §20.3）
+            var throwerViewObj = new GameObject("ThrowerView");
+            throwerViewObj.transform.SetParent(viewRoot.transform);
+            var throwerView = throwerViewObj.AddComponent<ThrowerView>();
+            SetRefs(throwerView, ("_stick", stick), ("_projector", projector));
+
             // 7. 入力
             var input = new GameObject("ThrowInput").AddComponent<ThrowInput>();
             SetRefs(input, ("_settings", settings), ("_projector", projector), ("_camera", camera));
@@ -161,6 +168,9 @@ namespace MiniGame.Molkky.Editor
 
             TurnBannerView turnBanner = CreateTurnBanner(canvasObj.transform);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvasObj.transform);
+            CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvasObj.transform, characterCatalog);
+            // 結果ダイアログ（BuildDialogs）より先に作り、演出の後に出る結果画面が手前に来るようにする
+            VictoryShowView victoryShow = CreateVictoryShow(canvasObj.transform);
 
             var pauseButtonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_Pause", "II", 110, 110,
                 new Color(0.15f, 0.17f, 0.22f, 0.8f));
@@ -203,7 +213,9 @@ namespace MiniGame.Molkky.Editor
                 ("_settleWatcher", settleWatcher), ("_scoreBoard", scoreBoard), ("_scorePopup", scorePopup),
                 ("_audio", molkkyAudio), ("_turnBanner", turnBanner), ("_setupPanel", setupPanel),
                 ("_styleButton", styleButton), ("_arcButton", arcButton), ("_modeSelectPanel", modeSelectPanel),
-                ("_onlineSession", onlineSession), ("_onlineLink", onlineLink));
+                ("_onlineSession", onlineSession), ("_onlineLink", onlineLink),
+                ("_characterCatalog", characterCatalog), ("_characterSelectPanel", characterSelectPanel),
+                ("_throwerView", throwerView), ("_victoryShow", victoryShow));
 
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -299,6 +311,8 @@ namespace MiniGame.Molkky.Editor
 
                 names[i] = CreateText(cellObj.transform, "Name", 40,
                     new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(cellWidth, 50f), Color.white);
+                // 「▶P1 バランス型」のように席番号＋キャラ名が入るので、枠に収まるよう縮める
+                FitToOneLine(names[i], 22);
                 scores[i] = CreateText(cellObj.transform, "Score", 80,
                     new Vector2(0.5f, 0.5f), new Vector2(0f, -4f), new Vector2(cellWidth, 90f), Color.white);
                 scores[i].text = "0";
@@ -387,6 +401,8 @@ namespace MiniGame.Molkky.Editor
             Text title = CreateText(bannerObj.transform, "TitleText", 120,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, 80f), new Vector2(1000f, 200f), Color.white);
             title.gameObject.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            // 「P1 バランス型 の番」が2行に折り返して下のヒントと重ならないよう、1行に収まる大きさまで縮める
+            FitToOneLine(title, 60);
             Text hint = CreateText(bannerObj.transform, "HintText", 52,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(1000f, 90f), Color.white);
             hint.text = "タップで開始";
@@ -464,6 +480,159 @@ namespace MiniGame.Molkky.Editor
 
             panelObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>
+        /// 人数設定の後に1人ずつキャラを選ぶパネル（仕様書 §20.4）。
+        /// 立ち絵を大きく中央に置き、左右の ◀ ▶ で切り替える。能力は3行のマス表示で見せる
+        /// </summary>
+        private static CharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, MolkkyCharacterCatalog catalog)
+        {
+            const float rowWidth = 820f;
+            const float portraitWidth = 360f;
+            const float portraitHeight = 540f;
+            const float arrowSize = 150f;
+            const int buttonFontSize = 52;
+
+            var panelObj = UIDialogBuilder.CreateUIObject("CharacterSelectPanel", canvas);
+            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
+            panelObj.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.8f);
+
+            var boxObj = UIDialogBuilder.CreateUIObject("Panel", panelObj.transform);
+            var boxRect = boxObj.GetComponent<RectTransform>();
+            boxRect.anchorMin = boxRect.anchorMax = boxRect.pivot = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(920f, 1500f);
+            boxObj.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.18f);
+            var layout = boxObj.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(40, 40, 40, 40);
+            layout.spacing = 24f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            Text title = CreateText(boxObj.transform, "TitleText", 56,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(rowWidth, 90f), Color.white);
+            FitToOneLine(title, 32);
+
+            Transform portraitRow = CreateRow(boxObj.transform, "PortraitRow", rowWidth, portraitHeight);
+            Button prevButton = CreateSetupButton(portraitRow, "Btn_Prev", "◀", arrowSize, arrowSize, buttonFontSize);
+            var portraitObj = UIDialogBuilder.CreateUIObject("Portrait", portraitRow);
+            portraitObj.GetComponent<RectTransform>().sizeDelta = new Vector2(portraitWidth, portraitHeight);
+            var portrait = portraitObj.AddComponent<Image>();
+            portrait.preserveAspect = true;
+            portrait.raycastTarget = false;
+            Button nextButton = CreateSetupButton(portraitRow, "Btn_Next", "▶", arrowSize, arrowSize, buttonFontSize);
+
+            Text nameText = CreateText(boxObj.transform, "NameText", 64,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(rowWidth, 90f), Color.white);
+            nameText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(3f, -3f);
+
+            StatBarView powerBar = CreateStatRow(boxObj.transform, "Power", "パワー", rowWidth);
+            StatBarView controlBar = CreateStatRow(boxObj.transform, "Control", "コントロール", rowWidth);
+            StatBarView stickLengthBar = CreateStatRow(boxObj.transform, "StickLength", "棒の長さ", rowWidth);
+
+            Transform buttonRow = CreateRow(boxObj.transform, "ButtonRow", rowWidth, 140f);
+            Button backButton = CreateSetupButton(buttonRow, "Btn_Back", "戻る", 280f, 140f, buttonFontSize);
+            var confirmObj = UIDialogBuilder.CreateButton(buttonRow, "Btn_Confirm", "決定", 440f, 140f,
+                new Color(0.2f, 0.7f, 0.35f));
+            confirmObj.GetComponentInChildren<Text>().fontSize = 56;
+
+            var panel = panelObj.AddComponent<CharacterSelectPanel>();
+            SetRefs(panel, ("_catalog", catalog), ("_titleText", title), ("_portrait", portrait), ("_nameText", nameText),
+                ("_powerBar", powerBar), ("_controlBar", controlBar), ("_stickLengthBar", stickLengthBar),
+                ("_prevButton", prevButton), ("_nextButton", nextButton),
+                ("_confirmButton", confirmObj.GetComponent<Button>()), ("_backButton", backButton));
+
+            panelObj.SetActive(false);
+            return panel;
+        }
+
+        /// <summary>
+        /// 勝利演出（仕様書 §20.5）。画面全体をボタンにしてどこをタップしても飛ばせるようにする。
+        /// 上から 吹き出し → 立ち絵 → 名前 の順に縦に並べる
+        /// </summary>
+        private static VictoryShowView CreateVictoryShow(Transform canvas)
+        {
+            var showObj = UIDialogBuilder.CreateUIObject("VictoryShow", canvas);
+            UIDialogBuilder.SetStretchAll(showObj.GetComponent<RectTransform>());
+            var background = showObj.AddComponent<Image>();
+            var tapArea = showObj.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            var bubbleObj = UIDialogBuilder.CreateUIObject("Bubble", showObj.transform);
+            var bubbleRect = bubbleObj.GetComponent<RectTransform>();
+            bubbleRect.anchorMin = bubbleRect.anchorMax = bubbleRect.pivot = new Vector2(0.5f, 0.5f);
+            bubbleRect.anchoredPosition = new Vector2(0f, 560f);
+            bubbleRect.sizeDelta = new Vector2(860f, 200f);
+            var bubbleImage = bubbleObj.AddComponent<Image>();
+            bubbleImage.color = Color.white;
+            bubbleImage.raycastTarget = false;
+            Text line = CreateText(bubbleObj.transform, "LineText", 72,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 180f), new Color(0.1f, 0.1f, 0.12f));
+            FitToOneLine(line, 40);
+
+            var portraitObj = UIDialogBuilder.CreateUIObject("Portrait", showObj.transform);
+            var portraitRect = portraitObj.GetComponent<RectTransform>();
+            portraitRect.anchorMin = portraitRect.anchorMax = portraitRect.pivot = new Vector2(0.5f, 0.5f);
+            portraitRect.anchoredPosition = new Vector2(0f, -40f);
+            portraitRect.sizeDelta = new Vector2(500f, 750f);
+            var portrait = portraitObj.AddComponent<Image>();
+            portrait.preserveAspect = true;
+            portrait.raycastTarget = false;
+
+            Text nameText = CreateText(showObj.transform, "NameText", 80,
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -520f), new Vector2(1000f, 120f), Color.white);
+            nameText.gameObject.AddComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            FitToOneLine(nameText, 48);
+
+            var show = showObj.AddComponent<VictoryShowView>();
+            SetRefs(show, ("_background", background), ("_tapArea", tapArea), ("_portraitRect", portraitRect),
+                ("_portrait", portrait), ("_nameText", nameText), ("_bubbleRect", bubbleRect), ("_lineText", line));
+
+            showObj.SetActive(false);
+            return show;
+        }
+
+        /// <summary>能力1行（ラベル＋5マス）</summary>
+        private static StatBarView CreateStatRow(Transform parent, string name, string label, float width)
+        {
+            const float rowHeight = 70f;
+            const float cellSize = 60f;
+            const int cellCount = 5;
+
+            Transform row = CreateRow(parent, $"Stat_{name}", width, rowHeight);
+            Text labelText = CreateText(row, "Label", 44, new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(300f, rowHeight), Color.white);
+            labelText.alignment = TextAnchor.MiddleLeft;
+            labelText.text = label;
+
+            var cells = new Image[cellCount];
+            for (int i = 0; i < cellCount; i++)
+            {
+                var cellObj = UIDialogBuilder.CreateUIObject($"Cell_{i + 1}", row);
+                cellObj.GetComponent<RectTransform>().sizeDelta = new Vector2(cellSize, cellSize);
+                cells[i] = cellObj.AddComponent<Image>();
+                cells[i].raycastTarget = false;
+            }
+
+            var bar = row.gameObject.AddComponent<StatBarView>();
+            SetArray(bar, "_cells", cells);
+            return bar;
+        }
+
+        /// <summary>
+        /// 1行に収まる大きさまで文字を縮める。CreateText は行が消えないよう縦をはみ出し可にしているが、
+        /// そのままだと縮小（Best Fit）が効かないので、ここでは枠内に収める設定に戻す
+        /// </summary>
+        private static void FitToOneLine(Text text, int minSize)
+        {
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minSize;
+            text.resizeTextMaxSize = text.fontSize;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
         }
 
         private static Transform CreateRow(Transform parent, string name, float width, float height)

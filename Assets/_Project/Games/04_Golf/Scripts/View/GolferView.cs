@@ -73,6 +73,12 @@ namespace MiniGame.Golf
             _rig.SetPlayerColor(color);
         }
 
+        /// <summary>手番のキャラの帽子・髪の色にする。SetPlayerColor と同じく手番が替わるたびに呼ぶ</summary>
+        public void SetCharacter(GolfCharacterData character)
+        {
+            _rig.SetCharacterColors(character.CapColor, character.HairColor);
+        }
+
         /// <summary>オンライン相手の手番はゲージが届かないが、打った瞬間はここに来るので構え → フォロースルーは必ず見せられる</summary>
         private void OnLaunched()
         {

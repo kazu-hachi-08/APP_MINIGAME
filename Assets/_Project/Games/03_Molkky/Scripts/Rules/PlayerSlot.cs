@@ -12,15 +12,19 @@ namespace MiniGame.Molkky
         public int MissCount { get; set; }
         public bool IsDisqualified { get; set; }
 
+        /// <summary>MolkkyCharacterCatalog の番号。見た目・能力はカタログから引く（オンラインで番号だけ送れるようにするため）</summary>
+        public int CharacterIndex { get; }
+
         public bool IsNpc => Kind != PlayerKind.Human;
 
         /// <summary>50点ちょうどまでの残り点数</summary>
         public int Remaining => MolkkyRules.TargetScore - Score;
 
-        public PlayerSlot(string name, PlayerKind kind = PlayerKind.Human)
+        public PlayerSlot(string name, PlayerKind kind = PlayerKind.Human, int characterIndex = 0)
         {
             Name = name;
             Kind = kind;
+            CharacterIndex = characterIndex;
         }
     }
 }
