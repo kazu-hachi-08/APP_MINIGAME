@@ -53,7 +53,8 @@ namespace MiniGame.Molkky
         // 相手端末から届いた投擲・結果。自分の画面がまだ前の手番の演出中でも取りこぼさないよう、
         // 届いた時点では溜めておき、相手の手番の処理で古い順に取り出す。
         // 3人以上だと自分の演出中に次の人の投擲まで届くことがあるため、1件ではなくキューにしている
-        private readonly Queue<ThrowRequest> _remoteThrows = new Queue<ThrowRequest>();
+        private readonly Queue<(ThrowRequest Request, PinState[] StartStates)> _remoteThrows =
+            new Queue<(ThrowRequest Request, PinState[] StartStates)>();
         private readonly Queue<PinState[]> _remoteResults = new Queue<PinState[]>();
 
         public MolkkyPhase Phase { get; private set; }
@@ -218,12 +219,14 @@ namespace MiniGame.Molkky
         /// <summary>
         /// 相手の手番：届いた ThrowRequest で自分の端末でも物理を動かして見せ、
         /// 相手端末の結果が届いたらピンを上書きして採点する（§19.2 / 案1）。
-        /// 倒れ方は一致しないが、最終的なピン配置と得点は一致する（§19.5）
+        /// 投げる前に相手端末のピン配置へ揃えるのは、配置が少しでもずれていると再生で倒れるピンが変わるため
         /// </summary>
         private IEnumerator RemoteThrowRoutine()
         {
             yield return new WaitUntil(() => _remoteThrows.Count > 0);
-            ExecuteThrow(_remoteThrows.Dequeue());
+            (ThrowRequest request, PinState[] startStates) = _remoteThrows.Dequeue();
+            _pinRack.ApplyStates(startStates);
+            ExecuteThrow(request);
 
             yield return new WaitUntil(() => _remoteResults.Count > 0);
             _settleWatcher.Cancel();
@@ -233,9 +236,9 @@ namespace MiniGame.Molkky
             yield return ScoringRoutine();
         }
 
-        private void HandleRemoteThrow(ThrowRequest request)
+        private void HandleRemoteThrow(ThrowRequest request, PinState[] startStates)
         {
-            _remoteThrows.Enqueue(request);
+            _remoteThrows.Enqueue((request, startStates));
         }
 
         private void HandleRemoteResult(PinState[] states)
@@ -259,8 +262,19 @@ namespace MiniGame.Molkky
 
             _input.IsAccepting = false;
             SetThrowButtonsVisible(false);
-            if (_isOnline) _onlineLink.SendThrow(request);
+            if (_isOnline) SendThrowWithStartStates(request);
             ExecuteThrow(request);
+        }
+
+        /// <summary>
+        /// 送ったのと同じ状態を自分にも適用し直す。速度などピン状態に含まれない差を消して、
+        /// 相手端末と全く同じ条件から物理を始めるため
+        /// </summary>
+        private void SendThrowWithStartStates(ThrowRequest request)
+        {
+            PinState[] startStates = _pinRack.CaptureStates();
+            _pinRack.ApplyStates(startStates);
+            _onlineLink.SendThrow(request, startStates);
         }
 
         private void SetThrowButtonsVisible(bool visible)
@@ -284,8 +298,20 @@ namespace MiniGame.Molkky
             // 相手の投擲は相手端末の結果で採点するので、自分の端末の物理が止まっても進めない
             if (IsRemoteTurn) return;
 
-            if (_isOnline) _onlineLink.SendResult(_pinRack.CaptureStates());
+            if (_isOnline) SendAndFreezeResult();
             StartCoroutine(ScoringRoutine());
+        }
+
+        /// <summary>
+        /// 送った瞬間の状態で自分の画面も止める。止めないと採点表示中もピンや棒が滑り続け、
+        /// 相手端末とピン配置がずれたまま立て直し → 次の投擲へ持ち越されるため
+        /// </summary>
+        private void SendAndFreezeResult()
+        {
+            PinState[] states = _pinRack.CaptureStates();
+            _onlineLink.SendResult(states);
+            _stick.Freeze();
+            _pinRack.ApplyStates(states);
         }
 
         private IEnumerator ScoringRoutine()
