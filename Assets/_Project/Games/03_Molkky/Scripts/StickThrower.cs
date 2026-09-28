@@ -26,6 +26,10 @@ namespace MiniGame.Molkky
         // 山なりで空中にいる間。当たり判定を切っているので、着地で戻す必要がある
         private bool _isLobbing;
 
+        // 着地までの残り物理ステップ数。Time.time で測ると投げた瞬間のフレームの位置で着地ステップが1つずれ、
+        // オンラインの相手端末の再生で着地点が変わってしまうため、ステップ数で数える
+        private int _lobStepsLeft;
+
         public bool IsThrown { get; private set; }
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
         public Vector2 GroundPosition => _body.position;
@@ -112,11 +116,14 @@ namespace MiniGame.Molkky
             {
                 _airTime = _settings.LobAirTime;
                 _peakHeight = _settings.LobPeakHeight;
+                // 空中は減速しないため、低めと同じ初速だと約1.7倍飛んでしまう。初速を落として飛距離を揃える
+                _body.linearVelocity *= _settings.LobSpeedRatio;
                 // 空中では当たらないようにして、手前のピンを飛び越えさせる（§8.2）
                 _capsule.enabled = false;
                 // 空中は地面の摩擦を受けないので減速させない。着地時の減速と二重に削られて、ピンを倒せなくなるのを防ぐ
                 _body.linearDamping = 0f;
                 _isLobbing = true;
+                _lobStepsLeft = Mathf.CeilToInt(_airTime / Time.fixedDeltaTime);
             }
             else
             {
@@ -127,7 +134,10 @@ namespace MiniGame.Molkky
 
         private void FixedUpdate()
         {
-            if (_isLobbing && Time.time - _throwTime >= _airTime) Land();
+            if (!_isLobbing) return;
+
+            _lobStepsLeft--;
+            if (_lobStepsLeft <= 0) Land();
         }
 
         /// <summary>山なりの着地。上から落ちた棒は前へ滑りにくいので、速度を大きく削って落ちた場所の近くで止める</summary>
