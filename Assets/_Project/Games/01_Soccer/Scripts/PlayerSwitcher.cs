@@ -5,13 +5,16 @@ using UnityEngine;
 namespace MiniGame.Soccer
 {
     /// <summary>
-    /// 操作対象選手の切り替え（Phase 6）
+    /// 操作対象選手の切り替え
     /// ボールに最も近い自チーム選手へ自動で操作を移し、それ以外の選手はAIに任せる。
     /// Action3（L / C / 仮想ボタン3）で手動切り替えも行える。
     /// チームごとに1つ置く。AWAY側はオンライン対戦のホスト端末でだけ有効にし、相手の入力で動かす
     /// </summary>
     public class PlayerSwitcher : MonoBehaviour
     {
+        // 「選手が選ばれていない」「除外する選手なし」を表すインデックス
+        private const int NoIndex = -1;
+
         [Header("References")]
         [SerializeField] private List<GameObject> _candidates = new List<GameObject>();
         [SerializeField] private Ball _ball;
@@ -25,7 +28,7 @@ namespace MiniGame.Soccer
         [SerializeField] private float _switchCooldown = 0.5f; // 切り替え直後に再度切り替わるのを防ぐ待ち時間
         [SerializeField] private float _keepControlRadius = 1.2f; // 操作中の選手がボールに近い間は切り替えない（ドリブル中の奪取防止）
 
-        private int _currentIndex = -1;
+        private int _currentIndex = NoIndex;
         private float _evaluateTimer;
         private float _cooldownTimer;
         private IInputProvider _input;
@@ -70,6 +73,14 @@ namespace MiniGame.Soccer
                 return;
             }
 
+            TickAutoSwitch();
+        }
+
+        /// <summary>
+        /// 自動切り替えは _evaluateInterval ごとにだけ判定する（毎フレーム操作対象が変わり得る状態を避ける）
+        /// </summary>
+        private void TickAutoSwitch()
+        {
             _evaluateTimer -= Time.deltaTime;
             if (_evaluateTimer <= 0f)
             {
@@ -120,7 +131,7 @@ namespace MiniGame.Soccer
             Transform current = CurrentPlayer;
             if (current != null && Vector2.Distance(current.position, _ball.Position) <= _keepControlRadius) return;
 
-            int nearest = FindNearestIndexToBall(excludeIndex: -1);
+            int nearest = FindNearestIndexToBall(excludeIndex: NoIndex);
             if (nearest >= 0 && nearest != _currentIndex)
             {
                 SelectPlayer(nearest);
@@ -141,9 +152,9 @@ namespace MiniGame.Soccer
 
         private int FindNearestIndexToBall(int excludeIndex)
         {
-            if (_ball == null) return -1;
+            if (_ball == null) return NoIndex;
 
-            int nearestIndex = -1;
+            int nearestIndex = NoIndex;
             float nearestDistance = float.MaxValue;
 
             for (int i = 0; i < _candidates.Count; i++)

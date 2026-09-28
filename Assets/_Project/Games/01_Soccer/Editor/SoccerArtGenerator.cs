@@ -22,6 +22,9 @@ namespace MiniGame.Soccer.Editor
         public const int CourtHeight = 18 * PixelsPerUnit;
         public const int GoalWidth = 14;
         public const int GoalHeight = 4 * PixelsPerUnit + 4; // ゴール枠64px + 上下ポスト
+        private const int BallSize = 8;
+        private const int MarkerSize = 16;
+        private const int CrowdTileSize = 16;
 
         /// <summary>選手スプライトの原点は足元に置く（16pxのうち下から1.5px）</summary>
         private static readonly Vector2 PlayerPivot = new Vector2(0.5f, 1.5f / PlayerSize);
@@ -38,6 +41,15 @@ namespace MiniGame.Soccer.Editor
                 Directory.CreateDirectory(SpriteDirectory);
             }
 
+            GeneratePlayerSprites();
+            GenerateFieldSprites();
+
+            AssetDatabase.Refresh();
+            Debug.Log($"[SoccerArtGenerator] ドット絵素材を生成しました: {SpriteDirectory}");
+        }
+
+        private static void GeneratePlayerSprites()
+        {
             foreach (string team in TeamKeys)
             {
                 foreach (string direction in DirectionKeys)
@@ -50,15 +62,16 @@ namespace MiniGame.Soccer.Editor
                     }
                 }
             }
+        }
 
+        private static void GenerateFieldSprites()
+        {
             SaveSprite("Court", BuildCourt(), CourtWidth, CourtHeight, null, repeat: false);
             SaveSprite("Goal", BuildGoal(), GoalWidth, GoalHeight, null, repeat: false);
-            SaveSprite("Ball", BuildBall(), 8, 8, null, repeat: false);
-            SaveSprite("ControlMarker", BuildMarker(), 16, 16, null, repeat: false);
-            SaveSprite("Crowd", BuildCrowd(), 16, 16, null, repeat: true);
-
-            AssetDatabase.Refresh();
-            Debug.Log($"[SoccerArtGenerator] ドット絵素材を生成しました: {SpriteDirectory}");
+            SaveSprite("Ball", BuildBall(), BallSize, BallSize, null, repeat: false);
+            SaveSprite("ControlMarker", BuildMarker(), MarkerSize, MarkerSize, null, repeat: false);
+            // 観客席はコート外に敷き詰めるので繰り返し前提にする
+            SaveSprite("Crowd", BuildCrowd(), CrowdTileSize, CrowdTileSize, null, repeat: true);
         }
 
         /// <summary>
@@ -268,112 +281,179 @@ namespace MiniGame.Soccer.Editor
         private static readonly Color32 LineColor = new Color32(238, 244, 238, 255);
         private static readonly Color32 OutsideColor = new Color32(34, 74, 40, 255);
 
+        // コートのライン（px）。各エリアはコート拡大に合わせて実際のピッチと同じ比率で広げている
+        private const int CourtLineThickness = 2;
+        private const int CourtMargin = 3; // 外周ラインの外側の余白
+        private const int CourtSpotSize = 2;
+        private const float CenterCircleRadius = 50f;
+        private const float CornerArcRadius = 10f;
+        private const int PenaltyAreaWidth = 80;
+        private const int PenaltyAreaHeight = 180;
+        private const int GoalAreaWidth = 32;
+        private const int GoalAreaHeight = 92;
+        private const int PenaltySpotDistance = 54; // ゴールラインからペナルティスポットまで
+
+        private static readonly Color32 NetFillColor = new Color32(210, 220, 230, 60);
+        private static readonly Color32 NetLineColor = new Color32(226, 232, 238, 90);
+        private static readonly Color32 GoalPostColor = new Color32(250, 250, 252, 255);
+        private const int GoalPostThickness = 2;
+        private const int NetSpacing = 3;
+
+        private static readonly Color32 BallColor = new Color32(250, 250, 250, 255);
+        private static readonly Color32 BallOutlineColor = new Color32(28, 26, 34, 255);
+        private static readonly Color32 BallPatchColor = new Color32(40, 40, 48, 255);
+        private const float BallFillRadius = 3.6f;
+        private const float BallOutlineRadius = 4.0f;
+        private static readonly Vector2Int[] BallPatchPixels =
+        {
+            new Vector2Int(3, 2),
+            new Vector2Int(4, 2),
+            new Vector2Int(2, 4),
+            new Vector2Int(5, 5),
+            new Vector2Int(3, 5)
+        };
+
+        // 足元に敷くので横長の楕円にする
+        private static readonly Color32 MarkerColor = new Color32(255, 226, 70, 220);
+        private const float MarkerRadiusX = 7.5f;
+        private const float MarkerRadiusY = 4.5f;
+        private const float MarkerInnerRatio = 0.72f; // リング内径（外径に対する比）
+
+        private static readonly Color32 CrowdBackColor = new Color32(58, 62, 74, 255);
+        private static readonly Color32 CrowdEdgeColor = new Color32(40, 44, 54, 255);
+        private static readonly Color32[] CrowdColors =
+        {
+            new Color32(206, 76, 66, 255),
+            new Color32(66, 110, 206, 255),
+            new Color32(226, 206, 120, 255),
+            new Color32(150, 150, 158, 255),
+            new Color32(96, 176, 110, 255)
+        };
+        private const int CrowdSeatSpacing = 3;
+        private const int CrowdHeadSize = 2;
+
         private static Color32[] BuildCourt()
         {
             var c = NewCanvas(CourtWidth, CourtHeight);
+            DrawGrassStripes(c);
+            DrawCenterMarkings(c);
+            DrawPenaltyArea(c, isLeft: true);
+            DrawPenaltyArea(c, isLeft: false);
+            DrawCornerArcs(c);
+            FillOutsideMargin(c);
+            return c;
+        }
 
-            // 芝の縞（1ワールド単位ごとに明暗を切り替える）
+        /// <summary>芝の縞（1ワールド単位ごとに明暗を切り替える）</summary>
+        private static void DrawGrassStripes(Color32[] c)
+        {
             for (int x = 0; x < CourtWidth; x++)
             {
                 FillRect(c, CourtWidth, CourtHeight, x, 0, 1, CourtHeight,
                     (x / PixelsPerUnit) % 2 == 0 ? GrassLight : GrassDark);
             }
+        }
 
-            const int thickness = 2; // ライン太さ
-            const int margin = 3;    // 外周ラインの余白
-            OutlineRect(c, CourtWidth, CourtHeight, margin, margin,
-                CourtWidth - margin * 2, CourtHeight - margin * 2, thickness, LineColor);
-            FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, margin, thickness, CourtHeight - margin * 2, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, 50f, thickness, LineColor);
-            FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, CourtHeight / 2 - 1, 2, 2, LineColor);
+        /// <summary>外周ライン・ハーフウェーライン・センターサークル・センタースポット</summary>
+        private static void DrawCenterMarkings(Color32[] c)
+        {
+            OutlineRect(c, CourtWidth, CourtHeight, CourtMargin, CourtMargin,
+                CourtWidth - CourtMargin * 2, CourtHeight - CourtMargin * 2, CourtLineThickness, LineColor);
+            // 2px幅のライン・スポットを中央に揃えるため1pxずらす
+            FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, CourtMargin, CourtLineThickness, CourtHeight - CourtMargin * 2, LineColor);
+            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth / 2, CourtHeight / 2, CenterCircleRadius, CourtLineThickness, LineColor);
+            FillRect(c, CourtWidth, CourtHeight, CourtWidth / 2 - 1, CourtHeight / 2 - 1, CourtSpotSize, CourtSpotSize, LineColor);
+        }
 
-            // コート拡大に合わせて実際のピッチと同じ比率で各エリアも広げる
-            const int penaltyWidth = 80;
-            const int penaltyHeight = 180;
-            const int goalAreaWidth = 32;
-            const int goalAreaHeight = 92;
-            for (int side = 0; side < 2; side++)
+        /// <summary>片側のペナルティエリア・ゴールエリア・ペナルティスポット</summary>
+        private static void DrawPenaltyArea(Color32[] c, bool isLeft)
+        {
+            int penaltyX = isLeft ? CourtMargin : CourtWidth - CourtMargin - PenaltyAreaWidth;
+            OutlineRect(c, CourtWidth, CourtHeight, penaltyX, (CourtHeight - PenaltyAreaHeight) / 2,
+                PenaltyAreaWidth, PenaltyAreaHeight, CourtLineThickness, LineColor);
+
+            int goalAreaX = isLeft ? CourtMargin : CourtWidth - CourtMargin - GoalAreaWidth;
+            OutlineRect(c, CourtWidth, CourtHeight, goalAreaX, (CourtHeight - GoalAreaHeight) / 2,
+                GoalAreaWidth, GoalAreaHeight, CourtLineThickness, LineColor);
+
+            int spotX = isLeft ? CourtMargin + PenaltySpotDistance : CourtWidth - CourtMargin - PenaltySpotDistance;
+            FillRect(c, CourtWidth, CourtHeight, spotX, CourtHeight / 2 - 1, CourtSpotSize, CourtSpotSize, LineColor);
+        }
+
+        /// <summary>コーナーアーク（外周より外は最後に塗り潰すので円のまま描いてよい）</summary>
+        private static void DrawCornerArcs(Color32[] c)
+        {
+            int[] cornerXs = { CourtMargin, CourtWidth - CourtMargin };
+            int[] cornerYs = { CourtMargin, CourtHeight - CourtMargin };
+            foreach (int y in cornerYs)
             {
-                int penaltyX = side == 0 ? margin : CourtWidth - margin - penaltyWidth;
-                OutlineRect(c, CourtWidth, CourtHeight, penaltyX, (CourtHeight - penaltyHeight) / 2,
-                    penaltyWidth, penaltyHeight, thickness, LineColor);
-
-                int goalAreaX = side == 0 ? margin : CourtWidth - margin - goalAreaWidth;
-                OutlineRect(c, CourtWidth, CourtHeight, goalAreaX, (CourtHeight - goalAreaHeight) / 2,
-                    goalAreaWidth, goalAreaHeight, thickness, LineColor);
-
-                int spotX = side == 0 ? margin + 54 : CourtWidth - margin - 54;
-                FillRect(c, CourtWidth, CourtHeight, spotX, CourtHeight / 2 - 1, 2, 2, LineColor);
+                foreach (int x in cornerXs)
+                {
+                    OutlineCircle(c, CourtWidth, CourtHeight, x, y, CornerArcRadius, CourtLineThickness, LineColor);
+                }
             }
+        }
 
-            // コーナーアーク（外周より外は最後に塗り潰すので円のまま描いてよい）
-            OutlineCircle(c, CourtWidth, CourtHeight, margin, margin, 10f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, margin, 10f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, margin, CourtHeight - margin, 10f, thickness, LineColor);
-            OutlineCircle(c, CourtWidth, CourtHeight, CourtWidth - margin, CourtHeight - margin, 10f, thickness, LineColor);
-
-            FillRect(c, CourtWidth, CourtHeight, 0, 0, margin, CourtHeight, OutsideColor);
-            FillRect(c, CourtWidth, CourtHeight, CourtWidth - margin, 0, margin, CourtHeight, OutsideColor);
-            FillRect(c, CourtWidth, CourtHeight, 0, 0, CourtWidth, margin, OutsideColor);
-            FillRect(c, CourtWidth, CourtHeight, 0, CourtHeight - margin, CourtWidth, margin, OutsideColor);
-            return c;
+        private static void FillOutsideMargin(Color32[] c)
+        {
+            FillRect(c, CourtWidth, CourtHeight, 0, 0, CourtMargin, CourtHeight, OutsideColor);
+            FillRect(c, CourtWidth, CourtHeight, CourtWidth - CourtMargin, 0, CourtMargin, CourtHeight, OutsideColor);
+            FillRect(c, CourtWidth, CourtHeight, 0, 0, CourtWidth, CourtMargin, OutsideColor);
+            FillRect(c, CourtWidth, CourtHeight, 0, CourtHeight - CourtMargin, CourtWidth, CourtMargin, OutsideColor);
         }
 
         /// <summary>左側ゴールの見た目。右側は SpriteRenderer.flipX で反転して使う</summary>
         private static Color32[] BuildGoal()
         {
             var c = NewCanvas(GoalWidth, GoalHeight);
-            var netFill = new Color32(210, 220, 230, 60);
-            var netLine = new Color32(226, 232, 238, 90);
-            var post = new Color32(250, 250, 252, 255);
+            const int post = GoalPostThickness;
 
-            FillRect(c, GoalWidth, GoalHeight, 2, 2, GoalWidth - 2, GoalHeight - 4, netFill);
-            for (int x = 2; x < GoalWidth; x += 3)
+            FillRect(c, GoalWidth, GoalHeight, post, post, GoalWidth - post, GoalHeight - post * 2, NetFillColor);
+            for (int x = post; x < GoalWidth; x += NetSpacing)
             {
-                FillRect(c, GoalWidth, GoalHeight, x, 2, 1, GoalHeight - 4, netLine);
+                FillRect(c, GoalWidth, GoalHeight, x, post, 1, GoalHeight - post * 2, NetLineColor);
             }
-            for (int y = 2; y < GoalHeight - 2; y += 3)
+            for (int y = post; y < GoalHeight - post; y += NetSpacing)
             {
-                FillRect(c, GoalWidth, GoalHeight, 2, y, GoalWidth - 2, 1, netLine);
+                FillRect(c, GoalWidth, GoalHeight, post, y, GoalWidth - post, 1, NetLineColor);
             }
 
-            FillRect(c, GoalWidth, GoalHeight, 0, 0, GoalWidth, 2, post);                // 上ポスト
-            FillRect(c, GoalWidth, GoalHeight, 0, GoalHeight - 2, GoalWidth, 2, post);   // 下ポスト
-            FillRect(c, GoalWidth, GoalHeight, 0, 0, 2, GoalHeight, post);               // 奥のバー
+            FillRect(c, GoalWidth, GoalHeight, 0, 0, GoalWidth, post, GoalPostColor);                 // 上ポスト
+            FillRect(c, GoalWidth, GoalHeight, 0, GoalHeight - post, GoalWidth, post, GoalPostColor); // 下ポスト
+            FillRect(c, GoalWidth, GoalHeight, 0, 0, post, GoalHeight, GoalPostColor);                // 奥のバー
             return c;
         }
 
         private static Color32[] BuildBall()
         {
-            var c = NewCanvas(8, 8);
-            FillCircle(c, 8, 8, 4, 4, 3.6f, new Color32(250, 250, 250, 255));
-            OutlineCircle(c, 8, 8, 4, 4, 4.0f, 1, new Color32(28, 26, 34, 255));
+            var c = NewCanvas(BallSize, BallSize);
+            const int center = BallSize / 2;
+            FillCircle(c, BallSize, BallSize, center, center, BallFillRadius, BallColor);
+            OutlineCircle(c, BallSize, BallSize, center, center, BallOutlineRadius, 1, BallOutlineColor);
 
-            var patch = new Color32(40, 40, 48, 255);
-            SetPixel(c, 8, 8, 3, 2, patch);
-            SetPixel(c, 8, 8, 4, 2, patch);
-            SetPixel(c, 8, 8, 2, 4, patch);
-            SetPixel(c, 8, 8, 5, 5, patch);
-            SetPixel(c, 8, 8, 3, 5, patch);
+            foreach (Vector2Int patch in BallPatchPixels)
+            {
+                SetPixel(c, BallSize, BallSize, patch.x, patch.y, BallPatchColor);
+            }
             return c;
         }
 
         /// <summary>操作中の選手の足元に敷く楕円リング</summary>
         private static Color32[] BuildMarker()
         {
-            var c = NewCanvas(16, 16);
-            var color = new Color32(255, 226, 70, 220);
+            var c = NewCanvas(MarkerSize, MarkerSize);
+            const int center = MarkerSize / 2;
 
-            for (int y = 0; y < 16; y++)
+            for (int y = 0; y < MarkerSize; y++)
             {
-                for (int x = 0; x < 16; x++)
+                for (int x = 0; x < MarkerSize; x++)
                 {
-                    float dx = (x - 8 + 0.5f) / 7.5f;
-                    float dy = (y - 8 + 0.5f) / 4.5f;
+                    float dx = (x - center + 0.5f) / MarkerRadiusX;
+                    float dy = (y - center + 0.5f) / MarkerRadiusY;
                     float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    if (d >= 0.72f && d <= 1.0f)
+                    if (d >= MarkerInnerRatio && d <= 1.0f)
                     {
-                        SetPixel(c, 16, 16, x, y, color);
+                        SetPixel(c, MarkerSize, MarkerSize, x, y, MarkerColor);
                     }
                 }
             }
@@ -383,29 +463,22 @@ namespace MiniGame.Soccer.Editor
         /// <summary>コート外に敷き詰める観客席タイル（繰り返し前提）</summary>
         private static Color32[] BuildCrowd()
         {
-            var c = NewCanvas(16, 16);
-            FillRect(c, 16, 16, 0, 0, 16, 16, new Color32(58, 62, 74, 255));
-
-            Color32[] colors =
-            {
-                new Color32(206, 76, 66, 255),
-                new Color32(66, 110, 206, 255),
-                new Color32(226, 206, 120, 255),
-                new Color32(150, 150, 158, 255),
-                new Color32(96, 176, 110, 255)
-            };
+            var c = NewCanvas(CrowdTileSize, CrowdTileSize);
+            FillRect(c, CrowdTileSize, CrowdTileSize, 0, 0, CrowdTileSize, CrowdTileSize, CrowdBackColor);
 
             int index = 0;
-            for (int y = 1; y < 16; y += 3)
+            for (int y = 1; y < CrowdTileSize; y += CrowdSeatSpacing)
             {
-                for (int x = 1; x < 16; x += 3)
+                for (int x = 1; x < CrowdTileSize; x += CrowdSeatSpacing)
                 {
-                    FillRect(c, 16, 16, x, y, 2, 2, colors[(x * 7 + y * 5 + index) % colors.Length]);
+                    // 色が縞状に並ばないよう、位置と通し番号を混ぜて選ぶ
+                    Color32 color = CrowdColors[(x * 7 + y * 5 + index) % CrowdColors.Length];
+                    FillRect(c, CrowdTileSize, CrowdTileSize, x, y, CrowdHeadSize, CrowdHeadSize, color);
                     index++;
                 }
             }
 
-            FillRect(c, 16, 16, 0, 0, 16, 1, new Color32(40, 44, 54, 255));
+            FillRect(c, CrowdTileSize, CrowdTileSize, 0, 0, CrowdTileSize, 1, CrowdEdgeColor);
             return c;
         }
 

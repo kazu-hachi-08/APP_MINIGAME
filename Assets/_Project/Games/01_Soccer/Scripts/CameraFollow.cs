@@ -14,6 +14,9 @@ namespace MiniGame.Soccer
         [SerializeField] private Vector2 _fieldHalfExtents = new Vector2(16.5f, 9f);
         [SerializeField] private float _margin = 1.5f;
 
+        /// <summary>Camera が付いていない場合に仮で使う画面半分の高さ（クランプ計算が破綻しない程度の目安値）</summary>
+        private const float FallbackHalfHeight = 4f;
+
         private Camera _camera;
 
         private void Awake()
@@ -37,7 +40,7 @@ namespace MiniGame.Soccer
 
         private Vector3 ClampToField(Vector3 position)
         {
-            float halfHeight = _camera != null ? _camera.orthographicSize : 4f;
+            float halfHeight = _camera != null ? _camera.orthographicSize : FallbackHalfHeight;
             float halfWidth = halfHeight * Screen.width / Mathf.Max(Screen.height, 1);
 
             float minX = -_fieldHalfExtents.x - _margin + halfWidth;
@@ -45,6 +48,7 @@ namespace MiniGame.Soccer
             float minY = -_fieldHalfExtents.y - _margin + halfHeight;
             float maxY = _fieldHalfExtents.y + _margin - halfHeight;
 
+            // 画面のほうがフィールドより広い軸は、動かしても端が見えるだけなので中央に固定する
             float clampedX = minX <= maxX ? Mathf.Clamp(position.x, minX, maxX) : 0f;
             float clampedY = minY <= maxY ? Mathf.Clamp(position.y, minY, maxY) : 0f;
 

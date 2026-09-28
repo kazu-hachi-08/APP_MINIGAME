@@ -61,6 +61,15 @@ namespace MiniGame.Soccer
         private const int SnapshotBufferSize = 1024;
         private const int SmallBufferSize = 256;
 
+        /// <summary>位置や移動入力は最新だけ届けばよいので再送せず、古いものが後から届いたら捨てる</summary>
+        private const NetworkDelivery StreamDelivery = NetworkDelivery.UnreliableSequenced;
+
+        /// <summary>メッセージ・SE・ボタンなどは取りこぼすと演出や操作が抜けるので、再送ありで順番どおりに届ける</summary>
+        private const NetworkDelivery EventDelivery = NetworkDelivery.ReliableSequenced;
+
+        /// <summary>操作中の選手が見つからないとき。受信側は範囲外の番号として無視する</summary>
+        private const int NoPlayerIndex = -1;
+
         [Header("Sync Targets（ホスト・ゲストで同じ並び）")]
         [Tooltip("HOME 11人 → AWAY 11人の順。両端末とも同じSceneなので、この並びの番号で選手を対応付ける")]
         [SerializeField] private TeamMember[] _players = Array.Empty<TeamMember>();
@@ -90,7 +99,8 @@ namespace MiniGame.Soccer
         public TeamMember[] Players => _players;
 
         private readonly SoccerSnapshot _received = new SoccerSnapshot();
-        private TackleReaction[] _reactions;
+        private Rigidbody2D[] _playerBodies;
+        private TackleReaction[] _playerReactions;
         private bool _active;
         private bool _isHost;
         private float _sendTimer;
@@ -101,26 +111,16 @@ namespace MiniGame.Soccer
         public void Begin(bool isHost)
         {
             _isHost = isHost;
-            _reactions = new TackleReaction[_players.Length];
-            for (int i = 0; i < _players.Length; i++)
-            {
-                _reactions[i] = _players[i].GetComponent<TackleReaction>();
-            }
+            CachePlayerComponents();
 
             var messaging = Network.CustomMessagingManager;
             if (isHost)
             {
-                messaging.RegisterNamedMessageHandler(MoveMessage, ReceiveMove);
-                messaging.RegisterNamedMessageHandler(ButtonMessage, ReceiveButton);
+                RegisterHostHandlers(messaging);
             }
             else
             {
-                messaging.RegisterNamedMessageHandler(SnapshotMessage, ReceiveSnapshot);
-                messaging.RegisterNamedMessageHandler(TextMessage, ReceiveText);
-                messaging.RegisterNamedMessageHandler(SeMessage, ReceiveSe);
-                messaging.RegisterNamedMessageHandler(KickMessage, ReceiveKick);
-                messaging.RegisterNamedMessageHandler(GoalMessage, ReceiveGoal);
-                messaging.RegisterNamedMessageHandler(EndMessage, ReceiveEnd);
+                RegisterGuestHandlers(messaging);
             }
 
             _active = true;
@@ -132,6 +132,34 @@ namespace MiniGame.Soccer
             _active = false;
         }
 
+        /// <summary>スナップショットは毎秒約30回×22人ぶん読むので、GetComponent を毎回呼ばないよう先に集めておく</summary>
+        private void CachePlayerComponents()
+        {
+            _playerBodies = new Rigidbody2D[_players.Length];
+            _playerReactions = new TackleReaction[_players.Length];
+            for (int i = 0; i < _players.Length; i++)
+            {
+                _playerBodies[i] = _players[i].GetComponent<Rigidbody2D>();
+                _playerReactions[i] = _players[i].GetComponent<TackleReaction>();
+            }
+        }
+
+        private void RegisterHostHandlers(CustomMessagingManager messaging)
+        {
+            messaging.RegisterNamedMessageHandler(MoveMessage, ReceiveMove);
+            messaging.RegisterNamedMessageHandler(ButtonMessage, ReceiveButton);
+        }
+
+        private void RegisterGuestHandlers(CustomMessagingManager messaging)
+        {
+            messaging.RegisterNamedMessageHandler(SnapshotMessage, ReceiveSnapshot);
+            messaging.RegisterNamedMessageHandler(TextMessage, ReceiveText);
+            messaging.RegisterNamedMessageHandler(SeMessage, ReceiveSe);
+            messaging.RegisterNamedMessageHandler(KickMessage, ReceiveKick);
+            messaging.RegisterNamedMessageHandler(GoalMessage, ReceiveGoal);
+            messaging.RegisterNamedMessageHandler(EndMessage, ReceiveEnd);
+        }
+
         private void OnDestroy()
         {
             _active = false;
@@ -139,10 +167,15 @@ namespace MiniGame.Soccer
             var messaging = Network != null ? Network.CustomMessagingManager : null;
             if (messaging == null) return;
 
-            foreach (string name in new[] { SnapshotMessage, TextMessage, SeMessage, KickMessage, GoalMessage, EndMessage, MoveMessage, ButtonMessage })
-            {
-                messaging.UnregisterNamedMessageHandler(name);
-            }
+            // 役割によって登録していないものもあるが、未登録の解除は何もしないので全部まとめて外す
+            messaging.UnregisterNamedMessageHandler(SnapshotMessage);
+            messaging.UnregisterNamedMessageHandler(TextMessage);
+            messaging.UnregisterNamedMessageHandler(SeMessage);
+            messaging.UnregisterNamedMessageHandler(KickMessage);
+            messaging.UnregisterNamedMessageHandler(GoalMessage);
+            messaging.UnregisterNamedMessageHandler(EndMessage);
+            messaging.UnregisterNamedMessageHandler(MoveMessage);
+            messaging.UnregisterNamedMessageHandler(ButtonMessage);
         }
 
         private void Update()
@@ -161,10 +194,8 @@ namespace MiniGame.Soccer
 
         private void TickHost()
         {
-            _sendTimer -= Time.unscaledDeltaTime;
-            if (_sendTimer > 0f) return;
+            if (!ConsumeSendTimer(_snapshotInterval)) return;
 
-            _sendTimer = _snapshotInterval;
             SendSnapshot();
         }
 
@@ -172,18 +203,40 @@ namespace MiniGame.Soccer
         {
             SendButtonsPressedThisFrame();
 
-            _sendTimer -= Time.unscaledDeltaTime;
-            if (_sendTimer > 0f) return;
+            if (!ConsumeSendTimer(_moveSendInterval)) return;
 
-            _sendTimer = _moveSendInterval;
             SendMove();
         }
 
-        // ---- ホスト → ゲスト ----
+        /// <summary>
+        /// 送る間隔が来たら true を返してタイマーを戻す。
+        /// ポーズ等で timeScale が変わっても通信の頻度は保ちたいので unscaled で数える
+        /// </summary>
+        private bool ConsumeSendTimer(float interval)
+        {
+            _sendTimer -= Time.unscaledDeltaTime;
+            if (_sendTimer > 0f) return false;
+
+            _sendTimer = interval;
+            return true;
+        }
+
+        // ---- 送信：ホスト → ゲスト ----
+        // スナップショットの並び（受信側 ReceiveSnapshot と必ずそろえる）:
+        //   double 送信時刻 / float 残り時間 / byte HOME得点 / byte AWAY得点 /
+        //   sbyte HOME操作選手 / sbyte AWAY操作選手 / Vector2 ボール位置 / Vector2 ボール速度 /
+        //   byte 選手数 / 選手ごとに（Vector2 位置 / Vector2 速度 / bool 転倒中）
 
         private void SendSnapshot()
         {
             using var writer = new FastBufferWriter(SnapshotBufferSize, Allocator.Temp);
+            WriteMatchState(writer);
+            WritePlayers(writer);
+            Send(SnapshotMessage, writer, StreamDelivery);
+        }
+
+        private void WriteMatchState(FastBufferWriter writer)
+        {
             writer.WriteValueSafe(Network.ServerTime.Time);
             writer.WriteValueSafe(_gameManager.RemainingSeconds);
             writer.WriteValueSafe((byte)_gameManager.HomeScore);
@@ -192,18 +245,18 @@ namespace MiniGame.Soccer
             writer.WriteValueSafe((sbyte)IndexOf(_awaySwitcher.CurrentPlayer));
             writer.WriteValueSafe(_ball.Position);
             writer.WriteValueSafe(_ball.Velocity);
+        }
 
+        private void WritePlayers(FastBufferWriter writer)
+        {
             writer.WriteValueSafe((byte)_players.Length);
             for (int i = 0; i < _players.Length; i++)
             {
-                var body = _players[i].GetComponent<Rigidbody2D>();
+                Rigidbody2D body = _playerBodies[i];
                 writer.WriteValueSafe(body.position);
                 writer.WriteValueSafe(body.linearVelocity);
-                writer.WriteValueSafe(_reactions[i] != null && _reactions[i].IsStaggered);
+                writer.WriteValueSafe(_playerReactions[i] != null && _playerReactions[i].IsStaggered);
             }
-
-            // 位置は最新だけ届けばよいので再送せず、古いものが後から届いたら捨てる
-            Send(SnapshotMessage, writer, NetworkDelivery.UnreliableSequenced);
         }
 
         /// <summary>画面中央のメッセージ（空文字で非表示）</summary>
@@ -211,14 +264,14 @@ namespace MiniGame.Soccer
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe(text ?? string.Empty);
-            Send(TextMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(TextMessage, writer, EventDelivery);
         }
 
         public void SendSe(SeId id)
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe((int)id);
-            Send(SeMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(SeMessage, writer, EventDelivery);
         }
 
         /// <summary>キック音はパス/シュートで音程が変わるので速度ごと送る</summary>
@@ -226,14 +279,14 @@ namespace MiniGame.Soccer
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe(speed);
-            Send(KickMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(KickMessage, writer, EventDelivery);
         }
 
         public void SendGoal(TeamSide scoringTeam)
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe((int)scoringTeam);
-            Send(GoalMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(GoalMessage, writer, EventDelivery);
         }
 
         public void SendMatchEnd(int homeScore, int awayScore)
@@ -241,10 +294,10 @@ namespace MiniGame.Soccer
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe(homeScore);
             writer.WriteValueSafe(awayScore);
-            Send(EndMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(EndMessage, writer, EventDelivery);
         }
 
-        // ---- ゲスト → ホスト ----
+        // ---- 送信：ゲスト → ホスト ----
 
         private void SendMove()
         {
@@ -252,10 +305,10 @@ namespace MiniGame.Soccer
 
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe(move);
-            Send(MoveMessage, writer, NetworkDelivery.UnreliableSequenced);
+            Send(MoveMessage, writer, StreamDelivery);
         }
 
-        /// <summary>ボタンは取りこぼすと操作が効かないので、押した瞬間に再送ありで送る</summary>
+        /// <summary>ボタンは取りこぼすと操作が効かないので、移動入力の送信間隔を待たず押した瞬間に送る</summary>
         private void SendButtonsPressedThisFrame()
         {
             if (!InputManager.HasInstance) return;
@@ -271,7 +324,7 @@ namespace MiniGame.Soccer
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
             writer.WriteValueSafe((byte)button);
-            Send(ButtonMessage, writer, NetworkDelivery.ReliableSequenced);
+            Send(ButtonMessage, writer, EventDelivery);
         }
 
         private void Send(string messageName, FastBufferWriter writer, NetworkDelivery delivery)
@@ -281,9 +334,19 @@ namespace MiniGame.Soccer
             Network.CustomMessagingManager.SendNamedMessage(messageName, peerId, writer, delivery);
         }
 
-        // ---- 受信（ゲスト） ----
+        // ---- 受信：ゲスト ----
 
         private void ReceiveSnapshot(ulong senderId, FastBufferReader reader)
+        {
+            double sentTime = ReadMatchState(reader);
+            ReadPlayers(reader);
+
+            _received.Age = Mathf.Clamp((float)(Network.ServerTime.Time - sentTime), 0f, _maxLatencyCompensation);
+            OnSnapshotReceived?.Invoke(_received);
+        }
+
+        /// <returns>ホストが送った時刻（遅延の計算に使う）</returns>
+        private double ReadMatchState(FastBufferReader reader)
         {
             reader.ReadValueSafe(out double sentTime);
             reader.ReadValueSafe(out _received.RemainingSeconds);
@@ -294,7 +357,18 @@ namespace MiniGame.Soccer
             reader.ReadValueSafe(out _received.BallPosition);
             reader.ReadValueSafe(out _received.BallVelocity);
 
+            _received.HomeScore = homeScore;
+            _received.AwayScore = awayScore;
+            _received.HomeControlledIndex = homeControlled;
+            _received.AwayControlledIndex = awayControlled;
+            return sentTime;
+        }
+
+        private void ReadPlayers(FastBufferReader reader)
+        {
             reader.ReadValueSafe(out byte count);
+
+            // 毎回配列を作り直さず、人数が変わったときだけ確保し直す
             if (_received.Players.Length != count)
             {
                 _received.Players = new PlayerSnapshot[count];
@@ -306,14 +380,6 @@ namespace MiniGame.Soccer
                 reader.ReadValueSafe(out _received.Players[i].Velocity);
                 reader.ReadValueSafe(out _received.Players[i].IsStaggered);
             }
-
-            _received.HomeScore = homeScore;
-            _received.AwayScore = awayScore;
-            _received.HomeControlledIndex = homeControlled;
-            _received.AwayControlledIndex = awayControlled;
-            _received.Age = Mathf.Clamp((float)(Network.ServerTime.Time - sentTime), 0f, _maxLatencyCompensation);
-
-            OnSnapshotReceived?.Invoke(_received);
         }
 
         private void ReceiveText(ulong senderId, FastBufferReader reader)
@@ -347,7 +413,7 @@ namespace MiniGame.Soccer
             OnMatchEndReceived?.Invoke(homeScore, awayScore);
         }
 
-        // ---- 受信（ホスト） ----
+        // ---- 受信：ホスト ----
 
         private void ReceiveMove(ulong senderId, FastBufferReader reader)
         {
@@ -363,14 +429,14 @@ namespace MiniGame.Soccer
 
         private int IndexOf(Transform player)
         {
-            if (player == null) return -1;
+            if (player == null) return NoPlayerIndex;
 
             for (int i = 0; i < _players.Length; i++)
             {
                 if (_players[i].transform == player) return i;
             }
 
-            return -1;
+            return NoPlayerIndex;
         }
     }
 }

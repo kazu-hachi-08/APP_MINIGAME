@@ -4,11 +4,14 @@ using UnityEngine;
 namespace MiniGame.Soccer
 {
     /// <summary>
-    /// 操作対象選手の移動・向き・ドリブル・パス/シュートを制御する（Phase 3: パス・シュート）
+    /// 操作対象選手の移動・向き・ドリブル・パス/シュートを制御する
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerController : MonoBehaviour
     {
+        // スティックを離したときに向きがゼロ方向にならないよう、ほぼ無入力なら直前の向きを保つ
+        private const float FacingInputThresholdSqr = 0.01f;
+
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 4.5f;
 
@@ -41,6 +44,10 @@ namespace MiniGame.Soccer
         private float _regrabTimer;
         private float _stealTimer;
 
+        // スライディングタックル中はSlidingTackle側がRigidbodyの速度を制御するため、
+        // 通常の移動・キック処理をここで止める（同一フレームでの上書き合戦を防ぐ）
+        private bool _movementSuppressed;
+
         // オンライン対戦ではホスト端末がAWAY選手も動かすため、入力元を差し替えられるようにする（未設定なら端末の入力）
         private IInputProvider _input;
 
@@ -48,10 +55,6 @@ namespace MiniGame.Soccer
 
         /// <summary>選手が現在向いている方向（キック方向として使用）</summary>
         public Vector2 FacingDirection { get; private set; } = Vector2.up;
-
-        // スライディングタックル中はSlidingTackle側がRigidbodyの速度を制御するため、
-        // 通常の移動・キック処理をここで止める（同一フレームでの上書き合戦を防ぐ）
-        private bool _movementSuppressed;
 
         private void Awake()
         {
@@ -106,16 +109,20 @@ namespace MiniGame.Soccer
                 return;
             }
 
+            ApplyMovement();
+            UpdateDribble();
+        }
+
+        private void ApplyMovement()
+        {
             var input = Input;
             Vector2 moveInput = input != null ? input.MoveVector : Vector2.zero;
             _rigidbody.linearVelocity = moveInput * _moveSpeed;
 
-            if (moveInput.sqrMagnitude > 0.01f)
+            if (moveInput.sqrMagnitude > FacingInputThresholdSqr)
             {
                 FacingDirection = moveInput.normalized;
             }
-
-            UpdateDribble();
         }
 
         private void UpdateDribble()
@@ -183,7 +190,7 @@ namespace MiniGame.Soccer
         }
 
         /// <summary>
-        /// 相手選手がボールに触れる距離まで来たら奪われたとみなす（AIはドリブルしないので、手放した後はAIの通常処理に任せる）
+        /// 相手選手がボールに張り付いているか（AIはドリブルしないので、手放した後のボールはAIの通常処理に任せる）
         /// </summary>
         private bool IsOpponentNearBall(Vector2 ballPosition)
         {

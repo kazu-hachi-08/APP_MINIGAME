@@ -14,6 +14,9 @@ namespace MiniGame.Soccer
         private const float PassSePitch = 1.2f;
         private const float ShootSePitch = 0.85f;
 
+        // 方向ゼロで normalized すると (0,0) になり止まってしまうため、ほぼゼロの方向指定は無視する
+        private const float MinKickDirectionSqr = 0.0001f;
+
         [Header("Kick SE")]
         [SerializeField] private float _shootSpeedThreshold = 10f;
 
@@ -83,7 +86,7 @@ namespace MiniGame.Soccer
         /// </summary>
         public void Kick(Vector2 direction, float speed)
         {
-            if (direction.sqrMagnitude < 0.0001f) return;
+            if (direction.sqrMagnitude < MinKickDirectionSqr) return;
             Release(); // 誰が蹴っても保持は解除される（AIが蹴った＝奪われた扱い）
             _rigidbody.linearVelocity = direction.normalized * speed;
             PlayKickSe(speed);
