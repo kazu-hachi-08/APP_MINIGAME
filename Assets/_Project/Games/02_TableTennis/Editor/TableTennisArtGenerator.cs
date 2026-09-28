@@ -64,7 +64,6 @@ namespace MiniGame.TableTennis.Editor
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
         private static readonly Color32 Black = new Color32(0, 0, 0, 255);
 
-        [MenuItem("Tools/MiniGame/Generate Table Tennis Art", false, 4)]
         public static void GenerateAll()
         {
             if (!Directory.Exists(SpriteDirectory))

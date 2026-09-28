@@ -175,9 +175,11 @@ namespace MiniGame.TableTennis.Editor
             public RemoteOpponent Remote;
         }
 
-        [MenuItem("Tools/MiniGame/Build Table Tennis Scene", false, 3)]
-        public static void BuildTableTennisScene()
+        [MenuItem("Tools/MiniGame/Rebuild Table Tennis", false, 3)]
+        public static void RebuildTableTennis()
         {
+            // EnsureGenerated は既存PNGを使い回すため、絵のコードを直したときも反映されるようメニューからは必ず描き直す
+            TableTennisArtGenerator.GenerateAll();
             BuildInternal();
         }
 

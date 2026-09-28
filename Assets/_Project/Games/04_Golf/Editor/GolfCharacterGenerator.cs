@@ -33,7 +33,7 @@ namespace MiniGame.Golf.Editor
         private static readonly Color32 Shoes = new Color32(40, 34, 30, 255);
         private static readonly Color32 Outline = new Color32(34, 30, 38, 255);
 
-        [MenuItem("Tools/MiniGame/Generate Golf Character Data", false, 6)]
+        /// <summary>データを確保したうえで立ち絵を描き直す（Rebuild Golf から呼ばれる）</summary>
         public static void Generate()
         {
             GolfCharacterCatalog catalog = EnsureGenerated();

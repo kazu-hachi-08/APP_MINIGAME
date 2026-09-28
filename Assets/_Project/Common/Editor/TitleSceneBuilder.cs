@@ -56,8 +56,8 @@ namespace MiniGame.Editor
         private static readonly Color CardColor = new Color(0.14f, 0.16f, 0.24f);
         private static readonly Color AccentColor = new Color(0.25f, 0.65f, 1f);
 
-        [MenuItem("Tools/MiniGame/Build Title Scene", false, 1)]
-        public static void BuildTitleScene()
+        [MenuItem("Tools/MiniGame/Rebuild Title", false, 1)]
+        public static void RebuildTitle()
         {
             BuildTitleSceneInternal(force: true);
         }

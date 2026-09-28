@@ -85,7 +85,6 @@ namespace MiniGame.Molkky.Editor
         // ピンの頭を斜めに切る深さ（ピクセル）
         private const float PinCutDepth = 3f;
 
-        [MenuItem("Tools/MiniGame/Generate Molkky Art", false, 5)]
         public static void GenerateAll()
         {
             if (!Directory.Exists(SpriteDirectory))

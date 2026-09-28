@@ -99,9 +99,11 @@ namespace MiniGame.Soccer.Editor
 
         private static readonly Vector2 BallStartPosition = Vector2.zero;
 
-        [MenuItem("Tools/MiniGame/Build Soccer Scene", false, 2)]
-        public static void BuildSoccerScene()
+        [MenuItem("Tools/MiniGame/Rebuild Soccer", false, 2)]
+        public static void RebuildSoccer()
         {
+            // EnsureGenerated は既存PNGを使い回すため、絵のコードを直したときも反映されるようメニューからは必ず描き直す
+            SoccerArtGenerator.GenerateAll();
             BuildSoccerSceneInternal();
         }
 

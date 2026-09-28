@@ -106,9 +106,11 @@ namespace MiniGame.Molkky.Editor
             public MolkkyOnlineLink Link;
         }
 
-        [MenuItem("Tools/MiniGame/Build Molkky Scene", false, 4)]
-        public static void BuildMolkkyScene()
+        [MenuItem("Tools/MiniGame/Rebuild Molkky", false, 4)]
+        public static void RebuildMolkky()
         {
+            // EnsureGenerated は既存PNGを使い回すため、絵のコードを直したときも反映されるようメニューからは必ず描き直す
+            MolkkyArtGenerator.GenerateAll();
             BuildInternal();
         }
 

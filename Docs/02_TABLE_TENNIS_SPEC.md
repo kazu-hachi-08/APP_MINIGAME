@@ -16,7 +16,7 @@
 | 対象プラットフォーム | Android / iPhone（PCはマウスで同じ操作ができる） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/02_TableTennis/`。Sceneは `Tools > MiniGame > Build Table Tennis Scene`（`TableTennisSceneBuilder`）でコードから生成する。
+ソースは `Assets/_Project/Games/02_TableTennis/`。Sceneは `Tools > MiniGame > Rebuild Table Tennis`（`TableTennisSceneBuilder`）でコードから生成する（素材も同時に描き直す）。
 
 現実の卓球物理の再現は目的にしない。「狙った操作が結果に素直に出る」「フリックの強弱・回転・タイミングの違いが分かる」ことを優先した簡易モデルで動かす。
 
@@ -105,7 +105,7 @@ YOUR SERVE / NPC SERVE 表示（1.0秒。黄色ボールのラリーは CHANCE B
 
 ### 3.4 素材
 
-素材はエディタ拡張 `TableTennisArtGenerator` がコードから生成するドット絵（PPU 32、`Tools > MiniGame > Generate Table Tennis Art`）。同名のPNGを置き換えれば手描き素材へ差し替えられる。
+素材はエディタ拡張 `TableTennisArtGenerator` がコードから生成するドット絵（PPU 32、`Tools > MiniGame > Rebuild Table Tennis` で毎回描き直す）。同名のPNGを置き換えれば手描き素材へ差し替えられる。
 
 | 対象 | 内容 |
 | --- | --- |
@@ -423,7 +423,7 @@ NPC戦では相手の選手・ラケットもプレイヤーが選ぶ。NPCは�
 
 選手・ラケットは ScriptableObject（`CharacterData` / `RacketData`、一覧は `LoadoutCatalog`）で、1選手・1ラケットごとに1アセットに分ける。2人開発で数値調整がコンフリクトしにくくするため。
 
-* 生成先は `Assets/_Project/Games/02_TableTennis/Data/Loadout/`。`Tools > MiniGame > Generate Table Tennis Loadout Data` で生成（Scene生成時も未生成なら自動で作る）
+* 生成先は `Assets/_Project/Games/02_TableTennis/Data/Loadout/`。`Tools > MiniGame > Rebuild Table Tennis` 実行時に未生成なら自動で作る（既にあれば調整済みの値を残す）
 * 既にあるアセットは上書きしない（Inspector で調整した値を消さないため）
 
 ---

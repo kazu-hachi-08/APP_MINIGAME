@@ -136,11 +136,18 @@ namespace MiniGame.Golf.Editor
         private const float SpinButtonBottomMargin = GaugeBottomMargin + GaugeHeight + SpinButtonGap;
         private const int SpinButtonFontSize = 32;
 
+        [MenuItem("Tools/MiniGame/Rebuild Golf", false, 5)]
+        public static void RebuildGolf()
+        {
+            // 立ち絵はキャラアセットの色から描くため、色を調整したときも反映されるようメニューからは必ず描き直す
+            GolfCharacterGenerator.Generate();
+            BuildGolfScene();
+        }
+
         /// <summary>
         /// 生成順がそのまま Hierarchy の並び順（UIは描画の前後関係）になるため、呼び出し順を入れ替えないこと
         /// </summary>
-        [MenuItem("Tools/MiniGame/Build Golf Scene", false, 5)]
-        public static void BuildGolfScene()
+        private static void BuildGolfScene()
         {
             EnsureDirectory(SceneDirectory);
 

@@ -13,13 +13,6 @@ namespace MiniGame.TableTennis.Editor
         private const string DataDirectory = "Assets/_Project/Games/02_TableTennis/Data/Loadout";
         private const string CatalogPath = DataDirectory + "/LoadoutCatalog.asset";
 
-        [MenuItem("Tools/MiniGame/Generate Table Tennis Loadout Data", false, 5)]
-        public static void Generate()
-        {
-            EnsureGenerated();
-            Debug.Log($"[TableTennisLoadoutGenerator] 選手・ラケットのデータを確認しました: {DataDirectory}");
-        }
-
         /// <summary>カタログと各データが無ければ作り、カタログを返す（TableTennisSceneBuilder から呼ばれる）</summary>
         public static LoadoutCatalog EnsureGenerated()
         {
