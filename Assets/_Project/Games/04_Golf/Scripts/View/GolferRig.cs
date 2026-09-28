@@ -14,7 +14,12 @@ namespace MiniGame.Golf
         [Tooltip("上半身。プレイヤー色を掛けてシャツの色にする")]
         [SerializeField] private SpriteRenderer _torso;
 
+        [Tooltip("頭（髪）。キャラの髪の色を掛ける")]
         [SerializeField] private SpriteRenderer _head;
+
+        [Tooltip("帽子。頭の子に置いて一緒に動かし、キャラの帽子の色を掛ける")]
+        [SerializeField] private SpriteRenderer _cap;
+
         [SerializeField] private SpriteRenderer _leftArm;
         [SerializeField] private SpriteRenderer _rightArm;
 
@@ -88,12 +93,13 @@ namespace MiniGame.Golf
 
         private void Awake()
         {
-            _parts = new[] { _legs, _torso, _head, _leftArm, _rightArm, _leftSleeve, _rightSleeve, _glove, _club };
+            _parts = new[] { _legs, _torso, _head, _cap, _leftArm, _rightArm, _leftSleeve, _rightSleeve, _glove, _club };
 
             _legs.sprite = GolfShapeSprites.GolferLegs;
             _torso.sprite = GolfShapeSprites.GolferTorso;
             _head.sprite = GolfShapeSprites.GolferHead;
             _head.transform.localScale = Vector3.one * _headDiameter;
+            _cap.sprite = GolfShapeSprites.GolferCap;
 
             SetUpLimb(_leftArm, _skinColor);
             SetUpLimb(_rightArm, _skinColor);
@@ -116,6 +122,13 @@ namespace MiniGame.Golf
             _torso.color = color;
             _leftSleeve.color = color;
             _rightSleeve.color = color;
+        }
+
+        /// <summary>帽子と髪をキャラの色にする。シャツはプレイヤー色のままなので、同じキャラ同士でも区別できる</summary>
+        public void SetCharacterColors(Color cap, Color hair)
+        {
+            _cap.color = cap;
+            _head.color = hair;
         }
 
         /// <param name="clubAngle">クラブの角度（度）。0で真下、正でボール側へ振り上がる</param>

@@ -92,7 +92,8 @@ namespace MiniGame.Golf
         /// <summary>まだ終わっていないホールは空欄。パーとの差は終わったホールのパーだけで比べる</summary>
         private void AddPlayerRow(IReadOnlyList<GolfHoleData> holes, GolfPlayerSlot slot, string rankPrefix)
         {
-            AddCell(rankPrefix + GolfPlayerColors.Colored(slot.Seat, GolfPlayerColors.Name(slot.Seat)));
+            // 見出し列は幅が狭いので「P1」とキャラ名を2行に分ける
+            AddCell(rankPrefix + GolfPlayerColors.Colored(slot.Seat, GolfPlayerColors.FullName(slot, "\n")));
 
             int playedPar = 0;
             for (int h = 0; h < holes.Count; h++)

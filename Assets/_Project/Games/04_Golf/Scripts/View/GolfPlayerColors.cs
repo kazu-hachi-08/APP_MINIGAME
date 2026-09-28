@@ -26,6 +26,16 @@ namespace MiniGame.Golf
 
         public static string Name(int seat) => $"P{seat + 1}";
 
+        /// <summary>
+        /// 「P1 パワー型」。同じキャラを複数人が選べるので、キャラ名だけだと誰か分からなくなるため席番号も付ける。
+        /// separator に改行を渡すと、幅の狭いスコアカードで2行に分けられる
+        /// </summary>
+        public static string FullName(GolfPlayerSlot slot, string separator = " ")
+        {
+            if (string.IsNullOrEmpty(slot.CharacterName)) return Name(slot.Seat);
+            return Name(slot.Seat) + separator + slot.CharacterName;
+        }
+
         /// <summary>設定画面・「○○の番」に出す人間/NPCの呼び名</summary>
         public static string TypeName(GolfPlayerType type)
         {

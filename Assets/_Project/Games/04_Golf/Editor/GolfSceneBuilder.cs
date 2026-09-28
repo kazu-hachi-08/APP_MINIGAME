@@ -153,7 +153,8 @@ namespace MiniGame.Golf.Editor
                 ("_clubs", clubSelector), ("_audio", CreateAudio(manager, ball, clubSelector)));
             SetGameTitle(manager);
             CreateOtherBalls(manager);
-            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager, cameraFollower);
+            CreateCanvas(manager, ball, ballView, input, clubSelector, holeLoader, settings, uiManager, cameraFollower,
+                characters);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log($"[GolfSceneBuilder] GolfScene を生成しました: {ScenePath}");
@@ -315,11 +316,15 @@ namespace MiniGame.Golf.Editor
 
             var hands = new GameObject("Hands").transform;
             hands.SetParent(root, false);
+            // 帽子は頭の子にして、頭の位置・大きさにそのまま付いていかせる
+            SpriteRenderer head = CreateGolferPart("Head", root, GolferSortingOrder + 1);
+            SpriteRenderer cap = CreateGolferPart("Cap", head.transform, GolferSortingOrder + 2);
 
             SetRefs(rig,
                 ("_legs", CreateGolferPart("Legs", root, GolferLegsSortingOrder)),
                 ("_torso", CreateGolferPart("Torso", root, GolferSortingOrder)),
-                ("_head", CreateGolferPart("Head", root, GolferSortingOrder + 1)),
+                ("_head", head),
+                ("_cap", cap),
                 ("_leftArm", CreateGolferPart("LeftArm", root, GolferArmSortingOrder)),
                 ("_rightArm", CreateGolferPart("RightArm", root, GolferArmSortingOrder)),
                 ("_leftSleeve", CreateGolferPart("LeftSleeve", root, GolferSleeveSortingOrder)),
@@ -374,7 +379,7 @@ namespace MiniGame.Golf.Editor
 
         private static void CreateCanvas(GolfGameManager manager, GolfBall ball, BallView ballView, ShotInput input,
             ClubSelector clubSelector, HoleLoader holeLoader, GolfPhysicsSettings settings, UIManager uiManager,
-            GolfCameraFollower cameraFollower)
+            GolfCameraFollower cameraFollower, GolfCharacterCatalog characters)
         {
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -403,10 +408,13 @@ namespace MiniGame.Golf.Editor
 
             // 試合進行の全画面UIはショット操作より手前に出す
             GolfSetupPanel setupPanel = GolfMatchUiBuilder.CreateSetupPanel(canvasObj.transform);
+            GolfCharacterSelectPanel characterSelectPanel =
+                GolfMatchUiBuilder.CreateCharacterSelectPanel(canvasObj.transform, characters);
             GolfTurnBannerView turnBanner = GolfMatchUiBuilder.CreateTurnBanner(canvasObj.transform);
             ScoreCardView scoreCard = GolfMatchUiBuilder.CreateScoreCard(canvasObj.transform);
             SetRefs(manager, ("_ball", ball), ("_holeLoader", holeLoader), ("_input", input), ("_ballView", ballView),
-                ("_setupPanel", setupPanel), ("_turnBanner", turnBanner), ("_scoreCard", scoreCard),
+                ("_setupPanel", setupPanel), ("_characterSelectPanel", characterSelectPanel),
+                ("_turnBanner", turnBanner), ("_scoreCard", scoreCard),
                 ("_message", message));
 
             // 設定画面や「○○の番」の間も PAUSE からタイトルへ戻れるよう、PAUSE ボタンは試合進行のUIより手前に置く

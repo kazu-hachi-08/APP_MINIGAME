@@ -29,9 +29,7 @@ namespace MiniGame.Golf
         [SerializeField] private GolfAudio _audio;
         [SerializeField] private GolfCameraFollower _cameraFollower;
         [SerializeField] private GolfCharacterCatalog _characters;
-
-        [Tooltip("仮：席ごとのキャラ番号（P1, P2, …）。キャラ選択パネル（Phase G3）ができるまで能力の確認に使う。足りない席はバランス型")]
-        [SerializeField] private int[] _debugCharacterIndices = new int[0];
+        [SerializeField] private GolfCharacterSelectPanel _characterSelectPanel;
 
         [Tooltip("ボールが止まってから次の人の番を出すまでの時間（秒）。止まった場所を見せる")]
         [SerializeField] private float _shotResultDelay = 1f;
@@ -154,11 +152,19 @@ namespace MiniGame.Golf
 
         private void ShowSetupPanel()
         {
-            _setupPanel.Show(_holeLoader.Holes.Count, (holeCount, types) =>
+            Phase = GolfPhase.Setup;
+            _setupPanel.Show(_holeLoader.Holes.Count, ShowCharacterSelect);
+        }
+
+        /// <summary>P1で「戻る」を押したら設定画面へ戻す。設定画面は前回の選択を覚えているので選び直しは要らない</summary>
+        private void ShowCharacterSelect(int holeCount, IReadOnlyList<GolfPlayerType> types)
+        {
+            Phase = GolfPhase.CharacterSelect;
+            _characterSelectPanel.Show(types, characters =>
             {
                 ApplySetup(CreateSetup(holeCount));
-                StartCoroutine(PlayMatch(types));
-            });
+                StartCoroutine(PlayMatch(types, characters));
+            }, ShowSetupPanel);
         }
 
         /// <summary>
@@ -171,32 +177,34 @@ namespace MiniGame.Golf
             _localSeat = localSeat;
             _onlineLink.Begin();
 
-            // 既定値が Human なので、人数ぶん作るだけで全員人間になる
+            // 既定値が Human なので、人数ぶん作るだけで全員人間になる。
+            // キャラの選択はオンライン対応（Phase G5）までは全員バランス型（番号0）
             var types = new GolfPlayerType[playerCount];
+            var characters = new int[playerCount];
             if (_onlineSession.IsHost)
             {
                 GolfMatchSetup setup = CreateSetup(Mathf.Min(_onlineHoleCount, _holeLoader.Holes.Count));
                 _onlineLink.SendSetup(setup);
                 ApplySetup(setup);
-                StartCoroutine(PlayMatch(types));
+                StartCoroutine(PlayMatch(types, characters));
             }
             else
             {
-                StartCoroutine(PlayMatchAfterSetup(types));
+                StartCoroutine(PlayMatchAfterSetup(types, characters));
             }
         }
 
-        private IEnumerator PlayMatchAfterSetup(IReadOnlyList<GolfPlayerType> types)
+        private IEnumerator PlayMatchAfterSetup(IReadOnlyList<GolfPlayerType> types, IReadOnlyList<int> characters)
         {
             yield return new WaitUntil(() => _receivedSetup != null);
             ApplySetup(_receivedSetup);
-            yield return PlayMatch(types);
+            yield return PlayMatch(types, characters);
         }
 
-        private IEnumerator PlayMatch(IReadOnlyList<GolfPlayerType> types)
+        private IEnumerator PlayMatch(IReadOnlyList<GolfPlayerType> types, IReadOnlyList<int> characters)
         {
             StartGame();
-            SetUpPlayers(types);
+            SetUpPlayers(types, characters);
 
             for (HoleNumber = 0; HoleNumber < _holes.Count; HoleNumber++)
             {
@@ -208,20 +216,16 @@ namespace MiniGame.Golf
         }
 
         /// <summary>§6.3 1ホール目のティーは席順</summary>
-        private void SetUpPlayers(IReadOnlyList<GolfPlayerType> types)
+        private void SetUpPlayers(IReadOnlyList<GolfPlayerType> types, IReadOnlyList<int> characters)
         {
             _slots.Clear();
             _teeOrder.Clear();
             for (int i = 0; i < types.Count; i++)
             {
-                _slots.Add(new GolfPlayerSlot(i, types[i], DebugCharacterIndex(i)));
+                string characterName = _characters.Get(characters[i]).DisplayName;
+                _slots.Add(new GolfPlayerSlot(i, types[i], characters[i], characterName));
                 _teeOrder.Add(i);
             }
-        }
-
-        private int DebugCharacterIndex(int seat)
-        {
-            return seat < _debugCharacterIndices.Length ? _debugCharacterIndices[seat] : 0;
         }
 
         /// <summary>§6.2 ホールは登録ホールから重複なしでランダム、§9.4 風はホールごとにランダム</summary>
@@ -293,10 +297,12 @@ namespace MiniGame.Golf
             Phase = GolfPhase.TurnStart;
             PlaceCurrentBall();
             // 人間・NPC・相手端末のどの手番でも渡す。予測線・NPC の狙い・相手のショットの再生もこのキャラの能力で計算するため
-            _ball.SetCharacter(_characters != null ? _characters.Get(Current.CharacterIndex) : null);
+            GolfCharacterData character = _characters.Get(Current.CharacterIndex);
+            _ball.SetCharacter(character);
+            _golferView.SetCharacter(character);
             TurnStarted?.Invoke();
 
-            string name = GolfPlayerColors.Name(Current.Seat);
+            string name = GolfPlayerColors.FullName(Current);
             Color color = GolfPlayerColors.Get(Current.Seat);
             _shotFinished = false;
 
@@ -447,7 +453,7 @@ namespace MiniGame.Golf
             {
                 if (ranks[i] != 1) continue;
 
-                winners.Add(GolfPlayerColors.Name(_slots[i].Seat));
+                winners.Add(GolfPlayerColors.FullName(_slots[i]));
                 winnerTotal = _slots[i].Total;
                 isVictory |= _isOnline ? i == _localSeat : !_slots[i].IsNpc;
             }
