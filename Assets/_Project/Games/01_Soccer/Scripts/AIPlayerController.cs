@@ -64,7 +64,7 @@ namespace MiniGame.Soccer
             _gameManager = Object.FindFirstObjectByType<SoccerGameManager>();
 
             // GK判定用の専用フラグはシーン側に持たせず、基準ポジションと自陣ゴールの距離から都度導出する。
-            // こうすることでシーン再生成（Build Soccer Scene）に依存せず、既存シーンのままでもGK専用挙動が有効になる。
+            // こうすることでシーン再生成（Rebuild Soccer）に依存せず、既存シーンのままでもGK専用挙動が有効になる。
             float ownGoalX = -_opponentGoalX;
             _isGoalkeeper = Mathf.Abs(_homePosition.x - ownGoalX) <= _gkOwnGoalThreshold;
         }

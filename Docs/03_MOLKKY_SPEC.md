@@ -16,7 +16,7 @@
 | 対象プラットフォーム | Android / iPhone（PCはマウスで同じ操作ができる） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/03_Molkky/`。Sceneは `Tools > MiniGame > Build Molkky Scene`（`MolkkySceneBuilder`）でコードから生成する。
+ソースは `Assets/_Project/Games/03_Molkky/`。Sceneは `Tools > MiniGame > Rebuild Molkky`（`MolkkySceneBuilder`）でコードから生成する（素材も同時に描き直す）。
 
 本物の3D物理の再現は目的にしない。地面の平面だけを2D物理で計算し、「狙って倒せる」「たまに予想外に散らばる」バランスを優先する。
 
@@ -151,7 +151,7 @@ H：高さ（投げた棒の見た目用。当たり判定には使わない）
 
 ### 3.2 表示物と素材
 
-素材はエディタ拡張 `MolkkyArtGenerator` がコードから生成するドット絵（PPU 32、`Tools > MiniGame > Generate Molkky Art`。Scene生成時も未生成なら自動で作る）。同名のPNGを置き換えれば手描き素材へ差し替えられる。
+素材はエディタ拡張 `MolkkyArtGenerator` がコードから生成するドット絵（PPU 32、`Tools > MiniGame > Rebuild Molkky` で毎回描き直す）。同名のPNGを置き換えれば手描き素材へ差し替えられる。
 
 | 対象 | 内容 |
 | --- | --- |
@@ -447,7 +447,7 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 * 能力は **倍率（バランス型＝1.0）** で持ち、`MolkkyPhysicsSettings` の基準値は変えない
 * 1キャラ＝1アセット（`Data/Characters/MolkkyChar_xxx.asset`）、一覧は `MolkkyCharacterCatalog`。2人で同時に数値調整してもコンフリクトしないようにするため
 * `PlayerSlot` にはアセットではなく **カタログの番号（`CharacterIndex`）** だけを持たせる。オンラインで番号だけ送れば全端末で同じキャラになる
-* アセットとカタログは `Tools > MiniGame > Generate Molkky Character Data`（`MolkkyCharacterGenerator`）で生成する（Scene生成時も未生成なら自動で作る。既にあれば調整済みの値を残す）
+* アセットとカタログは `MolkkyCharacterGenerator` が生成する（`Tools > MiniGame > Rebuild Molkky` 実行時に未生成なら自動で作る。既にあれば調整済みの値を残す）
 
 ### 8.2 能力とキャラ
 

@@ -16,7 +16,7 @@
 | 対象プラットフォーム | Android / Windowsブラウザ（WebGL。マウスで同じ操作ができる） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/04_Golf/`、シーン名は `GolfScene`。Sceneは `Tools > MiniGame > Build Golf Scene`（`GolfSceneBuilder`）でコードから生成する。
+ソースは `Assets/_Project/Games/04_Golf/`、シーン名は `GolfScene`。Sceneは `Tools > MiniGame > Rebuild Golf`（`GolfSceneBuilder`）でコードから生成する（キャラの立ち絵も同時に描き直す）。
 
 モルック（§03）の以下の考え方を流用している。
 
@@ -622,7 +622,7 @@ NPCは「狙う地点を決める → `BallSimulator` で試し打ちして `Sho
 * 倍率は `GolfPhysicsSettings` / `GolfClubData` の基準値を変えずに掛けて使う
 * 1キャラ＝1アセット（`Data/Characters/GolfChar_xxx.asset`）、一覧は `GolfCharacterCatalog`。2人で同時に数値調整してもコンフリクトしないようにするため
 * `GolfPlayerSlot` にはアセットではなく **カタログの番号（`CharacterIndex`）** だけを持たせる。オンラインで番号だけ送れば全端末で同じキャラになる
-* アセット・カタログ・立ち絵は `Tools > MiniGame > Generate Golf Character Data`（`GolfCharacterGenerator`）で生成する（Scene生成時も未生成なら自動で作る。既にあれば調整済みの値を残す）。立ち絵はアセットの帽子・髪の色から毎回描き直すので、色を調整したらメニューを実行し直せば絵も揃う
+* アセット・カタログ・立ち絵は `GolfCharacterGenerator` が `Tools > MiniGame > Rebuild Golf` 実行時に生成する（既にあれば調整済みの値を残す）。立ち絵はアセットの帽子・髪の色から毎回描き直すので、色を調整したら Rebuild Golf を実行し直せば絵も揃う
 
 ### 9.2 能力とキャラ
 

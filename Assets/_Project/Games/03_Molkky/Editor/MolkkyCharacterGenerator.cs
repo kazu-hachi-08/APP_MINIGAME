@@ -25,13 +25,6 @@ namespace MiniGame.Molkky.Editor
             ("ロング棒", 0.9f, 1f, 1.3f, "まとめていただき！"),
         };
 
-        [MenuItem("Tools/MiniGame/Generate Molkky Character Data", false, 6)]
-        public static void Generate()
-        {
-            EnsureGenerated();
-            Debug.Log($"[MolkkyCharacterGenerator] キャラのデータを確認しました: {DataDirectory}");
-        }
-
         /// <summary>カタログと各キャラが無ければ作り、カタログを返す（MolkkySceneBuilder から呼ばれる）</summary>
         public static MolkkyCharacterCatalog EnsureGenerated()
         {

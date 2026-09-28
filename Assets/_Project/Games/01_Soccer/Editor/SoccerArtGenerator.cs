@@ -33,7 +33,6 @@ namespace MiniGame.Soccer.Editor
         public static readonly string[] DirectionKeys = { "Down", "Up", "Side" };
         public const int FrameCount = 3; // 0 = 待機 / 1,2 = 走り
 
-        [MenuItem("Tools/MiniGame/Generate Soccer Art", false, 1)]
         public static void GenerateAll()
         {
             if (!Directory.Exists(SpriteDirectory))

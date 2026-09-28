@@ -15,7 +15,7 @@
 | 対象プラットフォーム | Android / iPhone（PCはキーボードで確認用） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/01_Soccer/`。Sceneは `Tools > MiniGame > Build Soccer Scene`（`SoccerSceneBuilder`）でコードから生成する。
+ソースは `Assets/_Project/Games/01_Soccer/`。Sceneは `Tools > MiniGame > Rebuild Soccer`（`SoccerSceneBuilder`）でコードから生成する（ドット絵素材も同時に描き直す）。
 
 ---
 
@@ -181,7 +181,7 @@ HOME（青）は左ゴールを守り右（+X）へ攻める。AWAY（赤）はH
 素材はエディタ拡張 `SoccerArtGenerator` がコードから生成する。外部素材の用意を待たずに絵を作り直せるようにするため。
 
 * 生成先は `Assets/_Project/Games/01_Soccer/Sprites/`（通常のPNGアセット）
-* `Tools > MiniGame > Generate Soccer Art` で生成。`Build Soccer Scene` 実行時も未生成なら自動で作られる
+* `Tools > MiniGame > Rebuild Soccer` 実行時に毎回描き直す
 * Import設定も自動で入る（`Filter Mode = Point` / `Compression = None` / `Pixels Per Unit = 16`）
 * 選手のドット絵は1文字1ピクセルの文字列で定義してあり、色や形はその文字列を直せば変わる
 * 手描きやAI生成のPNGへ差し替える場合は、同名ファイルを置き換えるだけで済む
