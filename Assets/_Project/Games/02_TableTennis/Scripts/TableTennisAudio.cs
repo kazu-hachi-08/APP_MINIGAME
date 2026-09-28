@@ -13,6 +13,14 @@ namespace MiniGame.TableTennis
     {
         private const int SampleRate = 44100;
 
+        // 強く打つほど高く鳴らす打球音のピッチ幅
+        private const float HitPitchWeak = 0.92f;
+        private const float HitPitchStrong = 1.3f;
+
+        // 連続するバウンド音が機械的に聞こえないよう、ピッチを少しだけ揺らす幅
+        private const float BouncePitchMin = 0.95f;
+        private const float BouncePitchMax = 1.08f;
+
         [Header("素材が用意できたら差し込む（未設定なら生成音を使う）")]
         [SerializeField] private AudioClip _hitClip;
         [SerializeField] private AudioClip _bounceClip;
@@ -34,13 +42,13 @@ namespace MiniGame.TableTennis
         /// <summary>打球音。強く打つほど高く鳴らし、フリックの強さを耳でも分かるようにする</summary>
         public void PlayHit(float strength)
         {
-            Play(_hitClip, _hitVolume, Mathf.Lerp(0.92f, 1.3f, Mathf.Clamp01(strength)));
+            Play(_hitClip, _hitVolume, Mathf.Lerp(HitPitchWeak, HitPitchStrong, Mathf.Clamp01(strength)));
         }
 
         /// <summary>台へのバウンド音。連続して鳴るので打球音より軽く短くする</summary>
         public void PlayBounce()
         {
-            Play(_bounceClip, _bounceVolume, UnityEngine.Random.Range(0.95f, 1.08f));
+            Play(_bounceClip, _bounceVolume, UnityEngine.Random.Range(BouncePitchMin, BouncePitchMax));
         }
 
         public void PlayNet()

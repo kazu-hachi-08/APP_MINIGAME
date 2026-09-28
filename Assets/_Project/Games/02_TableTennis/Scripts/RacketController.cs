@@ -6,10 +6,16 @@ namespace MiniGame.TableTennis
     /// <summary>
     /// プレイヤーのラケット位置を管理する。
     /// タップ/ドラッグした画面位置をコート座標へ逆変換し、可動範囲内へ収めて追従させる。
-    /// 角度は固定（仕様通り）で、打球そのものは PlayerSwing が担当する。
+    /// 角度は固定で、打球そのものは PlayerSwing が担当する。
     /// </summary>
     public class RacketController : MonoBehaviour, ICourtActor
     {
+        /// <summary>指で触れる前に構えておく高さ（台より少し上）</summary>
+        private const float InitialHeight = 0.25f;
+
+        /// <summary>スプライトの幅で割るため、0除算にならないようにする下限</summary>
+        private const float MinSpriteUnitSize = 0.0001f;
+
         [SerializeField] private TableLayout _table;
         [SerializeField] private FlickInput _flickInput;
         [SerializeField] private Camera _camera;
@@ -51,7 +57,7 @@ namespace MiniGame.TableTennis
 
         private void Awake()
         {
-            _current = new Vector2(0f, 0.25f);
+            _current = new Vector2(0f, InitialHeight);
             _target = _current;
         }
 
@@ -87,7 +93,7 @@ namespace MiniGame.TableTennis
         {
             if (_renderer != null && _renderer.sprite != null)
             {
-                _spriteUnitSize = Mathf.Max(0.0001f, _renderer.sprite.bounds.size.x);
+                _spriteUnitSize = Mathf.Max(MinSpriteUnitSize, _renderer.sprite.bounds.size.x);
             }
         }
 
@@ -126,16 +132,18 @@ namespace MiniGame.TableTennis
         private void Update()
         {
             // フレームレートに依存しない指数補間で目標位置へ寄せる
-            float stunScale = 1f;
-            if (_stunTimer > 0f)
-            {
-                _stunTimer -= Time.deltaTime;
-                stunScale = _stunMoveMultiplier;
-            }
-
-            float t = 1f - Mathf.Exp(-_followSpeed * _followSpeedMultiplier * stunScale * Time.deltaTime);
+            float t = 1f - Mathf.Exp(-_followSpeed * _followSpeedMultiplier * TickStun() * Time.deltaTime);
             _current = Vector2.Lerp(_current, _target, t);
             ApplyView();
+        }
+
+        /// <summary>足止めの残り時間を進め、このフレームの追従速度の倍率を返す</summary>
+        private float TickStun()
+        {
+            if (_stunTimer <= 0f) return 1f;
+
+            _stunTimer -= Time.deltaTime;
+            return _stunMoveMultiplier;
         }
 
         /// <summary>指で操作中かどうか（PCのマウス操作ではオフセットを掛けない）</summary>

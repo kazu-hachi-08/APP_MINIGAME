@@ -65,38 +65,48 @@ namespace MiniGame.TableTennis
 
             if (pointer.press.wasPressedThisFrame)
             {
-                // ポーズボタン等のUI操作をフリックとして拾わない
-                _tracking = !IsPointerOverUI(pointer);
-                _flickFired = false;
-                _samples.Clear();
+                BeginTracking(pointer);
             }
 
             if (!_tracking) return;
 
             if (pointer.press.isPressed)
             {
-                OnPointerDragged?.Invoke(position);
-
-                // ラケットをボールまで運ぶ動き自体もフリックとして拾われるため、
-                // 一定時間で受け付けを戻さないと「1タッチ1スイング」になり打ち返せなくなる
-                if (_flickFired && Time.unscaledTime >= _refireTime)
-                {
-                    _flickFired = false;
-                    _samples.Clear();
-                }
-
-                _samples.Add(new Sample(position, Time.unscaledTime));
-                TrimOldSamples();
-
-                if (!_flickFired)
-                {
-                    TryDetectFlick(position);
-                }
+                TrackDrag(position);
             }
 
             if (pointer.press.wasReleasedThisFrame)
             {
                 _tracking = false;
+            }
+        }
+
+        private void BeginTracking(Pointer pointer)
+        {
+            // ポーズボタン等のUI操作をフリックとして拾わない
+            _tracking = !IsPointerOverUI(pointer);
+            _flickFired = false;
+            _samples.Clear();
+        }
+
+        private void TrackDrag(Vector2 position)
+        {
+            OnPointerDragged?.Invoke(position);
+
+            // ラケットをボールまで運ぶ動き自体もフリックとして拾われるため、
+            // 一定時間で受け付けを戻さないと「1タッチ1スイング」になり打ち返せなくなる
+            if (_flickFired && Time.unscaledTime >= _refireTime)
+            {
+                _flickFired = false;
+                _samples.Clear();
+            }
+
+            _samples.Add(new Sample(position, Time.unscaledTime));
+            TrimOldSamples();
+
+            if (!_flickFired)
+            {
+                TryDetectFlick(position);
             }
         }
 

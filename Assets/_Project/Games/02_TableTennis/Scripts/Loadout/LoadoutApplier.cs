@@ -36,11 +36,14 @@ namespace MiniGame.TableTennis
         /// <summary>NPCの選手・ラケットを能力と見た目の両方に反映する</summary>
         public void ApplyNpc(Loadout loadout)
         {
+            CharacterData character = loadout.Character;
+            RacketData racket = loadout.Racket;
+
             _npc.SetLoadoutMultipliers(
-                loadout.Character.MoveSpeedMultiplier,
-                loadout.Character.ReachMultiplier,
-                loadout.Racket.SpeedMultiplier,
-                loadout.Racket.SpinMultiplier);
+                character.MoveSpeedMultiplier,
+                character.ReachMultiplier,
+                racket.SpeedMultiplier,
+                racket.SpinMultiplier);
 
             ApplyOpponentLook(loadout);
         }

@@ -92,6 +92,9 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class ShotCalculator : MonoBehaviour
     {
+        /// <summary>飛行時間を前進速度で割って求めるため、0除算にならないようにする下限</summary>
+        private const float MinFlightSpeed = 0.1f;
+
         [Tooltip("飛行モデルに合わせて初速を逆算するために参照する")]
         [SerializeField] private BallMotion _ball;
 
@@ -203,19 +206,9 @@ namespace MiniGame.TableTennis
 
             float strength = flick.Strength;
             float quality = judgement.Quality;
-            // ラケットの「ミスしやすさ」は、タイミングが悪いときのズレ幅として効かせる
-            float error = (1f - quality) * _errorMultiplier;
 
-            // タイミングが悪いほど弱く・回転が少なく・狙いからズレる
-            float forward = Mathf.Lerp(profile.MinForwardSpeed, profile.MaxForwardSpeed, strength)
-                          * Mathf.Lerp(_worstSpeedScale, 1f, quality)
-                          * _speedMultiplier;
-
-            // 縦回転の向きはショット種別が決め（カットなら必ず下回転）、量だけフリックの強さで変わる。
-            // 横回転はフリックの左右がそのまま乗る
-            float spinScale = Mathf.Lerp(_minSpinScale, 1f, strength) * Mathf.Lerp(_worstSpinScale, 1f, quality)
-                            * _spinMultiplier;
-            Vector2 spin = new Vector2(flick.Direction.x * profile.SideSpin, profile.TopSpin) * spinScale;
+            float forward = CalculateForwardSpeed(profile, strength, quality);
+            Vector2 spin = CalculateSpin(profile, flick.Direction.x, strength, quality);
 
             SpecialData special = PendingSpecial;
             PendingSpecial = null;
@@ -225,43 +218,10 @@ namespace MiniGame.TableTennis
                 spin = special.ApplySpin(spin);
             }
 
-            var target = new Vector3(
-                flick.Direction.x * _courseSpread + UnityEngine.Random.Range(-_worstCourseError, _worstCourseError) * error,
-                0f,
-                Mathf.Max(
-                    _minLandingDepth,
-                    Mathf.Lerp(profile.LandingDepthNear, profile.LandingDepthFar, strength)
-                        + UnityEngine.Random.Range(-_worstDepthError, _worstDepthError) * error));
+            Vector3 target = CalculateTarget(profile, flick.Direction.x, strength, quality);
 
-            if (isServe)
+            var result = new ShotResult
             {
-                // ネットを越える弧は BallMotion が1バウンド目の直後に保証するため、速度はそのまま使う。
-                // サーブは相手コートへ直接ではなく、まず自陣への1バウンドを狙う。
-                // 実際の向け直しは BallMotion.LaunchServe が1バウンド目の直後に行う
-                var ownBounce = new Vector3(target.x, 0f, -_serveOwnBounceDepth);
-
-                return new ShotResult
-                {
-                    Spin = spin,
-                    Strength = strength,
-                    Timing = judgement.Timing,
-                    Quality = quality,
-                    Type = type,
-                    IsServe = true,
-                    ServeBouncePoint = ownBounce,
-                    ServeTarget = target,
-                    ServeForwardSpeed = forward,
-                    Special = special
-                };
-            }
-
-            // 前方への速度で飛行時間が決まり、その時間で狙い点へ落ちる初速を逆算する。
-            // 種別ごとに前方速度が違うので、カットやロブは自然と山なりの軌道になる
-            float flightTime = (target.z - from.z) / Mathf.Max(0.1f, forward);
-
-            return new ShotResult
-            {
-                Velocity = _ball.SolveLaunchVelocity(from, target, flightTime, spin),
                 Spin = spin,
                 Strength = strength,
                 Timing = judgement.Timing,
@@ -269,6 +229,58 @@ namespace MiniGame.TableTennis
                 Type = type,
                 Special = special
             };
+
+            if (isServe)
+            {
+                // ネットを越える弧は BallMotion が1バウンド目の直後に保証するため、速度はそのまま使う。
+                // サーブは相手コートへ直接ではなく、まず自陣への1バウンドを狙う。
+                // 実際の向け直しは BallMotion.LaunchServe が1バウンド目の直後に行う
+                result.IsServe = true;
+                result.ServeBouncePoint = new Vector3(target.x, 0f, -_serveOwnBounceDepth);
+                result.ServeTarget = target;
+                result.ServeForwardSpeed = forward;
+                return result;
+            }
+
+            // 前方への速度で飛行時間が決まり、その時間で狙い点へ落ちる初速を逆算する。
+            // 種別ごとに前方速度が違うので、カットやロブは自然と山なりの軌道になる
+            float flightTime = (target.z - from.z) / Mathf.Max(MinFlightSpeed, forward);
+            result.Velocity = _ball.SolveLaunchVelocity(from, target, flightTime, spin);
+            return result;
+        }
+
+        /// <summary>タイミングが悪いほど弱くなる</summary>
+        private float CalculateForwardSpeed(ShotProfile profile, float strength, float quality)
+        {
+            return Mathf.Lerp(profile.MinForwardSpeed, profile.MaxForwardSpeed, strength)
+                 * Mathf.Lerp(_worstSpeedScale, 1f, quality)
+                 * _speedMultiplier;
+        }
+
+        /// <summary>
+        /// 縦回転の向きはショット種別が決め（カットなら必ず下回転）、量だけフリックの強さで変わる。
+        /// 横回転はフリックの左右がそのまま乗る。タイミングが悪いほど回転は少なくなる
+        /// </summary>
+        private Vector2 CalculateSpin(ShotProfile profile, float flickX, float strength, float quality)
+        {
+            float spinScale = Mathf.Lerp(_minSpinScale, 1f, strength) * Mathf.Lerp(_worstSpinScale, 1f, quality)
+                            * _spinMultiplier;
+            return new Vector2(flickX * profile.SideSpin, profile.TopSpin) * spinScale;
+        }
+
+        /// <summary>
+        /// 相手コートの狙い点。タイミングが悪いほど狙いからズレる。
+        /// ラケットの「ミスしやすさ」は、このズレ幅として効かせる
+        /// </summary>
+        private Vector3 CalculateTarget(ShotProfile profile, float flickX, float strength, float quality)
+        {
+            float error = (1f - quality) * _errorMultiplier;
+
+            float x = flickX * _courseSpread + UnityEngine.Random.Range(-_worstCourseError, _worstCourseError) * error;
+            float depth = Mathf.Lerp(profile.LandingDepthNear, profile.LandingDepthFar, strength)
+                        + UnityEngine.Random.Range(-_worstDepthError, _worstDepthError) * error;
+
+            return new Vector3(x, 0f, Mathf.Max(_minLandingDepth, depth));
         }
 
         /// <summary>

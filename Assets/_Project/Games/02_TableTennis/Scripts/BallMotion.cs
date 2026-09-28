@@ -34,6 +34,9 @@ namespace MiniGame.TableTennis
         /// </summary>
         private const float MinFallAcceleration = 1.5f;
 
+        /// <summary>サーブの飛行時間を前進速度で割って求めるため、0除算にならないようにする下限</summary>
+        private const float MinServeForwardSpeed = 0.1f;
+
         [SerializeField] private TableLayout _table;
 
         [Header("Flight")]
@@ -122,7 +125,7 @@ namespace MiniGame.TableTennis
         /// </summary>
         public void LaunchServe(Vector3 from, Vector3 ownBouncePoint, Vector3 finalTarget, Vector2 spin, float forwardSpeed)
         {
-            float speed = Mathf.Max(0.1f, forwardSpeed);
+            float speed = Mathf.Max(MinServeForwardSpeed, forwardSpeed);
             float firstLegTime = Mathf.Abs(ownBouncePoint.z - from.z) / speed;
             Launch(from, SolveLaunchVelocity(from, ownBouncePoint, firstLegTime, spin), spin);
 
@@ -225,9 +228,26 @@ namespace MiniGame.TableTennis
             }
 
             CourtPosition = new Vector3(contact.x, 0f, contact.z);
+            ApplyBounceVelocity(isEdge);
+            ApplyNextBounceHeightMultiplier();
 
-            // 回転の効果はここで一度に反映する。
-            // トップスピンは低く伸び、バックスピンは高く跳ねて失速し、サイドスピンは横へ跳ねる
+            OnBounced?.Invoke(CourtPosition);
+            if (isEdge) OnEdgeBounced?.Invoke(CourtPosition);
+
+            if (_awaitingServeBounce)
+            {
+                RedirectServeAfterOwnBounce();
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 回転の効果はバウンドの瞬間に一度に反映する。
+        /// トップスピンは低く伸び、バックスピンは高く跳ねて失速し、サイドスピンは横へ跳ねる
+        /// </summary>
+        private void ApplyBounceVelocity(bool isEdge)
+        {
             float forwardFactor = 1f + Spin.y * _topSpinBounceForward;
             float heightFactor = 1f - Spin.y * _backSpinBounceHeight;
 
@@ -243,30 +263,27 @@ namespace MiniGame.TableTennis
             {
                 Velocity = new Vector3(Velocity.x, Velocity.y * _edgeBounceHeight, Velocity.z);
             }
+        }
 
-            // 進行方向と同じ側（＝打った相手のコート）でのバウンドだけに効かせる
+        /// <summary>進行方向と同じ側（＝打った相手のコート）でのバウンドだけに効かせる</summary>
+        private void ApplyNextBounceHeightMultiplier()
+        {
             bool isReceiverSide = CourtPosition.z * Velocity.z > 0f;
-            if (isReceiverSide && !_awaitingServeBounce)
-            {
-                Velocity = new Vector3(Velocity.x, Velocity.y * NextBounceHeightMultiplier, Velocity.z);
-                NextBounceHeightMultiplier = 1f;
-            }
+            if (!isReceiverSide || _awaitingServeBounce) return;
 
-            OnBounced?.Invoke(CourtPosition);
-            if (isEdge) OnEdgeBounced?.Invoke(CourtPosition);
+            Velocity = new Vector3(Velocity.x, Velocity.y * NextBounceHeightMultiplier, Velocity.z);
+            NextBounceHeightMultiplier = 1f;
+        }
 
-            // サーブの1バウンド目。ここから本来の狙い点（相手コート）へ向け直す
-            if (_awaitingServeBounce)
-            {
-                _awaitingServeBounce = false;
-                float secondLegTime = Mathf.Max(
-                    Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed,
-                    MinServeTimeToClearNet(CourtPosition, _serveTarget, _serveSpin));
-                Velocity = SolveLaunchVelocity(CourtPosition, _serveTarget, secondLegTime, _serveSpin);
-                Spin = _serveSpin;
-            }
-
-            return false;
+        /// <summary>サーブの1バウンド目。ここから本来の狙い点（相手コート）へ向け直す</summary>
+        private void RedirectServeAfterOwnBounce()
+        {
+            _awaitingServeBounce = false;
+            float secondLegTime = Mathf.Max(
+                Mathf.Abs(_serveTarget.z - CourtPosition.z) / _serveForwardSpeed,
+                MinServeTimeToClearNet(CourtPosition, _serveTarget, _serveSpin));
+            Velocity = SolveLaunchVelocity(CourtPosition, _serveTarget, secondLegTime, _serveSpin);
+            Spin = _serveSpin;
         }
 
         /// <summary>

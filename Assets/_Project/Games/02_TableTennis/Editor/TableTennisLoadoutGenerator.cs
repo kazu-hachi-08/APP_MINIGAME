@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.TableTennis.Editor
 {
     /// <summary>
-    /// 選手・ラケットのデータアセット（§25）を初期値で生成するエディタユーティリティ。
+    /// 選手・ラケットのデータアセットを初期値で生成するエディタユーティリティ。
     /// 既にあるアセットは上書きしない。Inspector で調整した値を消さないため。
     /// </summary>
     public static class TableTennisLoadoutGenerator
@@ -39,6 +39,7 @@ namespace MiniGame.TableTennis.Editor
             TableTennisArtGenerator.EnsureGenerated();
 
             // 先頭をスタンダードにする（選択画面の初期値になる）
+            // 引数は 移動速度・リーチ・スイング時間 / 球速・回転・ブレ の倍率（1 = 標準）
             var catalog = ScriptableObject.CreateInstance<LoadoutCatalog>();
             catalog.Characters = new[]
             {
@@ -60,7 +61,7 @@ namespace MiniGame.TableTennis.Editor
         }
 
         /// <summary>
-        /// 技が未設定の選手に、タイプに応じた弱必殺技を割り当てる。
+        /// 技が未設定の選手に、タイプに応じた弱・強の必殺技を割り当てる。
         /// 設定済みの選手は触らない（Inspector で差し替えた技を消さないため）
         /// </summary>
         private static void EnsureSpecials(LoadoutCatalog catalog)
@@ -85,13 +86,60 @@ namespace MiniGame.TableTennis.Editor
             AssetDatabase.SaveAssets();
         }
 
+        private static SpecialData EnsureWeakSpecial(PlayStyle style)
+        {
+            return EnsureSpecial("Weak", style, ConfigureWeakSpecial);
+        }
+
         private static SpecialData EnsureStrongSpecial(PlayStyle style)
         {
-            string path = $"{DataDirectory}/Special_Strong_{style}.asset";
+            return EnsureSpecial("Strong", style, ConfigureStrongSpecial);
+        }
+
+        /// <summary>既にある技アセットは再利用する。選手ごとに作らず、同じタイプの選手で共有するため</summary>
+        private static SpecialData EnsureSpecial(string rank, PlayStyle style, System.Action<SpecialData, PlayStyle> configure)
+        {
+            string path = $"{DataDirectory}/Special_{rank}_{style}.asset";
             var existing = AssetDatabase.LoadAssetAtPath<SpecialData>(path);
             if (existing != null) return existing;
 
             var data = ScriptableObject.CreateInstance<SpecialData>();
+            configure(data, style);
+            AssetDatabase.CreateAsset(data, path);
+            return data;
+        }
+
+        private static void ConfigureWeakSpecial(SpecialData data, PlayStyle style)
+        {
+            switch (style)
+            {
+                // スタンダード: 素直に速い球
+                case PlayStyle.Standard:
+                    data.DisplayName = "ファイアショット";
+                    data.BallColor = new Color(1f, 0.35f, 0.15f);
+                    data.SpeedMultiplier = 1.25f;
+                    break;
+
+                // テクニック: バウンド後に大きく横へ逃げる球
+                case PlayStyle.Technique:
+                    data.DisplayName = "魔球カーブ";
+                    data.BallColor = new Color(0.35f, 0.8f, 1f);
+                    data.SideSpinMultiplier = 2.5f;
+                    data.MinSideSpin = 1.5f;
+                    break;
+
+                // パワー: 相手をのけぞらせて出足を止める
+                default:
+                    data.DisplayName = "つっぱり";
+                    data.BallColor = new Color(0.75f, 0.45f, 1f);
+                    data.StunDuration = 1f;
+                    data.StunMoveMultiplier = 0.2f;
+                    break;
+            }
+        }
+
+        private static void ConfigureStrongSpecial(SpecialData data, PlayStyle style)
+        {
             switch (style)
             {
                 // スタンダード: ラリーが終わるまで絶対にミスしない
@@ -119,46 +167,6 @@ namespace MiniGame.TableTennis.Editor
                     data.OpponentReturnRateMultiplier = 0.6f;
                     break;
             }
-
-            AssetDatabase.CreateAsset(data, path);
-            return data;
-        }
-
-        private static SpecialData EnsureWeakSpecial(PlayStyle style)
-        {
-            string path = $"{DataDirectory}/Special_Weak_{style}.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<SpecialData>(path);
-            if (existing != null) return existing;
-
-            var data = ScriptableObject.CreateInstance<SpecialData>();
-            switch (style)
-            {
-                // スタンダード: 素直に速い球
-                case PlayStyle.Standard:
-                    data.DisplayName = "ファイアショット";
-                    data.BallColor = new Color(1f, 0.35f, 0.15f);
-                    data.SpeedMultiplier = 1.25f;
-                    break;
-
-                // テクニック: バウンド後に大きく横へ逃げる球
-                case PlayStyle.Technique:
-                    data.DisplayName = "魔球カーブ";
-                    data.BallColor = new Color(0.35f, 0.8f, 1f);
-                    data.SideSpinMultiplier = 2.5f;
-                    data.MinSideSpin = 1.5f;
-                    break;
-
-                // パワー: 相手をのけぞらせて出足を止める
-                default:
-                    data.DisplayName = "つっぱり";
-                    data.BallColor = new Color(0.75f, 0.45f, 1f);
-                    data.StunDuration = 1f;
-                    data.StunMoveMultiplier = 0.2f;
-                    break;
-            }
-
-            AssetDatabase.CreateAsset(data, path);
-            return data;
         }
 
         private static CharacterData CreateCharacter(string displayName, PlayStyle style, string spriteName,

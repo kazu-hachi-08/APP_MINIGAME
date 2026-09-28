@@ -8,6 +8,12 @@ namespace MiniGame.TableTennis
     /// </summary>
     public class BallView : MonoBehaviour
     {
+        // 最も高いときの影の大きさ（ボールに対する割合）。高さの変化を影の大きさでも読み取れるようにする
+        private const float ShadowScaleAtTop = 0.6f;
+
+        // 台に貼り付いた影に見せるための縦のつぶし率
+        private const float ShadowFlatten = 0.35f;
+
         [SerializeField] private TableLayout _table;
         [SerializeField] private BallMotion _ball;
         [SerializeField] private SpriteRenderer _renderer;
@@ -56,23 +62,25 @@ namespace MiniGame.TableTennis
             transform.localScale = new Vector3(size, size, 1f);
             transform.rotation = Quaternion.Euler(0f, 0f, AdvanceSpinAngle());
 
-            if (_shadow != null)
+            UpdateShadow(court, size);
+        }
+
+        /// <summary>高いほど影を小さく薄くして、ボールの高さを読み取れるようにする</summary>
+        private void UpdateShadow(Vector3 court, float ballSize)
+        {
+            if (_shadow == null) return;
+
+            _shadow.position = _table.Project(new Vector3(court.x, 0f, court.z));
+
+            float heightRatio = Mathf.Clamp01(court.y / Mathf.Max(0.01f, _shadowFadeHeight));
+            float shadowSize = ballSize * Mathf.Lerp(1f, ShadowScaleAtTop, heightRatio);
+            _shadow.localScale = new Vector3(shadowSize, shadowSize * ShadowFlatten, 1f);
+
+            if (_shadowRenderer != null)
             {
-                _shadow.position = _table.Project(new Vector3(court.x, 0f, court.z));
-
-                // 高いほど影を小さく薄くして、ボールの高さを読み取れるようにする
-                float heightRatio = Mathf.Clamp01(court.y / Mathf.Max(0.01f, _shadowFadeHeight));
-                float shadowSize = size * Mathf.Lerp(1f, 0.6f, heightRatio);
-
-                // 台に貼り付いた影に見せるため縦につぶす
-                _shadow.localScale = new Vector3(shadowSize, shadowSize * 0.35f, 1f);
-
-                if (_shadowRenderer != null)
-                {
-                    Color color = _shadowRenderer.color;
-                    color.a = Mathf.Lerp(_shadowAlphaAtGround, _shadowAlphaAtTop, heightRatio);
-                    _shadowRenderer.color = color;
-                }
+                Color color = _shadowRenderer.color;
+                color.a = Mathf.Lerp(_shadowAlphaAtGround, _shadowAlphaAtTop, heightRatio);
+                _shadowRenderer.color = color;
             }
         }
 
