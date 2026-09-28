@@ -42,6 +42,9 @@ namespace MiniGame.Molkky
         [SerializeField] private float _lobAirTime = 1.1f;
         [Tooltip("山なりの見た目上の最高点。滞空時間が一定なので強さによらず同じ高さにする")]
         [SerializeField] private float _lobPeakHeight = 2.5f;
+        [Tooltip("山なりの初速に掛ける割合。空中で減速しない分、低めと同じ強さでも遠くへ飛びすぎるのを抑える")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _lobSpeedRatio = 0.6f;
         [Tooltip("着地した瞬間に残す速度の割合。小さいほど落ちた場所の近くで止まる")]
         [Range(0f, 1f)]
         [SerializeField] private float _lobLandingSpeedRatio = 0.5f;
@@ -82,6 +85,7 @@ namespace MiniGame.Molkky
         public float StickPeakHeight => _stickPeakHeight;
         public float LobAirTime => _lobAirTime;
         public float LobPeakHeight => _lobPeakHeight;
+        public float LobSpeedRatio => _lobSpeedRatio;
         public float LobLandingSpeedRatio => _lobLandingSpeedRatio;
 
         public float PinMassStanding => _pinMassStanding;

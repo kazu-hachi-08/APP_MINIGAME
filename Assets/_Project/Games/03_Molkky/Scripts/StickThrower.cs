@@ -112,6 +112,8 @@ namespace MiniGame.Molkky
             {
                 _airTime = _settings.LobAirTime;
                 _peakHeight = _settings.LobPeakHeight;
+                // 空中は減速しないため、低めと同じ初速だと約1.7倍飛んでしまう。初速を落として飛距離を揃える
+                _body.linearVelocity *= _settings.LobSpeedRatio;
                 // 空中では当たらないようにして、手前のピンを飛び越えさせる（§8.2）
                 _capsule.enabled = false;
                 // 空中は地面の摩擦を受けないので減速させない。着地時の減速と二重に削られて、ピンを倒せなくなるのを防ぐ
