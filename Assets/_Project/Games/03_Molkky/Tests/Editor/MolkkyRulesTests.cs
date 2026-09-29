@@ -9,99 +9,89 @@ namespace MiniGame.Molkky.Tests
         [Test]
         public void 一本倒すとその数字が得点になる()
         {
-            var player = new PlayerSlot("P1");
+            var team = new TeamScore();
 
-            ThrowResult result = MolkkyRules.ApplyThrow(player, new[] { 12 });
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 12 });
 
             Assert.AreEqual(ThrowOutcome.Scored, result.Outcome);
             Assert.AreEqual(12, result.SinglePinNumber);
-            Assert.AreEqual(12, player.Score);
+            Assert.AreEqual(12, team.Score);
         }
 
         [Test]
         public void 複数本倒すと本数が得点になる()
         {
-            var player = new PlayerSlot("P1");
+            var team = new TeamScore();
 
-            MolkkyRules.ApplyThrow(player, new[] { 12, 11, 10 });
+            MolkkyRules.ApplyThrow(team, new[] { 12, 11, 10 });
 
-            Assert.AreEqual(3, player.Score);
+            Assert.AreEqual(3, team.Score);
         }
 
         [Test]
         public void 五十点ちょうどで勝利()
         {
-            var player = new PlayerSlot("P1") { Score = 38 };
+            var team = new TeamScore() { Score = 38 };
 
-            ThrowResult result = MolkkyRules.ApplyThrow(player, new[] { 12 });
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 12 });
 
             Assert.AreEqual(ThrowOutcome.Win, result.Outcome);
-            Assert.AreEqual(50, player.Score);
+            Assert.AreEqual(50, team.Score);
         }
 
         [Test]
         public void 五十点を超えると二十五点に戻る()
         {
-            var player = new PlayerSlot("P1") { Score = 45 };
+            var team = new TeamScore() { Score = 45 };
 
-            ThrowResult result = MolkkyRules.ApplyThrow(player, new[] { 6 });
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 6 });
 
             Assert.AreEqual(ThrowOutcome.OverTo25, result.Outcome);
-            Assert.AreEqual(25, player.Score);
+            Assert.AreEqual(25, team.Score);
         }
 
         [Test]
         public void 三回連続ミスで失格()
         {
-            var player = new PlayerSlot("P1");
+            var team = new TeamScore();
 
-            MolkkyRules.ApplyThrow(player, NoPins);
-            MolkkyRules.ApplyThrow(player, NoPins);
-            ThrowResult result = MolkkyRules.ApplyThrow(player, NoPins);
+            MolkkyRules.ApplyThrow(team, NoPins);
+            MolkkyRules.ApplyThrow(team, NoPins);
+            ThrowResult result = MolkkyRules.ApplyThrow(team, NoPins);
 
             Assert.AreEqual(ThrowOutcome.Disqualified, result.Outcome);
-            Assert.IsTrue(player.IsDisqualified);
+            Assert.IsTrue(team.IsDisqualified);
         }
 
         [Test]
         public void 得点するとミス回数がリセットされる()
         {
-            var player = new PlayerSlot("P1");
+            var team = new TeamScore();
 
-            MolkkyRules.ApplyThrow(player, NoPins);
-            MolkkyRules.ApplyThrow(player, NoPins);
-            MolkkyRules.ApplyThrow(player, new[] { 1 });
-            ThrowResult result = MolkkyRules.ApplyThrow(player, NoPins);
+            MolkkyRules.ApplyThrow(team, NoPins);
+            MolkkyRules.ApplyThrow(team, NoPins);
+            MolkkyRules.ApplyThrow(team, new[] { 1 });
+            ThrowResult result = MolkkyRules.ApplyThrow(team, NoPins);
 
             Assert.AreEqual(ThrowOutcome.Miss, result.Outcome);
-            Assert.AreEqual(1, player.MissCount);
-            Assert.IsFalse(player.IsDisqualified);
+            Assert.AreEqual(1, team.MissCount);
+            Assert.IsFalse(team.IsDisqualified);
         }
 
         [Test]
-        public void 次の手番は失格者を飛ばす()
+        public void 残り一チームならその番号が勝者()
         {
-            var players = new[] { new PlayerSlot("P1"), new PlayerSlot("P2") { IsDisqualified = true }, new PlayerSlot("P3") };
+            var teams = new[] { new TeamScore { IsDisqualified = true }, new TeamScore() };
 
-            Assert.AreEqual(2, MolkkyRules.NextPlayerIndex(players, 0));
-            Assert.AreEqual(0, MolkkyRules.NextPlayerIndex(players, 2));
+            Assert.AreEqual(1, MolkkyRules.FindSoleSurvivor(teams));
         }
 
         [Test]
-        public void 残り一人ならその人が勝者()
+        public void 二チーム以上残っていれば勝者なし()
         {
-            var survivor = new PlayerSlot("P2");
-            var players = new[] { new PlayerSlot("P1") { IsDisqualified = true }, survivor };
+            var teams = new[] { new TeamScore(), new TeamScore() };
 
-            Assert.AreSame(survivor, MolkkyRules.FindSoleSurvivor(players));
-        }
-
-        [Test]
-        public void 二人以上残っていれば勝者なし()
-        {
-            var players = new[] { new PlayerSlot("P1"), new PlayerSlot("P2") };
-
-            Assert.IsNull(MolkkyRules.FindSoleSurvivor(players));
+            Assert.AreEqual(-1, MolkkyRules.FindSoleSurvivor(teams));
         }
     }
 }

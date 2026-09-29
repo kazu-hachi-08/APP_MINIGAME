@@ -48,16 +48,17 @@ namespace MiniGame.Molkky
             _countRoutines = new Coroutine[_cells.Length];
         }
 
-        public void Show(IReadOnlyList<PlayerSlot> players, int currentIndex)
+        /// <summary>個人戦用：席 i の得点は teams[i]（1人チーム）</summary>
+        public void Show(IReadOnlyList<PlayerSlot> players, IReadOnlyList<TeamScore> teams, int currentIndex)
         {
             for (int i = 0; i < _cells.Length; i++)
             {
                 bool used = i < players.Count;
                 _cells[i].gameObject.SetActive(used);
-                if (used) ShowCell(i, players[i], i == currentIndex);
+                if (used) ShowCell(i, players[i].Name, teams[i], i == currentIndex);
             }
 
-            ShowRemaining(players[currentIndex], currentIndex);
+            ShowRemaining(players[currentIndex].Name, teams[currentIndex], currentIndex);
         }
 
         /// <summary>枠を揺らす。25点に戻った・失格になったときの「やらかした」感を出す</summary>
@@ -66,25 +67,25 @@ namespace MiniGame.Molkky
             StartCoroutine(ShakeRoutine(_cells[index]));
         }
 
-        private void ShowCell(int index, PlayerSlot player, bool isCurrent)
+        private void ShowCell(int index, string playerName, TeamScore score, bool isCurrent)
         {
             Color playerColor = MolkkyPlayerColors.Get(index);
 
-            _cellBackgrounds[index].color = player.IsDisqualified
+            _cellBackgrounds[index].color = score.IsDisqualified
                 ? _disqualifiedColor
                 : Color.Lerp(Color.black, playerColor, isCurrent ? 1f : _idleBrightness);
             _cells[index].localScale = Vector3.one * (isCurrent ? _currentScale : 1f);
 
-            _nameTexts[index].text = isCurrent ? $"▶{player.Name}" : player.Name;
-            _missTexts[index].text = player.IsDisqualified ? "失格" : new string('×', player.MissCount);
-            _missTexts[index].color = player.MissCount >= WarningMissCount ? _warningColor : Color.white;
+            _nameTexts[index].text = isCurrent ? $"▶{playerName}" : playerName;
+            _missTexts[index].text = score.IsDisqualified ? "失格" : new string('×', score.MissCount);
+            _missTexts[index].color = score.MissCount >= WarningMissCount ? _warningColor : Color.white;
 
-            CountTo(index, player.Score);
+            CountTo(index, score.Score);
         }
 
-        private void ShowRemaining(PlayerSlot current, int currentIndex)
+        private void ShowRemaining(string playerName, TeamScore current, int currentIndex)
         {
-            string name = Colorize(current.Name, MolkkyPlayerColors.Get(currentIndex));
+            string name = Colorize(playerName, MolkkyPlayerColors.Get(currentIndex));
             string warning = current.MissCount == WarningMissCount ? $"  {Colorize("失格注意!", _warningColor)}" : "";
             _remainingText.text = $"{name}  あと <size={RemainingNumberFontSize}>{current.Remaining}</size> 点{warning}";
         }

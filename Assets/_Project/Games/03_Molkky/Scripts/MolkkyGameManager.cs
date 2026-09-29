@@ -57,7 +57,8 @@ namespace MiniGame.Molkky
         [SerializeField] private float _pinResetDuration = 0.5f;
 
         private readonly List<PlayerSlot> _players = new List<PlayerSlot>();
-        private int _currentIndex;
+        private readonly List<TeamScore> _teams = new List<TeamScore>();
+        private MolkkyTurnOrder _turnOrder;
 
         private bool _isOnline;
         private int _localIndex;
@@ -74,11 +75,15 @@ namespace MiniGame.Molkky
 
         public MolkkyPhase Phase { get; private set; }
 
-        private PlayerSlot CurrentPlayer => _players[_currentIndex];
+        private int CurrentSeat => _turnOrder.CurrentSeat;
+
+        private PlayerSlot CurrentPlayer => _players[CurrentSeat];
+
+        private TeamScore CurrentTeam => _teams[_turnOrder.CurrentTeam];
 
         private MolkkyCharacterData CurrentCharacter => _characterCatalog.Get(CurrentPlayer.CharacterIndex);
 
-        private bool IsRemoteTurn => _isOnline && _currentIndex != _localIndex;
+        private bool IsRemoteTurn => _isOnline && CurrentSeat != _localIndex;
 
         protected override void OnGameReady()
         {
@@ -188,9 +193,13 @@ namespace MiniGame.Molkky
             return $"{owner} {_characterCatalog.Get(characterIndex).DisplayName}";
         }
 
+        /// <summary>チーム戦は未対応なので、今は常に「1人チーム × 人数分」の個人戦で始める</summary>
         protected override void OnGameStart()
         {
-            _currentIndex = 0;
+            _turnOrder = MolkkyTurnOrder.Individual(_players.Count);
+            _teams.Clear();
+            for (int i = 0; i < _turnOrder.TeamCount; i++) _teams.Add(new TeamScore());
+
             StartCoroutine(TurnStartRoutine());
         }
 
@@ -246,7 +255,7 @@ namespace MiniGame.Molkky
         private IEnumerator TurnStartRoutine()
         {
             Phase = MolkkyPhase.TurnStart;
-            _scoreBoard.Show(_players, _currentIndex);
+            _scoreBoard.Show(_players, _teams, CurrentSeat);
             ApplyCurrentCharacter();
             // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
@@ -287,13 +296,13 @@ namespace MiniGame.Molkky
         {
             bool waitForTap = !CurrentPlayer.IsNpc && !_isOnline;
             float duration = _isOnline ? _onlineBannerDuration : _npcBannerDuration;
-            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(_currentIndex),
+            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(CurrentSeat),
                 waitForTap, duration);
         }
 
         private IEnumerator NpcThrowRoutine()
         {
-            ThrowRequest request = _npc.CreateRequest(CurrentPlayer, CurrentCharacter);
+            ThrowRequest request = _npc.CreateRequest(CurrentPlayer, CurrentTeam.Remaining, CurrentCharacter);
             _stick.SetStyle(request.Style);
             _stick.PlaceOnLine(request.PositionX);
 
@@ -418,10 +427,10 @@ namespace MiniGame.Molkky
             _pinRack.DisarmAll();
 
             List<int> fallen = _pinRack.CollectFallenNumbers();
-            ThrowResult result = MolkkyRules.ApplyThrow(CurrentPlayer, fallen);
+            ThrowResult result = MolkkyRules.ApplyThrow(CurrentTeam, fallen);
             LogThrow(fallen, result);
 
-            _scoreBoard.Show(_players, _currentIndex);
+            _scoreBoard.Show(_players, _teams, CurrentSeat);
             PlayResultEffect(result);
 
             bool isWin = result.Outcome == ThrowOutcome.Win;
@@ -436,13 +445,13 @@ namespace MiniGame.Molkky
 
             yield return PinResetRoutine(fallen.Count > 0);
 
-            _currentIndex = MolkkyRules.NextPlayerIndex(_players, _currentIndex);
+            _turnOrder.Advance(_teams);
             yield return TurnStartRoutine();
         }
 
         private void LogThrow(List<int> fallen, ThrowResult result)
         {
-            Debug.Log($"[Molkky] {CurrentPlayer.Name}: 倒れたピン [{string.Join(", ", fallen)}] → {result.Outcome} +{result.Points} (合計 {CurrentPlayer.Score})");
+            Debug.Log($"[Molkky] {CurrentPlayer.Name}: 倒れたピン [{string.Join(", ", fallen)}] → {result.Outcome} +{result.Points} (合計 {CurrentTeam.Score})");
         }
 
         private IEnumerator PinResetRoutine(bool anyFallen)
@@ -465,16 +474,19 @@ namespace MiniGame.Molkky
 
             if (result.Outcome == ThrowOutcome.OverTo25 || result.Outcome == ThrowOutcome.Disqualified)
             {
-                _scoreBoard.Shake(_currentIndex);
+                _scoreBoard.Shake(CurrentSeat);
             }
         }
 
-        /// <summary>50点ちょうど、または残り1人なら勝者を返す。まだ続くなら null</summary>
+        /// <summary>
+        /// 50点ちょうどなら決めた人、残り1チームならそのチームで席番号が一番若い人を返す。まだ続くなら null
+        /// </summary>
         private PlayerSlot FindWinner(ThrowResult result)
         {
-            return result.Outcome == ThrowOutcome.Win
-                ? CurrentPlayer
-                : MolkkyRules.FindSoleSurvivor(_players);
+            if (result.Outcome == ThrowOutcome.Win) return CurrentPlayer;
+
+            int survivor = MolkkyRules.FindSoleSurvivor(_teams);
+            return survivor >= 0 ? _players[_turnOrder.FirstSeatOf(survivor)] : null;
         }
 
         /// <summary>勝ったキャラの勝利演出を見せてから結果画面を出す</summary>
