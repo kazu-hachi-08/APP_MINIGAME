@@ -7,7 +7,7 @@ namespace MiniGame.Molkky
 {
     /// <summary>
     /// 画面上部のスコアボードと「あと○点」。
-    /// プレイヤーごとにプレイヤー色の枠を並べ、手番は明るく大きく、失格はグレーで見せる。
+    /// チーム（個人戦はプレイヤー）ごとに色付きの枠を並べ、手番は明るく大きく、失格はグレーで見せる。
     /// 点数は数字をカウントさせて、何点動いたか（特に25点に戻ったこと）が目で追えるようにする。
     /// </summary>
     public class ScoreBoardView : MonoBehaviour
@@ -48,17 +48,21 @@ namespace MiniGame.Molkky
             _countRoutines = new Coroutine[_cells.Length];
         }
 
-        /// <summary>個人戦用：席 i の得点は teams[i]（1人チーム）</summary>
-        public void Show(IReadOnlyList<PlayerSlot> players, IReadOnlyList<TeamScore> teams, int currentIndex)
+        /// <summary>
+        /// 得点の単位（チーム）ごとに枠を出す。個人戦は1人チームなので枠名はプレイヤー名になる。
+        /// throwerName は「あと○点」に添える、今回投げる人の名前
+        /// </summary>
+        public void Show(IReadOnlyList<string> teamNames, IReadOnlyList<TeamScore> teams, int currentTeam,
+            string throwerName)
         {
             for (int i = 0; i < _cells.Length; i++)
             {
-                bool used = i < players.Count;
+                bool used = i < teams.Count;
                 _cells[i].gameObject.SetActive(used);
-                if (used) ShowCell(i, players[i].Name, teams[i], i == currentIndex);
+                if (used) ShowCell(i, teamNames[i], teams[i], i == currentTeam);
             }
 
-            ShowRemaining(players[currentIndex].Name, teams[currentIndex], currentIndex);
+            ShowRemaining(throwerName, teams[currentTeam], currentTeam);
         }
 
         /// <summary>枠を揺らす。25点に戻った・失格になったときの「やらかした」感を出す</summary>

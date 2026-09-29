@@ -527,7 +527,7 @@ namespace MiniGame.Molkky.Editor
             return banner;
         }
 
-        /// <summary>人数と各プレイヤーの人間/NPCを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
+        /// <summary>人数・個人戦/チーム戦・各プレイヤーの人間/NPCとチームを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
         private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
         {
             const float boxHeight = 1200f;
@@ -538,7 +538,10 @@ namespace MiniGame.Molkky.Editor
             const float countButtonWidth = 240f;
             const int playerLabelFontSize = 56;
             const float playerLabelWidth = 160f;
-            const float kindButtonWidth = 600f;
+            // チーム戦の A / B ボタンを横に並べても行に収まる幅にする
+            const float kindButtonWidth = 480f;
+            const float teamButtonWidth = 120f;
+            const float modeButtonWidth = 480f;
 
             GameObject panelObj = CreatePanelOverlay(canvas, "PlayerSetupPanel");
             GameObject boxObj = CreatePanelBox(panelObj.transform, boxHeight, boxSpacing);
@@ -556,9 +559,14 @@ namespace MiniGame.Molkky.Editor
                     countButtonWidth, rowHeight, buttonFontSize);
             }
 
+            Transform modeRow = CreateRow(boxObj.transform, "ModeRow", PanelRowWidth, rowHeight);
+            Button modeButton = CreateChoiceButton(modeRow, "Btn_Mode", "", modeButtonWidth, rowHeight, buttonFontSize);
+
             var playerRows = new GameObject[PlayerSetupPanel.MaxPlayers];
             var kindButtons = new Button[PlayerSetupPanel.MaxPlayers];
             var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            var teamButtons = new Button[PlayerSetupPanel.MaxPlayers];
+            var teamTexts = new Text[PlayerSetupPanel.MaxPlayers];
             for (int i = 0; i < PlayerSetupPanel.MaxPlayers; i++)
             {
                 Transform row = CreateRow(boxObj.transform, $"Row_P{i + 1}", PanelRowWidth, rowHeight);
@@ -570,6 +578,9 @@ namespace MiniGame.Molkky.Editor
 
                 kindButtons[i] = CreateChoiceButton(row, "Btn_Kind", "", kindButtonWidth, rowHeight, buttonFontSize);
                 kindTexts[i] = kindButtons[i].GetComponentInChildren<Text>();
+
+                teamButtons[i] = CreateChoiceButton(row, "Btn_Team", "", teamButtonWidth, rowHeight, buttonFontSize);
+                teamTexts[i] = teamButtons[i].GetComponentInChildren<Text>();
             }
 
             Button startButton = CreateConfirmButton(boxObj.transform, "Btn_Start", "試合開始", 560f, 140f);
@@ -579,7 +590,10 @@ namespace MiniGame.Molkky.Editor
             SetArray(panel, "_playerRows", playerRows);
             SetArray(panel, "_kindButtons", kindButtons);
             SetArray(panel, "_kindTexts", kindTexts);
-            SetRefs(panel, ("_startButton", startButton));
+            SetArray(panel, "_teamButtons", teamButtons);
+            SetArray(panel, "_teamTexts", teamTexts);
+            SetRefs(panel, ("_startButton", startButton), ("_modeRow", modeRow.gameObject), ("_modeButton", modeButton),
+                ("_modeText", modeButton.GetComponentInChildren<Text>()));
 
             panelObj.SetActive(false);
             return panel;
