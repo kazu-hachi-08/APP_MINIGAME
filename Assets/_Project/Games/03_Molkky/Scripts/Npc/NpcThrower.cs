@@ -23,11 +23,14 @@ namespace MiniGame.Molkky
         [Tooltip("密集地を狙うとき、ピンをどれだけ越える強さで投げるか。強めに投げてまとめて倒す")]
         [SerializeField] private float _denseOvershoot = 1.5f;
 
-        /// <summary>character は手番のキャラ。人間と同じく、パワーで届く距離、コントロールでブレの大きさが変わる</summary>
-        public ThrowRequest CreateRequest(PlayerSlot player, MolkkyCharacterData character)
+        /// <summary>
+        /// character は手番のキャラ。人間と同じく、パワーで届く距離、コントロールでブレの大きさが変わる。
+        /// remaining は得点の単位（チーム）の残り点数。難易度は投げる人のものを使う
+        /// </summary>
+        public ThrowRequest CreateRequest(PlayerSlot player, int remaining, MolkkyCharacterData character)
         {
             MolkkyNpcDifficulty difficulty = GetDifficulty(player.Kind);
-            Pin target = ChooseTarget(player.Remaining, difficulty, out bool single);
+            Pin target = ChooseTarget(remaining, difficulty, out bool single);
             // 1本狙いは当たり幅の細い縦投げ、密集地はまとめて倒せる横投げにする
             float overshoot = single ? _singleOvershoot : _denseOvershoot;
             ThrowStyle style = single ? ThrowStyle.Vertical : ThrowStyle.Horizontal;

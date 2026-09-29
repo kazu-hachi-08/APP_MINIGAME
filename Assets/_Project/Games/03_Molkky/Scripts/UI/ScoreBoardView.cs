@@ -7,7 +7,7 @@ namespace MiniGame.Molkky
 {
     /// <summary>
     /// 画面上部のスコアボードと「あと○点」。
-    /// プレイヤーごとにプレイヤー色の枠を並べ、手番は明るく大きく、失格はグレーで見せる。
+    /// チーム（個人戦はプレイヤー）ごとに色付きの枠を並べ、手番は明るく大きく、失格はグレーで見せる。
     /// 点数は数字をカウントさせて、何点動いたか（特に25点に戻ったこと）が目で追えるようにする。
     /// </summary>
     public class ScoreBoardView : MonoBehaviour
@@ -24,6 +24,8 @@ namespace MiniGame.Molkky
         [SerializeField] private Text[] _nameTexts;
         [SerializeField] private Text[] _scoreTexts;
         [SerializeField] private Text[] _missTexts;
+        [Tooltip("チーム戦で枠の下に添える「▶ P3 精密型」。チームの中で誰が投げるかが変わるため")]
+        [SerializeField] private Text[] _throwerTexts;
         [SerializeField] private Text _remainingText;
 
         [Header("Look")]
@@ -48,16 +50,21 @@ namespace MiniGame.Molkky
             _countRoutines = new Coroutine[_cells.Length];
         }
 
-        public void Show(IReadOnlyList<PlayerSlot> players, int currentIndex)
+        /// <summary>
+        /// 得点の単位（チーム）ごとに枠を出す。個人戦は1人チームなので枠名はプレイヤー名になる。
+        /// throwerName はチーム戦で手番チームの枠に添える、今回投げる人の名前。個人戦は枠名と同じなので null
+        /// </summary>
+        public void Show(IReadOnlyList<string> teamNames, IReadOnlyList<TeamScore> teams, int currentTeam,
+            string throwerName)
         {
             for (int i = 0; i < _cells.Length; i++)
             {
-                bool used = i < players.Count;
+                bool used = i < teams.Count;
                 _cells[i].gameObject.SetActive(used);
-                if (used) ShowCell(i, players[i], i == currentIndex);
+                if (used) ShowCell(i, teamNames[i], teams[i], i == currentTeam, throwerName);
             }
 
-            ShowRemaining(players[currentIndex], currentIndex);
+            ShowRemaining(teamNames[currentTeam], teams[currentTeam], currentTeam);
         }
 
         /// <summary>枠を揺らす。25点に戻った・失格になったときの「やらかした」感を出す</summary>
@@ -66,25 +73,35 @@ namespace MiniGame.Molkky
             StartCoroutine(ShakeRoutine(_cells[index]));
         }
 
-        private void ShowCell(int index, PlayerSlot player, bool isCurrent)
+        private void ShowCell(int index, string teamName, TeamScore score, bool isCurrent, string throwerName)
         {
             Color playerColor = MolkkyPlayerColors.Get(index);
 
-            _cellBackgrounds[index].color = player.IsDisqualified
+            _cellBackgrounds[index].color = score.IsDisqualified
                 ? _disqualifiedColor
                 : Color.Lerp(Color.black, playerColor, isCurrent ? 1f : _idleBrightness);
             _cells[index].localScale = Vector3.one * (isCurrent ? _currentScale : 1f);
 
-            _nameTexts[index].text = isCurrent ? $"▶{player.Name}" : player.Name;
-            _missTexts[index].text = player.IsDisqualified ? "失格" : new string('×', player.MissCount);
-            _missTexts[index].color = player.MissCount >= WarningMissCount ? _warningColor : Color.white;
+            // チーム戦は投げる人の名前の方に▶を付け、▶が2つ並ばないようにする
+            bool showThrower = isCurrent && throwerName != null;
+            _nameTexts[index].text = isCurrent && !showThrower ? $"▶{teamName}" : teamName;
+            ShowThrower(index, showThrower ? throwerName : null, playerColor);
+            _missTexts[index].text = score.IsDisqualified ? "失格" : new string('×', score.MissCount);
+            _missTexts[index].color = score.MissCount >= WarningMissCount ? _warningColor : Color.white;
 
-            CountTo(index, player.Score);
+            CountTo(index, score.Score);
         }
 
-        private void ShowRemaining(PlayerSlot current, int currentIndex)
+        private void ShowThrower(int index, string throwerName, Color teamColor)
         {
-            string name = Colorize(current.Name, MolkkyPlayerColors.Get(currentIndex));
+            _throwerTexts[index].gameObject.SetActive(throwerName != null);
+            _throwerTexts[index].text = $"▶ {throwerName}";
+            _throwerTexts[index].color = teamColor;
+        }
+
+        private void ShowRemaining(string teamName, TeamScore current, int currentIndex)
+        {
+            string name = Colorize(teamName, MolkkyPlayerColors.Get(currentIndex));
             string warning = current.MissCount == WarningMissCount ? $"  {Colorize("失格注意!", _warningColor)}" : "";
             _remainingText.text = $"{name}  あと <size={RemainingNumberFontSize}>{current.Remaining}</size> 点{warning}";
         }

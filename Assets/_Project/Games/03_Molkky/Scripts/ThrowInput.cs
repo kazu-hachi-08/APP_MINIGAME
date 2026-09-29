@@ -31,8 +31,9 @@ namespace MiniGame.Molkky
         [Tooltip("フリックとみなす最低移動距離（画面高さ比）。指のわずかなブレで投げないようにする")]
         [SerializeField] private float _minFlickDistance = 0.04f;
 
-        [Tooltip("最大の強さになるフリック速度（画面高さ/秒）")]
-        [SerializeField] private float _maxFlickSpeed = 4f;
+        [Tooltip("最大の強さになるフリック速度（画面高さ/秒）。コントロールの倍率が掛かるので、" +
+                 "高すぎるとパワー型以外は普通のフリックで奥まで届かなくなる")]
+        [SerializeField] private float _maxFlickSpeed = 2.5f;
 
         [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない")]
         [SerializeField] private float _cancelAngleRatio = 2f;

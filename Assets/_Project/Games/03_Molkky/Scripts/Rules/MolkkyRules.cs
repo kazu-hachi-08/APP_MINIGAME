@@ -20,66 +20,54 @@ namespace MiniGame.Molkky
             return fallenNumbers.Count;
         }
 
-        /// <summary>1投の結果をプレイヤーに反映する</summary>
-        public static ThrowResult ApplyThrow(PlayerSlot player, IReadOnlyList<int> fallenNumbers)
+        /// <summary>1投の結果をチームの得点に反映する（個人戦は1人チーム）</summary>
+        public static ThrowResult ApplyThrow(TeamScore team, IReadOnlyList<int> fallenNumbers)
         {
             int points = CalculatePoints(fallenNumbers);
             int single = fallenNumbers.Count == 1 ? fallenNumbers[0] : 0;
 
-            if (points == 0) return RegisterMiss(player);
+            if (points == 0) return RegisterMiss(team);
 
             // ミスの連続回数で失格を判定するので、1本でも倒したら数え直す
-            player.MissCount = 0;
-            player.Score += points;
+            team.MissCount = 0;
+            team.Score += points;
 
-            if (player.Score == TargetScore)
+            if (team.Score == TargetScore)
             {
                 return new ThrowResult(ThrowOutcome.Win, points, fallenNumbers.Count, single);
             }
 
-            if (player.Score > TargetScore)
+            if (team.Score > TargetScore)
             {
-                player.Score = OverResetScore;
+                team.Score = OverResetScore;
                 return new ThrowResult(ThrowOutcome.OverTo25, points, fallenNumbers.Count, single);
             }
 
             return new ThrowResult(ThrowOutcome.Scored, points, fallenNumbers.Count, single);
         }
 
-        private static ThrowResult RegisterMiss(PlayerSlot player)
+        private static ThrowResult RegisterMiss(TeamScore team)
         {
-            player.MissCount++;
-            if (player.MissCount >= MaxConsecutiveMisses)
+            team.MissCount++;
+            if (team.MissCount >= MaxConsecutiveMisses)
             {
-                player.IsDisqualified = true;
+                team.IsDisqualified = true;
                 return new ThrowResult(ThrowOutcome.Disqualified, 0, 0, 0);
             }
 
             return new ThrowResult(ThrowOutcome.Miss, 0, 0, 0);
         }
 
-        /// <summary>次に投げるプレイヤーの番号。失格者は飛ばす。投げられる人がいなければ -1</summary>
-        public static int NextPlayerIndex(IReadOnlyList<PlayerSlot> players, int currentIndex)
+        /// <summary>失格していないチームが1つだけならその番号。それ以外は -1</summary>
+        public static int FindSoleSurvivor(IReadOnlyList<TeamScore> teams)
         {
-            for (int step = 1; step <= players.Count; step++)
+            int survivor = -1;
+            for (int i = 0; i < teams.Count; i++)
             {
-                int index = (currentIndex + step) % players.Count;
-                if (!players[index].IsDisqualified) return index;
-            }
+                if (teams[i].IsDisqualified) continue;
+                if (survivor >= 0) return -1;
 
-            return -1;
-        }
-
-        /// <summary>失格していないプレイヤーが1人だけならその人。それ以外は null</summary>
-        public static PlayerSlot FindSoleSurvivor(IReadOnlyList<PlayerSlot> players)
-        {
-            PlayerSlot survivor = null;
-            foreach (PlayerSlot player in players)
-            {
-                if (player.IsDisqualified) continue;
-                if (survivor != null) return null;
-
-                survivor = player;
+                survivor = i;
             }
 
             return survivor;

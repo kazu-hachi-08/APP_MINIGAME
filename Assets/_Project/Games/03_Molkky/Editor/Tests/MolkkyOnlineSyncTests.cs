@@ -94,6 +94,36 @@ namespace MiniGame.Molkky.Tests
         }
 
         [Test]
+        public void チームメッセージの各席のチーム番号が送受信で変わらない()
+        {
+            Assert.AreEqual(new[] { 0, 1, 0, 0 }, RoundTripTeams(new[] { 0, 1, 0, 0 }));
+        }
+
+        [Test]
+        public void 個人戦のチームメッセージは個人戦として届く()
+        {
+            Assert.IsNull(RoundTripTeams(null));
+        }
+
+        [Test]
+        public void 正しいチーム設定はそのまま使われる()
+        {
+            int[] teams = { 0, 1, 1 };
+
+            Assert.AreSame(teams, MolkkyOnlineLink.SanitizeTeams(teams, 3));
+        }
+
+        [Test]
+        public void 壊れたチーム設定が届いたら個人戦として扱う()
+        {
+            Assert.IsNull(MolkkyOnlineLink.SanitizeTeams(new[] { 0, 1, 0 }, 4), "席数が合わない");
+            Assert.IsNull(MolkkyOnlineLink.SanitizeTeams(new[] { 0, 2, 1 }, 3), "範囲外のチーム番号");
+            Assert.IsNull(MolkkyOnlineLink.SanitizeTeams(new[] { 0, -1, 1 }, 3), "負のチーム番号");
+            Assert.IsNull(MolkkyOnlineLink.SanitizeTeams(new[] { 0, 0, 0, 0 }, 4), "チームBが0人");
+            Assert.IsNull(MolkkyOnlineLink.SanitizeTeams(null, 3), "個人戦");
+        }
+
+        [Test]
         public void 範囲外のキャラ番号が届いても先頭か末尾のキャラにクランプされる()
         {
             // 生成済みアセットの有無に左右されないよう、テスト用のカタログをその場で作る
@@ -236,6 +266,15 @@ namespace MiniGame.Molkky.Tests
             }
 
             rack.ApplyStates(states);
+        }
+
+        private static int[] RoundTripTeams(int[] sent)
+        {
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            GetLinkMethod("WriteTeams").Invoke(null, new object[] { writer, sent });
+
+            using var reader = new FastBufferReader(writer, Allocator.Temp);
+            return (int[])GetLinkMethod("ReadTeams").Invoke(null, new object[] { reader });
         }
 
         private static MethodInfo GetLinkMethod(string name)

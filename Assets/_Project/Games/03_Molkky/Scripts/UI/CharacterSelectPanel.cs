@@ -31,6 +31,9 @@ namespace MiniGame.Molkky
         [SerializeField] private Button _backButton;
 
         private IReadOnlyList<PlayerKind> _kinds;
+
+        /// <summary>チーム戦の席ごとのチーム番号。個人戦は null</summary>
+        private IReadOnlyList<int> _seatTeams;
         private int[] _selected;
         private int _seat;
         private Action<IReadOnlyList<int>> _onConfirmed;
@@ -47,10 +50,15 @@ namespace MiniGame.Molkky
             _backButton.onClick.AddListener(Back);
         }
 
-        /// <summary>全員決まったら席順のキャラ番号一覧を返す。P1で「戻る」を押したら onBack を呼ぶ</summary>
-        public void Show(IReadOnlyList<PlayerKind> kinds, Action<IReadOnlyList<int>> onConfirmed, Action onBack)
+        /// <summary>
+        /// 全員決まったら席順のキャラ番号一覧を返す。P1で「戻る」を押したら onBack を呼ぶ。
+        /// seatTeams はチーム戦のときの席ごとのチーム番号（個人戦は null）
+        /// </summary>
+        public void Show(IReadOnlyList<PlayerKind> kinds, IReadOnlyList<int> seatTeams,
+            Action<IReadOnlyList<int>> onConfirmed, Action onBack)
         {
             _kinds = kinds;
+            _seatTeams = seatTeams;
             _onConfirmed = onConfirmed;
             _onBack = onBack;
             _onOnlineConfirmed = null;
@@ -62,11 +70,12 @@ namespace MiniGame.Molkky
 
         /// <summary>
         /// オンライン用：自分の席のキャラだけを選ぶ。決定したらキャラ番号を返し、Hide されるまで待機表示を続ける。
-        /// 「戻る」は出さない。人数設定が無いので戻り先が無いため
+        /// 「戻る」は出さない。人数設定が無いので戻り先が無いため。seatTeams はチーム戦のときの席ごとのチーム番号（個人戦は null）
         /// </summary>
-        public void ShowOnline(int seat, int playerCount, Action<int> onConfirmed)
+        public void ShowOnline(int seat, int playerCount, IReadOnlyList<int> seatTeams, Action<int> onConfirmed)
         {
             _kinds = null;
+            _seatTeams = seatTeams;
             _onConfirmed = null;
             _onBack = null;
             _onOnlineConfirmed = onConfirmed;
@@ -163,9 +172,14 @@ namespace MiniGame.Molkky
 
         private void RefreshTitle()
         {
-            _titleText.text = IsOnline ? OnlineTitle : $"{SeatLabel()} のキャラを選んでね";
-            // 端末を回したときに誰の番か一目で分かるよう、席の色で出す
-            _titleText.color = MolkkyPlayerColors.Get(_seat);
+            _titleText.text = (IsOnline ? OnlineTitle : $"{SeatLabel()} のキャラを選んでね") + TeamSuffix();
+            // 端末を回したときに誰の番か一目で分かるよう、席の色（チーム戦はチーム色）で出す
+            _titleText.color = MolkkyPlayerColors.Get(_seatTeams != null ? _seatTeams[_seat] : _seat);
+        }
+
+        private string TeamSuffix()
+        {
+            return _seatTeams != null ? $"（{MolkkyTeamNames.Get(_seatTeams[_seat])}）" : "";
         }
 
         private void ShowCharacter(MolkkyCharacterData character)

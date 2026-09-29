@@ -21,7 +21,7 @@ MonoBehaviour:
     x: -3
     y: 1.5
     width: 6
-    height: 8
+    height: 10
   _minThrowSpeed: 3
   _maxThrowSpeed: 11
   _maxThrowAngle: 25

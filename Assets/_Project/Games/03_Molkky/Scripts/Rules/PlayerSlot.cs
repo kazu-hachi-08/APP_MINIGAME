@@ -1,24 +1,17 @@
 namespace MiniGame.Molkky
 {
     /// <summary>
-    /// 1人分の点数・ミス回数・失格状態・人間/NPC。
-    /// オンライン対戦で相手端末の結果をそのまま上書きできるよう、値は外から設定できるようにしている。
+    /// 1席分の名前・人間/NPC・キャラ。点数は TeamScore が持つ（チーム戦で得点を共有するため）。
     /// </summary>
     public class PlayerSlot
     {
         public string Name { get; }
         public PlayerKind Kind { get; }
-        public int Score { get; set; }
-        public int MissCount { get; set; }
-        public bool IsDisqualified { get; set; }
 
         /// <summary>MolkkyCharacterCatalog の番号。見た目・能力はカタログから引く（オンラインで番号だけ送れるようにするため）</summary>
         public int CharacterIndex { get; }
 
         public bool IsNpc => Kind != PlayerKind.Human;
-
-        /// <summary>50点ちょうどまでの残り点数</summary>
-        public int Remaining => MolkkyRules.TargetScore - Score;
 
         public PlayerSlot(string name, PlayerKind kind = PlayerKind.Human, int characterIndex = 0)
         {

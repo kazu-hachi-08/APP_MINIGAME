@@ -381,7 +381,8 @@ namespace MiniGame.Molkky.Editor
             const float boardY = -160f;
             const float cellSpacing = 22f;
             const int remainingFontSize = 44;
-            const float remainingY = -380f;
+            // チーム戦で枠の下に出す「▶ P3 精密型」と重ならないよう、枠から少し離す
+            const float remainingY = -410f;
 
             var rowObj = UIDialogBuilder.CreateUIObject("ScoreBoard", safeArea);
             SetAnchoredRect(rowObj.GetComponent<RectTransform>(), TopCenterAnchor,
@@ -394,6 +395,7 @@ namespace MiniGame.Molkky.Editor
             var names = new Text[count];
             var scores = new Text[count];
             var misses = new Text[count];
+            var throwers = new Text[count];
             for (int i = 0; i < count; i++)
             {
                 ScoreCell cell = CreateScoreCell(rowObj.transform, i);
@@ -402,6 +404,7 @@ namespace MiniGame.Molkky.Editor
                 names[i] = cell.Name;
                 scores[i] = cell.Score;
                 misses[i] = cell.Miss;
+                throwers[i] = cell.Thrower;
             }
 
             Text remainingText = CreateText(safeArea, "RemainingText", remainingFontSize,
@@ -414,6 +417,7 @@ namespace MiniGame.Molkky.Editor
             SetArray(view, "_nameTexts", names);
             SetArray(view, "_scoreTexts", scores);
             SetArray(view, "_missTexts", misses);
+            SetArray(view, "_throwerTexts", throwers);
             SetRefs(view, ("_remainingText", remainingText));
             return view;
         }
@@ -428,6 +432,7 @@ namespace MiniGame.Molkky.Editor
             public Text Name;
             public Text Score;
             public Text Miss;
+            public Text Thrower;
         }
 
         /// <summary>1人分の枠。「名前・点数・ミス」を縦に積み、点数を一番大きく見せる</summary>
@@ -438,6 +443,10 @@ namespace MiniGame.Molkky.Editor
             const int nameMinFontSize = 22;
             const int scoreFontSize = 80;
             const int missFontSize = 36;
+            const int throwerFontSize = 30;
+            const int throwerMinFontSize = 20;
+            // 表示するのは手番チームの枠だけなので、隣の枠にはみ出す幅にしても重ならない
+            const float throwerWidth = 420f;
 
             var cellObj = UIDialogBuilder.CreateUIObject($"Cell_P{index + 1}", row);
             var cell = new ScoreCell { Rect = cellObj.GetComponent<RectTransform>() };
@@ -456,6 +465,12 @@ namespace MiniGame.Molkky.Editor
             AddOutline(cell.Score.gameObject, ThinOutline);
             cell.Miss = CreateText(cellObj.transform, "Miss", missFontSize,
                 BottomCenterAnchor, new Vector2(0f, 6f), new Vector2(ScoreCell.Width, 44f), Color.white);
+            // チーム戦で「今回投げる人」を枠のすぐ下に添える。枠の中は名前・点数・ミスで埋まっているため
+            cell.Thrower = CreateText(cellObj.transform, "Thrower", throwerFontSize,
+                BottomCenterAnchor, new Vector2(0f, -40f), new Vector2(throwerWidth, 36f), Color.white);
+            FitToOneLine(cell.Thrower, throwerMinFontSize);
+            AddOutline(cell.Thrower.gameObject, ThinOutline);
+            cell.Thrower.gameObject.SetActive(false);
             return cell;
         }
 
@@ -527,7 +542,7 @@ namespace MiniGame.Molkky.Editor
             return banner;
         }
 
-        /// <summary>人数と各プレイヤーの人間/NPCを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
+        /// <summary>人数・個人戦/チーム戦・各プレイヤーの人間/NPCとチームを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
         private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
         {
             const float boxHeight = 1200f;
@@ -537,8 +552,13 @@ namespace MiniGame.Molkky.Editor
             const int buttonFontSize = 44;
             const float countButtonWidth = 240f;
             const int playerLabelFontSize = 56;
+            // オンラインでは「あなた」が入るので、枠に収まるよう縮める下限
+            const int playerLabelMinFontSize = 32;
             const float playerLabelWidth = 160f;
-            const float kindButtonWidth = 600f;
+            // チーム戦の A / B ボタンを横に並べても行に収まる幅にする
+            const float kindButtonWidth = 480f;
+            const float teamButtonWidth = 120f;
+            const float modeButtonWidth = 480f;
 
             GameObject panelObj = CreatePanelOverlay(canvas, "PlayerSetupPanel");
             GameObject boxObj = CreatePanelBox(panelObj.transform, boxHeight, boxSpacing);
@@ -556,9 +576,15 @@ namespace MiniGame.Molkky.Editor
                     countButtonWidth, rowHeight, buttonFontSize);
             }
 
+            Transform modeRow = CreateRow(boxObj.transform, "ModeRow", PanelRowWidth, rowHeight);
+            Button modeButton = CreateChoiceButton(modeRow, "Btn_Mode", "", modeButtonWidth, rowHeight, buttonFontSize);
+
             var playerRows = new GameObject[PlayerSetupPanel.MaxPlayers];
             var kindButtons = new Button[PlayerSetupPanel.MaxPlayers];
             var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            var teamButtons = new Button[PlayerSetupPanel.MaxPlayers];
+            var teamTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            var seatLabels = new Text[PlayerSetupPanel.MaxPlayers];
             for (int i = 0; i < PlayerSetupPanel.MaxPlayers; i++)
             {
                 Transform row = CreateRow(boxObj.transform, $"Row_P{i + 1}", PanelRowWidth, rowHeight);
@@ -567,9 +593,16 @@ namespace MiniGame.Molkky.Editor
                 Text label = CreateText(row, "Label", playerLabelFontSize, CenterAnchor, Vector2.zero,
                     new Vector2(playerLabelWidth, rowHeight), MolkkyPlayerColors.Get(i));
                 label.text = $"P{i + 1}";
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = playerLabelMinFontSize;
+                label.resizeTextMaxSize = playerLabelFontSize;
+                seatLabels[i] = label;
 
                 kindButtons[i] = CreateChoiceButton(row, "Btn_Kind", "", kindButtonWidth, rowHeight, buttonFontSize);
                 kindTexts[i] = kindButtons[i].GetComponentInChildren<Text>();
+
+                teamButtons[i] = CreateChoiceButton(row, "Btn_Team", "", teamButtonWidth, rowHeight, buttonFontSize);
+                teamTexts[i] = teamButtons[i].GetComponentInChildren<Text>();
             }
 
             Button startButton = CreateConfirmButton(boxObj.transform, "Btn_Start", "試合開始", 560f, 140f);
@@ -579,7 +612,11 @@ namespace MiniGame.Molkky.Editor
             SetArray(panel, "_playerRows", playerRows);
             SetArray(panel, "_kindButtons", kindButtons);
             SetArray(panel, "_kindTexts", kindTexts);
-            SetRefs(panel, ("_startButton", startButton));
+            SetArray(panel, "_teamButtons", teamButtons);
+            SetArray(panel, "_teamTexts", teamTexts);
+            SetArray(panel, "_seatLabels", seatLabels);
+            SetRefs(panel, ("_titleText", title), ("_countRow", countRow.gameObject), ("_startButton", startButton), ("_modeRow", modeRow.gameObject), ("_modeButton", modeButton),
+                ("_modeText", modeButton.GetComponentInChildren<Text>()));
 
             panelObj.SetActive(false);
             return panel;
