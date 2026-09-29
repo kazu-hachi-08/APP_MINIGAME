@@ -15,6 +15,8 @@ namespace MiniGame.Molkky
     /// それでも物理は端末ごとにずれうるので、得点は投げた側の端末のピン状態で決める。得点ルールは MolkkyRules が純粋関数なので、
     /// 同じピン状態を渡せば全端末で同じ点数になり、点数そのものは送らない。
     /// キャラ選択では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
+    /// チーム戦の設定（各席のチーム番号）はキャラ選択の前にホストから1回だけ送る。手番は全端末が MolkkyTurnOrder で
+    /// 同じように計算するので、手番そのものは送らない。
     /// 卓球と同じく NetworkObject を使わず名前付きメッセージだけで済ませる。
     ///
     /// NGOではクライアント同士が直接送れないため、2〜4人ともホスト中継にする。
@@ -25,6 +27,10 @@ namespace MiniGame.Molkky
         private const string ThrowMessage = "molkky.throw";
         private const string ResultMessage = "molkky.result";
         private const string CharacterMessage = "molkky.character";
+        private const string TeamsMessage = "molkky.teams";
+
+        /// <summary>チーム設定の「個人戦」を表す席数。個人戦は席ごとのチーム番号を送らない</summary>
+        private const int IndividualSeatCount = 0;
 
         /// <summary>1メッセージの最大バイト数。投擲メッセージ（約20バイト＋ピン12本×約17バイト）が収まる大きさ</summary>
         private const int MessageBufferSize = 512;
@@ -39,6 +45,9 @@ namespace MiniGame.Molkky
         /// <summary>引数は席番号とキャラ番号</summary>
         public event Action<int, int> OnCharacterReceived;
 
+        /// <summary>引数は席ごとのチーム番号。個人戦は null。中身の検証は受け取り側で SanitizeTeams を通す</summary>
+        public event Action<int[]> OnTeamsReceived;
+
         private readonly List<ulong> _recipients = new List<ulong>();
         private bool _active;
 
@@ -51,6 +60,7 @@ namespace MiniGame.Molkky
             messaging.RegisterNamedMessageHandler(ThrowMessage, ReceiveThrow);
             messaging.RegisterNamedMessageHandler(ResultMessage, ReceiveResult);
             messaging.RegisterNamedMessageHandler(CharacterMessage, ReceiveCharacter);
+            messaging.RegisterNamedMessageHandler(TeamsMessage, ReceiveTeams);
             _active = true;
         }
 
@@ -64,6 +74,7 @@ namespace MiniGame.Molkky
             messaging.UnregisterNamedMessageHandler(ThrowMessage);
             messaging.UnregisterNamedMessageHandler(ResultMessage);
             messaging.UnregisterNamedMessageHandler(CharacterMessage);
+            messaging.UnregisterNamedMessageHandler(TeamsMessage);
         }
 
         // ---- 送信 ----
@@ -81,6 +92,31 @@ namespace MiniGame.Molkky
         public void SendCharacter(int seat, int characterIndex)
         {
             SendCharacter(seat, characterIndex, Network.LocalClientId);
+        }
+
+        /// <summary>ホストだけが呼ぶ。seatTeams が null なら個人戦</summary>
+        public void SendTeams(IReadOnlyList<int> seatTeams)
+        {
+            SendTeams(seatTeams, Network.LocalClientId);
+        }
+
+        /// <summary>
+        /// 届いたチーム設定を検証する。席数が合わない・範囲外のチーム番号・0人のチームがあれば個人戦（null）として扱う。
+        /// 壊れた設定で手番計算が作れず、試合が止まるのを防ぐため
+        /// </summary>
+        public static int[] SanitizeTeams(int[] seatTeams, int playerCount)
+        {
+            if (seatTeams == null || seatTeams.Length != playerCount) return null;
+
+            var memberCounts = new int[PlayerSetupPanel.TeamCount];
+            foreach (int team in seatTeams)
+            {
+                if (team < 0 || team >= memberCounts.Length) return null;
+
+                memberCounts[team]++;
+            }
+
+            return Array.IndexOf(memberCounts, 0) >= 0 ? null : seatTeams;
         }
 
         /// <param name="originId">投げた人の端末。ホストが中継するときに送り返さないため</param>
@@ -104,6 +140,32 @@ namespace MiniGame.Molkky
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
             WriteCharacter(writer, seat, characterIndex);
             Send(CharacterMessage, writer, originId);
+        }
+
+        private void SendTeams(IReadOnlyList<int> seatTeams, ulong originId)
+        {
+            using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            WriteTeams(writer, seatTeams);
+            Send(TeamsMessage, writer, originId);
+        }
+
+        private static void WriteTeams(FastBufferWriter writer, IReadOnlyList<int> seatTeams)
+        {
+            writer.WriteValueSafe(seatTeams?.Count ?? IndividualSeatCount);
+            if (seatTeams == null) return;
+
+            foreach (int team in seatTeams) writer.WriteValueSafe(team);
+        }
+
+        /// <summary>席数が範囲外なら残りを読まずに個人戦（null）にする。壊れた席数で大きな配列を作らないため</summary>
+        private static int[] ReadTeams(FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out int count);
+            if (count <= IndividualSeatCount || count > PlayerSetupPanel.MaxPlayers) return null;
+
+            var seatTeams = new int[count];
+            for (int i = 0; i < count; i++) reader.ReadValueSafe(out seatTeams[i]);
+            return seatTeams;
         }
 
         private static void WriteRequest(FastBufferWriter writer, ThrowRequest request)
@@ -218,6 +280,14 @@ namespace MiniGame.Molkky
 
             if (Network.IsServer) SendCharacter(seat, characterIndex, senderId);
             OnCharacterReceived?.Invoke(seat, characterIndex);
+        }
+
+        private void ReceiveTeams(ulong senderId, FastBufferReader reader)
+        {
+            int[] seatTeams = ReadTeams(reader);
+
+            if (Network.IsServer) SendTeams(seatTeams, senderId);
+            OnTeamsReceived?.Invoke(seatTeams);
         }
     }
 }

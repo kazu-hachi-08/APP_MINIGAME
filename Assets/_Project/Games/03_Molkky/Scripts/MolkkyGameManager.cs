@@ -144,21 +144,60 @@ namespace MiniGame.Molkky
 
         /// <summary>
         /// オンラインは部屋に集まった人数で遊ぶので人数設定は出さない。席番号＝手番の順で、先攻はホスト。
-        /// 各端末で自分のキャラだけを選び、全席のキャラ番号が揃ったら始める
+        /// 3人以上ならホストがチーム設定を決めて全員へ送り、届いてから各端末で自分のキャラだけを選ぶ。
+        /// 全席のキャラ番号が揃ったら始める
         /// </summary>
         private void HandleOnlineStarted(int localSeat, int playerCount)
         {
             _isOnline = true;
             _localIndex = localSeat;
-            // オンラインのチーム戦は Phase 4 で対応する。それまでは常に個人戦
             _seatTeams = null;
             _onlineCharacters = new int[playerCount];
             System.Array.Fill(_onlineCharacters, NotSelected);
-            // 受信ハンドラを登録する前に Phase を変えておき、届いたキャラ番号を取りこぼさないようにする
-            Phase = MolkkyPhase.CharacterSelect;
+            Phase = MolkkyPhase.PlayerSetup;
             _onlineLink.Begin();
 
-            _characterSelectPanel.ShowOnline(localSeat, playerCount, HandleLocalCharacterConfirmed);
+            // 2人のチーム戦は個人戦と同じなので、設定を飛ばしてすぐキャラ選択へ
+            if (playerCount < PlayerSetupPanel.MinTeamPlayers)
+            {
+                ShowOnlineCharacterSelect();
+            }
+            else if (_onlineSession.IsHost)
+            {
+                _setupPanel.ShowOnlineHost(playerCount, localSeat, (_, seatTeams) => HandleHostTeamsConfirmed(seatTeams));
+            }
+            else
+            {
+                _setupPanel.ShowWaiting();
+            }
+        }
+
+        private void HandleHostTeamsConfirmed(IReadOnlyList<int> seatTeams)
+        {
+            _onlineLink.SendTeams(seatTeams);
+            ApplyOnlineTeams(seatTeams != null ? new List<int>(seatTeams).ToArray() : null);
+        }
+
+        private void HandleRemoteTeams(int[] seatTeams)
+        {
+            if (!_isOnline || Phase != MolkkyPhase.PlayerSetup) return;
+
+            ApplyOnlineTeams(MolkkyOnlineLink.SanitizeTeams(seatTeams, _onlineCharacters.Length));
+        }
+
+        private void ApplyOnlineTeams(int[] seatTeams)
+        {
+            _seatTeams = seatTeams;
+            _setupPanel.Hide();
+            ShowOnlineCharacterSelect();
+        }
+
+        /// <summary>キャラ番号の受信は Phase が CharacterSelect のときだけ受け付けるので、パネルを出す前に変えておく</summary>
+        private void ShowOnlineCharacterSelect()
+        {
+            Phase = MolkkyPhase.CharacterSelect;
+            _characterSelectPanel.ShowOnline(_localIndex, _onlineCharacters.Length, _seatTeams,
+                HandleLocalCharacterConfirmed);
         }
 
         private void HandleLocalCharacterConfirmed(int characterIndex)
@@ -255,6 +294,7 @@ namespace MiniGame.Molkky
                 _onlineLink.OnThrowReceived += HandleRemoteThrow;
                 _onlineLink.OnResultReceived += HandleRemoteResult;
                 _onlineLink.OnCharacterReceived += HandleRemoteCharacter;
+                _onlineLink.OnTeamsReceived += HandleRemoteTeams;
             }
 
             if (_onlineSession != null) _onlineSession.OnPeerDisconnected += HandlePeerDisconnected;
@@ -267,6 +307,7 @@ namespace MiniGame.Molkky
                 _onlineLink.OnThrowReceived -= HandleRemoteThrow;
                 _onlineLink.OnResultReceived -= HandleRemoteResult;
                 _onlineLink.OnCharacterReceived -= HandleRemoteCharacter;
+                _onlineLink.OnTeamsReceived -= HandleRemoteTeams;
             }
 
             if (_onlineSession != null) _onlineSession.OnPeerDisconnected -= HandlePeerDisconnected;
@@ -580,7 +621,8 @@ namespace MiniGame.Molkky
             Phase = MolkkyPhase.GameSet;
             StopAcceptingThrow();
             _scorePopup.Hide();
-            // キャラ選択・待機中に切れたときも、選択パネルを残したまま結果画面を出さないようにする
+            // チーム設定・キャラ選択・待機中に切れたときも、パネルを残したまま結果画面を出さないようにする
+            _setupPanel.Hide();
             _characterSelectPanel.Hide();
 
             FinishGame(false, DisconnectedTitle, DisconnectedDetail);

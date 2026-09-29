@@ -552,6 +552,8 @@ namespace MiniGame.Molkky.Editor
             const int buttonFontSize = 44;
             const float countButtonWidth = 240f;
             const int playerLabelFontSize = 56;
+            // オンラインでは「あなた」が入るので、枠に収まるよう縮める下限
+            const int playerLabelMinFontSize = 32;
             const float playerLabelWidth = 160f;
             // チーム戦の A / B ボタンを横に並べても行に収まる幅にする
             const float kindButtonWidth = 480f;
@@ -582,6 +584,7 @@ namespace MiniGame.Molkky.Editor
             var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
             var teamButtons = new Button[PlayerSetupPanel.MaxPlayers];
             var teamTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            var seatLabels = new Text[PlayerSetupPanel.MaxPlayers];
             for (int i = 0; i < PlayerSetupPanel.MaxPlayers; i++)
             {
                 Transform row = CreateRow(boxObj.transform, $"Row_P{i + 1}", PanelRowWidth, rowHeight);
@@ -590,6 +593,10 @@ namespace MiniGame.Molkky.Editor
                 Text label = CreateText(row, "Label", playerLabelFontSize, CenterAnchor, Vector2.zero,
                     new Vector2(playerLabelWidth, rowHeight), MolkkyPlayerColors.Get(i));
                 label.text = $"P{i + 1}";
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = playerLabelMinFontSize;
+                label.resizeTextMaxSize = playerLabelFontSize;
+                seatLabels[i] = label;
 
                 kindButtons[i] = CreateChoiceButton(row, "Btn_Kind", "", kindButtonWidth, rowHeight, buttonFontSize);
                 kindTexts[i] = kindButtons[i].GetComponentInChildren<Text>();
@@ -607,7 +614,8 @@ namespace MiniGame.Molkky.Editor
             SetArray(panel, "_kindTexts", kindTexts);
             SetArray(panel, "_teamButtons", teamButtons);
             SetArray(panel, "_teamTexts", teamTexts);
-            SetRefs(panel, ("_startButton", startButton), ("_modeRow", modeRow.gameObject), ("_modeButton", modeButton),
+            SetArray(panel, "_seatLabels", seatLabels);
+            SetRefs(panel, ("_titleText", title), ("_countRow", countRow.gameObject), ("_startButton", startButton), ("_modeRow", modeRow.gameObject), ("_modeButton", modeButton),
                 ("_modeText", modeButton.GetComponentInChildren<Text>()));
 
             panelObj.SetActive(false);

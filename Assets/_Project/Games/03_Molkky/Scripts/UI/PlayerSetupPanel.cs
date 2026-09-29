@@ -9,6 +9,7 @@ namespace MiniGame.Molkky
     /// 試合前のプレイヤー設定。人数（2〜4人）と、各プレイヤーの人間/NPC（難易度）を決める。
     /// 種別はボタンをタップするたびに 人間 → よわい → ふつう → つよい と切り替わる。
     /// 3人以上のときは「個人戦 / チーム戦」を切り替えられ、チーム戦では各席の A / B をタップで切り替える。
+    /// オンラインでは、ホストはチーム設定だけ（人数・人間/NPCは部屋で決まっているので出さない）、参加者は待機表示に使う。
     /// </summary>
     public class PlayerSetupPanel : MonoBehaviour
     {
@@ -16,16 +17,24 @@ namespace MiniGame.Molkky
         public const int MaxPlayers = 4;
 
         // 2人のチーム戦は個人戦と同じになるので、3人から選べるようにする
-        private const int MinTeamPlayers = 3;
-        private const int TeamCount = 2;
+        public const int MinTeamPlayers = 3;
+        public const int TeamCount = 2;
 
         // PlayerKind の並びと合わせる
         private static readonly string[] KindLabels = { "人間", "NPC よわい", "NPC ふつう", "NPC つよい" };
         private static readonly string[] TeamLabels = { "A", "B" };
 
+        private const string LocalTitle = "プレイヤー設定";
+        private const string OnlineHostTitle = "チーム設定";
+        private const string WaitingTitle = "ホストが設定しています";
+        private const string LocalSeatLabel = "あなた";
+
         [Tooltip("2人・3人・4人 の順")]
         [SerializeField] private Button[] _countButtons;
+        [SerializeField] private GameObject _countRow;
+        [SerializeField] private Text _titleText;
         [SerializeField] private GameObject[] _playerRows;
+        [SerializeField] private Text[] _seatLabels;
         [SerializeField] private Button[] _kindButtons;
         [SerializeField] private Text[] _kindTexts;
         [SerializeField] private Button _startButton;
@@ -49,6 +58,8 @@ namespace MiniGame.Molkky
 
         private int _count = MinPlayers;
         private bool _isTeamMatch;
+        private bool _isOnline;
+        private int _localSeat;
         private Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> _onConfirmed;
 
         private void Awake()
@@ -75,8 +86,49 @@ namespace MiniGame.Molkky
         /// </summary>
         public void Show(Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> onConfirmed)
         {
+            _isOnline = false;
+            Open(LocalTitle, onConfirmed);
+        }
+
+        /// <summary>
+        /// オンラインのホスト用：部屋の人数でチーム設定だけを行う。全員人間なので種別は全席 Human で返す
+        /// </summary>
+        public void ShowOnlineHost(int playerCount, int localSeat,
+            Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> onConfirmed)
+        {
+            _isOnline = true;
+            _localSeat = localSeat;
+            _count = playerCount;
+            _isTeamMatch = false;
+            for (int i = 0; i < _kinds.Length; i++) _kinds[i] = PlayerKind.Human;
+
+            Open(OnlineHostTitle, onConfirmed);
+        }
+
+        /// <summary>オンラインの参加者用：ホストが決めるまでタイトルだけを出す。Hide されるまで表示を続ける</summary>
+        public void ShowWaiting()
+        {
+            _onConfirmed = null;
+            gameObject.SetActive(true);
+            _titleText.text = WaitingTitle;
+            _countRow.SetActive(false);
+            _modeRow.SetActive(false);
+            _startButton.gameObject.SetActive(false);
+            foreach (GameObject row in _playerRows) row.SetActive(false);
+        }
+
+        public void Hide()
+        {
+            gameObject.SetActive(false);
+        }
+
+        private void Open(string title, Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> onConfirmed)
+        {
             _onConfirmed = onConfirmed;
             gameObject.SetActive(true);
+            _titleText.text = title;
+            _countRow.SetActive(!_isOnline);
+            _startButton.gameObject.SetActive(true);
             Refresh();
         }
 
@@ -136,7 +188,10 @@ namespace MiniGame.Molkky
             for (int i = 0; i < _playerRows.Length; i++)
             {
                 _playerRows[i].SetActive(i < _count);
+                _seatLabels[i].text = _isOnline && i == _localSeat ? LocalSeatLabel : $"P{i + 1}";
                 _kindTexts[i].text = KindLabels[(int)_kinds[i]];
+                // オンラインは全員人間なので種別は選ばせない
+                _kindButtons[i].gameObject.SetActive(!_isOnline);
 
                 _teamButtons[i].gameObject.SetActive(_isTeamMatch);
                 _teamTexts[i].text = TeamLabels[_teams[i]];
