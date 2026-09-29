@@ -381,7 +381,8 @@ namespace MiniGame.Molkky.Editor
             const float boardY = -160f;
             const float cellSpacing = 22f;
             const int remainingFontSize = 44;
-            const float remainingY = -380f;
+            // チーム戦で枠の下に出す「▶ P3 精密型」と重ならないよう、枠から少し離す
+            const float remainingY = -410f;
 
             var rowObj = UIDialogBuilder.CreateUIObject("ScoreBoard", safeArea);
             SetAnchoredRect(rowObj.GetComponent<RectTransform>(), TopCenterAnchor,
@@ -394,6 +395,7 @@ namespace MiniGame.Molkky.Editor
             var names = new Text[count];
             var scores = new Text[count];
             var misses = new Text[count];
+            var throwers = new Text[count];
             for (int i = 0; i < count; i++)
             {
                 ScoreCell cell = CreateScoreCell(rowObj.transform, i);
@@ -402,6 +404,7 @@ namespace MiniGame.Molkky.Editor
                 names[i] = cell.Name;
                 scores[i] = cell.Score;
                 misses[i] = cell.Miss;
+                throwers[i] = cell.Thrower;
             }
 
             Text remainingText = CreateText(safeArea, "RemainingText", remainingFontSize,
@@ -414,6 +417,7 @@ namespace MiniGame.Molkky.Editor
             SetArray(view, "_nameTexts", names);
             SetArray(view, "_scoreTexts", scores);
             SetArray(view, "_missTexts", misses);
+            SetArray(view, "_throwerTexts", throwers);
             SetRefs(view, ("_remainingText", remainingText));
             return view;
         }
@@ -428,6 +432,7 @@ namespace MiniGame.Molkky.Editor
             public Text Name;
             public Text Score;
             public Text Miss;
+            public Text Thrower;
         }
 
         /// <summary>1人分の枠。「名前・点数・ミス」を縦に積み、点数を一番大きく見せる</summary>
@@ -438,6 +443,10 @@ namespace MiniGame.Molkky.Editor
             const int nameMinFontSize = 22;
             const int scoreFontSize = 80;
             const int missFontSize = 36;
+            const int throwerFontSize = 30;
+            const int throwerMinFontSize = 20;
+            // 表示するのは手番チームの枠だけなので、隣の枠にはみ出す幅にしても重ならない
+            const float throwerWidth = 420f;
 
             var cellObj = UIDialogBuilder.CreateUIObject($"Cell_P{index + 1}", row);
             var cell = new ScoreCell { Rect = cellObj.GetComponent<RectTransform>() };
@@ -456,6 +465,12 @@ namespace MiniGame.Molkky.Editor
             AddOutline(cell.Score.gameObject, ThinOutline);
             cell.Miss = CreateText(cellObj.transform, "Miss", missFontSize,
                 BottomCenterAnchor, new Vector2(0f, 6f), new Vector2(ScoreCell.Width, 44f), Color.white);
+            // チーム戦で「今回投げる人」を枠のすぐ下に添える。枠の中は名前・点数・ミスで埋まっているため
+            cell.Thrower = CreateText(cellObj.transform, "Thrower", throwerFontSize,
+                BottomCenterAnchor, new Vector2(0f, -40f), new Vector2(throwerWidth, 36f), Color.white);
+            FitToOneLine(cell.Thrower, throwerMinFontSize);
+            AddOutline(cell.Thrower.gameObject, ThinOutline);
+            cell.Thrower.gameObject.SetActive(false);
             return cell;
         }
 

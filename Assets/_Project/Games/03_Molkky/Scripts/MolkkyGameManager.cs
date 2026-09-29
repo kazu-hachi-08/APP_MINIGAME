@@ -18,7 +18,6 @@ namespace MiniGame.Molkky
         private const string ExactWinDetail = "50点ちょうど！";
         private const string SurvivorWinDetail = "他のプレイヤーが失格";
         private const string TeamSurvivorWinDetail = "相手チームが失格";
-        private static readonly string[] TeamNames = { "チームA", "チームB" };
         private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
         private const string DisconnectedDetail = "試合を終了しました";
 
@@ -124,7 +123,8 @@ namespace MiniGame.Molkky
         {
             _seatTeams = seatTeams != null ? new List<int>(seatTeams).ToArray() : null;
             Phase = MolkkyPhase.CharacterSelect;
-            _characterSelectPanel.Show(kinds, characters => HandleCharactersConfirmed(kinds, characters), ShowPlayerSetup);
+            _characterSelectPanel.Show(kinds, _seatTeams, characters => HandleCharactersConfirmed(kinds, characters),
+                ShowPlayerSetup);
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace MiniGame.Molkky
             {
                 _teams.Add(new TeamScore());
                 // 個人戦の枠名は今までどおりプレイヤー名にする
-                _teamNames.Add(IsTeamMatch ? TeamNames[i] : _players[i].Name);
+                _teamNames.Add(IsTeamMatch ? MolkkyTeamNames.Get(i) : _players[i].Name);
             }
 
             StartCoroutine(TurnStartRoutine());
@@ -230,7 +230,8 @@ namespace MiniGame.Molkky
 
         private void ShowScoreBoard()
         {
-            _scoreBoard.Show(_teamNames, _teams, CurrentTeamIndex, CurrentPlayer.Name);
+            // 個人戦は枠名がプレイヤー名なので、投げる人の名前は添えない
+            _scoreBoard.Show(_teamNames, _teams, CurrentTeamIndex, IsTeamMatch ? CurrentPlayer.Name : null);
         }
 
         protected override void OnDestroy()
@@ -326,8 +327,16 @@ namespace MiniGame.Molkky
         {
             bool waitForTap = !CurrentPlayer.IsNpc && !_isOnline;
             float duration = _isOnline ? _onlineBannerDuration : _npcBannerDuration;
-            yield return _turnBanner.Play($"{CurrentPlayer.Name} の番", MolkkyPlayerColors.Get(CurrentTeamIndex),
+            yield return _turnBanner.Play(TurnBannerTitle(), MolkkyPlayerColors.Get(CurrentTeamIndex),
                 waitForTap, duration);
+        }
+
+        /// <summary>チーム戦はチーム名も出す。チーム内で投げる人が交代するので、どのチームの誰の番かを両方見せる</summary>
+        private string TurnBannerTitle()
+        {
+            return IsTeamMatch
+                ? $"{_teamNames[CurrentTeamIndex]}　{CurrentPlayer.Name} の番"
+                : $"{CurrentPlayer.Name} の番";
         }
 
         private IEnumerator NpcThrowRoutine()
@@ -533,9 +542,15 @@ namespace MiniGame.Molkky
             _audio.PlayVictory();
             yield return _victoryShow.Play(character, MolkkyPlayerColors.Get(winnerTeam), winner.Name, line);
 
-            string survivorDetail = IsTeamMatch ? TeamSurvivorWinDetail : SurvivorWinDetail;
-            string detail = exactWin ? ExactWinDetail : survivorDetail;
-            FinishGame(IsLocalVictory(winnerTeam), $"{_teamNames[winnerTeam]} の勝ち", detail);
+            FinishGame(IsLocalVictory(winnerTeam), $"{_teamNames[winnerTeam]} の勝ち", WinDetail(exactWin, winner));
+        }
+
+        /// <summary>チーム戦の50点ちょうどは、チームの誰が決めたかを添える。個人戦は勝者名が見出しにあるので不要</summary>
+        private string WinDetail(bool exactWin, PlayerSlot winner)
+        {
+            if (!IsTeamMatch) return exactWin ? ExactWinDetail : SurvivorWinDetail;
+
+            return exactWin ? $"{ExactWinDetail}（{winner.Name}）" : TeamSurvivorWinDetail;
         }
 
         /// <summary>
