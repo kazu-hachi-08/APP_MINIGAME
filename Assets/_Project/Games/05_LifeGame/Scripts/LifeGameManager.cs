@@ -753,6 +753,9 @@ namespace MiniGame.LifeGame
         // ------------------------------------------------------------------
         private void OpenWallet()
         {
+            // 財布ボタンは試合前の設定画面の裏にも見えているため、試合を作る前に押されることがある
+            if (_state == null) return;
+
             _walletPanel.Show(WalletText(), CanRepay());
         }
 

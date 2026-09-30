@@ -93,12 +93,14 @@ namespace MiniGame.LifeGame.Editor
         private static void BuildInternal()
         {
             EnsureDirectory(SceneDirectory);
+            // シーンを先に作る。Single で作るとどこからも参照されていないアセットが解放されるため、
+            // 先に読み込んだテーマ等が無効になり、シーンに空の参照で保存されてしまう
+            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
             LifeThemeData[] themes = LifeDataGenerator.EnsureThemes();
             LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.EnsureLayout();
             LifeGameArtGenerator.EnsureGenerated();
             LifeGameArtGenerator.AssignArt(themes, characterCatalog);
-            UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Camera camera = CreateCamera();
             CreateEventSystem();
