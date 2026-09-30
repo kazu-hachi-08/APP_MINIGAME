@@ -20,6 +20,7 @@ namespace MiniGame.LifeGame
         [SerializeField] private Button[] _kindButtons;
         [SerializeField] private Text[] _kindTexts;
         [SerializeField] private Button _startButton;
+        [SerializeField] private Button _backButton;
 
         [SerializeField] private Color _selectedColor = new Color(0.18f, 0.55f, 0.9f);
         [SerializeField] private Color _unselectedColor = new Color(0.3f, 0.33f, 0.4f);
@@ -30,6 +31,7 @@ namespace MiniGame.LifeGame
 
         private int _count = MinPlayers;
         private Action<IReadOnlyList<LifePlayerKind>> _onConfirmed;
+        private Action _onBack;
 
         private void Awake()
         {
@@ -46,11 +48,14 @@ namespace MiniGame.LifeGame
             }
 
             _startButton.onClick.AddListener(Confirm);
+            _backButton.onClick.AddListener(Back);
         }
 
-        public void Show(Action<IReadOnlyList<LifePlayerKind>> onConfirmed)
+        /// <summary>「戻る」を押したら onBack を呼ぶ（テーマ選択へ戻る）</summary>
+        public void Show(Action<IReadOnlyList<LifePlayerKind>> onConfirmed, Action onBack)
         {
             _onConfirmed = onConfirmed;
+            _onBack = onBack;
             gameObject.SetActive(true);
             Refresh();
         }
@@ -103,6 +108,12 @@ namespace MiniGame.LifeGame
 
             gameObject.SetActive(false);
             _onConfirmed?.Invoke(kinds);
+        }
+
+        private void Back()
+        {
+            gameObject.SetActive(false);
+            _onBack?.Invoke();
         }
     }
 }

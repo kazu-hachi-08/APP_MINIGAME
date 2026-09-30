@@ -31,6 +31,12 @@ namespace MiniGame.LifeGame
             Refresh(body, canRepay);
         }
 
+        /// <summary>返済ボタンの文字。金額の通貨がテーマで変わるので実行時に入れる</summary>
+        public void SetRepayLabel(string label)
+        {
+            _repayButton.GetComponentInChildren<Text>().text = label;
+        }
+
         public void Refresh(string body, bool canRepay)
         {
             _bodyText.text = body;

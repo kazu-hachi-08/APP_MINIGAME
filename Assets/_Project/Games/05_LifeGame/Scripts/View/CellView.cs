@@ -9,15 +9,15 @@ namespace MiniGame.LifeGame
         private const int BodySortingOrder = 1;
         private const int LabelSortingOrder = 2;
 
-        public static CellView Create(Transform parent, LifeCell cell, Vector2 position, float size, Font font,
-            int fontSize, float characterSize)
+        public static CellView Create(Transform parent, LifeCell cell, Vector2 position, float size, Color color,
+            Font font, int fontSize, float characterSize)
         {
             var obj = new GameObject($"Cell_{cell.Index}_{cell.Type}");
             obj.transform.SetParent(parent, false);
             obj.transform.localPosition = position;
 
             var view = obj.AddComponent<CellView>();
-            view.CreateBody(LifeColors.Cell(cell.Type), size);
+            view.CreateBody(color, size);
             view.CreateLabel(LifeTexts.CellLabel(cell), font, fontSize, characterSize);
             return view;
         }

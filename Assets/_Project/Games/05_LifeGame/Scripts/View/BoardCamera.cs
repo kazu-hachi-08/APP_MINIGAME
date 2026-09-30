@@ -24,6 +24,12 @@ namespace MiniGame.LifeGame
             _boardBounds = bounds;
         }
 
+        /// <summary>盤面の外はカメラの背景色で塗る。テーマの背景色にする</summary>
+        public void SetBackground(Color color)
+        {
+            _camera.backgroundColor = color;
+        }
+
         public void Follow(Transform target)
         {
             _target = target;
@@ -65,10 +71,22 @@ namespace MiniGame.LifeGame
             Vector2 center = IsOverview || _target == null
                 ? _boardBounds.center
                 : (Vector2)_target.position + new Vector2(0f, _followOffsetY);
-            // 盤面の横幅は1画面に収まるので、追従中も横は盤面の中央に固定し、ルートを移るたびに左右へ揺れないようにする
-            if (!IsOverview) center.x = _boardBounds.center.x;
+            if (!IsOverview) center.x = ClampToBoardX(center.x);
 
             return new Vector3(center.x, center.y, _camera.transform.position.z);
+        }
+
+        /// <summary>
+        /// 盤面が画面の横幅に収まるなら中央に固定し、つづら折りで左右に動くたびに揺れないようにする。
+        /// 縦長の端末で収まらないときだけ、盤面の外が見えない範囲でコマを追う
+        /// </summary>
+        private float ClampToBoardX(float x)
+        {
+            float halfView = TargetSize() * _camera.aspect;
+            float slack = _boardBounds.width * 0.5f - halfView;
+            if (slack <= 0f) return _boardBounds.center.x;
+
+            return Mathf.Clamp(x, _boardBounds.center.x - slack, _boardBounds.center.x + slack);
         }
     }
 }

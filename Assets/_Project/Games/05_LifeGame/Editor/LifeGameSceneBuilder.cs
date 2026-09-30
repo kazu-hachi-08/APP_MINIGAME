@@ -27,7 +27,8 @@ namespace MiniGame.LifeGame.Editor
         private const string GameTitle = "2D Life Game";
 
         private const float CameraOrthographicSize = 6f;
-        private static readonly Color CameraBackground = new Color(0.55f, 0.75f, 0.5f);
+        // テーマ選択の後ろに見える色。選んだら LifeGameManager がテーマの背景色に変える
+        private static readonly Color CameraBackground = new Color(0.2f, 0.22f, 0.28f);
 
         // タイトルと同じく縦画面基準
         private static readonly Vector2 ReferenceResolution = new Vector2(1080, 1920);
@@ -91,6 +92,8 @@ namespace MiniGame.LifeGame.Editor
         {
             EnsureDirectory(SceneDirectory);
             LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
+            LifeThemeData[] themes = LifeDataGenerator.EnsureThemes();
+            LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.EnsureLayout();
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Camera camera = CreateCamera();
@@ -114,12 +117,13 @@ namespace MiniGame.LifeGame.Editor
             ChoicePanel choicePanel = CreateChoicePanel(canvas);
             EventPopupView eventPopup = CreateEventPopup(canvas, out Text popupBody);
             TurnBannerView turnBanner = CreateTurnBanner(canvas);
+            ThemeSelectPanel themeSelectPanel = CreateThemeSelectPanel(canvas, themes.Length);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvas);
             CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvas, characterCatalog);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             // マスの文字はイベント表示と同じフォントを使う（ブラウザ版で日本語フォントに差し替わった後のものを借りるため）
-            SetRefs(boardView, ("_fontSource", popupBody));
+            SetRefs(boardView, ("_fontSource", popupBody), ("_layout", boardLayout));
 
             var boardCamera = camera.gameObject.AddComponent<BoardCamera>();
             SetRefs(boardCamera, ("_camera", camera));
@@ -128,12 +132,13 @@ namespace MiniGame.LifeGame.Editor
             var so = new SerializedObject(gameManager);
             so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
+            SetArray(gameManager, "_themes", themes);
             SetRefs(gameManager,
                 ("_boardView", boardView), ("_boardCamera", boardCamera), ("_carRoot", carRoot),
                 ("_rouletteView", rouletteView), ("_rouletteInput", rouletteInput), ("_moneyBar", moneyBar),
                 ("_eventPopup", eventPopup), ("_choicePanel", choicePanel), ("_walletPanel", walletPanel),
                 ("_walletButton", walletButton), ("_overviewButton", overviewButton),
-                ("_characterCatalog", characterCatalog), ("_setupPanel", setupPanel),
+                ("_characterCatalog", characterCatalog), ("_themeSelectPanel", themeSelectPanel), ("_setupPanel", setupPanel),
                 ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -311,7 +316,7 @@ namespace MiniGame.LifeGame.Editor
             body.alignment = TextAnchor.UpperLeft;
 
             Transform row = CreateRow(box, "Buttons", PanelInnerWidth, buttonHeight);
-            Button repay = CreatePanelButton(row, "Btn_Repay", "手形を1枚返す（100万円）", 520f, buttonHeight, ConfirmButtonColor);
+            Button repay = CreatePanelButton(row, "Btn_Repay", "手形を1枚返す", 520f, buttonHeight, ConfirmButtonColor);
             Button close = CreatePanelButton(row, "Btn_Close", "閉じる", 260f, buttonHeight, ChoiceButtonColor);
 
             var panel = overlay.AddComponent<WalletPanel>();
@@ -410,6 +415,31 @@ namespace MiniGame.LifeGame.Editor
             return banner;
         }
 
+        /// <summary>テーマごとのボタンを縦に並べる。文字（テーマ名）は ThemeSelectPanel が実行時にテーマから入れる</summary>
+        private static ThemeSelectPanel CreateThemeSelectPanel(Transform canvas, int themeCount)
+        {
+            const int titleFontSize = 60;
+            var buttonSize = new Vector2(640f, 160f);
+
+            GameObject overlay = CreatePanelOverlay(canvas, "ThemeSelectPanel");
+            Transform box = CreatePanelBox(overlay.transform);
+
+            Text title = CreateText(box, "TitleText", titleFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 100f), Color.white);
+            title.text = "テーマを選ぶ";
+
+            var buttons = new Button[themeCount];
+            for (int i = 0; i < themeCount; i++)
+            {
+                buttons[i] = CreatePanelButton(box, $"Btn_Theme{i + 1}", "", buttonSize.x, buttonSize.y, ChoiceButtonColor);
+            }
+
+            var panel = overlay.AddComponent<ThemeSelectPanel>();
+            SetArray(panel, "_themeButtons", buttons);
+            overlay.SetActive(false);
+            return panel;
+        }
+
         /// <summary>人数と各席の人間/NPCを選ぶ。使わない席の行は VerticalLayoutGroup で詰める</summary>
         private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
         {
@@ -454,14 +484,16 @@ namespace MiniGame.LifeGame.Editor
                 kindTexts[seat] = kindButtons[seat].GetComponentInChildren<Text>();
             }
 
-            Button start = CreatePanelButton(box, "Btn_Start", "キャラ選択へ", 560f, 140f, ConfirmButtonColor);
+            Transform buttonRow = CreateRow(box, "ButtonRow", PanelInnerWidth, 140f);
+            Button back = CreatePanelButton(buttonRow, "Btn_Back", "戻る", 240f, 140f, ChoiceButtonColor);
+            Button start = CreatePanelButton(buttonRow, "Btn_Start", "キャラ選択へ", 480f, 140f, ConfirmButtonColor);
 
             var panel = overlay.AddComponent<PlayerSetupPanel>();
             SetArray(panel, "_countButtons", countButtons);
             SetArray(panel, "_playerRows", rows);
             SetArray(panel, "_kindButtons", kindButtons);
             SetArray(panel, "_kindTexts", kindTexts);
-            SetRefs(panel, ("_startButton", start));
+            SetRefs(panel, ("_startButton", start), ("_backButton", back));
             overlay.SetActive(false);
             return panel;
         }

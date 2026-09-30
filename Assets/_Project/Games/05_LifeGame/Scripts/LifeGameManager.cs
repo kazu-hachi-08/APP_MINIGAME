@@ -18,6 +18,8 @@ namespace MiniGame.LifeGame
         private const int KeepRoll = 0;
 
         [Header("Life Game")]
+        [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。フェーズ5のオンラインではこの番号を送る")]
+        [SerializeField] private LifeThemeData[] _themes;
         [SerializeField] private LifeCharacterCatalog _characterCatalog;
         [SerializeField] private BoardView _boardView;
         [SerializeField] private BoardCamera _boardCamera;
@@ -30,6 +32,7 @@ namespace MiniGame.LifeGame
         [SerializeField] private WalletPanel _walletPanel;
         [SerializeField] private Button _walletButton;
         [SerializeField] private Button _overviewButton;
+        [SerializeField] private ThemeSelectPanel _themeSelectPanel;
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private CharacterSelectPanel _characterSelectPanel;
         [SerializeField] private TurnBannerView _turnBanner;
@@ -47,6 +50,7 @@ namespace MiniGame.LifeGame
 
         private readonly List<CarView> _cars = new List<CarView>();
         private LifeGameState _state;
+        private LifeThemeData _theme;
         private LifePlayerKind[] _kinds;
         private int[] _characters;
 
@@ -67,7 +71,7 @@ namespace MiniGame.LifeGame
             _walletPanel.RepayRequested += HandleRepayRequested;
             _overviewButton.onClick.AddListener(_boardCamera.ToggleOverview);
 
-            ShowPlayerSetup();
+            ShowThemeSelect();
         }
 
         protected override void OnGameStart()
@@ -78,10 +82,25 @@ namespace MiniGame.LifeGame
         // ------------------------------------------------------------------
         // 試合前の設定
         // ------------------------------------------------------------------
+        private void ShowThemeSelect()
+        {
+            Phase = LifePhase.ThemeSelect;
+            _themeSelectPanel.Show(_themes, HandleThemeSelected);
+        }
+
+        /// <summary>背景はすぐ変えて、選んだテーマが後ろに見えるようにする</summary>
+        private void HandleThemeSelected(int index)
+        {
+            _theme = _themes[Mathf.Clamp(index, 0, _themes.Length - 1)];
+            LifeTexts.SetTheme(_theme);
+            _boardCamera.SetBackground(_theme.Background);
+            ShowPlayerSetup();
+        }
+
         private void ShowPlayerSetup()
         {
             Phase = LifePhase.PlayerSetup;
-            _setupPanel.Show(HandlePlayersConfirmed);
+            _setupPanel.Show(HandlePlayersConfirmed, ShowThemeSelect);
         }
 
         private void HandlePlayersConfirmed(IReadOnlyList<LifePlayerKind> kinds)
@@ -101,13 +120,14 @@ namespace MiniGame.LifeGame
             int seed = Environment.TickCount;
             _state = LifeGameState.Create(abilities, seed, new LifeRuleConfig());
             _npcRandom = new LifeRandom(seed + 1);
+            _walletPanel.SetRepayLabel($"手形を1枚返す（{LifeTexts.Money(_state.Config.NoteUnit)}）");
             BuildBoard();
             StartGame();
         }
 
         private void BuildBoard()
         {
-            _boardView.Build(_state.Board);
+            _boardView.Build(_state.Board, _theme);
             _boardCamera.SetBoardBounds(_boardView.Bounds);
 
             for (int seat = 0; seat < _state.Players.Count; seat++)
@@ -341,7 +361,7 @@ namespace MiniGame.LifeGame
         {
             LifeCell branch = _state.CurrentCell;
             var labels = new List<string>();
-            foreach (int next in branch.Next) labels.Add($"{LifeTexts.SectionName(_state.Board[next].Section)}ルート");
+            foreach (int next in branch.Next) labels.Add(LifeTexts.RouteName(_state.Board[next].Section));
 
             int choice = 0;
             yield return _choicePanel.ChooseOne("道を選ぶ", labels, null, index => choice = index);

@@ -5,13 +5,21 @@ using UnityEngine;
 namespace MiniGame.LifeGame.Editor
 {
     /// <summary>
-    /// キャラのデータアセットとカタログを初期値で生成する（仕様書 §9）。
+    /// キャラ（仕様書 §9）とテーマ（仕様書 §6）のデータアセットを初期値で生成する。
     /// 既にあるアセットは上書きしない。Inspector で調整した説明文やセリフを消さないため。
     /// </summary>
     public static class LifeDataGenerator
     {
         private const string CharacterDirectory = "Assets/_Project/Games/05_LifeGame/Data/Characters";
         private const string CatalogPath = CharacterDirectory + "/LifeCharacterCatalog.asset";
+        private const string ThemeDirectory = "Assets/_Project/Games/05_LifeGame/Data/Themes";
+
+        // LifeThemeData の色の並び（LifeThemeDefaults.CellColors と同じ順）
+        private static readonly string[] CellColorFields =
+            { "_moneyGood", "_moneyBad", "_mishap", "_family", "_purchase", "_job", "_milestone", "_plain" };
+
+        private static readonly string[] RouteFields =
+            { "_jobRoute", "_universityRoute", "_freeterRoute", "_safeRoute", "_gambleRoute" };
 
         /// <summary>先頭が人間の初期選択になる。ここは初期値なので、生成後の調整はアセットを直接変える</summary>
         private static readonly (string Id, string Name, LifeAbility Ability, string AbilityText, string VictoryLine)[] Characters =
@@ -63,6 +71,55 @@ namespace MiniGame.LifeGame.Editor
 
             AssetDatabase.CreateAsset(character, path);
             return character;
+        }
+
+        /// <summary>3テーマのアセットが無ければ作り、現代・ファンタジー・宇宙の順で返す（LifeGameSceneBuilder から呼ばれる）</summary>
+        public static LifeThemeData[] EnsureThemes()
+        {
+            Directory.CreateDirectory(ThemeDirectory);
+            var themes = new LifeThemeData[LifeThemeDefaults.All.Length];
+            for (int i = 0; i < themes.Length; i++) themes[i] = EnsureTheme(LifeThemeDefaults.All[i]);
+
+            AssetDatabase.SaveAssets();
+            return themes;
+        }
+
+        private static LifeThemeData EnsureTheme(LifeThemeDefaults values)
+        {
+            string path = $"{ThemeDirectory}/LifeTheme_{values.Id}.asset";
+            var theme = AssetDatabase.LoadAssetAtPath<LifeThemeData>(path);
+            if (theme != null) return theme;
+
+            theme = ScriptableObject.CreateInstance<LifeThemeData>();
+            var so = new SerializedObject(theme);
+            so.FindProperty("_displayName").stringValue = values.Name;
+            so.FindProperty("_currency").stringValue = values.Currency;
+            SetStrings(so.FindProperty("_jobNames"), values.Jobs);
+            SetStrings(so.FindProperty("_houseNames"), values.Houses);
+            for (int i = 0; i < RouteFields.Length; i++) so.FindProperty(RouteFields[i]).stringValue = values.Routes[i];
+
+            so.FindProperty("_background").colorValue = values.Background;
+            so.FindProperty("_road").colorValue = values.Road;
+            for (int i = 0; i < CellColorFields.Length; i++) so.FindProperty(CellColorFields[i]).colorValue = values.CellColors[i];
+
+            SerializedProperty texts = so.FindProperty("_cellTexts");
+            texts.arraySize = values.Texts.Length;
+            for (int i = 0; i < values.Texts.Length; i++)
+            {
+                SerializedProperty entry = texts.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("Type").enumValueIndex = (int)values.Texts[i].Type;
+                SetStrings(entry.FindPropertyRelative("Lines"), values.Texts[i].Lines);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.CreateAsset(theme, path);
+            return theme;
+        }
+
+        private static void SetStrings(SerializedProperty list, string[] values)
+        {
+            list.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++) list.GetArrayElementAtIndex(i).stringValue = values[i];
         }
     }
 }

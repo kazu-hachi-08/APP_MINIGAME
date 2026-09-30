@@ -4,30 +4,25 @@ using System.Text;
 namespace MiniGame.LifeGame
 {
     /// <summary>
-    /// 表示用の文言（現代テーマ固定）。フェーズ4で職業名・通貨・マスの名前は LifeThemeData へ移す。
+    /// 表示用の文言。職業名・通貨・家・ルート名・マスの文面は選んだテーマ（LifeThemeData）から引く。
     /// ルール側は番号しか持たないので、番号 → 文言の変換はすべてここに集める。
     /// </summary>
     public static class LifeTexts
     {
-        private const string Currency = "万円";
+        // 表示のあちこち（財布・選択肢・イベント表示）から引くので、試合ごとに1回だけ差し替える
+        private static LifeThemeData _theme;
 
-        // 番号は LifeRuleConfig.Jobs の並び（仕様書 §6.2 の職業枠）と同じ
-        private static readonly string[] JobNames =
-        {
-            "フリーター", "会社員", "警察官", "大工", "料理人", "保育士", "医者", "弁護士", "社長",
-        };
-
-        private static readonly string[] HouseNames = { "小さい家", "普通の家", "豪邸" };
+        public static void SetTheme(LifeThemeData theme) => _theme = theme;
 
         public static string PlayerName(int seat) => $"P{seat + 1}";
 
-        public static string Money(int amount) => $"{amount:#,0}{Currency}";
+        public static string Money(int amount) => $"{amount:#,0}{_theme.Currency}";
 
         private static string SignedMoney(int amount) => amount >= 0 ? $"+{Money(amount)}" : $"-{Money(-amount)}";
 
-        public static string JobName(int jobId) => jobId == LifeRuleConfig.NoJob ? "なし" : JobNames[jobId];
+        public static string JobName(int jobId) => jobId == LifeRuleConfig.NoJob ? "なし" : _theme.JobName(jobId);
 
-        public static string HouseName(int houseId) => houseId == LifeRuleConfig.NoHouse ? "なし" : HouseNames[houseId];
+        public static string HouseName(int houseId) => houseId == LifeRuleConfig.NoHouse ? "なし" : _theme.HouseName(houseId);
 
         public static string InsuranceName(LifeInsurance insurance)
         {
@@ -40,18 +35,7 @@ namespace MiniGame.LifeGame
             }
         }
 
-        public static string SectionName(LifeSection section)
-        {
-            switch (section)
-            {
-                case LifeSection.Job: return "就職";
-                case LifeSection.University: return "大学";
-                case LifeSection.Freeter: return "フリーター";
-                case LifeSection.Safe: return "安全";
-                case LifeSection.Gamble: return "ギャンブル";
-                default: return section.ToString();
-            }
-        }
+        public static string RouteName(LifeSection section) => $"{_theme.RouteName(section)}ルート";
 
         public static string CellName(LifeCellType type)
         {
@@ -89,7 +73,7 @@ namespace MiniGame.LifeGame
         public static string JobCard(LifeGameState state, int jobId) =>
             $"{JobName(jobId)}\n給料 {Money(LifeRules.SalaryOf(state.Config, state.Current, jobId))}";
 
-        public static string HouseChoice(LifeRuleConfig config, int houseId) => $"{HouseNames[houseId]}\n{Money(config.Houses[houseId].Price)}";
+        public static string HouseChoice(LifeRuleConfig config, int houseId) => $"{HouseName(houseId)}\n{Money(config.Houses[houseId].Price)}";
 
         public static string InsuranceChoice(LifeRuleConfig config, LifeInsurance insurance) =>
             $"{InsuranceName(insurance)}\n{Money(config.InsurancePrice(insurance))}";
@@ -105,7 +89,7 @@ namespace MiniGame.LifeGame
                 case LifeEventType.Salary:
                     return $"{who} 給料日！ {SignedMoney(e.Amount)}";
                 case LifeEventType.Landed:
-                    return $"【{CellName(state.Board[e.Value].Type)}】";
+                    return Landed(state.Board[e.Value]);
                 case LifeEventType.Income:
                     return $"{who} {SignedMoney(e.Amount)}";
                 case LifeEventType.Payment:
@@ -135,6 +119,14 @@ namespace MiniGame.LifeGame
                 default:
                     return null;
             }
+        }
+
+        /// <summary>止まったマスの名前と、テーマの一言（あれば）</summary>
+        private static string Landed(LifeCell cell)
+        {
+            string title = $"【{CellName(cell.Type)}】";
+            string flavor = _theme.CellText(cell.Type, cell.TextVariant);
+            return flavor == null ? title : $"{title}\n{flavor}";
         }
 
         /// <param name="owner">「P1 らっきー」のような席番号＋キャラ名</param>
