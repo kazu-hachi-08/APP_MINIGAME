@@ -27,6 +27,21 @@ namespace MiniGame.LifeGame
             events.Add(new LifeEvent(LifeEventType.Payment, payer.Seat, amount, otherSeat: toSeat));
         }
 
+        /// <summary>
+        /// 出費・学費・災難の支払い。しっかり者は減額する（家・保険・株の購入やご祝儀には効かないので Pay と分ける）
+        /// </summary>
+        public static void PayExpense(LifeGameState state, LifePlayerState payer, int amount, int toSeat, List<LifeEvent> events)
+        {
+            Pay(state, payer, Discounted(state.Config, payer, amount), toSeat, events);
+        }
+
+        private static int Discounted(LifeRuleConfig config, LifePlayerState payer, int amount)
+        {
+            if (payer.Ability != LifeAbility.Thrift) return amount;
+
+            return amount - amount * config.AbilityThriftPercent / 100;
+        }
+
         private static void IssueNotesIfShort(LifeRuleConfig config, LifePlayerState payer, int amount, List<LifeEvent> events)
         {
             int shortfall = amount - payer.Money;
@@ -73,7 +88,7 @@ namespace MiniGame.LifeGame
                 return;
             }
 
-            Pay(state, payer, amount, FindFeeReceiver(state, payer.Seat, role), events);
+            PayExpense(state, payer, amount, FindFeeReceiver(state, payer.Seat, role), events);
         }
 
         /// <summary>

@@ -85,7 +85,9 @@ namespace MiniGame.LifeGame
             return cell.Amount > 0 ? $"{CellName(cell.Type)}\n{cell.Amount}" : CellName(cell.Type);
         }
 
-        public static string JobCard(LifeRuleConfig config, int jobId) => $"{JobName(jobId)}\n給料 {Money(config.SalaryOf(jobId))}";
+        /// <summary>給料は手番の人の能力込みの額を見せる（がんばり屋が実際にもらえる額で比べられるように）</summary>
+        public static string JobCard(LifeGameState state, int jobId) =>
+            $"{JobName(jobId)}\n給料 {Money(LifeRules.SalaryOf(state.Config, state.Current, jobId))}";
 
         public static string HouseChoice(LifeRuleConfig config, int houseId) => $"{HouseNames[houseId]}\n{Money(config.Houses[houseId].Price)}";
 
@@ -116,7 +118,8 @@ namespace MiniGame.LifeGame
                 case LifeEventType.NoteRepaid:
                     return $"{who} 約束手形を{e.Value}枚返済";
                 case LifeEventType.JobChanged:
-                    return $"{who} {JobName(e.Value)}になった（給料 {Money(state.Config.SalaryOf(e.Value))}）";
+                    int salary = LifeRules.SalaryOf(state.Config, state.Players[e.Seat], e.Value);
+                    return $"{who} {JobName(e.Value)}になった（給料 {Money(salary)}）";
                 case LifeEventType.Married:
                     return $"{who} 結婚おめでとう！";
                 case LifeEventType.ChildBorn:
@@ -134,20 +137,29 @@ namespace MiniGame.LifeGame
             }
         }
 
-        public static string Wallet(LifeGameState state, int seat)
+        /// <param name="owner">「P1 らっきー」のような席番号＋キャラ名</param>
+        /// <param name="abilityText">キャラの能力の説明</param>
+        public static string Wallet(LifeGameState state, int seat, string owner, string abilityText)
         {
             LifePlayerState player = state.Players[seat];
-            LifeRuleConfig config = state.Config;
             var text = new StringBuilder();
-            text.AppendLine($"{PlayerName(seat)} の財布");
+            text.AppendLine($"{owner} の財布");
+            text.AppendLine($"能力：{abilityText}{RerollState(player)}");
             text.AppendLine($"所持金：{Money(player.Money)}");
-            text.AppendLine($"職業：{JobName(player.JobId)}（給料 {Money(config.SalaryOf(player.JobId))}）");
+            text.AppendLine($"職業：{JobName(player.JobId)}（給料 {Money(LifeRules.SalaryOf(state.Config, player, player.JobId))}）");
             text.AppendLine($"家：{HouseName(player.HouseId)}");
             text.AppendLine($"保険：{InsuranceList(player.Insurances)}");
             text.AppendLine($"株：{StockList(player.Stocks)}");
             text.AppendLine($"約束手形：{player.Notes}枚");
             text.Append($"家族：{(player.IsMarried ? "結婚済み" : "独身")}・子供{player.Children}人");
             return text.ToString();
+        }
+
+        private static string RerollState(LifePlayerState player)
+        {
+            if (player.Ability != LifeAbility.Reroll) return "";
+
+            return player.RerollUsed ? "（使用済み）" : "（あと1回）";
         }
 
         private static string InsuranceList(LifeInsurance insurances)

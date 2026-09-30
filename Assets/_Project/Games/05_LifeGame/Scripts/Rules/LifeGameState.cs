@@ -22,6 +22,11 @@ namespace MiniGame.LifeGame
         /// <summary>約束手形の枚数</summary>
         public int Notes;
 
+        public LifeAbility Ability;
+
+        /// <summary>振り直しを使い切ったか（らっきーの能力は1試合に1回）</summary>
+        public bool RerollUsed;
+
         public bool IsMarried;
         public int Children;
 
@@ -60,7 +65,14 @@ namespace MiniGame.LifeGame
         public LifePlayerState Current => Players[CurrentSeat];
         public LifeCell CurrentCell => Board[Current.Position];
 
+        /// <summary>全員能力なしで作る（テスト用）</summary>
         public static LifeGameState Create(int playerCount, int seed, LifeRuleConfig config)
+        {
+            return Create(new LifeAbility[playerCount], seed, config);
+        }
+
+        /// <summary>席ごとのキャラの能力を渡して作る。人数は abilities の数</summary>
+        public static LifeGameState Create(IReadOnlyList<LifeAbility> abilities, int seed, LifeRuleConfig config)
         {
             var random = new LifeRandom(seed);
             var state = new LifeGameState
@@ -71,9 +83,11 @@ namespace MiniGame.LifeGame
                 Pending = LifePending.Spin,
             };
 
-            for (int seat = 0; seat < playerCount; seat++)
+            for (int seat = 0; seat < abilities.Count; seat++)
             {
-                state.Players.Add(new LifePlayerState { Seat = seat, Money = config.StartMoney });
+                LifeAbility ability = abilities[seat];
+                int money = config.StartMoney + (ability == LifeAbility.StartMoney ? config.AbilityStartMoney : 0);
+                state.Players.Add(new LifePlayerState { Seat = seat, Money = money, Ability = ability });
             }
 
             return state;

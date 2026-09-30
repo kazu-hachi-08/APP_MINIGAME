@@ -49,6 +49,24 @@ namespace MiniGame.LifeGame
         Repair,
     }
 
+    /// <summary>キャラの能力（仕様書 §9.2）。運のゲームなので差は小さくする</summary>
+    public enum LifeAbility
+    {
+        None,
+
+        /// <summary>初期所持金が増える</summary>
+        StartMoney,
+
+        /// <summary>給料が増える</summary>
+        Salary,
+
+        /// <summary>移動のルーレットを1試合に1回だけ振り直せる</summary>
+        Reroll,
+
+        /// <summary>出費・病気・事故・火事の支払いが減る</summary>
+        Thrift,
+    }
+
     [Flags]
     public enum LifeInsurance
     {
@@ -62,6 +80,9 @@ namespace MiniGame.LifeGame
     public enum LifePending
     {
         Spin,
+
+        /// <summary>振り直せる人が出目を見て、振り直すか決める</summary>
+        Reroll,
         Branch,
         JobCard,
         ChangeJob,

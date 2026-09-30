@@ -90,6 +90,7 @@ namespace MiniGame.LifeGame.Editor
         private static void BuildInternal()
         {
             EnsureDirectory(SceneDirectory);
+            LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Camera camera = CreateCamera();
@@ -112,6 +113,9 @@ namespace MiniGame.LifeGame.Editor
             WalletPanel walletPanel = CreateWalletPanel(canvas);
             ChoicePanel choicePanel = CreateChoicePanel(canvas);
             EventPopupView eventPopup = CreateEventPopup(canvas, out Text popupBody);
+            TurnBannerView turnBanner = CreateTurnBanner(canvas);
+            PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvas);
+            CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvas, characterCatalog);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             // マスの文字はイベント表示と同じフォントを使う（ブラウザ版で日本語フォントに差し替わった後のものを借りるため）
@@ -128,7 +132,9 @@ namespace MiniGame.LifeGame.Editor
                 ("_boardView", boardView), ("_boardCamera", boardCamera), ("_carRoot", carRoot),
                 ("_rouletteView", rouletteView), ("_rouletteInput", rouletteInput), ("_moneyBar", moneyBar),
                 ("_eventPopup", eventPopup), ("_choicePanel", choicePanel), ("_walletPanel", walletPanel),
-                ("_walletButton", walletButton), ("_overviewButton", overviewButton));
+                ("_walletButton", walletButton), ("_overviewButton", overviewButton),
+                ("_characterCatalog", characterCatalog), ("_setupPanel", setupPanel),
+                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);
@@ -367,9 +373,137 @@ namespace MiniGame.LifeGame.Editor
             hint.text = "タップで閉じる";
 
             var popup = overlay.AddComponent<EventPopupView>();
-            SetRefs(popup, ("_bodyText", body), ("_tapArea", tapArea));
+            SetRefs(popup, ("_bodyText", body), ("_tapArea", tapArea), ("_hintText", hint));
             overlay.SetActive(false);
             return popup;
+        }
+
+        /// <summary>「○○の番」の全画面表示。画面全体をボタンにして、どこをタップしても開始できるようにする</summary>
+        private static TurnBannerView CreateTurnBanner(Transform canvas)
+        {
+            const int titleFontSize = 100;
+            // 「P1 しっかり者（NPC） の番」が折り返して下のヒントと重ならないよう、1行に収まる大きさまで縮める
+            const int titleMinFontSize = 50;
+            const int hintFontSize = 52;
+
+            GameObject overlay = CreatePanelOverlay(canvas, "TurnBanner");
+            var tapArea = overlay.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            Text title = CreateText(overlay.transform, "TitleText", titleFontSize, CenterAnchor, new Vector2(0f, 80f),
+                new Vector2(1000f, 200f), Color.white);
+            title.resizeTextForBestFit = true;
+            title.resizeTextMinSize = titleMinFontSize;
+            title.resizeTextMaxSize = titleFontSize;
+            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            title.verticalOverflow = VerticalWrapMode.Truncate;
+            AddOutline(title.gameObject);
+
+            Text hint = CreateText(overlay.transform, "HintText", hintFontSize, CenterAnchor, new Vector2(0f, -80f),
+                new Vector2(1000f, 90f), Color.white);
+            hint.text = "タップで開始";
+
+            var banner = overlay.AddComponent<TurnBannerView>();
+            SetRefs(banner, ("_titleText", title), ("_hintText", hint), ("_tapArea", tapArea),
+                ("_background", overlay.GetComponent<Image>()));
+            overlay.SetActive(false);
+            return banner;
+        }
+
+        /// <summary>人数と各席の人間/NPCを選ぶ。使わない席の行は VerticalLayoutGroup で詰める</summary>
+        private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
+        {
+            const int titleFontSize = 60;
+            const float rowHeight = 120f;
+            const float countButtonWidth = 240f;
+            const float seatLabelWidth = 160f;
+            const float kindButtonWidth = 480f;
+            const int seatLabelFontSize = 56;
+            int countOptions = PlayerSetupPanel.MaxPlayers - PlayerSetupPanel.MinPlayers + 1;
+
+            GameObject overlay = CreatePanelOverlay(canvas, "PlayerSetupPanel");
+            Transform box = CreatePanelBox(overlay.transform);
+
+            Text title = CreateText(box, "TitleText", titleFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 100f), Color.white);
+            title.text = "プレイヤー設定";
+
+            Transform countRow = CreateRow(box, "CountRow", PanelInnerWidth, rowHeight);
+            var countButtons = new Button[countOptions];
+            for (int i = 0; i < countOptions; i++)
+            {
+                int count = PlayerSetupPanel.MinPlayers + i;
+                countButtons[i] = CreatePanelButton(countRow, $"Btn_{count}Players", $"{count}人", countButtonWidth, rowHeight,
+                    ChoiceButtonColor);
+            }
+
+            var rows = new GameObject[PlayerSetupPanel.MaxPlayers];
+            var kindButtons = new Button[PlayerSetupPanel.MaxPlayers];
+            var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            for (int seat = 0; seat < PlayerSetupPanel.MaxPlayers; seat++)
+            {
+                Transform row = CreateRow(box, $"Row_P{seat + 1}", PanelInnerWidth, rowHeight);
+                rows[seat] = row.gameObject;
+
+                Text label = CreateText(row, "Label", seatLabelFontSize, CenterAnchor, Vector2.zero,
+                    new Vector2(seatLabelWidth, rowHeight), LifeColors.Seat(seat));
+                label.text = LifeTexts.PlayerName(seat);
+                AddOutline(label.gameObject);
+
+                kindButtons[seat] = CreatePanelButton(row, "Btn_Kind", "", kindButtonWidth, rowHeight, ChoiceButtonColor);
+                kindTexts[seat] = kindButtons[seat].GetComponentInChildren<Text>();
+            }
+
+            Button start = CreatePanelButton(box, "Btn_Start", "キャラ選択へ", 560f, 140f, ConfirmButtonColor);
+
+            var panel = overlay.AddComponent<PlayerSetupPanel>();
+            SetArray(panel, "_countButtons", countButtons);
+            SetArray(panel, "_playerRows", rows);
+            SetArray(panel, "_kindButtons", kindButtons);
+            SetArray(panel, "_kindTexts", kindTexts);
+            SetRefs(panel, ("_startButton", start));
+            overlay.SetActive(false);
+            return panel;
+        }
+
+        /// <summary>1人ずつキャラを選ぶ。立ち絵はフェーズ6なので、名前と能力の説明だけを大きく出す</summary>
+        private static CharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, LifeCharacterCatalog catalog)
+        {
+            // 「P1（NPC） のキャラを選んでね」が1行に収まる大きさ
+            const int titleFontSize = 44;
+            const int nameFontSize = 80;
+            const int abilityFontSize = 44;
+            const float arrowSize = 150f;
+            const float nameWidth = 480f;
+            const float nameRowHeight = 200f;
+            const float buttonRowHeight = 140f;
+
+            GameObject overlay = CreatePanelOverlay(canvas, "CharacterSelectPanel");
+            Transform box = CreatePanelBox(overlay.transform);
+
+            Text title = CreateText(box, "TitleText", titleFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 100f), Color.white);
+            AddOutline(title.gameObject);
+
+            Transform nameRow = CreateRow(box, "NameRow", PanelInnerWidth, nameRowHeight);
+            Button prev = CreatePanelButton(nameRow, "Btn_Prev", "◀", arrowSize, arrowSize, ChoiceButtonColor);
+            Text nameText = CreateText(nameRow, "NameText", nameFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(nameWidth, nameRowHeight), Color.white);
+            Button next = CreatePanelButton(nameRow, "Btn_Next", "▶", arrowSize, arrowSize, ChoiceButtonColor);
+
+            Text abilityText = CreateBodyText(box, 160f);
+            abilityText.resizeTextMaxSize = abilityFontSize;
+
+            Transform buttonRow = CreateRow(box, "ButtonRow", PanelInnerWidth, buttonRowHeight);
+            Button back = CreatePanelButton(buttonRow, "Btn_Back", "戻る", 280f, buttonRowHeight, ChoiceButtonColor);
+            Button confirm = CreatePanelButton(buttonRow, "Btn_Confirm", "決定", 440f, buttonRowHeight, ConfirmButtonColor);
+
+            var panel = overlay.AddComponent<CharacterSelectPanel>();
+            SetRefs(panel, ("_catalog", catalog), ("_titleText", title), ("_nameText", nameText),
+                ("_abilityText", abilityText), ("_prevButton", prev), ("_nextButton", next),
+                ("_confirmButton", confirm), ("_backButton", back));
+            overlay.SetActive(false);
+            return panel;
         }
 
         // ------------------------------------------------------------------

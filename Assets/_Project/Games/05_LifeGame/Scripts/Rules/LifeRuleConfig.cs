@@ -95,6 +95,11 @@ namespace MiniGame.LifeGame
         public int NoteUnit = 100;
         public int NoteSettlement = 125;
 
+        // キャラの能力（仕様書 §9.2）
+        public int AbilityStartMoney = 100;
+        public int AbilitySalaryPercent = 10;
+        public int AbilityThriftPercent = 10;
+
         public int FreeterJobId
         {
             get

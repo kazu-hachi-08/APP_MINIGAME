@@ -11,6 +11,7 @@ namespace MiniGame.LifeGame
         private const int JobPercent = 40;
         private const int KeepMoney = 200;
         private const int RepayThreshold = 500;
+        private const int RerollAtOrBelow = 3;
 
         /// <param name="random">
         /// NPC専用の乱数。ルールの乱数（state.Random）を使うと、NPCの考えた回数で出目の列がずれてしまうので分ける
@@ -24,6 +25,8 @@ namespace MiniGame.LifeGame
                 case LifePending.Spin:
                     int repay = PlanRepay(state.Config, player);
                     return repay > 0 ? new LifeCommand(seat, LifeCommandType.Repay, repay) : new LifeCommand(seat, LifeCommandType.Spin);
+                case LifePending.Reroll:
+                    return new LifeCommand(seat, LifeCommandType.ChooseReroll, state.LastRoll <= RerollAtOrBelow ? 1 : 0);
                 case LifePending.Branch:
                     return new LifeCommand(seat, LifeCommandType.ChooseBranch, PlanBranch(state, random));
                 case LifePending.JobCard:

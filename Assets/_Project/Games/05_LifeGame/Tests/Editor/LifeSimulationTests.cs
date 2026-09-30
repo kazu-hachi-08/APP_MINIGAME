@@ -11,9 +11,17 @@ namespace MiniGame.LifeGame.Tests
         // 1試合のコマンド数の上限。これを超えたら無限ループとみなす
         private const int MaxCommands = 2000;
 
+        private static readonly LifeAbility[] AllAbilities =
+            { LifeAbility.StartMoney, LifeAbility.Salary, LifeAbility.Reroll, LifeAbility.Thrift };
+
         private static LifeGameState PlayToEnd(int playerCount, int seed, List<LifeCommand> log = null)
         {
-            LifeGameState state = LifeGameState.Create(playerCount, seed, new LifeRuleConfig());
+            return PlayToEnd(new LifeAbility[playerCount], seed, log);
+        }
+
+        private static LifeGameState PlayToEnd(LifeAbility[] abilities, int seed, List<LifeCommand> log = null)
+        {
+            LifeGameState state = LifeGameState.Create(abilities, seed, new LifeRuleConfig());
             var npcRandom = new LifeRandom(seed + 10000);
 
             for (int i = 0; i < MaxCommands && state.Pending != LifePending.Finished; i++)
@@ -41,6 +49,12 @@ namespace MiniGame.LifeGame.Tests
                 foreach (LifeSettlementEntry entry in entries) ranks.Add(entry.Rank);
                 Assert.AreEqual(4, ranks.Count);
             }
+        }
+
+        [Test]
+        public void 能力持ちのNPC4人でも最後まで終わる()
+        {
+            for (int seed = 0; seed < GameCount; seed++) PlayToEnd(AllAbilities, seed);
         }
 
         [Test]

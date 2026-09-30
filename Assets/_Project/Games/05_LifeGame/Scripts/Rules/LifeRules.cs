@@ -24,6 +24,8 @@ namespace MiniGame.LifeGame
                     return LifeMoney.CanRepay(state.Config, player, value);
                 case LifeCommandType.Spin:
                     return state.Pending == LifePending.Spin;
+                case LifeCommandType.ChooseReroll:
+                    return state.Pending == LifePending.Reroll && (value == 0 || value == 1);
                 case LifeCommandType.ChooseBranch:
                     return state.Pending == LifePending.Branch && value >= 0 && value < state.CurrentCell.Next.Count;
                 case LifeCommandType.ChooseJob:
@@ -55,7 +57,10 @@ namespace MiniGame.LifeGame
                     LifeMoney.Repay(state.Config, state.Current, command.Value, events);
                     break;
                 case LifeCommandType.Spin:
-                    Move(state, state.Random.Range(1, LifeRuleConfig.RouletteMax), events);
+                    Spin(state, events);
+                    break;
+                case LifeCommandType.ChooseReroll:
+                    ChooseReroll(state, command.Value == 1, events);
                     break;
                 case LifeCommandType.ChooseBranch:
                     ChooseBranch(state, command.Value, events);
@@ -86,7 +91,51 @@ namespace MiniGame.LifeGame
             return available & ~player.Insurances;
         }
 
+        /// <summary>給料日に受け取る額（キャラの能力込み）。職業なしは 0</summary>
+        public static int SalaryOf(LifeRuleConfig config, LifePlayerState player, int jobId)
+        {
+            int salary = config.SalaryOf(jobId);
+            if (player.Ability == LifeAbility.Salary) salary += salary * config.AbilitySalaryPercent / 100;
+            return salary;
+        }
+
+        public static bool CanReroll(LifePlayerState player)
+        {
+            return player.Ability == LifeAbility.Reroll && !player.RerollUsed;
+        }
+
         // ---- 移動 ----
+
+        /// <summary>
+        /// 出目を決める。振り直せる人は出目を見せて選ばせ、決まるまで配当も移動もしない
+        /// （振り直す前の出目で配当が出ないようにするため。仕様書 §9.2）
+        /// </summary>
+        private static void Spin(LifeGameState state, List<LifeEvent> events)
+        {
+            int roll = RollDice(state);
+            if (!CanReroll(state.Current))
+            {
+                Move(state, roll, events);
+                return;
+            }
+
+            state.LastRoll = roll;
+            state.Pending = LifePending.Reroll;
+        }
+
+        private static void ChooseReroll(LifeGameState state, bool reroll, List<LifeEvent> events)
+        {
+            if (!reroll)
+            {
+                Move(state, state.LastRoll, events);
+                return;
+            }
+
+            state.Current.RerollUsed = true;
+            Move(state, RollDice(state), events);
+        }
+
+        private static int RollDice(LifeGameState state) => state.Random.Range(1, LifeRuleConfig.RouletteMax);
 
         /// <summary>出目を決めた後の処理。テストでは出目を指定してここを直接呼ぶ</summary>
         internal static void Move(LifeGameState state, int roll, List<LifeEvent> events)
@@ -148,7 +197,7 @@ namespace MiniGame.LifeGame
 
         private static void PaySalary(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
         {
-            int salary = state.Config.SalaryOf(player.JobId);
+            int salary = SalaryOf(state.Config, player, player.JobId);
             if (salary <= 0) return;
 
             player.Money += salary;
@@ -179,7 +228,7 @@ namespace MiniGame.LifeGame
                     return false;
                 case LifeCellType.Expense:
                 case LifeCellType.Tuition:
-                    LifeMoney.Pay(state, player, cell.Amount, LifeEvent.Bank, events);
+                    LifeMoney.PayExpense(state, player, cell.Amount, LifeEvent.Bank, events);
                     return false;
                 case LifeCellType.Sickness:
                     LifeMoney.PayMishap(state, player, cell.Amount, LifeInsurance.Life, LifeJobRole.Healer, events);
@@ -227,7 +276,7 @@ namespace MiniGame.LifeGame
             if (!player.HasHouse)
             {
                 // 家なしは小額の出費だけ。保険・手数料の対象外（仕様書 §5.2）
-                LifeMoney.Pay(state, player, state.Config.FireWithoutHouse, LifeEvent.Bank, events);
+                LifeMoney.PayExpense(state, player, state.Config.FireWithoutHouse, LifeEvent.Bank, events);
                 return;
             }
 

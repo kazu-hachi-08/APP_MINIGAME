@@ -21,6 +21,9 @@ namespace MiniGame.LifeGame
 
         /// <summary>Value = 返済する約束手形の枚数</summary>
         Repay,
+
+        /// <summary>Value = 1 で振り直す、0 でこのまま進む</summary>
+        ChooseReroll,
     }
 
     /// <summary>
