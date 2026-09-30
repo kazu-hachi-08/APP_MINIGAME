@@ -23,5 +23,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Games/04_Golf/Scenes/GolfScene.unity
     guid: 8d170b31db3046745817b2f7acae0a54
+  - enabled: 1
+    path: Assets/_Project/Games/05_LifeGame/Scenes/LifeGameScene.unity
+    guid: bfc8baaea92234945b1226ff9d42f729
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

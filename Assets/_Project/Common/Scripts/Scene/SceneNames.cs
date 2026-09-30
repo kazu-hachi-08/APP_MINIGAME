@@ -20,6 +20,9 @@ namespace MiniGame.Common.Scene
         /// <summary>第5弾: 2Dゴルフゲーム</summary>
         public const string Golf = "GolfScene";
 
+        /// <summary>第6弾: 2D人生ゲーム</summary>
+        public const string LifeGame = "LifeGameScene";
+
         /// <summary>カードゲーム（THE CHAOS Ⅱ）</summary>
         public const string CardGame = "CardGameScene";
 

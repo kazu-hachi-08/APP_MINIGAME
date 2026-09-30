@@ -1,0 +1,92 @@
+using UnityEngine;
+
+namespace MiniGame.LifeGame
+{
+    /// <summary>
+    /// 手番のコマを追うカメラと「全体」表示の切り替え（仕様書 §3.1）。ピンチ操作は入れない（PCでも同じ操作にするため）。
+    /// </summary>
+    public class BoardCamera : MonoBehaviour
+    {
+        [SerializeField] private Camera _camera;
+        [SerializeField] private float _followSize = 6f;
+        [Tooltip("追う対象を画面の中央より上に出す量。下部のルーレットにコマが隠れないようにするため")]
+        [SerializeField] private float _followOffsetY = -1.5f;
+        [SerializeField] private float _followSharpness = 6f;
+        [SerializeField] private float _overviewMargin = 1f;
+
+        private Transform _target;
+        private Rect _boardBounds;
+
+        public bool IsOverview { get; private set; }
+
+        public void SetBoardBounds(Rect bounds)
+        {
+            _boardBounds = bounds;
+        }
+
+        /// <summary>盤面の外はカメラの背景色で塗る。テーマの背景色にする</summary>
+        public void SetBackground(Color color)
+        {
+            _camera.backgroundColor = color;
+        }
+
+        public void Follow(Transform target)
+        {
+            _target = target;
+        }
+
+        public void ToggleOverview()
+        {
+            IsOverview = !IsOverview;
+        }
+
+        /// <summary>カメラを今の追従先へすぐ合わせる（試合開始直後に盤面の外から滑ってこないように）</summary>
+        public void SnapToTarget()
+        {
+            _camera.orthographicSize = TargetSize();
+            _camera.transform.position = TargetPosition();
+        }
+
+        private void LateUpdate()
+        {
+            if (_target == null && !IsOverview) return;
+
+            // 時間ではなくフレーム間の差で追うと端末のフレームレートで速さが変わるので、指数補間にする
+            float blend = 1f - Mathf.Exp(-_followSharpness * Time.unscaledDeltaTime);
+            _camera.orthographicSize = Mathf.Lerp(_camera.orthographicSize, TargetSize(), blend);
+            _camera.transform.position = Vector3.Lerp(_camera.transform.position, TargetPosition(), blend);
+        }
+
+        private float TargetSize()
+        {
+            if (!IsOverview) return _followSize;
+
+            float halfHeight = _boardBounds.height * 0.5f + _overviewMargin;
+            float halfWidth = _boardBounds.width * 0.5f + _overviewMargin;
+            return Mathf.Max(halfHeight, halfWidth / _camera.aspect);
+        }
+
+        private Vector3 TargetPosition()
+        {
+            Vector2 center = IsOverview || _target == null
+                ? _boardBounds.center
+                : (Vector2)_target.position + new Vector2(0f, _followOffsetY);
+            if (!IsOverview) center.x = ClampToBoardX(center.x);
+
+            return new Vector3(center.x, center.y, _camera.transform.position.z);
+        }
+
+        /// <summary>
+        /// 盤面が画面の横幅に収まるなら中央に固定し、つづら折りで左右に動くたびに揺れないようにする。
+        /// 縦長の端末で収まらないときだけ、盤面の外が見えない範囲でコマを追う
+        /// </summary>
+        private float ClampToBoardX(float x)
+        {
+            float halfView = TargetSize() * _camera.aspect;
+            float slack = _boardBounds.width * 0.5f - halfView;
+            if (slack <= 0f) return _boardBounds.center.x;
+
+            return Mathf.Clamp(x, _boardBounds.center.x - slack, _boardBounds.center.x + slack);
+        }
+    }
+}

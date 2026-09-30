@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d4e53d34df4ab49889b12231829be2, type: 3}
+  m_Name: LifeChar_Lucky
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeCharacterData
+  _displayName: "\u3089\u3063\u304D\u30FC"
+  _ability: 3
+  _abilityText: "\u30EB\u30FC\u30EC\u30C3\u30C8\u30921\u56DE\u3060\u3051\u632F\u308A\u76F4\u305B\u308B"
+  _victoryLine: "\u904B\u3082\u5B9F\u529B\u306E\u3046\u3061\uFF01"
+  _face: {fileID: 21300000, guid: 6916a42bd2f89b04c8bb1b2ad01e0657, type: 3}
+  _portrait: {fileID: 21300000, guid: cf1289a48313d344c89477b42924a02b, type: 3}

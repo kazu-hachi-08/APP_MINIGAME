@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7b59430c7a3276459d41ec2f13feabf, type: 3}
+  m_Name: LifeCharacterCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeCharacterCatalog
+  _characters:
+  - {fileID: 11400000, guid: f8e0c694c4758184888f3e093e64e534, type: 2}
+  - {fileID: 11400000, guid: 583d01ce60c0ecb4395d5b6b59da5525, type: 2}
+  - {fileID: 11400000, guid: 4a112337049cbeb4fb073da18e7f99c2, type: 2}
+  - {fileID: 11400000, guid: eb33137b95b2138499f1fe8b1d58f4b2, type: 2}

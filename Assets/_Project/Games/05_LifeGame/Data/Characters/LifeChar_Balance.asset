@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d4e53d34df4ab49889b12231829be2, type: 3}
+  m_Name: LifeChar_Balance
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeCharacterData
+  _displayName: "\u30D0\u30E9\u30F3\u30B9"
+  _ability: 1
+  _abilityText: "\u6700\u521D\u306E\u6240\u6301\u91D1\u304C50\u591A\u3044"
+  _victoryLine: "\u5805\u5B9F\u306A\u4EBA\u751F\u3060\u3063\u305F\uFF01"
+  _face: {fileID: 21300000, guid: 0a8e19ea30acb944ba675e361ad34c1d, type: 3}
+  _portrait: {fileID: 21300000, guid: 9685e040d8dc49c4db6f26b176af833c, type: 3}
