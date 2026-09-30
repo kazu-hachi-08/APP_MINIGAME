@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d4e53d34df4ab49889b12231829be2, type: 3}
+  m_Name: LifeChar_Saver
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeCharacterData
+  _displayName: "\u3057\u3063\u304B\u308A\u8005"
+  _ability: 4
+  _abilityText: "\u51FA\u8CBB\u30FB\u75C5\u6C17\u30FB\u4E8B\u6545\u30FB\u706B\u4E8B\u306E\u652F\u6255\u3044\u304C2\u5272\u5C11\u306A\u3044"
+  _victoryLine: "\u7BC0\u7D04\u306F\u6700\u5F37\uFF01"
+  _face: {fileID: 21300000, guid: f976ea04fa8596040bb4add86eb7a2f8, type: 3}
+  _portrait: {fileID: 21300000, guid: a9d4b91d34339a9449d28eb7e51645d1, type: 3}

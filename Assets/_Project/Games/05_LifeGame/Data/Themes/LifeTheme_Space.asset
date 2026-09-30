@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 491303808fd8a1a42b5098035890577f, type: 3}
+  m_Name: LifeTheme_Space
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeThemeData
+  _displayName: "\u5B87\u5B99"
+  _currency: "\u30AF\u30EC\u30B8\u30C3\u30C8"
+  _jobNames:
+  - "\u6D41\u308C\u8005"
+  - "\u8CA8\u7269\u30D1\u30A4\u30ED\u30C3\u30C8"
+  - "\u4FDD\u5B89\u5B98"
+  - "\u6574\u5099\u58EB"
+  - "\u914D\u4FE1\u8005"
+  - "\u30D7\u30E9\u30F3\u30C8\u54E1"
+  - "\u5B87\u5B99\u533B\u5E2B"
+  - "\u8266\u9577"
+  - "\u7814\u7A76\u8005"
+  _houseNames:
+  - "\u30AB\u30D7\u30BB\u30EB\u5C45\u4F4F\u533A"
+  - "\u30B3\u30ED\u30CB\u30FC\u306E\u4E00\u8ED2\u5BB6"
+  - "\u5C0F\u60D1\u661F\u307E\u308B\u3054\u3068"
+  _jobRoute: "\u5B87\u5B99\u6E2F"
+  _universityRoute: "\u30A2\u30AB\u30C7\u30DF\u30FC"
+  _freeterRoute: "\u6F02\u6D41"
+  _safeRoute: "\u5B9A\u671F\u822A\u8DEF"
+  _gambleRoute: "\u5C0F\u60D1\u661F\u5E2F"
+  _cellTexts:
+  - Type: 8
+    Lines:
+    - "\u5B87\u5B99\u30B4\u30DF\u304B\u3089\u30EC\u30A2\u30E1\u30BF\u30EB"
+    - "\u7570\u661F\u4EBA\u306B\u7FFB\u8A33\u3092\u983C\u307E\u308C\u305F"
+    - "\u7121\u91CD\u529B\u30EC\u30FC\u30B9\u3067\u512A\u52DD"
+    - "\u9695\u77F3\u3092\u62FE\u3063\u3066\u58F2\u3063\u305F"
+  - Type: 9
+    Lines:
+    - "\u9178\u7D20\u30DC\u30F3\u30D9\u3092\u8CB7\u3044\u8DB3\u3057\u305F"
+    - "\u5B87\u5B99\u98DF\u306E\u30B5\u30D6\u30B9\u30AF"
+    - "\u8239\u306E\u5857\u88C5\u3092\u5857\u308A\u66FF\u3048\u305F"
+    - "\u30EF\u30FC\u30D7\u4EE3\u304C\u9AD8\u304B\u3063\u305F"
+  - Type: 10
+    Lines:
+    - "\u5B87\u5B99\u9154\u3044\u3067\u30C0\u30A6\u30F3"
+    - "\u672A\u77E5\u306E\u30A6\u30A4\u30EB\u30B9\u306B\u611F\u67D3"
+    - "\u7121\u91CD\u529B\u3067\u8170\u3092\u75DB\u3081\u305F"
+  - Type: 11
+    Lines:
+    - "\u901F\u5EA6\u8D85\u904E\u3067\u6B62\u3081\u3089\u308C\u305F"
+    - "\u30C9\u30C3\u30AD\u30F3\u30B0\u306B\u5931\u6557"
+    - "\u822A\u8DEF\u9055\u53CD\u306E\u7F70\u91D1"
+  - Type: 12
+    Lines:
+    - "\u30A8\u30F3\u30B8\u30F3\u304C\u706B\u3092\u5674\u3044\u305F\uFF01"
+    - "\u592A\u967D\u30D5\u30EC\u30A2\u3067\u56DE\u8DEF\u304C\u708E\u4E0A"
+    - "\u8ABF\u7406\u30ED\u30DC\u304C\u66B4\u8D70"
+  - Type: 13
+    Lines:
+    - "\u8239\u5185\u3067\u8D64\u3061\u3083\u3093\u8A95\u751F\uFF01"
+    - "\u672A\u6765\u306E\u5B87\u5B99\u98DB\u884C\u58EB\u304C\u751F\u307E\u308C\u305F"
+    - "\u5BB6\u65CF\u304C\u306B\u304E\u3084\u304B\u306B\u306A\u3063\u305F"
+  - Type: 14
+    Lines:
+    - "\u65B0\u30B3\u30ED\u30CB\u30FC\u306E\u5165\u5C45\u8005\u52DF\u96C6"
+    - "\u30C6\u30E9\u30D5\u30A9\u30FC\u30E0\u6E08\u307F\u306E\u571F\u5730"
+    - "\u5C0F\u60D1\u661F\u304C\u58F2\u308A\u306B\u51FA\u305F"
+  - Type: 15
+    Lines:
+    - "\u5B87\u5B99\u4FDD\u967A\u306E\u6848\u5185\u304C\u5C4A\u3044\u305F"
+    - "\u9280\u6CB3\u5171\u6E08\u306B\u5165\u308B\uFF1F"
+    - "\u3082\u3057\u3082\u306E\u3068\u304D\u306E\u5099\u3048"
+  - Type: 16
+    Lines:
+    - "\u5B87\u5B99\u958B\u767A\u4F01\u696D\u306E\u682A"
+    - "\u30EF\u30FC\u30D7\u6280\u8853\u306E\u30D9\u30F3\u30C1\u30E3\u30FC"
+    - "\u6708\u9762\u30EA\u30BE\u30FC\u30C8\u306B\u51FA\u8CC7"
+  - Type: 17
+    Lines:
+    - "\u661F\u9593\u6C42\u4EBA\u30CD\u30C3\u30C8\u3067\u52DF\u96C6"
+    - "\u8266\u968A\u304B\u3089\u30B9\u30AB\u30A6\u30C8"
+    - "\u65B0\u5929\u5730\u3092\u76EE\u6307\u3059"
+  - Type: 4
+    Lines:
+    - "\u30AF\u30EC\u30B8\u30C3\u30C8\u304C\u5165\u91D1\u3055\u308C\u305F"
+    - "\u5831\u916C\u304C\u632F\u308A\u8FBC\u307E\u308C\u305F"
+  - Type: 5
+    Lines:
+    - "\u661F\u306E\u898B\u3048\u308B\u5F0F\u5834\u3067\u7D50\u5A5A\uFF01"
+    - "\u5225\u306E\u661F\u306E\u4EBA\u3068\u604B\u306B\u843D\u3061\u305F"
+  - Type: 6
+    Lines:
+    - "\u30A2\u30AB\u30C7\u30DF\u30FC\u306E\u6388\u696D\u6599"
+    - "\u30B7\u30DF\u30E5\u30EC\u30FC\u30BF\u30FC\u4EE3"
+  - Type: 2
+    Lines:
+    - "\u5B87\u5B99\u6E2F\u3067\u8077\u63A2\u3057"
+    - "\u4E57\u7D44\u54E1\u52DF\u96C6\uFF01"
+  - Type: 3
+    Lines:
+    - "\u30A2\u30AB\u30C7\u30DF\u30FC\u3092\u5352\u696D\uFF01"
+    - "\u6700\u7D42\u822A\u884C\u8A66\u9A13\u306B\u5408\u683C"
+  - Type: 7
+    Lines:
+    - "\u6700\u679C\u3066\u306E\u661F\u306B\u5230\u7740"
+    - "\u65C5\u306E\u7D42\u308F\u308A"
+  _background: {r: 0.08, g: 0.08, b: 0.18, a: 1}
+  _road: {r: 0.5, g: 0.55, b: 0.7, a: 1}
+  _moneyGood: {r: 0.4, g: 0.9, b: 0.6, a: 1}
+  _moneyBad: {r: 0.95, g: 0.45, b: 0.5, a: 1}
+  _mishap: {r: 0.75, g: 0.5, b: 0.95, a: 1}
+  _family: {r: 1, g: 0.6, b: 0.85, a: 1}
+  _purchase: {r: 0.4, g: 0.8, b: 1, a: 1}
+  _job: {r: 1, g: 0.8, b: 0.35, a: 1}
+  _milestone: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _plain: {r: 0.75, g: 0.78, b: 0.85, a: 1}
+  _vehicleBody: {fileID: 21300000, guid: 4af869bd80cb9e644a275b4f0df706e1, type: 3}
+  _vehicleDetail: {fileID: 21300000, guid: 3863c96be38aa3846a6a977160e0608f, type: 3}
+  _backgroundTile: {fileID: 21300000, guid: d9e88fb844b9f694bb4b2ef4a157fad3, type: 3}

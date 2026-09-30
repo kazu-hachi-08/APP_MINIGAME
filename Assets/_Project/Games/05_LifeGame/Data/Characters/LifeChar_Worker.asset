@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d4e53d34df4ab49889b12231829be2, type: 3}
+  m_Name: LifeChar_Worker
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.LifeGame.LifeCharacterData
+  _displayName: "\u304C\u3093\u3070\u308A\u5C4B"
+  _ability: 2
+  _abilityText: "\u7D66\u6599\u304C1\u5272\u591A\u3044"
+  _victoryLine: "\u50CD\u3044\u305F\u5206\u3060\u3051\u5831\u308F\u308C\u308B\uFF01"
+  _face: {fileID: 21300000, guid: 7d6849460732a0d47a6553a582f6a930, type: 3}
+  _portrait: {fileID: 21300000, guid: d8b8f922e45e34948b9d54cd96e7e3a1, type: 3}
