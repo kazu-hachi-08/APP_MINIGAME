@@ -119,6 +119,17 @@ namespace MiniGame.LifeGame.Tests
             AssertSameState(original, replay, seed);
         }
 
+        /// <summary>金額を調整したときに手動で回す（数秒かかるので普段のテストからは外す）。結果はテストの出力に出る</summary>
+        [Test, Explicit]
+        public void バランス集計()
+        {
+            const int balanceGameCount = 3000;
+            var config = new LifeRuleConfig();
+            TestContext.WriteLine(LifeBalanceSimulator.Run(balanceGameCount, 4, config));
+            TestContext.WriteLine(LifeBalanceSimulator.Run(balanceGameCount, 2, config));
+            TestContext.WriteLine(LifeBalanceSimulator.RunAbilities(balanceGameCount, config));
+        }
+
         /// <summary>盤面以外のルールの状態をすべて比べる。乱数は次に出る値で、引いた回数が揃っているかを見る</summary>
         private static void AssertSameState(LifeGameState expected, LifeGameState actual, int seed)
         {

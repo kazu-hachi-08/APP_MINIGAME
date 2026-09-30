@@ -40,7 +40,7 @@ namespace MiniGame.LifeGame
 
     /// <summary>
     /// 道の形（仕様書 §5.1）。3テーマ共通。
-    /// フェーズ4で座標と一緒に LifeBoardLayout（ScriptableObject）へ移す予定なので、今はコードで直接持つ。
+    /// 座標だけ LifeBoardLayout（ScriptableObject）に置き、形はコードに置く（ルールは Unity に依存しない asmdef で、テストもこれを使うため）。
     /// </summary>
     public sealed class LifeBoardShape
     {
@@ -95,9 +95,10 @@ namespace MiniGame.LifeGame
 
         private static LifeSectionShape FreeterRoute()
         {
+            // 給料日は、給料の低いフリーターが他のルートに勝てる見込みを残すため（無いと勝率が約11%まで落ちた）
             return new LifeSectionShape(LifeSection.Freeter, 6)
+                .Fixed(3, LifeCellType.Payday)
                 .Cards(LifeCellType.Income, 2)
-                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.Accident, 1)
                 .Cards(LifeCellType.ChangeJob, 2);
         }

@@ -38,8 +38,8 @@ namespace MiniGame.LifeGame
     }
 
     /// <summary>
-    /// ルールの金額・上限。LifeRules は Unity に依存しないので、ScriptableObject（LifeRuleSettings）の値は後でここへ詰め替えて渡す。
-    /// フィールドの初期値が仕様書 §7.7 の初期値。
+    /// ルールの金額・上限（仕様書 §7.7）。LifeRules は Unity に依存しないので、ScriptableObject にせずコードで持つ。
+    /// 変えたら LifeSimulationTests の「バランス集計」でルートごとの勝率を確かめる。
     /// </summary>
     public sealed class LifeRuleConfig
     {
@@ -49,21 +49,22 @@ namespace MiniGame.LifeGame
 
         public int StartMoney = 300;
 
-        // 番号は仕様書 §6.2 の職業枠の順（テーマの職業名もこの番号で引く）
+        // 番号は仕様書 §6.2 の職業枠の順（テーマの職業名もこの番号で引く）。
+        // 上級職・フリーター・学費は NPC 同士の大量試合（LifeBalanceSimulator）で、分岐①のどのルートも勝率が極端に偏らない値にした
         public LifeJob[] Jobs =
         {
-            new LifeJob(60, isFreeter: true),
+            new LifeJob(80, isFreeter: true),
             new LifeJob(180),
             new LifeJob(130, role: LifeJobRole.Police),
             new LifeJob(130, role: LifeJobRole.Repair),
             new LifeJob(160),
             new LifeJob(150),
-            new LifeJob(250, isAdvanced: true, role: LifeJobRole.Healer),
-            new LifeJob(300, isAdvanced: true),
-            new LifeJob(350, isAdvanced: true),
+            new LifeJob(200, isAdvanced: true, role: LifeJobRole.Healer),
+            new LifeJob(230, isAdvanced: true),
+            new LifeJob(260, isAdvanced: true),
         };
 
-        public int Tuition = 100;
+        public int Tuition = 200;
         public int MoneyCellMin = 30;
         public int MoneyCellMax = 150;
         public int MishapMin = 50;
@@ -96,9 +97,9 @@ namespace MiniGame.LifeGame
         public int NoteSettlement = 125;
 
         // キャラの能力（仕様書 §9.2）
-        public int AbilityStartMoney = 100;
+        public int AbilityStartMoney = 50;
         public int AbilitySalaryPercent = 10;
-        public int AbilityThriftPercent = 10;
+        public int AbilityThriftPercent = 20;
 
         public int FreeterJobId
         {

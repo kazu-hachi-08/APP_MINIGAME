@@ -24,10 +24,10 @@ namespace MiniGame.LifeGame.Editor
         /// <summary>先頭が人間の初期選択になる。ここは初期値なので、生成後の調整はアセットを直接変える</summary>
         private static readonly (string Id, string Name, LifeAbility Ability, string AbilityText, string VictoryLine)[] Characters =
         {
-            ("Balance", "バランス", LifeAbility.StartMoney, "最初の所持金が100多い", "堅実な人生だった！"),
+            ("Balance", "バランス", LifeAbility.StartMoney, "最初の所持金が50多い", "堅実な人生だった！"),
             ("Worker", "がんばり屋", LifeAbility.Salary, "給料が1割多い", "働いた分だけ報われる！"),
             ("Lucky", "らっきー", LifeAbility.Reroll, "ルーレットを1回だけ振り直せる", "運も実力のうち！"),
-            ("Saver", "しっかり者", LifeAbility.Thrift, "出費・病気・事故・火事の支払いが1割少ない", "節約は最強！"),
+            ("Saver", "しっかり者", LifeAbility.Thrift, "出費・病気・事故・火事の支払いが2割少ない", "節約は最強！"),
         };
 
         /// <summary>カタログと各キャラが無ければ作り、カタログを返す（LifeGameSceneBuilder から呼ばれる）</summary>

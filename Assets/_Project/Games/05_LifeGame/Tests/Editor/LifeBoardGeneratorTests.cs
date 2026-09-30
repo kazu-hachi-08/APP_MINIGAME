@@ -66,7 +66,7 @@ namespace MiniGame.LifeGame.Tests
             Assert.AreEqual(LifeCellType.Graduation, university[university.Count - 1]);
 
             Assert.AreEqual(LifeCellType.Goal, board[board.GoalIndex].Type);
-            Assert.AreEqual(5, CountType(board, LifeCellType.Payday));
+            Assert.AreEqual(6, CountType(board, LifeCellType.Payday));
         }
 
         [Test]

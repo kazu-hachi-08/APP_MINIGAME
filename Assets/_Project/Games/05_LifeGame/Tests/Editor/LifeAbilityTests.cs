@@ -39,7 +39,7 @@ namespace MiniGame.LifeGame.Tests
         {
             SetUp(LifeAbility.StartMoney);
 
-            Assert.AreEqual(400, _p1.Money);
+            Assert.AreEqual(350, _p1.Money);
             Assert.AreEqual(300, _p2.Money);
         }
 
@@ -59,14 +59,14 @@ namespace MiniGame.LifeGame.Tests
         }
 
         [Test]
-        public void しっかり者は出費が1割減る()
+        public void しっかり者は出費が2割減る()
         {
             SetUp(LifeAbility.Thrift);
             PrepareNextCell(LifeCellType.Expense, 100);
 
             LifeRules.Move(_state, 1);
 
-            Assert.AreEqual(210, _p1.Money);
+            Assert.AreEqual(220, _p1.Money);
         }
 
         [Test]
@@ -78,8 +78,8 @@ namespace MiniGame.LifeGame.Tests
 
             LifeRules.Move(_state, 1);
 
-            Assert.AreEqual(210, _p1.Money);
-            Assert.AreEqual(390, _p2.Money);
+            Assert.AreEqual(220, _p1.Money);
+            Assert.AreEqual(380, _p2.Money);
         }
 
         [Test]
