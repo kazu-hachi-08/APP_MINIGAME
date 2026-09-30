@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +7,7 @@ namespace MiniGame.LifeGame
 {
     /// <summary>
     /// 1〜10のルーレットの見た目。出目はルールが先に決め、ここは回転をその出目で止める演出だけを持つ（仕様書 §4）。
-    /// 盤面の絵は実行時に作る（フェーズ6でドット絵に置き換える）。
+    /// 盤面の絵は実行時に作る（区画の色・縁・中心の軸だけの単純な絵なので、PNG にせずコードで描く）。
     /// </summary>
     public class RouletteView : MonoBehaviour
     {
@@ -30,6 +31,18 @@ namespace MiniGame.LifeGame
         [Header("Color")]
         [SerializeField] private Color _evenColor = new Color(0.95f, 0.95f, 0.9f);
         [SerializeField] private Color _oddColor = new Color(1f, 0.8f, 0.45f);
+        [SerializeField] private Color _rimColor = new Color(0.55f, 0.3f, 0.15f);
+        [SerializeField] private Color _hubColor = new Color(0.85f, 0.2f, 0.2f);
+        [Tooltip("外周の縁の太さ（テクスチャのピクセル）")]
+        [SerializeField] private float _rimWidth = 10f;
+        [Tooltip("中心の軸の半径（テクスチャのピクセル）")]
+        [SerializeField] private float _hubRadius = 18f;
+
+        /// <summary>区画の境目が針を通るたび（回転音のカチカチ用）</summary>
+        public event Action Ticked;
+
+        /// <summary>出目で止まったとき</summary>
+        public event Action Stopped;
 
         private void Awake()
         {
@@ -50,16 +63,30 @@ namespace MiniGame.LifeGame
 
             float from = _wheel.localEulerAngles.z;
             float to = from + turns * 360f + Mathf.Repeat(AngleOf(number) - from, 360f);
+            int segment = SegmentAt(from);
             for (float t = 0f; t < duration; t += Time.deltaTime)
             {
                 // 減速して止まる（ease-out cubic）
                 float rate = 1f - Mathf.Pow(1f - t / duration, 3f);
-                _wheel.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(from, to, rate));
+                float angle = Mathf.Lerp(from, to, rate);
+                _wheel.localEulerAngles = new Vector3(0f, 0f, angle);
+
+                // 区画の境目を越えるたびに鳴らし、減速していく様子を音でも伝える
+                if (SegmentAt(angle) != segment)
+                {
+                    segment = SegmentAt(angle);
+                    Ticked?.Invoke();
+                }
+
                 yield return null;
             }
 
             _wheel.localEulerAngles = new Vector3(0f, 0f, to);
+            Stopped?.Invoke();
         }
+
+        /// <summary>針の下にある区画の番号（境目の判定用。区画の中心が数字の位置なので半区画ずらす）</summary>
+        private static int SegmentAt(float angle) => Mathf.FloorToInt((angle + SegmentAngle * 0.5f) / SegmentAngle);
 
         /// <summary>
         /// 数字 n の区画は、上から時計回りに (n-1)×36° の位置にある。
@@ -99,8 +126,11 @@ namespace MiniGame.LifeGame
                     // 上から時計回りの角度。区画の中心が数字の位置に来るよう半区画ずらす
                     float angle = Mathf.Repeat(Mathf.Atan2(offset.x, offset.y) * Mathf.Rad2Deg + SegmentAngle * 0.5f, 360f);
                     int segment = Mathf.FloorToInt(angle / SegmentAngle);
+                    float distance = offset.magnitude;
                     Color color = segment % 2 == 0 ? _evenColor : _oddColor;
-                    color.a = Mathf.Clamp01(radius - offset.magnitude);
+                    if (distance > radius - _rimWidth) color = _rimColor;
+                    if (distance < _hubRadius) color = _hubColor;
+                    color.a = Mathf.Clamp01(radius - distance);
                     texture.SetPixel(x, y, color);
                 }
             }

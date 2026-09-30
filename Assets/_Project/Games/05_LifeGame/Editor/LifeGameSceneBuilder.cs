@@ -96,6 +96,8 @@ namespace MiniGame.LifeGame.Editor
             LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
             LifeThemeData[] themes = LifeDataGenerator.EnsureThemes();
             LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.EnsureLayout();
+            LifeGameArtGenerator.EnsureGenerated();
+            LifeGameArtGenerator.AssignArt(themes, characterCatalog);
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Camera camera = CreateCamera();
@@ -119,6 +121,8 @@ namespace MiniGame.LifeGame.Editor
             ChoicePanel choicePanel = CreateChoicePanel(canvas);
             EventPopupView eventPopup = CreateEventPopup(canvas, out Text popupBody);
             TurnBannerView turnBanner = CreateTurnBanner(canvas);
+            SettlementView settlementView = CreateSettlementView(canvas);
+            VictoryShowView victoryShow = CreateVictoryShow(canvas);
             ThemeSelectPanel themeSelectPanel = CreateThemeSelectPanel(canvas, themes.Length);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvas);
             CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvas, characterCatalog);
@@ -132,7 +136,15 @@ namespace MiniGame.LifeGame.Editor
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             // マスの文字はイベント表示と同じフォントを使う（ブラウザ版で日本語フォントに差し替わった後のものを借りるため）
-            SetRefs(boardView, ("_fontSource", popupBody), ("_layout", boardLayout));
+            SetRefs(boardView, ("_fontSource", popupBody), ("_layout", boardLayout),
+                ("_cellSprite", LifeGameArtGenerator.Load(LifeGameArtGenerator.CellName)),
+                ("_roadSprite", LifeGameArtGenerator.Load(LifeGameArtGenerator.RoadName)));
+            SetArray(boardView, "_icons", LifeGameArtGenerator.LoadIcons());
+            var effects = boardView.gameObject.AddComponent<BoardEffects>();
+            SetRefs(effects, ("_fontSource", popupBody));
+
+            var audio = new GameObject("LifeAudio").AddComponent<LifeAudio>();
+            SetRefs(audio, ("_roulette", rouletteView));
 
             var boardCamera = camera.gameObject.AddComponent<BoardCamera>();
             SetRefs(boardCamera, ("_camera", camera));
@@ -149,7 +161,9 @@ namespace MiniGame.LifeGame.Editor
                 ("_walletButton", walletButton), ("_overviewButton", overviewButton),
                 ("_characterCatalog", characterCatalog), ("_themeSelectPanel", themeSelectPanel), ("_setupPanel", setupPanel),
                 ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner),
-                ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", onlineSession), ("_onlineLink", onlineLink));
+                ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", onlineSession), ("_onlineLink", onlineLink),
+                ("_effects", effects), ("_audio", audio), ("_settlementView", settlementView), ("_victoryShow", victoryShow),
+                ("_familyFace", LifeGameArtGenerator.Load(LifeGameArtGenerator.FamilyFaceName)));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);
@@ -508,7 +522,7 @@ namespace MiniGame.LifeGame.Editor
             return panel;
         }
 
-        /// <summary>1人ずつキャラを選ぶ。立ち絵はフェーズ6なので、名前と能力の説明だけを大きく出す</summary>
+        /// <summary>1人ずつキャラを選ぶ。立ち絵・名前・能力の説明を上から並べる</summary>
         private static CharacterSelectPanel CreateCharacterSelectPanel(Transform canvas, LifeCharacterCatalog catalog)
         {
             // 「P1（NPC） のキャラを選んでね」が1行に収まる大きさ
@@ -527,6 +541,8 @@ namespace MiniGame.LifeGame.Editor
                 new Vector2(PanelInnerWidth, 100f), Color.white);
             AddOutline(title.gameObject);
 
+            Image portrait = CreatePortrait(box, "Portrait", new Vector2(270f, 360f));
+
             Transform nameRow = CreateRow(box, "NameRow", PanelInnerWidth, nameRowHeight);
             Button prev = CreatePanelButton(nameRow, "Btn_Prev", "◀", arrowSize, arrowSize, ChoiceButtonColor);
             Text nameText = CreateText(nameRow, "NameText", nameFontSize, CenterAnchor, Vector2.zero,
@@ -541,11 +557,95 @@ namespace MiniGame.LifeGame.Editor
             Button confirm = CreatePanelButton(buttonRow, "Btn_Confirm", "決定", 440f, buttonRowHeight, ConfirmButtonColor);
 
             var panel = overlay.AddComponent<CharacterSelectPanel>();
-            SetRefs(panel, ("_catalog", catalog), ("_titleText", title), ("_nameText", nameText),
+            SetRefs(panel, ("_catalog", catalog), ("_titleText", title), ("_portraitImage", portrait), ("_nameText", nameText),
                 ("_abilityText", abilityText), ("_prevButton", prev), ("_nextButton", next),
                 ("_confirmButton", confirm), ("_backButton", back));
             overlay.SetActive(false);
             return panel;
+        }
+
+        /// <summary>
+        /// 1人ずつの精算。家の売却ルーレット（画面下）が見えるよう、背景は薄く、箱は上に寄せる。
+        /// 画面全体をボタンにして、どこをタップしても次の人へ進めるようにする
+        /// </summary>
+        private static SettlementView CreateSettlementView(Transform canvas)
+        {
+            const int titleFontSize = 56;
+            const int moneyFontSize = 60;
+            const int hintFontSize = 36;
+            const float bodyHeight = 300f;
+            var overlayColor = new Color(0f, 0f, 0f, 0.35f);
+            var boxPosition = new Vector2(0f, 260f);
+            var moneyColor = new Color(1f, 0.9f, 0.4f);
+
+            GameObject overlay = CreatePanelOverlay(canvas, "SettlementView");
+            overlay.GetComponent<Image>().color = overlayColor;
+            var tapArea = overlay.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            Transform box = CreatePanelBox(overlay.transform);
+            box.GetComponent<RectTransform>().anchoredPosition = boxPosition;
+
+            Text title = CreateText(box, "TitleText", titleFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 100f), Color.white);
+            FitToOneLine(title, PanelBodyMinFontSize);
+            AddOutline(title.gameObject);
+
+            Text body = CreateBodyText(box, bodyHeight);
+            Text money = CreateText(box, "MoneyText", moneyFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 100f), moneyColor);
+            AddOutline(money.gameObject);
+            Text hint = CreateText(box, "Hint", hintFontSize, CenterAnchor, Vector2.zero, new Vector2(PanelInnerWidth, 60f),
+                new Color(0.7f, 0.75f, 0.85f));
+            hint.text = "タップで次へ";
+
+            var view = overlay.AddComponent<SettlementView>();
+            SetRefs(view, ("_titleText", title), ("_bodyText", body), ("_moneyText", money), ("_hintText", hint),
+                ("_tapArea", tapArea));
+            overlay.SetActive(false);
+            return view;
+        }
+
+        /// <summary>
+        /// 勝利演出（モルックと同じ形）。画面全体をボタンにしてどこをタップしても飛ばせるようにする。
+        /// 上から 吹き出し → 立ち絵 → 名前 の順に縦に並べる
+        /// </summary>
+        private static VictoryShowView CreateVictoryShow(Transform canvas)
+        {
+            const int lineFontSize = 72;
+            const int lineMinFontSize = 40;
+            const int nameFontSize = 80;
+            const int nameMinFontSize = 48;
+            var bubbleTextColor = new Color(0.15f, 0.15f, 0.2f);
+
+            GameObject overlay = CreatePanelOverlay(canvas, "VictoryShow");
+            var background = overlay.GetComponent<Image>();
+            var tapArea = overlay.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            var bubbleObj = UIDialogBuilder.CreateUIObject("Bubble", overlay.transform);
+            var bubbleRect = bubbleObj.GetComponent<RectTransform>();
+            SetAnchoredRect(bubbleRect, CenterAnchor, new Vector2(0f, 560f), new Vector2(860f, 200f));
+            var bubbleImage = bubbleObj.AddComponent<Image>();
+            bubbleImage.color = Color.white;
+            bubbleImage.raycastTarget = false;
+            Text line = CreateText(bubbleObj.transform, "LineText", lineFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(820f, 180f), bubbleTextColor);
+            FitToOneLine(line, lineMinFontSize);
+
+            Image portrait = CreatePortrait(overlay.transform, "Portrait", new Vector2(540f, 720f));
+            SetAnchor(portrait.rectTransform, CenterAnchor, new Vector2(0f, -40f));
+
+            Text nameText = CreateText(overlay.transform, "NameText", nameFontSize, CenterAnchor, new Vector2(0f, -520f),
+                new Vector2(1000f, 120f), Color.white);
+            AddOutline(nameText.gameObject);
+            FitToOneLine(nameText, nameMinFontSize);
+
+            var show = overlay.AddComponent<VictoryShowView>();
+            SetRefs(show, ("_background", background), ("_tapArea", tapArea), ("_portraitRect", portrait.rectTransform),
+                ("_portrait", portrait), ("_nameText", nameText), ("_bubbleRect", bubbleRect), ("_lineText", line));
+            overlay.SetActive(false);
+            return show;
         }
 
         // ------------------------------------------------------------------
@@ -640,6 +740,27 @@ namespace MiniGame.LifeGame.Editor
             Text text = CreateText(parent, name, fontSize, CenterAnchor, Vector2.zero, Vector2.zero, Color.white);
             UIDialogBuilder.SetStretchAll(text.rectTransform);
             return text;
+        }
+
+        /// <summary>ドット絵の立ち絵。縦横比を保ち、入力は奥のボタンへ通す</summary>
+        private static Image CreatePortrait(Transform parent, string name, Vector2 size)
+        {
+            var obj = UIDialogBuilder.CreateUIObject(name, parent);
+            obj.GetComponent<RectTransform>().sizeDelta = size;
+            var image = obj.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>長い名前やセリフも折り返さず、1行に収まるまで縮める</summary>
+        private static void FitToOneLine(Text text, int minFontSize)
+        {
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minFontSize;
+            text.resizeTextMaxSize = text.fontSize;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
         }
 
         private static void AddOutline(GameObject obj)

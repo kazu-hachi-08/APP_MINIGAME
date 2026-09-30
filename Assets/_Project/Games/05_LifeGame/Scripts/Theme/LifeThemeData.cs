@@ -49,10 +49,21 @@ namespace MiniGame.LifeGame
         [SerializeField] private Color _milestone = new Color(1f, 0.92f, 0.45f);
         [SerializeField] private Color _plain = new Color(0.85f, 0.85f, 0.85f);
 
+        [Header("Art")]
+        [Tooltip("コマの乗り物の車体。白〜灰色で描き、席の色を掛けて使う")]
+        [SerializeField] private Sprite _vehicleBody;
+        [Tooltip("車体の上に重ねる窓・車輪など、席の色に染めない部分")]
+        [SerializeField] private Sprite _vehicleDetail;
+        [Tooltip("盤面の後ろに敷き詰める背景。色はそのまま出す（背景色 _background と同じ地の色で描く）")]
+        [SerializeField] private Sprite _backgroundTile;
+
         public string DisplayName => _displayName;
         public string Currency => _currency;
         public Color Background => _background;
         public Color Road => _road;
+        public Sprite VehicleBody => _vehicleBody;
+        public Sprite VehicleDetail => _vehicleDetail;
+        public Sprite BackgroundTile => _backgroundTile;
 
         public string JobName(int jobId) => _jobNames[jobId];
 

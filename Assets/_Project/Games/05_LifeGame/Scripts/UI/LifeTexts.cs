@@ -18,7 +18,7 @@ namespace MiniGame.LifeGame
 
         public static string Money(int amount) => $"{amount:#,0}{_theme.Currency}";
 
-        private static string SignedMoney(int amount) => amount >= 0 ? $"+{Money(amount)}" : $"-{Money(-amount)}";
+        public static string SignedMoney(int amount) => amount >= 0 ? $"+{Money(amount)}" : $"-{Money(-amount)}";
 
         public static string JobName(int jobId) => jobId == LifeRuleConfig.NoJob ? "なし" : _theme.JobName(jobId);
 
@@ -63,10 +63,13 @@ namespace MiniGame.LifeGame
             }
         }
 
-        /// <summary>マスに描く文字。金額が決まっているマスは金額も出す（シャッフル後に決まった値を見せるため）</summary>
+        /// <summary>
+        /// マスのアイコンの下に描く1行。金額が決まっているマスは金額（シャッフル後に決まった値を見せるため）、
+        /// それ以外は名前（アイコンだけだと覚えるまで何のマスか分からないため）
+        /// </summary>
         public static string CellLabel(LifeCell cell)
         {
-            return cell.Amount > 0 ? $"{CellName(cell.Type)}\n{cell.Amount}" : CellName(cell.Type);
+            return cell.Amount > 0 ? cell.Amount.ToString() : CellName(cell.Type);
         }
 
         /// <summary>給料は手番の人の能力込みの額を見せる（がんばり屋が実際にもらえる額で比べられるように）</summary>
@@ -174,22 +177,39 @@ namespace MiniGame.LifeGame
             return string.Join("・", numbers);
         }
 
-        /// <summary>精算の内訳を順位順に並べる（フェーズ6で1人ずつの演出 SettlementView に置き換える）</summary>
-        public static string Settlement(List<LifeSettlementEntry> entries)
+        // ------------------------------------------------------------------
+        // 精算（SettlementView に1行ずつ出す）
+        // ------------------------------------------------------------------
+        public static string SettlementMoney(int money) => $"所持金 {Money(money)}";
+
+        public static string SettlementTotal(int total) => $"総資産 {Money(total)}";
+
+        public static string HouseSale(LifeSettlementEntry entry) =>
+            entry.HouseRoll > 0 ? $"家を売った（出目 {entry.HouseRoll}） {SignedMoney(entry.HouseSale)}" : "家 なし";
+
+        public static string StockSale(LifeSettlementEntry entry) =>
+            entry.StockSale > 0 ? $"株を買値で売った {SignedMoney(entry.StockSale)}" : "株 なし";
+
+        public static string InsuranceRefund(LifeSettlementEntry entry) =>
+            entry.InsuranceRefund > 0 ? $"生命保険の満期返戻 {SignedMoney(entry.InsuranceRefund)}" : "生命保険 なし";
+
+        public static string NoteRepayment(LifeSettlementEntry entry) =>
+            entry.NoteRepayment > 0 ? $"約束手形を返済 {SignedMoney(-entry.NoteRepayment)}" : "約束手形 なし";
+
+        /// <param name="displayName">席番号 → 「P1 らっきー」のような表示名</param>
+        public static string Ranking(List<LifeSettlementEntry> entries, System.Func<int, string> displayName)
         {
             var ranking = new List<LifeSettlementEntry>(entries);
             ranking.Sort((a, b) => a.Rank.CompareTo(b.Rank));
 
-            var text = new StringBuilder("精算\n");
+            var text = new StringBuilder("順位発表\n");
             foreach (LifeSettlementEntry entry in ranking)
             {
                 text.AppendLine();
-                text.AppendLine($"{entry.Rank}位 {PlayerName(entry.Seat)}  総資産 {Money(entry.Total)}");
-                text.AppendLine($"家 {SignedMoney(entry.HouseSale)} / 株 {SignedMoney(entry.StockSale)}");
-                text.AppendLine($"保険 {SignedMoney(entry.InsuranceRefund)} / 手形 {SignedMoney(-entry.NoteRepayment)}");
+                text.Append($"{entry.Rank}位 {displayName(entry.Seat)}  {Money(entry.Total)}");
             }
 
-            return text.ToString().TrimEnd();
+            return text.ToString();
         }
     }
 }

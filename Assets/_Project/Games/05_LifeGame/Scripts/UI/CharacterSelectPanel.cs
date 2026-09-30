@@ -15,6 +15,7 @@ namespace MiniGame.LifeGame
         [SerializeField] private LifeCharacterCatalog _catalog;
 
         [SerializeField] private Text _titleText;
+        [SerializeField] private Image _portraitImage;
         [SerializeField] private Text _nameText;
         [SerializeField] private Text _abilityText;
         [SerializeField] private Button _prevButton;
@@ -87,6 +88,7 @@ namespace MiniGame.LifeGame
 
         private void SetSelecting(bool selecting, bool canGoBack)
         {
+            _portraitImage.gameObject.SetActive(selecting);
             _prevButton.gameObject.SetActive(selecting);
             _nextButton.gameObject.SetActive(selecting);
             _confirmButton.gameObject.SetActive(selecting);
@@ -140,6 +142,7 @@ namespace MiniGame.LifeGame
             _titleText.color = LifeColors.Seat(_seat);
 
             LifeCharacterData character = _catalog.Get(_selected[_seat]);
+            _portraitImage.sprite = character.Portrait;
             _nameText.text = character.DisplayName;
             _abilityText.text = character.AbilityText;
         }

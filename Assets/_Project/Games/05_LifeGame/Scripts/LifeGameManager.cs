@@ -43,15 +43,27 @@ namespace MiniGame.LifeGame
         [SerializeField] private CharacterSelectPanel _characterSelectPanel;
         [SerializeField] private TurnBannerView _turnBanner;
 
+        [Header("Effects")]
+        [SerializeField] private BoardEffects _effects;
+        [SerializeField] private LifeAudio _audio;
+        [SerializeField] private SettlementView _settlementView;
+        [SerializeField] private VictoryShowView _victoryShow;
+        [Tooltip("コマに乗せる結婚相手・子供の顔")]
+        [SerializeField] private Sprite _familyFace;
+
         [Header("Online")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private LifeOnlineLink _onlineLink;
-        [Tooltip("相手の手番の回転演出の強さ。フリックの強さは送らない（出目に影響しないため）")]
+        [Tooltip("フリックせずに回すときの回転演出の強さ（相手の手番・精算の家の売却）。フリックの強さは送らない（出目に影響しないため）")]
         [Range(0f, 1f)] [SerializeField] private float _remoteFlickStrength = 0.6f;
 
         [Header("Timing (sec)")]
         [SerializeField] private float _stepDuration = 0.22f;
+        [Tooltip("お金の増減や結婚などの演出を続けて出すときの間。文字が重なって読めなくならないようにする")]
+        [SerializeField] private float _effectInterval = 0.35f;
+        [Tooltip("精算で1行ずつ出す間")]
+        [SerializeField] private float _settlementStep = 0.6f;
 
         [Header("NPC (sec)")]
         [Tooltip("「○○の番」表示とイベント表示を自動で閉じるまでの時間（仕様書 §10.2）")]
@@ -167,7 +179,7 @@ namespace MiniGame.LifeGame
 
             for (int seat = 0; seat < _state.Players.Count; seat++)
             {
-                CarView car = CarView.Create(_carRoot, seat);
+                CarView car = CarView.Create(_carRoot, seat, _theme, CharacterOf(seat).Face, _familyFace);
                 car.PlaceAt(_boardView.PositionOf(_state.Players[seat].Position));
                 _cars.Add(car);
             }
@@ -333,6 +345,7 @@ namespace MiniGame.LifeGame
             _eventPopup.gameObject.SetActive(false);
             _turnBanner.gameObject.SetActive(false);
             _walletPanel.gameObject.SetActive(false);
+            _settlementView.Hide();
 
             FinishGame(false, DisconnectedTitle, DisconnectedDetail);
         }
@@ -463,6 +476,7 @@ namespace MiniGame.LifeGame
             {
                 if (e.Type == LifeEventType.Moved)
                 {
+                    _audio.PlayStep();
                     yield return _cars[e.Seat].StepTo(_boardView.PositionOf(e.Value), _stepDuration);
                     continue;
                 }
@@ -472,6 +486,8 @@ namespace MiniGame.LifeGame
                     yield return ShowLines(lines, autoClose);
                     continue;
                 }
+
+                if (PlayEffect(e)) yield return new WaitForSeconds(_effectInterval);
 
                 string line = LifeTexts.Describe(_state, e);
                 if (line != null) lines.Add(line);
@@ -487,6 +503,63 @@ namespace MiniGame.LifeGame
             _moneyBar.Refresh(_state);
             yield return _eventPopup.Play(string.Join("\n", lines), autoClose ? _npcAutoClose : EventPopupView.WaitForTap);
             lines.Clear();
+        }
+
+        /// <summary>
+        /// お金の増減・給料日・結婚などをコマの上の文字と音で見せる。所持金バーもここで数え始める。
+        /// 演出したら true（続けて出すときに間を空けるため）
+        /// </summary>
+        private bool PlayEffect(LifeEvent e)
+        {
+            switch (e.Type)
+            {
+                case LifeEventType.Salary:
+                    Popup(e.Seat, $"給料日 {LifeTexts.SignedMoney(e.Amount)}", LifeColors.Celebration);
+                    _audio.PlayPayday();
+                    _cars[e.Seat].Celebrate();
+                    break;
+                case LifeEventType.Dividend:
+                case LifeEventType.Income:
+                    Popup(e.Seat, LifeTexts.SignedMoney(e.Amount), LifeColors.Gain);
+                    _audio.PlayGain();
+                    break;
+                case LifeEventType.Payment:
+                    Popup(e.Seat, LifeTexts.SignedMoney(-e.Amount), LifeColors.Loss);
+                    // 係やご祝儀で受け取った人のコマにも出し、誰にお金が渡ったか分かるようにする
+                    if (e.OtherSeat != LifeEvent.Bank) Popup(e.OtherSeat, LifeTexts.SignedMoney(e.Amount), LifeColors.Gain);
+                    _audio.PlayLoss();
+                    break;
+                case LifeEventType.InsuranceCovered:
+                    Popup(e.Seat, "保険でセーフ！", LifeColors.Info);
+                    _audio.PlayGain();
+                    break;
+                case LifeEventType.NoteIssued:
+                    Popup(e.Seat, $"約束手形 +{e.Value}枚", LifeColors.Loss);
+                    break;
+                case LifeEventType.Married:
+                case LifeEventType.ChildBorn:
+                    Popup(e.Seat, e.Type == LifeEventType.Married ? "結婚！" : "誕生！", LifeColors.Family);
+                    LifePlayerState player = _state.Players[e.Seat];
+                    _cars[e.Seat].SetFamily(player.IsMarried, player.Children);
+                    _cars[e.Seat].Celebrate();
+                    _audio.PlayFamily();
+                    break;
+                case LifeEventType.Goal:
+                    Popup(e.Seat, $"ゴール！ {e.Value + 1}着", LifeColors.Celebration);
+                    _cars[e.Seat].Celebrate();
+                    _audio.PlayGoal();
+                    break;
+                default:
+                    return false;
+            }
+
+            _moneyBar.Refresh(_state);
+            return true;
+        }
+
+        private void Popup(int seat, string text, Color color)
+        {
+            _effects.Popup(_cars[seat].transform.position, text, color);
         }
 
         // ------------------------------------------------------------------
@@ -707,19 +780,66 @@ namespace MiniGame.LifeGame
         // ------------------------------------------------------------------
         // 精算
         // ------------------------------------------------------------------
+        /// <summary>1人ずつ精算を見せ（仕様書 §8）、順位発表 → 1位の勝利演出 → ResultDialog の順に進める</summary>
         private IEnumerator PlaySettlement()
         {
             Phase = LifePhase.Settlement;
             _boardCamera.Follow(null);
             List<LifeSettlementEntry> entries = LifeSettlement.Settle(_state);
+            foreach (LifeSettlementEntry entry in entries) yield return PlaySettlementOf(entry);
+
+            _settlementView.Hide();
             _moneyBar.Refresh(_state);
-            yield return _eventPopup.Play(LifeTexts.Settlement(entries));
+            yield return _eventPopup.Play(LifeTexts.Ranking(entries, DisplayName));
 
             Phase = LifePhase.GameSet;
             LifeSettlementEntry winner = entries.Find(entry => entry.Rank == 1);
+            LifeCharacterData character = CharacterOf(winner.Seat);
+            _audio.PlayVictory();
+            yield return _victoryShow.Play(character.Portrait, LifeColors.Seat(winner.Seat), DisplayName(winner.Seat),
+                character.VictoryLine);
+
             // 1台を回して遊ぶときは人間の誰かが勝てば勝利扱い（NPCが勝ったら負け）。オンラインは自分が1位のときだけ勝利
             bool isVictory = _isOnline ? winner.Seat == _localSeat : !IsNpc(winner.Seat);
             FinishGame(isVictory, $"{DisplayName(winner.Seat)} の勝ち", $"総資産 {LifeTexts.Money(winner.Total)}");
+        }
+
+        /// <summary>
+        /// 家の売却 → 株 → 保険 → 手形 の順に1行ずつ足していく。ルールは精算を一度に済ませているので、
+        /// 精算前の所持金は内訳から逆算する。家の売却のルーレットはルールが決めた出目で止める
+        /// </summary>
+        private IEnumerator PlaySettlementOf(LifeSettlementEntry entry)
+        {
+            int money = entry.Total - entry.HouseSale - entry.StockSale - entry.InsuranceRefund + entry.NoteRepayment;
+            _settlementView.Begin($"{DisplayName(entry.Seat)} の精算", LifeColors.Seat(entry.Seat), LifeTexts.SettlementMoney(money));
+            yield return new WaitForSeconds(_settlementStep);
+
+            if (entry.HouseRoll > 0)
+            {
+                _rouletteView.SetHint("家の売却ルーレット");
+                yield return _rouletteView.SpinTo(entry.HouseRoll, _remoteFlickStrength);
+                _rouletteView.SetHint("");
+            }
+
+            money += entry.HouseSale;
+            yield return ShowSettlementLine(LifeTexts.HouseSale(entry), money, entry.HouseSale);
+            money += entry.StockSale;
+            yield return ShowSettlementLine(LifeTexts.StockSale(entry), money, entry.StockSale);
+            money += entry.InsuranceRefund;
+            yield return ShowSettlementLine(LifeTexts.InsuranceRefund(entry), money, entry.InsuranceRefund);
+            money -= entry.NoteRepayment;
+            yield return ShowSettlementLine(LifeTexts.NoteRepayment(entry), money, -entry.NoteRepayment);
+
+            _settlementView.SetMoney(LifeTexts.SettlementTotal(entry.Total));
+            yield return _settlementView.WaitForTap();
+        }
+
+        private IEnumerator ShowSettlementLine(string line, int money, int change)
+        {
+            _settlementView.AddLine(line, LifeTexts.SettlementMoney(money));
+            if (change > 0) _audio.PlayGain();
+            if (change < 0) _audio.PlayLoss();
+            yield return new WaitForSeconds(_settlementStep);
         }
     }
 }
