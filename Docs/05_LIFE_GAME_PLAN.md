@@ -41,16 +41,16 @@
 
 ### フェーズ2：最小プレイアブル
 
-- [ ] `SceneNames.LifeGame` 追加、タイトルにボタン追加、縦画面の登録（`ScreenOrientationApplier`）
-- [ ] `LifeGameSceneBuilder`（`Tools > MiniGame > Rebuild LifeGame`）
-- [ ] `BoardView` / `CellView`：マスを色付き四角＋文字で並べる（仮図形）
-- [ ] `CarView`：丸いコマ。1マスずつ移動
-- [ ] `BoardCamera`：手番のコマ追従・「全体」ボタン
-- [ ] `RouletteView` / `RouletteInput`：フリックで回して、ルールが決めた出目で止まる
-- [ ] `ChoicePanel`：分岐・職業・家・保険・株の選択（ボタンを並べるだけ）
-- [ ] `EventPopupView` / `MoneyBarView` / `WalletPanel`（返済ボタン含む）
-- [ ] `LifeGameManager`：`LifePhase` の進行。人数は2人固定・全員人間でよい
-- [ ] 精算は結果を一覧表示するだけ → `ResultDialog`
+- [x] `SceneNames.LifeGame` 追加、タイトルにボタン追加、縦画面の登録（`ScreenOrientationApplier`）
+- [x] `LifeGameSceneBuilder`（`Tools > MiniGame > Rebuild LifeGame`）
+- [x] `BoardView` / `CellView`：マスを色付き四角＋文字で並べる（仮図形）
+- [x] `CarView`：丸いコマ。1マスずつ移動
+- [x] `BoardCamera`：手番のコマ追従・「全体」ボタン
+- [x] `RouletteView` / `RouletteInput`：フリックで回して、ルールが決めた出目で止まる
+- [x] `ChoicePanel`：分岐・職業・家・保険・株の選択（ボタンを並べるだけ）
+- [x] `EventPopupView` / `MoneyBarView` / `WalletPanel`（返済ボタン含む）
+- [x] `LifeGameManager`：`LifePhase` の進行。人数は2人固定・全員人間でよい
+- [x] 精算は結果を一覧表示するだけ → `ResultDialog`
 
 **完了条件**：実機（またはエディタ）で2人が最後まで遊べる
 
@@ -114,6 +114,11 @@
 * 同じ番号の株を自分で2枚以上持ってもよい（NPCは持っていない番号だけ買う）
 * 分岐マスにちょうど止まったときは何も起きず、次の手番の最初に道を選ぶ
 * 盤面生成・出目・職業カード・精算の家の売却ルーレットは、すべて `LifeGameState.Random` の1本から引く。NPCの乱数は別にする（NPCの考える回数で出目がずれないように）
+* フェーズ2の盤面は仮レイアウト（`BoardPositions`：区間ごとに縦1列、分岐の各ルートは横に並べた列）。つづら折りはフェーズ4
+* 1回の操作で起きたこと（移動中の給料・配当も含む）は、移動し終えてから1つのポップアップにまとめて出す。手番が変わる前に閉じるので、端末を渡す前に結果を読める
+* 約束手形の返済は財布から1枚ずつ、ルーレットを回す前だけ（移動や選択の途中で状態が変わって表示とずれないように）
+* 文言（職業名・マス名・通貨）はフェーズ4まで `LifeTexts` に現代テーマで直書きする
+* マスの文字（TextMesh）はイベント表示の Text からフォントを借りる（ブラウザ版で WebFontApplier が日本語フォントに差し替えた後のものを使うため）
 
 ## 保留・あとで決めること
 
