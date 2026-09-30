@@ -11,6 +11,9 @@ namespace MiniGame.LifeGame.Tests
         // 1試合のコマンド数の上限。これを超えたら無限ループとみなす
         private const int MaxCommands = 2000;
 
+        // 再生の一致を確かめる試合数。全フィールドを比べるので100試合より少なくしている
+        private const int ReplaySeedCount = 20;
+
         private static readonly LifeAbility[] AllAbilities =
             { LifeAbility.StartMoney, LifeAbility.Salary, LifeAbility.Reroll, LifeAbility.Thrift };
 
@@ -77,6 +80,72 @@ namespace MiniGame.LifeGame.Tests
             {
                 Assert.AreEqual(original.Players[seat].Money, replay.Players[seat].Money);
                 Assert.AreEqual(original.Players[seat].GoalOrder, replay.Players[seat].GoalOrder);
+            }
+        }
+
+        [Test]
+        public void 能力持ち4人でも同じコマンド列の再生で状態が完全に一致する()
+        {
+            for (int seed = 0; seed < ReplaySeedCount; seed++)
+            {
+                var log = new List<LifeCommand>();
+                LifeGameState original = PlayToEnd(AllAbilities, seed, log);
+
+                LifeGameState replay = LifeGameState.Create(AllAbilities, seed, new LifeRuleConfig());
+                foreach (LifeCommand command in log) LifeRules.Apply(replay, command);
+
+                AssertSameState(original, replay, seed);
+            }
+        }
+
+        /// <summary>オンラインで手番以外の人・範囲外の値のコマンドが届いても、無視されて結果が変わらないこと</summary>
+        [Test]
+        public void 不正なコマンドが混ざっても再生結果は変わらない()
+        {
+            const int seed = 7;
+            var log = new List<LifeCommand>();
+            LifeGameState original = PlayToEnd(AllAbilities, seed, log);
+
+            LifeGameState replay = LifeGameState.Create(AllAbilities, seed, new LifeRuleConfig());
+            foreach (LifeCommand command in log)
+            {
+                int otherSeat = (replay.CurrentSeat + 1) % AllAbilities.Length;
+                Assert.IsEmpty(LifeRules.Apply(replay, new LifeCommand(otherSeat, LifeCommandType.Spin)));
+                Assert.IsEmpty(LifeRules.Apply(replay, new LifeCommand(replay.CurrentSeat, LifeCommandType.ChooseStock, 99)));
+                Assert.IsEmpty(LifeRules.Apply(replay, new LifeCommand(replay.CurrentSeat, (LifeCommandType)99)));
+                LifeRules.Apply(replay, command);
+            }
+
+            AssertSameState(original, replay, seed);
+        }
+
+        /// <summary>盤面以外のルールの状態をすべて比べる。乱数は次に出る値で、引いた回数が揃っているかを見る</summary>
+        private static void AssertSameState(LifeGameState expected, LifeGameState actual, int seed)
+        {
+            string at = $"seed={seed}";
+            Assert.AreEqual(expected.Pending, actual.Pending, at);
+            Assert.AreEqual(expected.CurrentSeat, actual.CurrentSeat, at);
+            Assert.AreEqual(expected.LastRoll, actual.LastRoll, at);
+            Assert.AreEqual(expected.GoalCount, actual.GoalCount, at);
+            Assert.AreEqual(expected.Random.NextUInt64(), actual.Random.NextUInt64(), at);
+
+            for (int seat = 0; seat < expected.Players.Count; seat++)
+            {
+                LifePlayerState e = expected.Players[seat];
+                LifePlayerState a = actual.Players[seat];
+                string who = $"{at} P{seat + 1}";
+                Assert.AreEqual(e.Money, a.Money, who);
+                Assert.AreEqual(e.Position, a.Position, who);
+                Assert.AreEqual(e.JobId, a.JobId, who);
+                Assert.AreEqual(e.HouseId, a.HouseId, who);
+                Assert.AreEqual(e.Insurances, a.Insurances, who);
+                Assert.AreEqual(e.LifeInsurancePaid, a.LifeInsurancePaid, who);
+                CollectionAssert.AreEqual(e.Stocks, a.Stocks, who);
+                Assert.AreEqual(e.Notes, a.Notes, who);
+                Assert.AreEqual(e.RerollUsed, a.RerollUsed, who);
+                Assert.AreEqual(e.IsMarried, a.IsMarried, who);
+                Assert.AreEqual(e.Children, a.Children, who);
+                Assert.AreEqual(e.GoalOrder, a.GoalOrder, who);
             }
         }
     }

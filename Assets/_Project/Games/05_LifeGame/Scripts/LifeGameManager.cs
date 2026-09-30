@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using MiniGame.Common.Core;
+using MiniGame.Common.Online;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,16 +10,21 @@ namespace MiniGame.LifeGame
 {
     /// <summary>
     /// 人生ゲームの進行（LifePhase）を回す。ルールは LifeRules、見た目は各 View に任せ、ここは「いつ何を呼ぶか」だけを持つ。
-    /// 状態を変えるのは必ず LifeRules.Apply を通す（フェーズ5のオンラインで同じコマンド列を再生できるようにするため）。
+    /// 状態を変えるのは必ず LifeRules.Apply を通す（オンラインで同じコマンド列を再生できるようにするため）。
+    /// オンラインは決定論ロックステップ：自分の手番の操作だけを送り、相手の手番は届いたコマンドを同じ順に再生する（仕様書 §10.3）。
     /// </summary>
     public class LifeGameManager : BaseMiniGameManager
     {
         private const int RepayUnit = 1;
         private const int Reroll = 1;
         private const int KeepRoll = 0;
+        private const int NotSelected = -1;
+
+        private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
+        private const string DisconnectedDetail = "試合を終了しました";
 
         [Header("Life Game")]
-        [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。フェーズ5のオンラインではこの番号を送る")]
+        [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。オンラインではこの番号を送る")]
         [SerializeField] private LifeThemeData[] _themes;
         [SerializeField] private LifeCharacterCatalog _characterCatalog;
         [SerializeField] private BoardView _boardView;
@@ -36,6 +42,13 @@ namespace MiniGame.LifeGame
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private CharacterSelectPanel _characterSelectPanel;
         [SerializeField] private TurnBannerView _turnBanner;
+
+        [Header("Online")]
+        [SerializeField] private ModeSelectPanel _modeSelectPanel;
+        [SerializeField] private OnlineSession _onlineSession;
+        [SerializeField] private LifeOnlineLink _onlineLink;
+        [Tooltip("相手の手番の回転演出の強さ。フリックの強さは送らない（出目に影響しないため）")]
+        [Range(0f, 1f)] [SerializeField] private float _remoteFlickStrength = 0.6f;
 
         [Header("Timing (sec)")]
         [SerializeField] private float _stepDuration = 0.22f;
@@ -58,20 +71,38 @@ namespace MiniGame.LifeGame
         private LifeRandom _npcRandom;
         private float? _flickStrength;
 
+        private bool _isOnline;
+        private int _localSeat;
+        private int _seed;
+
+        // 相手の手番のコマンドは演出中にも届くので、ためておいて順に再生する
+        private readonly Queue<LifeCommand> _remoteCommands = new Queue<LifeCommand>();
+
         public LifePhase Phase { get; private set; }
 
         private int CurrentSeat => _state.CurrentSeat;
 
         private bool IsNpcTurn => IsNpc(CurrentSeat);
 
+        private bool IsRemoteTurn => _isOnline && CurrentSeat != _localSeat;
+
         protected override void OnGameReady()
         {
-            _rouletteInput.Flicked += strength => _flickStrength = strength;
+            // PAUSE中（オンラインは時間を止めない）は自分の操作を受け付けない
+            _rouletteInput.Flicked += strength => { if (IsPlaying) _flickStrength = strength; };
             _walletButton.onClick.AddListener(OpenWallet);
             _walletPanel.RepayRequested += HandleRepayRequested;
             _overviewButton.onClick.AddListener(_boardCamera.ToggleOverview);
+            SubscribeOnline();
 
-            ShowThemeSelect();
+            if (_modeSelectPanel != null)
+            {
+                _modeSelectPanel.Show(ShowThemeSelect, HandleOnlineStarted, PlayerSetupPanel.MaxPlayers);
+            }
+            else
+            {
+                ShowThemeSelect();
+            }
         }
 
         protected override void OnGameStart()
@@ -113,11 +144,15 @@ namespace MiniGame.LifeGame
         private void HandleCharactersConfirmed(IReadOnlyList<int> characters)
         {
             _characters = new List<int>(characters).ToArray();
+            // シードは試合ごとに変えて毎回違う盤面にする
+            CreateMatch(Environment.TickCount);
+        }
+
+        private void CreateMatch(int seed)
+        {
             var abilities = new LifeAbility[_characters.Length];
             for (int seat = 0; seat < abilities.Length; seat++) abilities[seat] = CharacterOf(seat).Ability;
 
-            // シードは試合ごとに変えて毎回違う盤面にする（フェーズ5でホストが配る値に置き換える）
-            int seed = Environment.TickCount;
             _state = LifeGameState.Create(abilities, seed, new LifeRuleConfig());
             _npcRandom = new LifeRandom(seed + 1);
             _walletPanel.SetRepayLabel($"手形を1枚返す（{LifeTexts.Money(_state.Config.NoteUnit)}）");
@@ -146,8 +181,161 @@ namespace MiniGame.LifeGame
 
         private LifeCharacterData CharacterOf(int seat) => _characterCatalog.Get(_characters[seat]);
 
-        /// <summary>「P1 らっきー」のように席番号＋キャラ名。同じキャラを複数人が選べるので、キャラ名だけだと誰か分からないため</summary>
-        private string DisplayName(int seat) => $"{LifeTexts.PlayerName(seat)} {CharacterOf(seat).DisplayName}";
+        /// <summary>
+        /// 「P1 らっきー」のように席番号＋キャラ名。同じキャラを複数人が選べるので、キャラ名だけだと誰か分からないため。
+        /// オンラインでは自分の席に「（あなた）」を付ける（所持金バーやイベント表示の P番号と自分を結びつけるため）
+        /// </summary>
+        private string DisplayName(int seat)
+        {
+            string you = _isOnline && seat == _localSeat ? "（あなた）" : "";
+            return $"{LifeTexts.PlayerName(seat)} {CharacterOf(seat).DisplayName}{you}";
+        }
+
+        // ------------------------------------------------------------------
+        // オンラインの試合前（仕様書 §10.3）
+        // ------------------------------------------------------------------
+        /// <summary>
+        /// 部屋に集まった人数で遊ぶので人数設定は出さない（全員人間）。席番号＝手番の順で、先攻はホスト。
+        /// ホストがテーマを選んでテーマ番号とシードを配り、届いたら各端末で自分のキャラだけを選ぶ
+        /// </summary>
+        private void HandleOnlineStarted(int localSeat, int playerCount)
+        {
+            _isOnline = true;
+            _localSeat = localSeat;
+            _kinds = new LifePlayerKind[playerCount];
+            _characters = new int[playerCount];
+            Array.Fill(_characters, NotSelected);
+            _onlineLink.Begin();
+
+            Phase = LifePhase.ThemeSelect;
+            if (_onlineSession.IsHost)
+            {
+                _themeSelectPanel.Show(_themes, HandleHostThemeSelected);
+            }
+            else
+            {
+                _characterSelectPanel.ShowWaiting("ホストがテーマを選んでいます");
+            }
+        }
+
+        private void HandleHostThemeSelected(int index)
+        {
+            int seed = Environment.TickCount;
+            _onlineLink.SendSetup(index, seed);
+            ApplyOnlineSetup(index, seed);
+        }
+
+        private void HandleRemoteSetup(int themeIndex, int seed)
+        {
+            if (!_isOnline || Phase != LifePhase.ThemeSelect) return;
+
+            ApplyOnlineSetup(themeIndex, seed);
+        }
+
+        /// <summary>キャラ番号の受信は Phase が CharacterSelect のときだけ受け付けるので、パネルを出す前に変えておく</summary>
+        private void ApplyOnlineSetup(int themeIndex, int seed)
+        {
+            _seed = seed;
+            _theme = _themes[Mathf.Clamp(themeIndex, 0, _themes.Length - 1)];
+            LifeTexts.SetTheme(_theme);
+            _boardCamera.SetBackground(_theme.Background);
+
+            Phase = LifePhase.CharacterSelect;
+            _characterSelectPanel.ShowOnline(_localSeat, _characters.Length, HandleLocalCharacterConfirmed);
+        }
+
+        private void HandleLocalCharacterConfirmed(int characterIndex)
+        {
+            _onlineLink.SendCharacter(_localSeat, characterIndex);
+            _characterSelectPanel.ShowWaiting("他のプレイヤーを待っています");
+            SetOnlineCharacter(_localSeat, characterIndex);
+        }
+
+        private void HandleRemoteCharacter(int seat, int characterIndex)
+        {
+            if (!_isOnline || Phase != LifePhase.CharacterSelect) return;
+            if (seat < 0 || seat >= _characters.Length) return;
+
+            SetOnlineCharacter(seat, characterIndex);
+        }
+
+        /// <summary>範囲外の番号はここでクランプする。NotSelected と区別できなくなって待ち続けるのを防ぐため</summary>
+        private void SetOnlineCharacter(int seat, int characterIndex)
+        {
+            _characters[seat] = Mathf.Clamp(characterIndex, 0, _characterCatalog.Count - 1);
+            if (Array.IndexOf(_characters, NotSelected) >= 0) return;
+
+            _characterSelectPanel.Hide();
+            CreateMatch(_seed);
+        }
+
+        /// <summary>演出中にも届くので、ためておいて PlayRemoteCommand で届いた順に再生する</summary>
+        private void HandleRemoteCommand(LifeCommand command)
+        {
+            if (_isOnline) _remoteCommands.Enqueue(command);
+        }
+
+        private void SubscribeOnline()
+        {
+            if (_onlineLink != null)
+            {
+                _onlineLink.OnSetupReceived += HandleRemoteSetup;
+                _onlineLink.OnCharacterReceived += HandleRemoteCharacter;
+                _onlineLink.OnCommandReceived += HandleRemoteCommand;
+            }
+
+            if (_onlineSession != null) _onlineSession.OnPeerDisconnected += HandlePeerDisconnected;
+        }
+
+        private void UnsubscribeOnline()
+        {
+            if (_onlineLink != null)
+            {
+                _onlineLink.OnSetupReceived -= HandleRemoteSetup;
+                _onlineLink.OnCharacterReceived -= HandleRemoteCharacter;
+                _onlineLink.OnCommandReceived -= HandleRemoteCommand;
+            }
+
+            if (_onlineSession != null) _onlineSession.OnPeerDisconnected -= HandlePeerDisconnected;
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            UnsubscribeOnline();
+        }
+
+        /// <summary>
+        /// オンラインでは相手の端末は止まらないため、時間は止めずに自分の操作受付だけ止める。
+        /// PAUSE中は IsPlaying が false になり、フリックが弾かれる（ボタンは PAUSE ダイアログが覆う）
+        /// </summary>
+        public override void PauseGame()
+        {
+            base.PauseGame();
+
+            if (_isOnline) Time.timeScale = 1f;
+        }
+
+        /// <summary>
+        /// 試合中に誰か1人でも切れたら全員その時点で終了する。再接続はしない（途中から状態を揃え直す仕組みを持たないため）
+        /// </summary>
+        private void HandlePeerDisconnected()
+        {
+            if (!_isOnline || Phase == LifePhase.GameSet) return;
+
+            StopAllCoroutines();
+            Phase = LifePhase.GameSet;
+            _rouletteInput.Accepting = false;
+            // テーマ選択・キャラ選択・待機中や選択の途中で切れたときも、パネルを残したまま結果画面を出さないようにする
+            _themeSelectPanel.gameObject.SetActive(false);
+            _characterSelectPanel.Hide();
+            _choicePanel.gameObject.SetActive(false);
+            _eventPopup.gameObject.SetActive(false);
+            _turnBanner.gameObject.SetActive(false);
+            _walletPanel.gameObject.SetActive(false);
+
+            FinishGame(false, DisconnectedTitle, DisconnectedDetail);
+        }
 
         // ------------------------------------------------------------------
         // 進行
@@ -167,6 +355,13 @@ namespace MiniGame.LifeGame
         {
             _boardCamera.Follow(_cars[CurrentSeat].transform);
             _moneyBar.Refresh(_state);
+
+            if (IsRemoteTurn)
+            {
+                if (_state.Pending == LifePending.Spin) yield return PlayTurnStart();
+                yield return PlayRemoteCommand();
+                yield break;
+            }
 
             if (_state.Pending == LifePending.Spin)
             {
@@ -207,13 +402,17 @@ namespace MiniGame.LifeGame
             }
         }
 
-        /// <summary>人間の番はタップで開始する（端末を渡された人が自分で始められるように）。NPCは自動で閉じる</summary>
+        /// <summary>
+        /// 人間の番はタップで開始する（端末を渡された人が自分で始められるように）。
+        /// NPCとオンラインは端末を回さないので自動で閉じる
+        /// </summary>
         private IEnumerator PlayTurnStart()
         {
             Phase = LifePhase.TurnStart;
             string npc = IsNpcTurn ? "（NPC）" : "";
+            bool waitForTap = !IsNpcTurn && !_isOnline;
             yield return _turnBanner.Play($"{DisplayName(CurrentSeat)}{npc} の番", LifeColors.Seat(CurrentSeat),
-                !IsNpcTurn, _npcAutoClose);
+                waitForTap, _npcAutoClose);
         }
 
         private IEnumerator PlaySpin()
@@ -230,22 +429,27 @@ namespace MiniGame.LifeGame
             _walletButton.interactable = false;
             _rouletteView.SetHint("");
 
-            yield return SpinAndPlay(Apply(LifeCommandType.Spin), _flickStrength.Value);
+            yield return SpinAndPlay(Apply(LifeCommandType.Spin), _flickStrength.Value, false);
         }
 
-        /// <summary>出目はルールが Apply の中で決めるので、回転の演出は Apply の後に出目へ合わせて止める</summary>
-        private IEnumerator SpinAndPlay(List<LifeEvent> events, float strength)
+        /// <summary>
+        /// 出目はルールが Apply の中で決めるので、回転の演出は Apply の後に出目へ合わせて止める。
+        /// Apply で手番が次の人へ移っていることがあるので、自動で閉じるかは呼び出し側が Apply の前の手番で決めて渡す
+        /// </summary>
+        private IEnumerator SpinAndPlay(List<LifeEvent> events, float strength, bool autoClose)
         {
-            bool isNpc = IsNpcTurn;
             yield return _rouletteView.SpinTo(_state.LastRoll, strength);
 
             Phase = LifePhase.Moving;
-            yield return PlayEvents(events, isNpc);
+            yield return PlayEvents(events, autoClose);
         }
 
+        /// <summary>自分の操作を適用する。オンラインでは同じコマンドを全員へ送る（相手の端末で同じ順に再生するため）</summary>
         private List<LifeEvent> Apply(LifeCommandType type, int value = 0)
         {
-            return LifeRules.Apply(_state, new LifeCommand(CurrentSeat, type, value));
+            var command = new LifeCommand(CurrentSeat, type, value);
+            if (_isOnline) _onlineLink.SendCommand(command);
+            return LifeRules.Apply(_state, command);
         }
 
         /// <summary>
@@ -305,7 +509,7 @@ namespace MiniGame.LifeGame
 
             _rouletteView.SetHint("");
             float strength = UnityEngine.Random.Range(_npcFlickStrength.x, _npcFlickStrength.y);
-            yield return SpinAndPlay(LifeRules.Apply(_state, command), strength);
+            yield return SpinAndPlay(LifeRules.Apply(_state, command), strength, true);
         }
 
         private IEnumerator PlayNpcChoice()
@@ -317,10 +521,48 @@ namespace MiniGame.LifeGame
             if (command.Type == LifeCommandType.ChooseReroll && command.Value == Reroll)
             {
                 float strength = UnityEngine.Random.Range(_npcFlickStrength.x, _npcFlickStrength.y);
-                yield return SpinAndPlay(events, strength);
+                yield return SpinAndPlay(events, strength, true);
                 yield break;
             }
 
+            yield return PlayEvents(events, true);
+        }
+
+        // ------------------------------------------------------------------
+        // オンラインの相手の手番
+        // ------------------------------------------------------------------
+        /// <summary>
+        /// 届いたコマンドを1つ再生する。手番以外・範囲外のコマンドは無視する（仕様書 §10.3）。
+        /// 返済は回す前に何回でも来るので、回す／選ぶコマンドが来るまで続けて処理する（「○○の番」を出し直さないため）
+        /// </summary>
+        private IEnumerator PlayRemoteCommand()
+        {
+            Phase = _state.Pending == LifePending.Spin ? LifePhase.Spinning : LifePhase.CellEvent;
+            _rouletteView.SetHint($"{DisplayName(CurrentSeat)} の番");
+
+            LifeCommand command = default;
+            while (true)
+            {
+                yield return new WaitUntil(() => _remoteCommands.Count > 0);
+                command = _remoteCommands.Dequeue();
+                if (!LifeRules.IsValid(_state, command)) continue;
+                if (command.Type != LifeCommandType.Repay) break;
+
+                LifeRules.Apply(_state, command);
+                _moneyBar.Refresh(_state);
+            }
+
+            _rouletteView.SetHint("");
+            bool spins = command.Type == LifeCommandType.Spin
+                || (command.Type == LifeCommandType.ChooseReroll && command.Value == Reroll);
+            List<LifeEvent> events = LifeRules.Apply(_state, command);
+            if (spins)
+            {
+                yield return SpinAndPlay(events, _remoteFlickStrength, true);
+                yield break;
+            }
+
+            Phase = LifePhase.Moving;
             yield return PlayEvents(events, true);
         }
 
@@ -338,7 +580,7 @@ namespace MiniGame.LifeGame
             if (choice == 0)
             {
                 yield return WaitForFlick("振り直し！\nフリックで回す");
-                yield return SpinAndPlay(Apply(LifeCommandType.ChooseReroll, Reroll), _flickStrength.Value);
+                yield return SpinAndPlay(Apply(LifeCommandType.ChooseReroll, Reroll), _flickStrength.Value, false);
                 yield break;
             }
 
@@ -475,8 +717,9 @@ namespace MiniGame.LifeGame
 
             Phase = LifePhase.GameSet;
             LifeSettlementEntry winner = entries.Find(entry => entry.Rank == 1);
-            // 1台を回して遊ぶので、人間の誰かが勝てば勝利扱い。NPCが勝ったら負け扱いにする
-            FinishGame(!IsNpc(winner.Seat), $"{DisplayName(winner.Seat)} の勝ち", $"総資産 {LifeTexts.Money(winner.Total)}");
+            // 1台を回して遊ぶときは人間の誰かが勝てば勝利扱い（NPCが勝ったら負け）。オンラインは自分が1位のときだけ勝利
+            bool isVictory = _isOnline ? winner.Seat == _localSeat : !IsNpc(winner.Seat);
+            FinishGame(isVictory, $"{DisplayName(winner.Seat)} の勝ち", $"総資産 {LifeTexts.Money(winner.Total)}");
         }
     }
 }

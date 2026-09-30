@@ -8,6 +8,7 @@ namespace MiniGame.LifeGame
     /// <summary>
     /// P1 → P2 → … の順で1人ずつキャラを選ぶ（仕様書 §9.3）。1台を回して遊ぶので「今選んでいる1人」だけを見せる。
     /// NPCはランダムで選んだ状態から始め、そのまま決定しても人間が代わりに変えてもよい。
+    /// オンラインでは自分の席だけを選び、決定後とテーマ待ちの間は待機の文面だけを出す（仕様書 §10.3）。
     /// </summary>
     public class CharacterSelectPanel : MonoBehaviour
     {
@@ -26,6 +27,7 @@ namespace MiniGame.LifeGame
         private int _seat;
         private Action<IReadOnlyList<int>> _onConfirmed;
         private Action _onBack;
+        private Action<int> _onOnlineConfirmed;
 
         private void Awake()
         {
@@ -41,6 +43,7 @@ namespace MiniGame.LifeGame
             _kinds = kinds;
             _onConfirmed = onConfirmed;
             _onBack = onBack;
+            _onOnlineConfirmed = null;
             _selected = new int[kinds.Count];
             for (int i = 0; i < kinds.Count; i++)
             {
@@ -49,8 +52,46 @@ namespace MiniGame.LifeGame
             }
 
             _seat = 0;
-            gameObject.SetActive(true);
+            SetSelecting(true, true);
             Refresh();
+        }
+
+        /// <summary>オンライン：自分の席のキャラだけ選ぶ。「戻る」は出さない（部屋の設定をやり直す手段がないため）</summary>
+        public void ShowOnline(int localSeat, int playerCount, Action<int> onConfirmed)
+        {
+            _onOnlineConfirmed = onConfirmed;
+            _onConfirmed = null;
+            _onBack = null;
+            // オンラインは全員人間（既定値の Human）
+            _kinds = new LifePlayerKind[playerCount];
+            _selected = new int[playerCount];
+            _seat = localSeat;
+            SetSelecting(true, false);
+            Refresh();
+        }
+
+        /// <summary>ボタンを隠して文面だけ出す（ホストのテーマ選択待ち・他のプレイヤーのキャラ選択待ち）</summary>
+        public void ShowWaiting(string message)
+        {
+            SetSelecting(false, false);
+            _titleText.text = message;
+            _titleText.color = Color.white;
+            _nameText.text = "";
+            _abilityText.text = "";
+        }
+
+        public void Hide()
+        {
+            gameObject.SetActive(false);
+        }
+
+        private void SetSelecting(bool selecting, bool canGoBack)
+        {
+            _prevButton.gameObject.SetActive(selecting);
+            _nextButton.gameObject.SetActive(selecting);
+            _confirmButton.gameObject.SetActive(selecting);
+            _backButton.gameObject.SetActive(canGoBack);
+            gameObject.SetActive(true);
         }
 
         private void Cycle(int step)
@@ -61,6 +102,12 @@ namespace MiniGame.LifeGame
 
         private void Confirm()
         {
+            if (_onOnlineConfirmed != null)
+            {
+                _onOnlineConfirmed(_selected[_seat]);
+                return;
+            }
+
             _seat++;
             if (_seat < _selected.Length)
             {

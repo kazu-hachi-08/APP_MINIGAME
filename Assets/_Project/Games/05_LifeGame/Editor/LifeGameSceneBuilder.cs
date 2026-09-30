@@ -1,6 +1,7 @@
 using System.IO;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Input;
+using MiniGame.Common.Online;
 using MiniGame.Common.Scene;
 using MiniGame.Common.UI;
 using MiniGame.Editor;
@@ -25,6 +26,7 @@ namespace MiniGame.LifeGame.Editor
         private const string ScenePath = SceneDirectory + "/LifeGameScene.unity";
 
         private const string GameTitle = "2D Life Game";
+        private const string OfflineModeLabel = "1台で遊ぶ";
 
         private const float CameraOrthographicSize = 6f;
         // テーマ選択の後ろに見える色。選んだら LifeGameManager がテーマの背景色に変える
@@ -120,6 +122,13 @@ namespace MiniGame.LifeGame.Editor
             ThemeSelectPanel themeSelectPanel = CreateThemeSelectPanel(canvas, themes.Length);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvas);
             CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvas, characterCatalog);
+
+            // NetworkManager は OnlineSession が実行時に作るので、Scene には置かない
+            var onlineObj = new GameObject("Online");
+            var onlineSession = onlineObj.AddComponent<OnlineSession>();
+            var onlineLink = onlineObj.AddComponent<LifeOnlineLink>();
+            // 対戦モード選択は試合前に最初に出すので、設定系のパネルより手前に置く
+            ModeSelectPanel modeSelectPanel = ModeSelectPanelBuilder.Create(canvas, onlineSession, OfflineModeLabel);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             // マスの文字はイベント表示と同じフォントを使う（ブラウザ版で日本語フォントに差し替わった後のものを借りるため）
@@ -139,7 +148,8 @@ namespace MiniGame.LifeGame.Editor
                 ("_eventPopup", eventPopup), ("_choicePanel", choicePanel), ("_walletPanel", walletPanel),
                 ("_walletButton", walletButton), ("_overviewButton", overviewButton),
                 ("_characterCatalog", characterCatalog), ("_themeSelectPanel", themeSelectPanel), ("_setupPanel", setupPanel),
-                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner));
+                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner),
+                ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", onlineSession), ("_onlineLink", onlineLink));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);
