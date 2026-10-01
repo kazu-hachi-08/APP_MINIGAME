@@ -21,5 +21,28 @@ namespace MiniGame.LifeGame
         public static readonly Color Celebration = new Color(1f, 0.85f, 0.2f);
         public static readonly Color Family = new Color(1f, 0.6f, 0.8f);
         public static readonly Color Info = new Color(0.55f, 0.8f, 1f);
+
+        /// <summary>イベント表示の行の色。お金が増えたか減ったかを、文字を読む前に色で分かるようにする</summary>
+        public static Color ForEvent(LifeEventType type)
+        {
+            switch (type)
+            {
+                case LifeEventType.Dividend:
+                case LifeEventType.Salary:
+                case LifeEventType.Income:
+                case LifeEventType.InsuranceCovered:
+                    return Gain;
+                case LifeEventType.Payment:
+                case LifeEventType.NoteIssued:
+                    return Loss;
+                case LifeEventType.Married:
+                case LifeEventType.ChildBorn:
+                    return Family;
+                case LifeEventType.Goal:
+                    return Celebration;
+                default:
+                    return Color.white;
+            }
+        }
     }
 }

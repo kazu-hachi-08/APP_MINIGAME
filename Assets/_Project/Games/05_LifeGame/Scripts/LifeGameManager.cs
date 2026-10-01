@@ -22,6 +22,7 @@ namespace MiniGame.LifeGame
 
         private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
         private const string DisconnectedDetail = "試合を終了しました";
+        private const string RankingTitle = "順位発表";
 
         [Header("Life Game")]
         [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。オンラインではこの番号を送る")]
@@ -471,7 +472,7 @@ namespace MiniGame.LifeGame
         /// </summary>
         private IEnumerator PlayEvents(List<LifeEvent> events, bool autoClose)
         {
-            var lines = new List<string>();
+            var content = new EventPopupContent();
             foreach (LifeEvent e in events)
             {
                 if (e.Type == LifeEventType.Moved)
@@ -483,26 +484,56 @@ namespace MiniGame.LifeGame
 
                 if (e.Type == LifeEventType.TurnEnded)
                 {
-                    yield return ShowLines(lines, autoClose);
+                    yield return ShowPopup(content, autoClose);
+                    content = new EventPopupContent();
                     continue;
                 }
 
                 if (PlayEffect(e)) yield return new WaitForSeconds(_effectInterval);
 
-                string line = LifeTexts.Describe(_state, e);
-                if (line != null) lines.Add(line);
+                AddToPopup(content, e);
             }
 
-            yield return ShowLines(lines, autoClose);
+            yield return ShowPopup(content, autoClose);
         }
 
-        private IEnumerator ShowLines(List<string> lines, bool autoClose)
+        private void AddToPopup(EventPopupContent content, LifeEvent e)
         {
-            if (lines.Count == 0) yield break;
+            // 配当は出目を出した人以外にも入るので、名札（誰の操作の結果か）の決め手にしない
+            if (!content.HasNameplate && e.Type != LifeEventType.Dividend) SetNameplate(content, e.Seat);
+
+            if (e.Type == LifeEventType.Landed)
+            {
+                SetLandedCell(content, _state.Board[e.Value]);
+                return;
+            }
+
+            string line = LifeTexts.Describe(_state, e, content.Seat);
+            if (line != null) content.Lines.Add((line, LifeColors.ForEvent(e.Type)));
+        }
+
+        private void SetNameplate(EventPopupContent content, int seat)
+        {
+            content.Seat = seat;
+            content.PlayerName = DisplayName(seat);
+            content.Face = CharacterOf(seat).Face;
+            content.SeatColor = LifeColors.Seat(seat);
+        }
+
+        private void SetLandedCell(EventPopupContent content, LifeCell cell)
+        {
+            content.Title = LifeTexts.CellName(cell.Type);
+            content.Icon = _boardView.IconOf(cell.Type);
+            content.IconColor = _theme.CellColor(cell.Type);
+            content.Flavor = LifeTexts.CellFlavor(cell);
+        }
+
+        private IEnumerator ShowPopup(EventPopupContent content, bool autoClose)
+        {
+            if (content.IsEmpty) yield break;
 
             _moneyBar.Refresh(_state);
-            yield return _eventPopup.Play(string.Join("\n", lines), autoClose ? _npcAutoClose : EventPopupView.WaitForTap);
-            lines.Clear();
+            yield return _eventPopup.Play(content, autoClose ? _npcAutoClose : EventPopupView.WaitForTap);
         }
 
         /// <summary>
@@ -793,7 +824,9 @@ namespace MiniGame.LifeGame
 
             _settlementView.Hide();
             _moneyBar.Refresh(_state);
-            yield return _eventPopup.Play(LifeTexts.Ranking(entries, DisplayName));
+            var ranking = new EventPopupContent { Title = RankingTitle };
+            ranking.Lines.Add((LifeTexts.Ranking(entries, DisplayName), Color.white));
+            yield return _eventPopup.Play(ranking);
 
             Phase = LifePhase.GameSet;
             LifeSettlementEntry winner = entries.Find(entry => entry.Rank == 1);

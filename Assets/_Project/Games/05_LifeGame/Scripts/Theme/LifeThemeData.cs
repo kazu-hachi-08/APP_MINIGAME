@@ -57,6 +57,17 @@ namespace MiniGame.LifeGame
         [Tooltip("盤面の後ろに敷き詰める背景。色はそのまま出す（背景色 _background と同じ地の色で描く）")]
         [SerializeField] private Sprite _backgroundTile;
 
+        [Header("Landmark")]
+        [Tooltip("節目のマスの横に建てる建物。盤面を進むと人生の場面が変わっていくように見せる")]
+        [SerializeField] private Sprite _landmarkStart;
+        [SerializeField] private Sprite _landmarkJob;
+        [SerializeField] private Sprite _landmarkSchool;
+        [SerializeField] private Sprite _landmarkWedding;
+        [SerializeField] private Sprite _landmarkGoal;
+
+        [Tooltip("道の外に散らす飾り（木・岩など）。どれを置くかは位置で決まる")]
+        [SerializeField] private Sprite[] _decorations = new Sprite[0];
+
         public string DisplayName => _displayName;
         public string Currency => _currency;
         public Color Background => _background;
@@ -64,6 +75,21 @@ namespace MiniGame.LifeGame
         public Sprite VehicleBody => _vehicleBody;
         public Sprite VehicleDetail => _vehicleDetail;
         public Sprite BackgroundTile => _backgroundTile;
+        public Sprite[] Decorations => _decorations;
+
+        /// <summary>建物を建てる節目のマスなら建物の絵、それ以外（と絵の無いテーマ）は null</summary>
+        public Sprite Landmark(LifeCellType type)
+        {
+            switch (type)
+            {
+                case LifeCellType.Start: return _landmarkStart;
+                case LifeCellType.JobOffer: return _landmarkJob;
+                case LifeCellType.Graduation: return _landmarkSchool;
+                case LifeCellType.Marriage: return _landmarkWedding;
+                case LifeCellType.Goal: return _landmarkGoal;
+                default: return null;
+            }
+        }
 
         public string JobName(int jobId) => _jobNames[jobId];
 

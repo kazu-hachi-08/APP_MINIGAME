@@ -81,56 +81,53 @@ namespace MiniGame.LifeGame
         public static string InsuranceChoice(LifeRuleConfig config, LifeInsurance insurance) =>
             $"{InsuranceName(insurance)}\n{Money(config.InsurancePrice(insurance))}";
 
-        /// <summary>イベント表示の1行。表示しないイベント（移動・手番の切り替えなど）は null</summary>
-        public static string Describe(LifeGameState state, LifeEvent e)
+        /// <summary>
+        /// イベント表示の1行。表示しないイベント（移動・手番の切り替え・止まったマス）は null。
+        /// 止まったマスは名前とアイコンを別の欄で大きく出すので、ここでは行にしない
+        /// </summary>
+        /// <param name="nameplateSeat">名札に出ている席。その人の行は名前を省く（同じ名前が何度も並んで読みにくいため）</param>
+        public static string Describe(LifeGameState state, LifeEvent e, int nameplateSeat)
         {
-            string who = PlayerName(e.Seat);
+            string who = e.Seat == nameplateSeat ? "" : $"{PlayerName(e.Seat)} ";
             switch (e.Type)
             {
                 case LifeEventType.Dividend:
-                    return $"{who} 株の配当（{e.Value}番） {SignedMoney(e.Amount)}";
+                    return $"{who}株の配当（{e.Value}番） {SignedMoney(e.Amount)}";
                 case LifeEventType.Salary:
-                    return $"{who} 給料日！ {SignedMoney(e.Amount)}";
-                case LifeEventType.Landed:
-                    return Landed(state.Board[e.Value]);
+                    return $"{who}給料日！ {SignedMoney(e.Amount)}";
                 case LifeEventType.Income:
-                    return $"{who} {SignedMoney(e.Amount)}";
+                    return $"{who}{SignedMoney(e.Amount)}";
                 case LifeEventType.Payment:
                     string to = e.OtherSeat == LifeEvent.Bank ? "" : $"（{PlayerName(e.OtherSeat)}へ）";
-                    return $"{who} {SignedMoney(-e.Amount)}{to}";
+                    return $"{who}{SignedMoney(-e.Amount)}{to}";
                 case LifeEventType.InsuranceCovered:
-                    return $"{who} {InsuranceName((LifeInsurance)e.Value)}で支払いなし！";
+                    return $"{who}{InsuranceName((LifeInsurance)e.Value)}で支払いなし！";
                 case LifeEventType.NoteIssued:
-                    return $"{who} お金が足りない！ 約束手形 {e.Value}枚";
+                    return $"{who}お金が足りない！ 約束手形 {e.Value}枚";
                 case LifeEventType.NoteRepaid:
-                    return $"{who} 約束手形を{e.Value}枚返済";
+                    return $"{who}約束手形を{e.Value}枚返済";
                 case LifeEventType.JobChanged:
                     int salary = LifeRules.SalaryOf(state.Config, state.Players[e.Seat], e.Value);
-                    return $"{who} {JobName(e.Value)}になった（給料 {Money(salary)}）";
+                    return $"{who}{JobName(e.Value)}になった（給料 {Money(salary)}）";
                 case LifeEventType.Married:
-                    return $"{who} 結婚おめでとう！";
+                    return $"{who}結婚おめでとう！";
                 case LifeEventType.ChildBorn:
-                    return $"{who} 子供が生まれた！（{e.Value}人目）";
+                    return $"{who}子供が生まれた！（{e.Value}人目）";
                 case LifeEventType.HouseBought:
-                    return $"{who} {HouseName(e.Value)}を買った";
+                    return $"{who}{HouseName(e.Value)}を買った";
                 case LifeEventType.InsuranceBought:
-                    return $"{who} {InsuranceName((LifeInsurance)e.Value)}に入った";
+                    return $"{who}{InsuranceName((LifeInsurance)e.Value)}に入った";
                 case LifeEventType.StockBought:
-                    return $"{who} 株（{e.Value}番）を買った";
+                    return $"{who}株（{e.Value}番）を買った";
                 case LifeEventType.Goal:
-                    return $"{who} ゴール！ {e.Value + 1}着 ボーナス {SignedMoney(e.Amount)}";
+                    return $"{who}ゴール！ {e.Value + 1}着 ボーナス {SignedMoney(e.Amount)}";
                 default:
                     return null;
             }
         }
 
-        /// <summary>止まったマスの名前と、テーマの一言（あれば）</summary>
-        private static string Landed(LifeCell cell)
-        {
-            string title = $"【{CellName(cell.Type)}】";
-            string flavor = _theme.CellText(cell.Type, cell.TextVariant);
-            return flavor == null ? title : $"{title}\n{flavor}";
-        }
+        /// <summary>止まったマスのテーマの一言。無いマスは null</summary>
+        public static string CellFlavor(LifeCell cell) => _theme.CellText(cell.Type, cell.TextVariant);
 
         /// <param name="owner">「P1 らっきー」のような席番号＋キャラ名</param>
         /// <param name="abilityText">キャラの能力の説明</param>
@@ -196,20 +193,20 @@ namespace MiniGame.LifeGame
         public static string NoteRepayment(LifeSettlementEntry entry) =>
             entry.NoteRepayment > 0 ? $"約束手形を返済 {SignedMoney(-entry.NoteRepayment)}" : "約束手形 なし";
 
+        /// <summary>順位発表の行（見出しはイベント表示のタイトル欄に出す）</summary>
         /// <param name="displayName">席番号 → 「P1 らっきー」のような表示名</param>
         public static string Ranking(List<LifeSettlementEntry> entries, System.Func<int, string> displayName)
         {
             var ranking = new List<LifeSettlementEntry>(entries);
             ranking.Sort((a, b) => a.Rank.CompareTo(b.Rank));
 
-            var text = new StringBuilder("順位発表\n");
+            var lines = new List<string>();
             foreach (LifeSettlementEntry entry in ranking)
             {
-                text.AppendLine();
-                text.Append($"{entry.Rank}位 {displayName(entry.Seat)}  {Money(entry.Total)}");
+                lines.Add($"{entry.Rank}位 {displayName(entry.Seat)}  {Money(entry.Total)}");
             }
 
-            return text.ToString();
+            return string.Join("\n", lines);
         }
     }
 }

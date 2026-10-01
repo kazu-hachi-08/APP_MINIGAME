@@ -77,7 +77,7 @@ namespace MiniGame.LifeGame
         }
 
         /// <summary>
-        /// 盤面が画面の横幅に収まるなら中央に固定し、つづら折りで左右に動くたびに揺れないようにする。
+        /// 盤面が画面の横幅に収まるなら中央に固定し、道が左右にうねるたびに揺れないようにする。
         /// 縦長の端末で収まらないときだけ、盤面の外が見えない範囲でコマを追う
         /// </summary>
         private float ClampToBoardX(float x)
