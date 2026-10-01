@@ -138,7 +138,8 @@ namespace MiniGame.LifeGame.Editor
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             // マスの文字はイベント表示と同じフォントを使う（ブラウザ版で日本語フォントに差し替わった後のものを借りるため）
-            SetRefs(boardView, ("_fontSource", popupBody), ("_layout", boardLayout),
+            var scenery = boardView.gameObject.AddComponent<BoardScenery>();
+            SetRefs(boardView, ("_fontSource", popupBody), ("_layout", boardLayout), ("_scenery", scenery),
                 ("_cellSprite", LifeGameArtGenerator.Load(LifeGameArtGenerator.CellName)),
                 ("_roadSprite", LifeGameArtGenerator.Load(LifeGameArtGenerator.RoadName)));
             SetArray(boardView, "_icons", LifeGameArtGenerator.LoadIcons());

@@ -5,7 +5,7 @@ namespace MiniGame.LifeGame
 {
     /// <summary>
     /// 生成済みの盤面（LifeBoard）からマスと道を並べる。盤面は試合ごとにシードで変わるので、Scene には置かず実行時に作る。
-    /// 座標は LifeBoardLayout、色と背景はテーマから引く。
+    /// 座標は LifeBoardLayout、色と背景はテーマから引く。建物と木などの飾りは BoardScenery が置く。
     /// </summary>
     public class BoardView : MonoBehaviour
     {
@@ -15,8 +15,7 @@ namespace MiniGame.LifeGame
         [SerializeField] private LifeBoardLayout _layout;
         [SerializeField] private float _cellSize = 1f;
         [SerializeField] private float _roadWidth = 0.24f;
-        [Tooltip("区間をまたぐ道の曲がり角を、行き先のマスのどれだけ手前に置くか。区間の間の空き行に曲がり角を置き、道が他のルートのマスの下を通らないようにするため")]
-        [SerializeField] private float _cornerOffset = 0.7f;
+        [SerializeField] private BoardScenery _scenery;
 
         [Tooltip("背景を盤面の外側へどれだけ広げるか。全体表示や縦長の端末でも背景の端が見えないようにする")]
         [SerializeField] private float _backgroundMargin = 20f;
@@ -59,11 +58,12 @@ namespace MiniGame.LifeGame
             foreach (LifeCell cell in board.Cells)
             {
                 Vector2 position = _layout.PositionOf(cell.Index);
-                foreach (int next in cell.Next) CreateRoad(position, _layout.PositionOf(next), theme.Road);
+                foreach (int next in cell.Next) CreateSegment(position, _layout.PositionOf(next), theme.Road);
 
                 CellView.Create(transform, cell, position, theme.CellColor(cell.Type), _icons[(int)cell.Type], style);
             }
 
+            _scenery.Build(board, _layout, theme);
             Bounds = ComputeBounds(board.Cells.Count);
             CreateBackground(theme.BackgroundTile);
         }
@@ -99,23 +99,6 @@ namespace MiniGame.LifeGame
             background.sortingOrder = BackgroundSortingOrder;
         }
 
-        /// <summary>縦か横に並ぶマスはまっすぐ、区間をまたぐ（斜めになる）ところは「上 → 横 → 上」の鉤形でつなぐ</summary>
-        private void CreateRoad(Vector2 from, Vector2 to, Color color)
-        {
-            if (Mathf.Approximately(from.x, to.x) || Mathf.Approximately(from.y, to.y))
-            {
-                CreateSegment(from, to, color);
-                return;
-            }
-
-            float cornerY = to.y - _cornerOffset;
-            var corner1 = new Vector2(from.x, cornerY);
-            var corner2 = new Vector2(to.x, cornerY);
-            CreateSegment(from, corner1, color);
-            CreateSegment(corner1, corner2, color);
-            CreateSegment(corner2, to, color);
-        }
-
         /// <summary>2点の間を道でつなぐ。角が欠けないよう道幅ぶん長くする。縁の太さを変えないよう scale ではなく size で伸ばす</summary>
         private void CreateSegment(Vector2 from, Vector2 to, Color color)
         {
@@ -144,9 +127,17 @@ namespace MiniGame.LifeGame
             }
 
             Vector2 half = Vector2.one * (_cellSize * 0.5f);
+            min -= half;
+            max += half;
+            // 盤面の端の建物もカメラの範囲に入れ、縦長の端末で見切れないようにする
+            foreach ((Vector2 position, Vector2 extent) in _scenery.Landmarks)
+            {
+                min = Vector2.Min(min, position - extent);
+                max = Vector2.Max(max, position + extent);
+            }
+
             Vector2 origin = transform.position;
-            return Rect.MinMaxRect(origin.x + min.x - half.x, origin.y + min.y - half.y,
-                origin.x + max.x + half.x, origin.y + max.y + half.y);
+            return Rect.MinMaxRect(origin.x + min.x, origin.y + min.y, origin.x + max.x, origin.y + max.y);
         }
     }
 }

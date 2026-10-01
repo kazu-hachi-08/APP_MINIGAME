@@ -6,39 +6,43 @@ using UnityEngine;
 namespace MiniGame.LifeGame.Editor
 {
     /// <summary>
-    /// 盤面の座標（LifeBoardLayout）をつづら折りで生成する（仕様書 §3.1・§5.1）。スタートが下、ゴールが上。
-    /// 共通の区間は横5マスで折り返し、分岐の各ルートは5マスの幅を分け合って横に並べる。
+    /// 盤面の座標（LifeBoardLayout）を、区間ごとの通過点をなめらかにつないだ曲がりくねった道で生成する（仕様書 §3.1・§5.1）。
+    /// スタートが下、ゴールが上。マスは区間の道の上に等間隔で並べる。
     /// 既にあるアセットはマス数が合っていれば上書きしない（Inspector で手直しした座標を消さないため）。
     /// </summary>
     public static class LifeBoardLayoutGenerator
     {
         private const string LayoutPath = "Assets/_Project/Games/05_LifeGame/Data/LifeBoardLayout.asset";
 
-        private const float Spacing = 1.3f;
+        // 曲線を折れ線に近似する細かさ（通過点の間1区切りあたり）。マスの間隔より十分細かければよい
+        private const int CurveSteps = 32;
 
-        // 5列なら縦画面の横幅に収まる（BoardCamera が横に揺れない）
-        private const int Columns = 5;
-        private const int RouteGapColumns = 1;
-
-        // 区間の間に1行空け、区間をまたぐ道の曲がり角をそこに通す（BoardView の鉤形の道）
-        private const int SectionGapRows = 2;
-
-        // 下から順に積む区間の段。同じ段の区間は分岐の各ルートで、横に並ぶ
-        private static readonly LifeSection[][] Rows =
-        {
-            new[] { LifeSection.Start },
-            new[] { LifeSection.Job, LifeSection.University, LifeSection.Freeter },
-            new[] { LifeSection.Middle },
-            new[] { LifeSection.Safe, LifeSection.Gamble },
-            new[] { LifeSection.Final },
-        };
-
-        private struct Lane
-        {
-            public float Left;
-            public float Bottom;
-            public int Columns;
-        }
+        /// <summary>
+        /// 区間ごとの通過点（x は ±3 以内にして縦画面の横幅に収める）。分岐の各ルートは左・中・右に分けて交差させない。
+        /// 大学は遠回りなので大きく蛇行、ギャンブルは角ばったジグザグ（Sharp）にしてルートの性格を見た目でも分かるようにする。
+        /// 形を変えたら、マス同士が 1.2 以上離れているか Scene で確かめる
+        /// </summary>
+        private static readonly Dictionary<LifeSection, (Vector2[] Points, bool Sharp)> Paths =
+            new Dictionary<LifeSection, (Vector2[] Points, bool Sharp)>
+            {
+                { LifeSection.Start, (Points((0f, 0f), (0f, 1.4f)), false) },
+                { LifeSection.Job, (Points((-1.7f, 2.7f), (-2.8f, 4.4f), (-2.3f, 7.4f), (-2.8f, 10.4f), (-2.2f, 12.8f)), false) },
+                { LifeSection.University, (Points((0f, 2.9f), (1.1f, 4.7f), (-1.1f, 7.2f), (1.1f, 9.7f), (-0.9f, 12f), (0f, 13.9f)), false) },
+                { LifeSection.Freeter, (Points((1.7f, 2.7f), (2.8f, 4.8f), (2.1f, 7.6f), (2.8f, 10.4f), (2.2f, 12.8f)), false) },
+                {
+                    LifeSection.Middle, (Points((0f, 15.4f), (2.6f, 16.4f), (2.2f, 18.1f), (-0.6f, 18.7f), (-2.7f, 19.8f),
+                        (-2.2f, 21.6f), (0.3f, 22.2f), (2.4f, 23.2f), (2f, 24.7f), (0f, 25.5f)), false)
+                },
+                { LifeSection.Safe, (Points((-1.3f, 26.7f), (-3f, 28.4f), (-1.1f, 30.6f), (-3f, 32.9f), (-1.6f, 35.4f)), false) },
+                {
+                    LifeSection.Gamble, (Points((1.3f, 26.7f), (2.9f, 27.7f), (1.3f, 28.7f), (2.9f, 29.7f), (1.3f, 30.7f),
+                        (2.9f, 31.7f), (1.3f, 32.7f), (2.9f, 33.7f), (1.3f, 34.7f), (1.3f, 36.1f)), true)
+                },
+                {
+                    LifeSection.Final, (Points((0f, 37.1f), (2.4f, 38.1f), (2.1f, 39.7f), (-0.4f, 40.3f), (-2.6f, 41.3f),
+                        (-2.2f, 42.9f), (-0.2f, 43.7f), (1.8f, 44.7f), (1.4f, 46.1f), (0f, 47.1f)), false)
+                },
+            };
 
         [MenuItem("Tools/MiniGame/LifeGame/Regenerate Board Layout")]
         public static void Regenerate()
@@ -85,7 +89,12 @@ namespace MiniGame.LifeGame.Editor
         private static Vector2[] Compute(LifeBoard board)
         {
             Dictionary<LifeSection, int> lengths = CountSections(board);
-            Dictionary<LifeSection, Lane> lanes = ComputeLanes(lengths);
+            var spots = new Dictionary<LifeSection, Vector2[]>();
+            foreach (KeyValuePair<LifeSection, int> section in lengths)
+            {
+                (Vector2[] points, bool sharp) = Paths[section.Key];
+                spots[section.Key] = PlaceEvenly(Polyline(points, sharp), section.Value);
+            }
 
             var positions = new Vector2[board.Cells.Count];
             var placed = new Dictionary<LifeSection, int>();
@@ -93,21 +102,67 @@ namespace MiniGame.LifeGame.Editor
             foreach (LifeCell cell in board.Cells)
             {
                 placed.TryGetValue(cell.Section, out int indexInSection);
-                positions[cell.Index] = Snake(lanes[cell.Section], indexInSection);
+                positions[cell.Index] = spots[cell.Section][indexInSection];
                 placed[cell.Section] = indexInSection + 1;
             }
 
             return positions;
         }
 
-        /// <summary>左から右へ並べ、端で1段上がって右から左へ戻る（つづら折り）</summary>
-        private static Vector2 Snake(Lane lane, int index)
+        /// <summary>通過点を細かい折れ線にする。Sharp なら直線でつなぎ、そうでなければ Catmull-Rom 曲線でなめらかにつなぐ</summary>
+        private static List<Vector2> Polyline(Vector2[] points, bool sharp)
         {
-            int row = index / lane.Columns;
-            int column = index % lane.Columns;
-            if (row % 2 == 1) column = lane.Columns - 1 - column;
+            var line = new List<Vector2>();
+            for (int i = 0; i < points.Length - 1; i++)
+            {
+                Vector2 p0 = points[Mathf.Max(i - 1, 0)];
+                Vector2 p1 = points[i];
+                Vector2 p2 = points[i + 1];
+                Vector2 p3 = points[Mathf.Min(i + 2, points.Length - 1)];
+                for (int step = 0; step < CurveSteps; step++)
+                {
+                    float t = step / (float)CurveSteps;
+                    line.Add(sharp ? Vector2.Lerp(p1, p2, t) : CatmullRom(p0, p1, p2, p3, t));
+                }
+            }
 
-            return new Vector2(lane.Left + column * Spacing, lane.Bottom + row * Spacing);
+            line.Add(points[points.Length - 1]);
+            return line;
+        }
+
+        private static Vector2 CatmullRom(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, float t)
+        {
+            float t2 = t * t;
+            float t3 = t2 * t;
+            return 0.5f * (2f * p1 + (p2 - p0) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (3f * p1 - p0 - 3f * p2 + p3) * t3);
+        }
+
+        /// <summary>折れ線の長さを count-1 等分した位置にマスを置く（両端にもマスが来る）</summary>
+        private static Vector2[] PlaceEvenly(List<Vector2> line, int count)
+        {
+            var spots = new Vector2[count];
+            if (count == 1)
+            {
+                spots[0] = line[0];
+                return spots;
+            }
+
+            var distances = new float[line.Count];
+            for (int i = 1; i < line.Count; i++) distances[i] = distances[i - 1] + Vector2.Distance(line[i - 1], line[i]);
+
+            float total = distances[line.Count - 1];
+            int segment = 0;
+            for (int c = 0; c < count; c++)
+            {
+                float target = total * c / (count - 1);
+                while (segment < line.Count - 2 && distances[segment + 1] < target) segment++;
+
+                float length = distances[segment + 1] - distances[segment];
+                float t = length <= 0f ? 0f : (target - distances[segment]) / length;
+                spots[c] = Vector2.Lerp(line[segment], line[segment + 1], t);
+            }
+
+            return spots;
         }
 
         private static Dictionary<LifeSection, int> CountSections(LifeBoard board)
@@ -122,44 +177,11 @@ namespace MiniGame.LifeGame.Editor
             return lengths;
         }
 
-        private static Dictionary<LifeSection, Lane> ComputeLanes(Dictionary<LifeSection, int> lengths)
+        private static Vector2[] Points(params (float X, float Y)[] points)
         {
-            var lanes = new Dictionary<LifeSection, Lane>();
-            float bottom = 0f;
-            foreach (LifeSection[] row in Rows)
-            {
-                int laneColumns = LaneColumns(row);
-                int tallest = 0;
-                for (int i = 0; i < row.Length; i++)
-                {
-                    lengths.TryGetValue(row[i], out int length);
-                    int columns = Mathf.Min(laneColumns, length);
-                    lanes[row[i]] = new Lane { Left = LaneLeft(row.Length, laneColumns, i, columns), Bottom = bottom, Columns = columns };
-                    tallest = Mathf.Max(tallest, Mathf.CeilToInt(length / (float)columns));
-                }
-
-                bottom += (tallest - 1 + SectionGapRows) * Spacing;
-            }
-
-            return lanes;
-        }
-
-        /// <summary>1段の区間で5列を分け合う（3ルートなら1列ずつ、2ルートなら2列ずつ、1区間なら5列）</summary>
-        private static int LaneColumns(LifeSection[] row)
-        {
-            if (row.Length == 1) return row[0] == LifeSection.Start ? 1 : Columns;
-
-            return (Columns - RouteGapColumns * (row.Length - 1)) / row.Length;
-        }
-
-        /// <summary>レーンの左端の x。段全体を x=0 に中央寄せする</summary>
-        private static float LaneLeft(int laneCount, int laneColumns, int laneIndex, int columns)
-        {
-            int rowWidth = laneColumns * laneCount + RouteGapColumns * (laneCount - 1);
-            float firstColumn = -(rowWidth - 1) * 0.5f;
-            // マスが列数より少ない区間（スタート）はレーンの中で中央に寄せる
-            float inset = (laneColumns - columns) * 0.5f;
-            return (firstColumn + laneIndex * (laneColumns + RouteGapColumns) + inset) * Spacing;
+            var result = new Vector2[points.Length];
+            for (int i = 0; i < points.Length; i++) result[i] = new Vector2(points[i].X, points[i].Y);
+            return result;
         }
     }
 }

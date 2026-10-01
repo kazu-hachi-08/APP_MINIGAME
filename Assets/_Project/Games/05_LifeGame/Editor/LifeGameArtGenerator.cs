@@ -36,6 +36,9 @@ namespace MiniGame.LifeGame.Editor
         private const int FaceSize = 12;
         private const int PortraitWidth = 24;
         private const int PortraitHeight = 32;
+        private const int LandmarkSize = 28;
+        private const int DecorationSize = 16;
+        private const int DecorationsPerTheme = 2;
 
         // マスと道は白地で描き、実行時にテーマの色を掛ける。縁だけ灰色にして、掛けた後も同じ色の濃い縁になるようにする
         private static readonly Color32 TintBase = new Color32(255, 255, 255, 255);
@@ -70,6 +73,29 @@ namespace MiniGame.LifeGame.Editor
         private static readonly (Color32 Hair, Color32 Shirt, HairStyle Style) FamilyLook =
             (new Color32(170, 160, 150, 255), new Color32(200, 200, 200, 255), HairStyle.Short);
 
+        /// <summary>
+        /// 建物を建てる節目のマスと、LifeThemeData の欄の名前。壁と屋根の色で見分け、正面にマスのアイコンを看板として描く。
+        /// 屋根の形はテーマで変える（現代＝平屋根・ファンタジー＝三角屋根・宇宙＝ドーム）
+        /// </summary>
+        private static readonly (LifeCellType Type, string Field, Color32 Wall, Color32 Roof)[] Landmarks =
+        {
+            (LifeCellType.Start, "_landmarkStart", new Color32(240, 225, 190, 255), new Color32(200, 90, 70, 255)),
+            (LifeCellType.JobOffer, "_landmarkJob", new Color32(190, 200, 215, 255), new Color32(80, 95, 120, 255)),
+            (LifeCellType.Graduation, "_landmarkSchool", new Color32(200, 120, 90, 255), new Color32(120, 70, 60, 255)),
+            (LifeCellType.Marriage, "_landmarkWedding", new Color32(250, 250, 245, 255), new Color32(240, 150, 180, 255)),
+            (LifeCellType.Goal, "_landmarkGoal", new Color32(250, 215, 110, 255), new Color32(200, 140, 40, 255)),
+        };
+
+        private static readonly Color32 WindowColor = new Color32(165, 215, 250, 255);
+        private static readonly Color32 Wood = new Color32(140, 92, 52, 255);
+        private static readonly Color32 Leaf = new Color32(70, 150, 75, 255);
+        private static readonly Color32 LeafDark = new Color32(45, 110, 60, 255);
+        private static readonly Color32 LeafLight = new Color32(120, 195, 105, 255);
+        private static readonly Color32 Rock = new Color32(130, 130, 150, 255);
+        private static readonly Color32 RockDark = new Color32(95, 95, 115, 255);
+        private static readonly Color32 Red = new Color32(225, 65, 65, 255);
+        private static readonly Color32 Cream = new Color32(240, 230, 210, 255);
+
         [MenuItem("Tools/MiniGame/LifeGame/Regenerate Art")]
         public static void GenerateAll()
         {
@@ -86,8 +112,10 @@ namespace MiniGame.LifeGame.Editor
         /// <summary>素材が未生成なら生成する（LifeGameSceneBuilder から呼ばれる）。最後に作る素材まで確認する</summary>
         public static void EnsureGenerated()
         {
+            string lastTheme = LifeThemeDefaults.All[LifeThemeDefaults.All.Length - 1].Id;
             if (Load(CellName) == null || Load(FamilyFaceName) == null ||
-                Load(PortraitName(CharacterIds[CharacterIds.Length - 1])) == null)
+                Load(PortraitName(CharacterIds[CharacterIds.Length - 1])) == null ||
+                Load(DecorationName(lastTheme, DecorationsPerTheme - 1)) == null)
             {
                 GenerateAll();
             }
@@ -118,6 +146,12 @@ namespace MiniGame.LifeGame.Editor
                 string id = LifeThemeDefaults.All[i].Id;
                 SetIfEmpty(themes[i], ("_vehicleBody", Load(VehicleBodyName(id))),
                     ("_vehicleDetail", Load(VehicleDetailName(id))), ("_backgroundTile", Load(TileName(id))));
+                foreach (var landmark in Landmarks)
+                {
+                    SetIfEmpty(themes[i], (landmark.Field, Load(LandmarkName(id, landmark.Type))));
+                }
+
+                SetArrayIfEmpty(themes[i], "_decorations", LoadDecorations(id));
             }
 
             for (int i = 0; i < catalog.Count && i < CharacterIds.Length; i++)
@@ -133,6 +167,8 @@ namespace MiniGame.LifeGame.Editor
         private static string TileName(string themeId) => $"Tile_{themeId}";
         private static string VehicleBodyName(string themeId) => $"Vehicle_{themeId}_Body";
         private static string VehicleDetailName(string themeId) => $"Vehicle_{themeId}_Detail";
+        private static string LandmarkName(string themeId, LifeCellType type) => $"Landmark_{themeId}_{type}";
+        private static string DecorationName(string themeId, int index) => $"Decoration_{themeId}_{index}";
         private static string FaceName(string characterId) => $"Face_{characterId}";
         private static string PortraitName(string characterId) => $"Portrait_{characterId}";
 
@@ -146,6 +182,24 @@ namespace MiniGame.LifeGame.Editor
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetArrayIfEmpty(Object target, string name, Sprite[] sprites)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty property = so.FindProperty(name);
+            if (property.arraySize > 0) return;
+
+            property.arraySize = sprites.Length;
+            for (int i = 0; i < sprites.Length; i++) property.GetArrayElementAtIndex(i).objectReferenceValue = sprites[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static Sprite[] LoadDecorations(string themeId)
+        {
+            var sprites = new Sprite[DecorationsPerTheme];
+            for (int i = 0; i < sprites.Length; i++) sprites[i] = Load(DecorationName(themeId, i));
+            return sprites;
         }
 
         // ------------------------------------------------------------------
@@ -221,6 +275,17 @@ namespace MiniGame.LifeGame.Editor
                     FromPattern(vehicle, VehicleWidth, VehicleHeight, LifeArtPatterns.BodyPalette), VehicleWidth, VehicleHeight);
                 SaveSprite(VehicleDetailName(theme.Id),
                     FromPattern(vehicle, VehicleWidth, VehicleHeight, DetailOnly()), VehicleWidth, VehicleHeight);
+
+                foreach (var landmark in Landmarks)
+                {
+                    SaveSprite(LandmarkName(theme.Id, landmark.Type),
+                        BuildLandmark(i, landmark.Type, landmark.Wall, landmark.Roof), LandmarkSize, LandmarkSize);
+                }
+
+                for (int d = 0; d < DecorationsPerTheme; d++)
+                {
+                    SaveSprite(DecorationName(theme.Id, d), BuildDecoration(i, d), DecorationSize, DecorationSize);
+                }
             }
         }
 
@@ -293,6 +358,127 @@ namespace MiniGame.LifeGame.Editor
             int wx = (x % TileSize + TileSize) % TileSize;
             int wy = (y % TileSize + TileSize) % TileSize;
             SetPixel(pixels, TileSize, TileSize, wx, wy, color);
+        }
+
+        // ------------------------------------------------------------------
+        // 建物と飾り（themeIndex は LifeThemeDefaults.All の並び：0 = 現代・1 = ファンタジー・2 = 宇宙）
+        // ------------------------------------------------------------------
+        /// <summary>屋根（テーマごとの形）→ 壁 → 窓とドア → 正面の看板（マスのアイコン）の順に重ねる</summary>
+        private static Color32[] BuildLandmark(int themeIndex, LifeCellType type, Color32 wall, Color32 roof)
+        {
+            const int s = LandmarkSize;
+            var pixels = NewCanvas(s, s);
+            int wallTop = DrawRoof(pixels, themeIndex, roof);
+
+            FillRect(pixels, s, s, 3, wallTop, s - 6, s - wallTop, wall);
+            for (int y = wallTop + 2; y < s - 6; y += 5)
+            {
+                FillRect(pixels, s, s, 5, y, 2, 2, WindowColor);
+                FillRect(pixels, s, s, s - 7, y, 2, 2, WindowColor);
+            }
+
+            FillRect(pixels, s, s, s / 2 - 2, s - 5, 4, 5, Wood);
+
+            Color32[] icon = FromPattern(LifeArtPatterns.Icons[type], IconSize, IconSize, LifeArtPatterns.FixedPalette);
+            Paste(pixels, s, s, icon, IconSize, IconSize, (s - IconSize) / 2, wallTop + 1);
+
+            AddOutline(pixels, s, s);
+            return pixels;
+        }
+
+        /// <summary>屋根を描いて、壁を描き始める行を返す</summary>
+        private static int DrawRoof(Color32[] pixels, int themeIndex, Color32 roof)
+        {
+            const int s = LandmarkSize;
+            const int center = s / 2;
+            switch (themeIndex)
+            {
+                case 0:
+                    // 平屋根のビル。屋上の縁だけ張り出させる
+                    FillRect(pixels, s, s, 2, 5, s - 4, 3, roof);
+                    return 8;
+                case 1:
+                    // 三角屋根。下の行ほど広げる
+                    for (int y = 0; y < 10; y++)
+                    {
+                        int half = 1 + Mathf.RoundToInt(y * 1.35f);
+                        FillRect(pixels, s, s, center - half, y, half * 2, 1, roof);
+                    }
+
+                    return 10;
+                default:
+                    // 宇宙基地のドームと、先が赤く光るアンテナ
+                    FillRect(pixels, s, s, center - 1, 0, 1, 3, RockDark);
+                    SetPixel(pixels, s, s, center - 1, 0, Red);
+                    FillEllipse(pixels, s, s, center, 12f, 11f, 9f, roof);
+                    return 11;
+            }
+        }
+
+        /// <summary>道の外に散らす飾り。テーマごとに2種類（現代＝木と茂み・ファンタジー＝針葉樹とキノコ・宇宙＝岩と輪のある星）</summary>
+        private static Color32[] BuildDecoration(int themeIndex, int variant)
+        {
+            const int s = DecorationSize;
+            var pixels = NewCanvas(s, s);
+            switch (themeIndex * DecorationsPerTheme + variant)
+            {
+                case 0:
+                    FillRect(pixels, s, s, 7, 10, 2, 5, Wood);
+                    FillEllipse(pixels, s, s, 8f, 6.5f, 5.5f, 5f, Leaf);
+                    FillEllipse(pixels, s, s, 6.5f, 5f, 2f, 1.8f, LeafLight);
+                    break;
+                case 1:
+                    FillEllipse(pixels, s, s, 8f, 11f, 6.5f, 3.8f, Leaf);
+                    FillEllipse(pixels, s, s, 6f, 10f, 2f, 1.5f, LeafLight);
+                    SetPixel(pixels, s, s, 10, 10, new Color32(245, 130, 170, 255));
+                    SetPixel(pixels, s, s, 5, 12, new Color32(250, 205, 60, 255));
+                    break;
+                case 2:
+                    FillRect(pixels, s, s, 7, 12, 2, 3, Wood);
+                    for (int y = 1; y < 12; y++)
+                    {
+                        // 3段の枝。段の切れ目ごとに幅を戻してギザギザにする
+                        int half = 1 + y % 4 + y / 4;
+                        FillRect(pixels, s, s, 8 - half, y, half * 2, 1, y % 4 == 0 ? LeafLight : LeafDark);
+                    }
+
+                    break;
+                case 3:
+                    FillEllipse(pixels, s, s, 8f, 9f, 6f, 5f, Red);
+                    // 傘の下半分を消して半円にし、軸を立てる
+                    FillRect(pixels, s, s, 0, 9, s, s - 9, Transparent);
+                    FillRect(pixels, s, s, 6, 9, 4, 6, Cream);
+                    SetPixel(pixels, s, s, 5, 6, TintBase);
+                    SetPixel(pixels, s, s, 9, 5, TintBase);
+                    SetPixel(pixels, s, s, 11, 7, TintBase);
+                    break;
+                case 4:
+                    FillEllipse(pixels, s, s, 8f, 10f, 6.5f, 4.5f, Rock);
+                    FillEllipse(pixels, s, s, 6f, 9.5f, 1.5f, 1f, RockDark);
+                    FillEllipse(pixels, s, s, 10.5f, 11f, 1.2f, 0.9f, RockDark);
+                    break;
+                default:
+                    FillEllipse(pixels, s, s, 8f, 8f, 4.5f, 4.5f, new Color32(235, 150, 80, 255));
+                    FillRect(pixels, s, s, 1, 8, s - 2, 1, new Color32(250, 215, 140, 255));
+                    FillEllipse(pixels, s, s, 6.5f, 6.5f, 1.2f, 1f, new Color32(250, 190, 120, 255));
+                    break;
+            }
+
+            AddOutline(pixels, s, s);
+            return pixels;
+        }
+
+        /// <summary>透明な所を除いて重ねる（x,y は左上原点。source は FromPattern などで作った配列）</summary>
+        private static void Paste(Color32[] pixels, int w, int h, Color32[] source, int sw, int sh, int x0, int y0)
+        {
+            for (int y = 0; y < sh; y++)
+            {
+                for (int x = 0; x < sw; x++)
+                {
+                    Color32 color = source[(sh - 1 - y) * sw + x];
+                    if (color.a != 0) SetPixel(pixels, w, h, x0 + x, y0 + y, color);
+                }
+            }
         }
 
         // ------------------------------------------------------------------
