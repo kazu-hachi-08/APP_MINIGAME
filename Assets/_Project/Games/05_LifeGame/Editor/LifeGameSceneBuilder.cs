@@ -388,25 +388,108 @@ namespace MiniGame.LifeGame.Editor
         }
 
         /// <summary>画面全体をボタンにして、どこをタップしても閉じられるようにする</summary>
-        private static EventPopupView CreateEventPopup(Transform canvas, out Text body)
+        /// <summary>
+        /// カード風のイベント表示。上から 名札 → マスのアイコンと名前 → テーマの一言 → 区切り線 → お金などの行 → ▼。
+        /// 文字は「マス名 ＞ お金の行 ＞ テーマの一言・名前」の順に大きくし、一目で何のマスか分かるようにする
+        /// </summary>
+        private static EventPopupView CreateEventPopup(Transform canvas, out Text linesText)
         {
-            const float bodyHeight = 1100f;
-            const int hintFontSize = 36;
+            const int titleFontSize = 96;
+            const int titleMinFontSize = 56;
+            const int linesFontSize = 52;
+            const int flavorFontSize = 46;
+            const int nameFontSize = 46;
+            const int nameMinFontSize = 30;
+            const int hintFontSize = 44;
+            const float linesSpacing = 1.15f;
+            const float titleRowHeight = 180f;
+            const float iconFrameSize = 170f;
+            const float iconSize = 130f;
+            const float titleWidth = 620f;
+            const float hintHeight = 50f;
+            Color flavorColor = new Color(0.85f, 0.88f, 0.95f);
+            Color dividerColor = new Color(1f, 1f, 1f, 0.15f);
 
             GameObject overlay = CreatePanelOverlay(canvas, "EventPopup");
             var tapArea = overlay.AddComponent<Button>();
             tapArea.transition = Selectable.Transition.None;
 
             Transform box = CreatePanelBox(overlay.transform);
-            body = CreateBodyText(box, bodyHeight);
-            Text hint = CreateText(box, "Hint", hintFontSize, CenterAnchor, Vector2.zero, new Vector2(PanelInnerWidth, 60f),
-                new Color(0.7f, 0.75f, 0.85f));
-            hint.text = "タップで閉じる";
+            // 中身によって行数が変わり、欄ごと隠すこともあるので、高さは各欄の文字量に合わせる
+            box.GetComponent<VerticalLayoutGroup>().childControlHeight = true;
+
+            Image nameplate = CreateNameplate(box, nameFontSize, nameMinFontSize, out Image face, out Text nameText);
+
+            Transform titleRow = CreateRow(box, "TitleRow", PanelInnerWidth, titleRowHeight);
+            SetPreferredHeight(titleRow.gameObject, titleRowHeight);
+            Image iconFrame = CreateUIImage(titleRow, "IconFrame", new Vector2(iconFrameSize, iconFrameSize), Color.white);
+            Image icon = CreatePortrait(iconFrame.transform, "Icon", new Vector2(iconSize, iconSize));
+            Text title = CreateText(titleRow, "Title", titleFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(titleWidth, titleRowHeight), Color.white);
+            FitToOneLine(title, titleMinFontSize);
+            AddOutline(title.gameObject);
+
+            Text flavor = CreateText(box, "Flavor", flavorFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 0f), flavorColor);
+
+            Image divider = CreateUIImage(box, "Divider", new Vector2(PanelInnerWidth, 4f), dividerColor);
+            SetPreferredHeight(divider.gameObject, 4f);
+
+            linesText = CreateText(box, "Lines", linesFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, 0f), Color.white);
+            linesText.lineSpacing = linesSpacing;
+
+            Text hint = CreateText(box, "Hint", hintFontSize, CenterAnchor, Vector2.zero,
+                new Vector2(PanelInnerWidth, hintHeight), flavorColor);
+            hint.alignment = TextAnchor.MiddleRight;
+            hint.text = "▼";
 
             var popup = overlay.AddComponent<EventPopupView>();
-            SetRefs(popup, ("_bodyText", body), ("_tapArea", tapArea), ("_hintText", hint));
+            SetRefs(popup, ("_box", box), ("_tapArea", tapArea), ("_nameplate", nameplate), ("_faceImage", face),
+                ("_nameText", nameText), ("_titleRow", titleRow.gameObject), ("_iconFrame", iconFrame), ("_iconImage", icon),
+                ("_titleText", title), ("_flavorText", flavor), ("_divider", divider.gameObject),
+                ("_linesText", linesText), ("_hintText", hint));
             overlay.SetActive(false);
             return popup;
+        }
+
+        /// <summary>席の色の帯に顔と「P1 らっきー」を並べ、誰の手番の結果かを文字を読む前に分かるようにする</summary>
+        private static Image CreateNameplate(Transform box, int fontSize, int minFontSize, out Image face, out Text nameText)
+        {
+            const float height = 110f;
+            const float faceSize = 90f;
+            const float nameWidth = 680f;
+            const int sidePadding = 24;
+
+            Image plate = CreateUIImage(box, "Nameplate", new Vector2(PanelInnerWidth, height), Color.white);
+            SetPreferredHeight(plate.gameObject, height);
+            var layout = plate.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.padding = new RectOffset(sidePadding, sidePadding, 0, 0);
+            ConfigureLayout(layout, sidePadding, TextAnchor.MiddleLeft);
+
+            face = CreatePortrait(plate.transform, "Face", new Vector2(faceSize, faceSize));
+            nameText = CreateText(plate.transform, "Name", fontSize, CenterAnchor, Vector2.zero, new Vector2(nameWidth, height), Color.white);
+            nameText.alignment = TextAnchor.MiddleLeft;
+            FitToOneLine(nameText, minFontSize);
+            // 席の色は黄色もあり白文字が沈むので、縁取りで読めるようにする
+            AddOutline(nameText.gameObject);
+            return plate;
+        }
+
+        private static Image CreateUIImage(Transform parent, string name, Vector2 size, Color color)
+        {
+            var obj = UIDialogBuilder.CreateUIObject(name, parent);
+            obj.GetComponent<RectTransform>().sizeDelta = size;
+            var image = obj.AddComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>高さを中身に合わせる箱の中で、文字以外の部品（帯・線・横並び）の高さを固定する</summary>
+        private static void SetPreferredHeight(GameObject obj, float height)
+        {
+            obj.AddComponent<LayoutElement>().preferredHeight = height;
         }
 
         /// <summary>「○○の番」の全画面表示。画面全体をボタンにして、どこをタップしても開始できるようにする</summary>

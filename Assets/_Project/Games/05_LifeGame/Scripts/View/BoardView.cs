@@ -44,6 +44,9 @@ namespace MiniGame.LifeGame
 
         public Vector2 PositionOf(int cellIndex) => (Vector2)transform.position + _layout.PositionOf(cellIndex);
 
+        /// <summary>イベント表示でも盤面と同じアイコンを出し、どのマスに止まったか見比べられるようにする</summary>
+        public Sprite IconOf(LifeCellType type) => _icons[(int)type];
+
         public void Build(LifeBoard board, LifeThemeData theme)
         {
             if (_layout.Count != board.Cells.Count)
