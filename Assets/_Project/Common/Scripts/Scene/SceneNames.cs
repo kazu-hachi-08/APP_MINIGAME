@@ -14,13 +14,13 @@ namespace MiniGame.Common.Scene
         /// <summary>第2弾: 2D卓球ゲーム</summary>
         public const string TableTennis = "TableTennisScene";
 
-        /// <summary>第4弾: 2Dモルックゲーム</summary>
+        /// <summary>第3弾: 2Dモルックゲーム</summary>
         public const string Molkky = "MolkkyScene";
 
-        /// <summary>第5弾: 2Dゴルフゲーム</summary>
+        /// <summary>第4弾: 2Dゴルフゲーム</summary>
         public const string Golf = "GolfScene";
 
-        /// <summary>第6弾: 2D人生ゲーム</summary>
+        /// <summary>第5弾: 2D人生ゲーム</summary>
         public const string LifeGame = "LifeGameScene";
 
         /// <summary>カードゲーム（THE CHAOS Ⅱ）</summary>
