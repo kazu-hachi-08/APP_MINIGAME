@@ -125,3 +125,11 @@ MonoBehaviour:
   _vehicleBody: {fileID: 21300000, guid: c2a0c7f14e3d8024cad5abf5f23d9b6e, type: 3}
   _vehicleDetail: {fileID: 21300000, guid: 194062fe1c4a06d4b90d3cede3a71d48, type: 3}
   _backgroundTile: {fileID: 21300000, guid: d273ab6bee1dc194b9afeb48bb4019cd, type: 3}
+  _landmarkStart: {fileID: 21300000, guid: 35c6559f266181d44b6b0e4cc86baefe, type: 3}
+  _landmarkJob: {fileID: 21300000, guid: 5bcf9c560fb17dc4d99d902efeea532b, type: 3}
+  _landmarkSchool: {fileID: 21300000, guid: 4afc026433d6b4448962a03518623dc2, type: 3}
+  _landmarkWedding: {fileID: 21300000, guid: 47c6cb9e5ba2ac64ebcfe3c797197934, type: 3}
+  _landmarkGoal: {fileID: 21300000, guid: ee8ba8fd320763944862d569ab410b7a, type: 3}
+  _decorations:
+  - {fileID: 21300000, guid: 5d6b7106bc40b9741b06b4fe50bcf7fb, type: 3}
+  - {fileID: 21300000, guid: 40e08de894db66749aba5e8f2148d4f6, type: 3}
