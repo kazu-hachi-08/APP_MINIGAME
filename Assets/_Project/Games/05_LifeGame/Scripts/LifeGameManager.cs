@@ -20,6 +20,9 @@ namespace MiniGame.LifeGame
         private const int KeepRoll = 0;
         private const int NotSelected = -1;
 
+        /// <summary>保険の選択肢の並び。選択肢の表示と選ばれた保険の変換で同じ並びを使うため</summary>
+        private static readonly LifeInsurance[] InsuranceKinds = { LifeInsurance.Life, LifeInsurance.Auto, LifeInsurance.Fire };
+
         private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
         private const string DisconnectedDetail = "試合を終了しました";
         private const string RankingTitle = "順位発表";
@@ -58,6 +61,8 @@ namespace MiniGame.LifeGame
         [SerializeField] private LifeOnlineLink _onlineLink;
         [Tooltip("フリックせずに回すときの回転演出の強さ（相手の手番・精算の家の売却）。フリックの強さは送らない（出目に影響しないため）")]
         [Range(0f, 1f)] [SerializeField] private float _remoteFlickStrength = 0.6f;
+        [Tooltip("相手が選んだ選択肢を色付けして見せる時間")]
+        [SerializeField] private float _remoteRevealTime = 0.8f;
 
         [Header("Timing (sec)")]
         [SerializeField] private float _stepDuration = 0.22f;
@@ -644,6 +649,17 @@ namespace MiniGame.LifeGame
             Phase = _state.Pending == LifePending.Spin ? LifePhase.Spinning : LifePhase.CellEvent;
             _rouletteView.SetHint($"{DisplayName(CurrentSeat)} の番");
 
+            // 選択待ちのときは相手の画面と同じ選択肢を出しておく（何を選んでいるところか見えるように）。
+            // Apply の後だと _state が進んで選択肢が変わるので、コマンドを待つ前に作る
+            bool watching = _state.Pending != LifePending.Spin;
+            int optionCount = 0;
+            if (watching)
+            {
+                BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
+                optionCount = labels.Count;
+                _choicePanel.ShowWatching($"{DisplayName(CurrentSeat)} が選んでいます\n{title}", labels, enabled);
+            }
+
             LifeCommand command = default;
             while (true)
             {
@@ -657,6 +673,8 @@ namespace MiniGame.LifeGame
             }
 
             _rouletteView.SetHint("");
+            if (watching) yield return _choicePanel.RevealAndClose(SelectedOptions(command, optionCount), _remoteRevealTime);
+
             bool spins = command.Type == LifeCommandType.Spin
                 || (command.Type == LifeCommandType.ChooseReroll && command.Value == Reroll);
             List<LifeEvent> events = LifeRules.Apply(_state, command);
@@ -676,10 +694,9 @@ namespace MiniGame.LifeGame
         /// <summary>振り直すときはもう一度フリックしてもらう（振り直しも自分で回した感覚にするため）</summary>
         private IEnumerator ChooseReroll()
         {
-            var labels = new List<string> { "振り直す", "このまま進む" };
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             int choice = 0;
-            string title = $"出目は {_state.LastRoll}！\n振り直す？（1試合に1回だけ）";
-            yield return _choicePanel.ChooseOne(title, labels, null, index => choice = index);
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
 
             if (choice == 0)
             {
@@ -705,61 +722,40 @@ namespace MiniGame.LifeGame
 
         private IEnumerator ChooseBranch()
         {
-            LifeCell branch = _state.CurrentCell;
-            var labels = new List<string>();
-            foreach (int next in branch.Next) labels.Add(LifeTexts.RouteName(_state.Board[next].Section));
-
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             int choice = 0;
-            yield return _choicePanel.ChooseOne("道を選ぶ", labels, null, index => choice = index);
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
             yield return PlayEvents(Apply(LifeCommandType.ChooseBranch, choice), false);
         }
 
         private IEnumerator ChooseJob()
         {
-            bool isChangeJob = _state.Pending == LifePending.ChangeJob;
-            var labels = new List<string>();
-            foreach (int jobId in _state.JobCards) labels.Add(LifeTexts.JobCard(_state, jobId));
-
-            // 転職は今の職業のままでもよい（ChooseJob の -1）。並びの最後に置く
-            if (isChangeJob) labels.Add($"今のまま\n{LifeTexts.JobName(_state.Current.JobId)}");
-
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             int cardCount = _state.JobCards.Count;
             int choice = 0;
-            yield return _choicePanel.ChooseOne(isChangeJob ? "転職する？" : "職業を選ぶ", labels, null, index => choice = index);
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
             yield return PlayEvents(Apply(LifeCommandType.ChooseJob, choice < cardCount ? choice : -1), false);
         }
 
         private IEnumerator ChooseHouse()
         {
-            var labels = new List<string>();
-            for (int id = 0; id < _state.Config.Houses.Length; id++) labels.Add(LifeTexts.HouseChoice(_state.Config, id));
-            labels.Add("買わない");
-
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             int choice = 0;
-            yield return _choicePanel.ChooseOne("家を買う？（足りない分は約束手形）", labels, null, index => choice = index);
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
             int houseId = choice < _state.Config.Houses.Length ? choice : LifeRuleConfig.NoHouse;
             yield return PlayEvents(Apply(LifeCommandType.ChooseHouse, houseId), false);
         }
 
         private IEnumerator ChooseInsurance()
         {
-            LifeInsurance[] kinds = { LifeInsurance.Life, LifeInsurance.Auto, LifeInsurance.Fire };
-            LifeInsurance available = LifeRules.AvailableInsurances(_state.Current);
-            var labels = new List<string>();
-            var enabled = new List<bool>();
-            foreach (LifeInsurance kind in kinds)
-            {
-                labels.Add(LifeTexts.InsuranceChoice(_state.Config, kind));
-                enabled.Add((available & kind) != 0);
-            }
-
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             bool[] selected = null;
-            yield return _choicePanel.ChooseMany("保険に入る？（いくつでも）", labels, enabled, result => selected = result);
+            yield return _choicePanel.ChooseMany(title, labels, enabled, result => selected = result);
 
             LifeInsurance chosen = LifeInsurance.None;
-            for (int i = 0; i < kinds.Length; i++)
+            for (int i = 0; i < InsuranceKinds.Length; i++)
             {
-                if (selected[i]) chosen |= kinds[i];
+                if (selected[i]) chosen |= InsuranceKinds[i];
             }
 
             yield return PlayEvents(Apply(LifeCommandType.ChooseInsurance, (int)chosen), false);
@@ -767,16 +763,99 @@ namespace MiniGame.LifeGame
 
         private IEnumerator ChooseStock()
         {
-            var labels = new List<string>();
-            for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++) labels.Add($"{n}番");
-            labels.Add("買わない");
-
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
             int choice = 0;
-            string title = $"株を買う？（1枚 {LifeTexts.Money(_state.Config.StockPrice)}）\nその番号が出るたびに配当";
-            yield return _choicePanel.ChooseOne(title, labels, null, index => choice = index);
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
             // 選択肢の並び 0〜9 が株の番号 1〜10、最後の「買わない」はルールの 0
             int number = choice < LifeRuleConfig.RouletteMax ? choice + 1 : 0;
             yield return PlayEvents(Apply(LifeCommandType.ChooseStock, number), false);
+        }
+
+        /// <summary>
+        /// 今の Pending の選択肢を作る。自分の手番と、オンラインで相手の手番を見せる表示とで同じものを出すため1か所にまとめる。
+        /// 並びを変えるときは各 ChooseXxx の値の変換と SelectedOptions も合わせて変えること
+        /// </summary>
+        private void BuildChoice(out string title, out List<string> labels, out List<bool> enabled)
+        {
+            labels = new List<string>();
+            enabled = null;
+            switch (_state.Pending)
+            {
+                case LifePending.Reroll:
+                    title = $"出目は {_state.LastRoll}！\n振り直す？（1試合に1回だけ）";
+                    labels.Add("振り直す");
+                    labels.Add("このまま進む");
+                    break;
+                case LifePending.Branch:
+                    title = "道を選ぶ";
+                    foreach (int next in _state.CurrentCell.Next) labels.Add(LifeTexts.RouteName(_state.Board[next].Section));
+                    break;
+                case LifePending.JobCard:
+                case LifePending.ChangeJob:
+                    bool isChangeJob = _state.Pending == LifePending.ChangeJob;
+                    title = isChangeJob ? "転職する？" : "職業を選ぶ";
+                    foreach (int jobId in _state.JobCards) labels.Add(LifeTexts.JobCard(_state, jobId));
+                    // 転職は今の職業のままでもよい（ChooseJob の -1）。並びの最後に置く
+                    if (isChangeJob) labels.Add($"今のまま\n{LifeTexts.JobName(_state.Current.JobId)}");
+                    break;
+                case LifePending.House:
+                    title = "家を買う？（足りない分は約束手形）";
+                    for (int id = 0; id < _state.Config.Houses.Length; id++) labels.Add(LifeTexts.HouseChoice(_state.Config, id));
+                    labels.Add("買わない");
+                    break;
+                case LifePending.Insurance:
+                    title = "保険に入る？（いくつでも）";
+                    enabled = new List<bool>();
+                    LifeInsurance available = LifeRules.AvailableInsurances(_state.Current);
+                    foreach (LifeInsurance kind in InsuranceKinds)
+                    {
+                        labels.Add(LifeTexts.InsuranceChoice(_state.Config, kind));
+                        enabled.Add((available & kind) != 0);
+                    }
+                    break;
+                default:
+                    title = $"株を買う？（1枚 {LifeTexts.Money(_state.Config.StockPrice)}）\nその番号が出るたびに配当";
+                    for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++) labels.Add($"{n}番");
+                    labels.Add("買わない");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 各 ChooseXxx の「選択肢の並び → コマンドの値」の逆。相手が何を選んだかを観戦表示で光らせるために使う。
+        /// 最後の「買わない／今のまま」は値が特別なので個別に戻す
+        /// </summary>
+        private bool[] SelectedOptions(LifeCommand command, int count)
+        {
+            var selected = new bool[count];
+            int index;
+            switch (command.Type)
+            {
+                case LifeCommandType.ChooseInsurance:
+                    for (int i = 0; i < InsuranceKinds.Length && i < count; i++)
+                    {
+                        selected[i] = (command.Value & (int)InsuranceKinds[i]) != 0;
+                    }
+                    return selected;
+                case LifeCommandType.ChooseReroll:
+                    index = command.Value == Reroll ? 0 : 1;
+                    break;
+                case LifeCommandType.ChooseStock:
+                    index = command.Value == 0 ? count - 1 : command.Value - 1;
+                    break;
+                case LifeCommandType.ChooseJob:
+                    index = command.Value < 0 ? count - 1 : command.Value;
+                    break;
+                case LifeCommandType.ChooseHouse:
+                    index = command.Value == LifeRuleConfig.NoHouse ? count - 1 : command.Value;
+                    break;
+                default:
+                    index = command.Value;
+                    break;
+            }
+
+            if (index >= 0 && index < count) selected[index] = true;
+            return selected;
         }
 
         // ------------------------------------------------------------------
