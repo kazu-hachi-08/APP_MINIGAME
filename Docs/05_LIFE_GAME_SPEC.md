@@ -195,7 +195,7 @@
 
 * 分岐ではコマが止まって道を選び、残りの歩数で進み続ける。分岐マスにちょうど止まったときは何も起きず、次の手番の最初に道を選ぶ
 * 道の形（区間・分岐・固定マス・シャッフルの表）は `LifeBoardShape.CreateDefault()` にコードで持つ（ルールは Unity に依存しない asmdef で、テストもこれを使うため）
-* マスの座標だけ `LifeBoardLayout`（`Data/LifeBoardLayout.asset`・マス番号 → 座標）に持つ。マスの並びはシードで変わらないので番号で引ける。`LifeBoardLayoutGenerator` はマス数が盤面と合わないときだけ作り直す。形を変えたら `Tools > MiniGame > LifeGame > Regenerate Board Layout`
+* マスの座標だけ `LifeBoardLayout`（`Data/LifeBoardLayout.asset`・マス番号 → 座標）に持つ。マスの並びはシードで変わらないので番号で引ける。`LifeBoardLayoutGenerator` は `Tools > MiniGame > Rebuild LifeGame` のたびに作り直す
 
 **区間ごとのマス**（固定マスの位置は区間の先頭を0とした番号）
 
@@ -680,8 +680,8 @@ Assets/_Project/Games/05_LifeGame/
 | | TitleRevealView / RankingRaceView / ConfettiView | 称号カード・総資産レースと順位発表・紙吹雪（§8.2） |
 | | LifeTexts / LifeColors | テーマ共通の文言（マス名・保険名・イベント文）／UIの色 |
 | Editor/ | LifeGameSceneBuilder | Scene生成（データ・素材が無ければ作る） |
-| | LifeBoardLayoutGenerator | 盤面レイアウト（`Tools > MiniGame > LifeGame > Regenerate Board Layout`） |
-| | LifeGameArtGenerator / LifeArtPatterns | ドット絵（`Tools > MiniGame > LifeGame > Regenerate Art`）。アイコンと乗り物は文字列（1文字＝1ピクセル）で持ち、顔・立ち絵・背景は手続きで描く |
+| | LifeBoardLayoutGenerator | 盤面レイアウト（`Rebuild LifeGame` のたびに作り直す） |
+| | LifeGameArtGenerator / LifeArtPatterns | ドット絵（`Rebuild LifeGame` のたびに描き直す）。アイコンと乗り物は文字列（1文字＝1ピクセル）で持ち、顔・立ち絵・背景は手続きで描く |
 | | LifeDataGenerator / LifeThemeDefaults | テーマ・キャラのアセット生成（既にあれば上書きしない） |
 | Tests/Editor/ | LifeBalanceSimulator | NPC同士の大量試合の集計（§7.8） |
 

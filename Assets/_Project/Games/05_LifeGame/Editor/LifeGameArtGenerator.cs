@@ -96,7 +96,7 @@ namespace MiniGame.LifeGame.Editor
         private static readonly Color32 Red = new Color32(225, 65, 65, 255);
         private static readonly Color32 Cream = new Color32(240, 230, 210, 255);
 
-        [MenuItem("Tools/MiniGame/LifeGame/Regenerate Art")]
+        /// <summary>全素材を描き直す（Rebuild LifeGame から呼ばれる）</summary>
         public static void GenerateAll()
         {
             Directory.CreateDirectory(SpriteDirectory);
@@ -107,29 +107,6 @@ namespace MiniGame.LifeGame.Editor
 
             AssetDatabase.Refresh();
             Debug.Log($"[LifeGameArtGenerator] 人生ゲームの素材を生成しました: {SpriteDirectory}");
-        }
-
-        /// <summary>素材が未生成なら生成する（LifeGameSceneBuilder から呼ばれる）。最後に作る素材まで確認する</summary>
-        public static void EnsureGenerated()
-        {
-            string lastTheme = LifeThemeDefaults.All[LifeThemeDefaults.All.Length - 1].Id;
-            if (Load(CellName) == null || Load(FamilyFaceName) == null ||
-                Load(PortraitName(CharacterIds[CharacterIds.Length - 1])) == null ||
-                Load(DecorationName(lastTheme, DecorationsPerTheme - 1)) == null || IsAnyIconMissing())
-            {
-                GenerateAll();
-            }
-        }
-
-        /// <summary>マスの種類を足したとき、Regenerate Art を忘れても Rebuild LifeGame だけでアイコンが揃うようにする</summary>
-        private static bool IsAnyIconMissing()
-        {
-            foreach (LifeCellType type in LifeArtPatterns.Icons.Keys)
-            {
-                if (Load(IconName(type)) == null) return true;
-            }
-
-            return false;
         }
 
         public static Sprite Load(string spriteName)

@@ -5,7 +5,7 @@ namespace MiniGame.LifeGame.Editor
 {
     /// <summary>
     /// マスのアイコンとコマの乗り物を1文字＝1ピクセルの文字列で持つ（LifeGameArtGenerator が PNG にする）。
-    /// 絵を直したいときは文字を書き換えて Tools > MiniGame > LifeGame > Regenerate Art を実行する。
+    /// 絵を直したいときは文字を書き換えて Tools > MiniGame > Rebuild LifeGame を実行する。
     /// </summary>
     internal static class LifeArtPatterns
     {

@@ -103,8 +103,9 @@ namespace MiniGame.LifeGame.Editor
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
             LifeThemeData[] themes = LifeDataGenerator.EnsureThemes();
-            LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.EnsureLayout();
-            LifeGameArtGenerator.EnsureGenerated();
+            // 座標や絵のコードを直したときも反映されるよう、既存アセットを使い回さず毎回作り直す
+            LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.Regenerate();
+            LifeGameArtGenerator.GenerateAll();
             LifeGameArtGenerator.AssignArt(themes, characterCatalog);
 
             Camera camera = CreateCamera();

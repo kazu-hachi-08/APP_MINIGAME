@@ -54,7 +54,7 @@ namespace MiniGame.LifeGame
         {
             if (_layout.Count != board.Cells.Count)
             {
-                Debug.LogError($"[BoardView] レイアウトのマス数 {_layout.Count} と盤面のマス数 {board.Cells.Count} が違う。Tools > MiniGame > LifeGame > Regenerate Board Layout で作り直す");
+                Debug.LogError($"[BoardView] レイアウトのマス数 {_layout.Count} と盤面のマス数 {board.Cells.Count} が違う。Tools > MiniGame > Rebuild LifeGame で作り直す");
                 return;
             }
 
