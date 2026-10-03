@@ -285,6 +285,188 @@ namespace MiniGame.LifeGame.Tests
             Assert.AreEqual(LifePending.Stock, _state.Pending);
         }
 
+        // ---- 賭けマス ----
+
+        /// <summary>P1 を賭けマスに止める。勝ち負けは BetWinMin で決め打ちする（出目は乱数なので）</summary>
+        private void LandOnBet(int stake, bool win)
+        {
+            _state.Config.BetWinMin = win ? 1 : LifeRuleConfig.RouletteMax + 1;
+            PrepareNextCell(LifeCellType.Bet, stake);
+            LifeRules.Move(_state, 1);
+            Assert.AreEqual(LifePending.Bet, _state.Pending);
+        }
+
+        [Test]
+        public void 賭けに勝つと賭け金の分だけ増え配当は出ない()
+        {
+            _p2.Stocks.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
+            LandOnBet(100, true);
+            int p2Money = _p2.Money;
+
+            List<LifeEvent> events = LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseBet, 1));
+
+            Assert.AreEqual(400, _p1.Money);
+            Assert.AreEqual(p2Money, _p2.Money, "賭けのルーレットでは配当を出さない");
+            Assert.IsTrue(events.Exists(e => e.Type == LifeEventType.BetResult && e.Amount == 100));
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 賭けに負けると没収される()
+        {
+            LandOnBet(100, false);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseBet, 1));
+
+            Assert.AreEqual(200, _p1.Money);
+        }
+
+        [Test]
+        public void 賭けないとお金は動かない()
+        {
+            LandOnBet(100, false);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseBet, 0));
+
+            Assert.AreEqual(300, _p1.Money);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void ギャンブルルートの賭けマスは賭け金が2倍()
+        {
+            LifeCell bet = _state.Board.Cells.Find(c => c.Section == LifeSection.Gamble && c.Type == LifeCellType.Bet);
+
+            Assert.AreEqual(_state.Config.BetStake * _state.Config.GambleMultiplier, bet.Amount);
+        }
+
+        [Test]
+        public void 所持金が足りなくても賭けられ負けたら手形()
+        {
+            _p1.Money = 50;
+            LandOnBet(100, false);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseBet, 1));
+
+            Assert.AreEqual(1, _p1.Notes);
+            Assert.AreEqual(50, _p1.Money);
+        }
+
+        // ---- 人に関わるマス ----
+
+        [Test]
+        public void 指名した相手からもらい自分は選べない()
+        {
+            PrepareNextCell(LifeCellType.Nominate, 120);
+            LifeRules.Move(_state, 1);
+            Assert.AreEqual(LifePending.ChooseTarget, _state.Pending);
+
+            Assert.IsFalse(LifeRules.IsValid(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, 0)));
+            Assert.IsFalse(LifeRules.IsValid(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, LifeRules.NoTarget)), "指名はやめられない");
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, 1));
+
+            Assert.AreEqual(420, _p1.Money);
+            Assert.AreEqual(180, _p2.Money);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 指名された相手が払えなければ手形()
+        {
+            _p2.Money = 20;
+            PrepareNextCell(LifeCellType.Nominate, 120);
+            LifeRules.Move(_state, 1);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, 1));
+
+            Assert.AreEqual(1, _p2.Notes);
+            Assert.AreEqual(0, _p2.Money);
+        }
+
+        [Test]
+        public void プレゼントは所持金が一番少ない人へ同額なら席の若い人へ()
+        {
+            _state = LifeGameState.Create(4, 1, new LifeRuleConfig());
+            _p1 = _state.Players[0];
+            _middle = _state.Board.Cells.FindIndex(c => c.Section == LifeSection.Middle);
+            _p1.Money = 50;
+            _state.Players[1].Money = 400;
+            _state.Players[2].Money = 100;
+            _state.Players[3].Money = 100;
+            PrepareNextCell(LifeCellType.Present, 80);
+
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(180, _state.Players[2].Money, "自分より少なくても自分には渡さない");
+            Assert.AreEqual(100, _state.Players[3].Money);
+            Assert.AreEqual(1, _p1.Notes);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 入れ替えで職業を交換でき交換しなくてもよい()
+        {
+            _p1.JobId = 1;
+            _p2.JobId = 8;
+            PrepareNextCell(LifeCellType.SwapJob);
+            LifeRules.Move(_state, 1);
+            Assert.AreEqual(LifePending.ChooseTarget, _state.Pending);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, 1));
+
+            Assert.AreEqual(8, _p1.JobId);
+            Assert.AreEqual(1, _p2.JobId);
+
+            SetUp();
+            _p1.JobId = 1;
+            _p2.JobId = 8;
+            PrepareNextCell(LifeCellType.SwapJob);
+            LifeRules.Move(_state, 1);
+
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseTarget, LifeRules.NoTarget));
+
+            Assert.AreEqual(1, _p1.JobId);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 入れ替えの対象がいなければ何も起きない()
+        {
+            _p1.JobId = 1;
+            PrepareNextCell(LifeCellType.SwapJob);
+
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(1, _p1.JobId);
+            Assert.AreEqual(LifePending.Spin, _state.Pending);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void NPCは指名で一番お金持ちを入れ替えで給料が高い人を選ぶ()
+        {
+            _state = LifeGameState.Create(3, 1, new LifeRuleConfig());
+            _p1 = _state.Players[0];
+            _middle = _state.Board.Cells.FindIndex(c => c.Section == LifeSection.Middle);
+            _state.Players[1].Money = 500;
+            _state.Players[2].Money = 400;
+            PrepareNextCell(LifeCellType.Nominate, 100);
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(1, LifeNpcPlanner.Plan(_state, new LifeRandom(0)).Value);
+
+            _state.Pending = LifePending.ChooseTarget;
+            _state.CurrentCell.Type = LifeCellType.SwapJob;
+            _p1.JobId = 5;
+            _state.Players[1].JobId = 4;
+            _state.Players[2].JobId = 8;
+            Assert.AreEqual(2, LifeNpcPlanner.Plan(_state, new LifeRandom(0)).Value);
+
+            _p1.JobId = 8;
+            Assert.AreEqual(LifeRules.NoTarget, LifeNpcPlanner.Plan(_state, new LifeRandom(0)).Value, "自分より給料が高い人がいなければやめる");
+        }
+
         [Test]
         public void ゴール順にボーナスをもらい全員ゴールで終わる()
         {

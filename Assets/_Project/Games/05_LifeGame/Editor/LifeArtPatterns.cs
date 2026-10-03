@@ -344,6 +344,74 @@ namespace MiniGame.LifeGame.Editor
                     "............",
                 }
             },
+            {
+                LifeCellType.Bet, new[]
+                {
+                    "............",
+                    ".kkkkkkkkkk.",
+                    ".kwwwwwwwwk.",
+                    ".kwkkwwwwwk.",
+                    ".kwkkwwwwwk.",
+                    ".kwwwkkwwwk.",
+                    ".kwwwkkwwwk.",
+                    ".kwwwwwkkwk.",
+                    ".kwwwwwkkwk.",
+                    ".kwwwwwwwwk.",
+                    ".kkkkkkkkkk.",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Nominate, new[]
+                {
+                    "....kkkk....",
+                    "..kkrrrrkk..",
+                    ".krrwwwwrrk.",
+                    ".krwwwwwwrk.",
+                    "krwwrrrrwwrk",
+                    "krwwrkkrwwrk",
+                    "krwwrkkrwwrk",
+                    "krwwrrrrwwrk",
+                    ".krwwwwwwrk.",
+                    ".krrwwwwrrk.",
+                    "..kkrrrrkk..",
+                    "....kkkk....",
+                }
+            },
+            {
+                LifeCellType.Present, new[]
+                {
+                    "...kk..kk...",
+                    "..kyykkyyk..",
+                    "...kkyykk...",
+                    "kkkkkyykkkkk",
+                    "krrrryyrrrrk",
+                    "kkkkkyykkkkk",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".kkkkkkkkkk.",
+                }
+            },
+            {
+                LifeCellType.SwapJob, new[]
+                {
+                    "............",
+                    "kkkk........",
+                    "kbbk....k...",
+                    "kbbkkkkkkk..",
+                    "kkkk....k...",
+                    "............",
+                    "............",
+                    "...k....kkkk",
+                    "..kkkkkkkook",
+                    "...k....kook",
+                    "........kkkk",
+                    "............",
+                }
+            },
         };
 
         /// <summary>

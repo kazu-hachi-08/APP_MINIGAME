@@ -115,10 +115,21 @@ namespace MiniGame.LifeGame.Editor
             string lastTheme = LifeThemeDefaults.All[LifeThemeDefaults.All.Length - 1].Id;
             if (Load(CellName) == null || Load(FamilyFaceName) == null ||
                 Load(PortraitName(CharacterIds[CharacterIds.Length - 1])) == null ||
-                Load(DecorationName(lastTheme, DecorationsPerTheme - 1)) == null)
+                Load(DecorationName(lastTheme, DecorationsPerTheme - 1)) == null || IsAnyIconMissing())
             {
                 GenerateAll();
             }
+        }
+
+        /// <summary>マスの種類を足したとき、Regenerate Art を忘れても Rebuild LifeGame だけでアイコンが揃うようにする</summary>
+        private static bool IsAnyIconMissing()
+        {
+            foreach (LifeCellType type in LifeArtPatterns.Icons.Keys)
+            {
+                if (Load(IconName(type)) == null) return true;
+            }
+
+            return false;
         }
 
         public static Sprite Load(string spriteName)

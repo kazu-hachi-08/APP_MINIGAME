@@ -136,6 +136,11 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Sickness:
                 case LifeCellType.Accident:
                     return RollStep(config.MishapMin, config.MishapMax, config.AmountStep, random) * multiplier;
+                case LifeCellType.Nominate:
+                case LifeCellType.Present:
+                    return RollStep(config.TransferMin, config.TransferMax, config.AmountStep, random) * multiplier;
+                case LifeCellType.Bet:
+                    return config.BetStake * multiplier;
                 case LifeCellType.Tuition:
                     return config.Tuition;
                 default:

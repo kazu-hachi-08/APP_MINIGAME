@@ -59,6 +59,10 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Insurance: return "保険";
                 case LifeCellType.Stock: return "株";
                 case LifeCellType.ChangeJob: return "転職";
+                case LifeCellType.Bet: return "賭け";
+                case LifeCellType.Nominate: return "指名";
+                case LifeCellType.Present: return "プレゼント";
+                case LifeCellType.SwapJob: return "入れ替え";
                 default: return type.ToString();
             }
         }
@@ -96,6 +100,11 @@ namespace MiniGame.LifeGame
                 case LifeCellType.House: return player.HasHouse ? "家を持っているので何もなし" : "家を買える";
                 case LifeCellType.Insurance: return "保険に入れる";
                 case LifeCellType.Stock: return $"株を1枚 {Money(config.StockPrice)} で買える";
+                case LifeCellType.Bet:
+                    return $"{Money(cell.Amount)} 賭けられる。{config.BetWinMin}以上で {SignedMoney(cell.Amount)}、外れたら没収";
+                case LifeCellType.Nominate: return $"自分以外を1人選び、{Money(cell.Amount)} もらう";
+                case LifeCellType.Present: return $"所持金が一番少ない人に {Money(cell.Amount)} 渡す";
+                case LifeCellType.SwapJob: return "職業を持っている人を1人選び、職業を交換できる（しなくてもOK）";
                 case LifeCellType.Branch: return "道を選ぶ";
                 case LifeCellType.Goal: return $"必ず止まる。1着ボーナス {Money(config.GoalBonuses[0])}";
                 default: return "何もなし";
@@ -158,13 +167,39 @@ namespace MiniGame.LifeGame
                     return $"{who}株（{e.Value}番）を買った";
                 case LifeEventType.Goal:
                     return $"{who}ゴール！ {e.Value + 1}着 ボーナス {SignedMoney(e.Amount)}";
+                case LifeEventType.BetResult:
+                    return $"{who}出目 {e.Value} … {(e.Amount > 0 ? "賭けに勝った！" : "賭けに負けた")}";
+                case LifeEventType.JobSwapped:
+                    return $"{who}{PlayerName(e.OtherSeat)}と職業を交換！ {JobName(e.Value)}になった";
                 default:
                     return null;
             }
         }
 
-        /// <summary>止まったマスのテーマの一言。無いマスは null</summary>
-        public static string CellFlavor(LifeCell cell) => _theme.CellText(cell.Type, cell.TextVariant);
+        /// <summary>
+        /// 止まったマスのテーマの一言。無いマスは null。
+        /// 生成済みのテーマのアセットは上書きされず、後から足したマスの文面が入っていないので、そのときは共通の一言を出す
+        /// </summary>
+        public static string CellFlavor(LifeCell cell) => _theme.CellText(cell.Type, cell.TextVariant) ?? CommonFlavor(cell.Type);
+
+        private static string CommonFlavor(LifeCellType type)
+        {
+            switch (type)
+            {
+                case LifeCellType.Bet: return "一か八か、勝負する？";
+                case LifeCellType.Nominate: return "誰からもらおうかな";
+                case LifeCellType.Present: return "困っている人におすそ分け";
+                case LifeCellType.SwapJob: return "あの人の仕事、うらやましい…";
+                default: return null;
+            }
+        }
+
+        /// <summary>指名・入れ替えの選択肢の1行。「P2 がんばり屋（所持金 500 / 医者）」</summary>
+        public static string TargetChoice(LifeGameState state, int seat, string displayName)
+        {
+            LifePlayerState player = state.Players[seat];
+            return $"{displayName}\n（所持金 {Money(player.Money)} / {JobName(player.JobId)}）";
+        }
 
         /// <param name="owner">「P1 らっきー」のような席番号＋キャラ名</param>
         /// <param name="abilityText">キャラの能力の説明</param>

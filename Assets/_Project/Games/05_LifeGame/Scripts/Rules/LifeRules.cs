@@ -10,6 +10,7 @@ namespace MiniGame.LifeGame
     {
         private const int JobCardCount = 2;
         private const int KeepCurrentJob = -1;
+        public const int NoTarget = -1;
 
         public static bool IsValid(LifeGameState state, LifeCommand command)
         {
@@ -38,6 +39,10 @@ namespace MiniGame.LifeGame
                     return state.Pending == LifePending.Insurance && value >= 0 && (value & ~(int)AvailableInsurances(player)) == 0;
                 case LifeCommandType.ChooseStock:
                     return state.Pending == LifePending.Stock && value >= 0 && value <= LifeRuleConfig.RouletteMax;
+                case LifeCommandType.ChooseBet:
+                    return state.Pending == LifePending.Bet && (value == 0 || value == 1);
+                case LifeCommandType.ChooseTarget:
+                    return state.Pending == LifePending.ChooseTarget && IsValidTarget(state, value);
                 default:
                     return false;
             }
@@ -77,6 +82,12 @@ namespace MiniGame.LifeGame
                 case LifeCommandType.ChooseStock:
                     BuyStock(state, command.Value, events);
                     break;
+                case LifeCommandType.ChooseBet:
+                    Bet(state, command.Value == 1, events);
+                    break;
+                case LifeCommandType.ChooseTarget:
+                    ChooseTarget(state, command.Value, events);
+                    break;
             }
 
             return events;
@@ -97,6 +108,42 @@ namespace MiniGame.LifeGame
             int salary = config.SalaryOf(jobId);
             if (player.Ability == LifeAbility.Salary) salary += salary * config.AbilitySalaryPercent / 100;
             return salary;
+        }
+
+        /// <summary>
+        /// 指名・入れ替えで選べる相手か。自分は選べない。ゴールした人は選べる（ゴール後もお金は動くので）。
+        /// 入れ替えは職業を持っている人だけで、NoTarget（やめる）も選べる
+        /// </summary>
+        public static bool IsValidTarget(LifeGameState state, int seat)
+        {
+            bool isSwap = state.CurrentCell.Type == LifeCellType.SwapJob;
+            if (seat == NoTarget) return isSwap;
+            if (seat < 0 || seat >= state.Players.Count || seat == state.CurrentSeat) return false;
+
+            return !isSwap || state.Players[seat].JobId != LifeRuleConfig.NoJob;
+        }
+
+        private static bool HasAnyTarget(LifeGameState state)
+        {
+            for (int seat = 0; seat < state.Players.Count; seat++)
+            {
+                if (IsValidTarget(state, seat)) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>プレゼントを受け取る人：自分以外で所持金が一番少ない人。同額なら席番号の若い人。いなければ NoTarget</summary>
+        public static int PresentReceiver(LifeGameState state)
+        {
+            int receiver = NoTarget;
+            foreach (LifePlayerState other in state.Players)
+            {
+                if (other.Seat == state.CurrentSeat) continue;
+                if (receiver == NoTarget || other.Money < state.Players[receiver].Money) receiver = other.Seat;
+            }
+
+            return receiver;
         }
 
         public static bool CanReroll(LifePlayerState player)
@@ -279,6 +326,14 @@ namespace MiniGame.LifeGame
                     return WaitFor(state, LifePending.Insurance, AvailableInsurances(player) != LifeInsurance.None);
                 case LifeCellType.Stock:
                     return WaitFor(state, LifePending.Stock, player.Stocks.Count < config.MaxStocks);
+                case LifeCellType.Bet:
+                    return WaitFor(state, LifePending.Bet, true);
+                case LifeCellType.Present:
+                    Present(state, player, cell.Amount, events);
+                    return false;
+                case LifeCellType.Nominate:
+                case LifeCellType.SwapJob:
+                    return WaitFor(state, LifePending.ChooseTarget, HasAnyTarget(state));
                 default:
                     return false;
             }
@@ -301,6 +356,12 @@ namespace MiniGame.LifeGame
 
             int damage = state.Config.Houses[player.HouseId].Price / 2;
             LifeMoney.PayMishap(state, player, damage, LifeInsurance.Fire, LifeJobRole.Repair, events);
+        }
+
+        private static void Present(LifeGameState state, LifePlayerState player, int amount, List<LifeEvent> events)
+        {
+            int receiver = PresentReceiver(state);
+            if (receiver != NoTarget) LifeMoney.Pay(state, player, amount, receiver, events);
         }
 
         private static void Birth(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
@@ -412,6 +473,48 @@ namespace MiniGame.LifeGame
                 LifeMoney.Pay(state, player, state.Config.StockPrice, LifeEvent.Bank, events);
                 player.Stocks.Add(number);
                 events.Add(new LifeEvent(LifeEventType.StockBought, player.Seat, state.Config.StockPrice, number));
+            }
+
+            EndTurn(state, events);
+        }
+
+        /// <summary>
+        /// 賭けのルーレット。移動ではないので株の配当は出さず、LastRoll も変えない（振り直しの出目と混ざらないように）。
+        /// 負けは所持金が足りなければ手形になる（ほかの支払いと同じ）
+        /// </summary>
+        private static void Bet(LifeGameState state, bool bet, List<LifeEvent> events)
+        {
+            if (bet)
+            {
+                LifePlayerState player = state.Current;
+                int stake = state.CurrentCell.Amount;
+                int roll = RollDice(state);
+                bool won = roll >= state.Config.BetWinMin;
+                events.Add(new LifeEvent(LifeEventType.BetResult, player.Seat, won ? stake : -stake, roll));
+
+                if (won) LifeMoney.Receive(player, stake, events);
+                else LifeMoney.Pay(state, player, stake, LifeEvent.Bank, events);
+            }
+
+            EndTurn(state, events);
+        }
+
+        private static void ChooseTarget(LifeGameState state, int target, List<LifeEvent> events)
+        {
+            if (target != NoTarget)
+            {
+                LifePlayerState player = state.Current;
+                LifePlayerState other = state.Players[target];
+                if (state.CurrentCell.Type == LifeCellType.SwapJob)
+                {
+                    (player.JobId, other.JobId) = (other.JobId, player.JobId);
+                    events.Add(new LifeEvent(LifeEventType.JobSwapped, player.Seat, value: player.JobId, otherSeat: target));
+                }
+                else
+                {
+                    // 指名：相手から受け取る。相手が払えなければ手形（ご祝儀と同じ）
+                    LifeMoney.Pay(state, other, state.CurrentCell.Amount, player.Seat, events);
+                }
             }
 
             EndTurn(state, events);

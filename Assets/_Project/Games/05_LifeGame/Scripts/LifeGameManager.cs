@@ -18,6 +18,8 @@ namespace MiniGame.LifeGame
         private const int RepayUnit = 1;
         private const int Reroll = 1;
         private const int KeepRoll = 0;
+        private const int DoBet = 1;
+        private const int SkipBet = 0;
         private const int NotSelected = -1;
 
         /// <summary>保険の選択肢の並び。選択肢の表示と選ばれた保険の変換で同じ並びを使うため</summary>
@@ -59,7 +61,7 @@ namespace MiniGame.LifeGame
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private LifeOnlineLink _onlineLink;
-        [Tooltip("フリックせずに回すときの回転演出の強さ（相手の手番・精算の家の売却）。フリックの強さは送らない（出目に影響しないため）")]
+        [Tooltip("フリックせずに回すときの回転演出の強さ（相手の手番・賭け・精算の家の売却）。フリックの強さは送らない（出目に影響しないため）")]
         [Range(0f, 1f)] [SerializeField] private float _remoteFlickStrength = 0.6f;
         [Tooltip("相手が選んだ選択肢を色付けして見せる時間")]
         [SerializeField] private float _remoteRevealTime = 0.8f;
@@ -419,6 +421,12 @@ namespace MiniGame.LifeGame
                 case LifePending.Stock:
                     yield return ChooseStock();
                     break;
+                case LifePending.Bet:
+                    yield return ChooseBet();
+                    break;
+                case LifePending.ChooseTarget:
+                    yield return ChooseTarget();
+                    break;
             }
         }
 
@@ -495,12 +503,22 @@ namespace MiniGame.LifeGame
                     continue;
                 }
 
+                // 賭けの出目はルールが Apply で決めているので、人間・NPC・相手の手番どれでも、ここで出目に合わせてルーレットを止める
+                if (e.Type == LifeEventType.BetResult) yield return SpinBetRoulette(e.Value);
+
                 if (PlayEffect(e)) yield return new WaitForSeconds(_effectInterval);
 
                 AddToPopup(content, e);
             }
 
             yield return ShowPopup(content, autoClose);
+        }
+
+        private IEnumerator SpinBetRoulette(int roll)
+        {
+            _rouletteView.SetHint($"賭けのルーレット\n{_state.Config.BetWinMin}以上で勝ち");
+            yield return _rouletteView.SpinTo(roll, _remoteFlickStrength);
+            _rouletteView.SetHint("");
         }
 
         private void AddToPopup(EventPopupContent content, LifeEvent e)
@@ -602,12 +620,35 @@ namespace MiniGame.LifeGame
                     _cars[e.Seat].Celebrate();
                     _audio.PlayGoal();
                     break;
+                case LifeEventType.BetResult:
+                    PlayBetResult(e);
+                    break;
+                case LifeEventType.JobSwapped:
+                    // 奪われた側のコマにも出し、誰と入れ替わったか盤面で分かるようにする
+                    Popup(e.Seat, "職業交換！", LifeColors.Celebration);
+                    Popup(e.OtherSeat, "職業交換！", LifeColors.Celebration);
+                    _audio.PlayGain();
+                    break;
                 default:
                     return false;
             }
 
             _moneyBar.Refresh(_state);
             return true;
+        }
+
+        private void PlayBetResult(LifeEvent e)
+        {
+            if (e.Amount > 0)
+            {
+                Popup(e.Seat, "勝ち！", LifeColors.Celebration);
+                _cars[e.Seat].Celebrate();
+                _audio.PlayPayday();
+                return;
+            }
+
+            Popup(e.Seat, "負け…", LifeColors.Loss);
+            _audio.PlayLoss();
         }
 
         private void Popup(int seat, string text, Color color)
@@ -788,6 +829,37 @@ namespace MiniGame.LifeGame
             yield return PlayEvents(Apply(LifeCommandType.ChooseStock, number), false);
         }
 
+        private IEnumerator ChooseBet()
+        {
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
+            int choice = 0;
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
+            yield return PlayEvents(Apply(LifeCommandType.ChooseBet, choice == 0 ? DoBet : SkipBet), false);
+        }
+
+        private IEnumerator ChooseTarget()
+        {
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
+            List<int> seats = TargetSeats();
+            int choice = 0;
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
+            // 入れ替えの最後の「交換しない」は並びの外なので NoTarget
+            int target = choice < seats.Count ? seats[choice] : LifeRules.NoTarget;
+            yield return PlayEvents(Apply(LifeCommandType.ChooseTarget, target), false);
+        }
+
+        /// <summary>指名・入れ替えの選択肢に並べる席（自分以外を席順に）。選べない人も灰色で出す（なぜ選べないか見せるため）</summary>
+        private List<int> TargetSeats()
+        {
+            var seats = new List<int>();
+            for (int seat = 0; seat < _state.Players.Count; seat++)
+            {
+                if (seat != CurrentSeat) seats.Add(seat);
+            }
+
+            return seats;
+        }
+
         /// <summary>
         /// 今の Pending の選択肢を作る。自分の手番と、オンラインで相手の手番を見せる表示とで同じものを出すため1か所にまとめる。
         /// 並びを変えるときは各 ChooseXxx の値の変換と SelectedOptions も合わせて変えること
@@ -833,12 +905,41 @@ namespace MiniGame.LifeGame
                         enabled.Add((available & kind) != 0);
                     }
                     break;
+                case LifePending.Bet:
+                    int stake = _state.CurrentCell.Amount;
+                    title = $"賭ける？\n{_state.Config.BetWinMin}以上で {LifeTexts.SignedMoney(stake)}、外れたら {LifeTexts.SignedMoney(-stake)}";
+                    labels.Add($"賭ける\n{LifeTexts.Money(stake)}");
+                    labels.Add("やめる");
+                    break;
+                case LifePending.ChooseTarget:
+                    BuildTargetChoice(out title, labels, out enabled);
+                    break;
                 default:
                     title = $"株を買う？（1枚 {LifeTexts.Money(_state.Config.StockPrice)}）\nその番号が出るたびに配当";
                     for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++) labels.Add($"{n}番");
                     labels.Add("買わない");
                     break;
             }
+        }
+
+        private void BuildTargetChoice(out string title, List<string> labels, out List<bool> enabled)
+        {
+            bool isSwap = _state.CurrentCell.Type == LifeCellType.SwapJob;
+            title = isSwap
+                ? $"誰と職業を交換する？\n今の職業：{LifeTexts.JobName(_state.Current.JobId)}"
+                : $"誰から {LifeTexts.Money(_state.CurrentCell.Amount)} もらう？";
+
+            enabled = new List<bool>();
+            foreach (int seat in TargetSeats())
+            {
+                labels.Add(LifeTexts.TargetChoice(_state, seat, DisplayName(seat)));
+                enabled.Add(LifeRules.IsValidTarget(_state, seat));
+            }
+
+            if (!isSwap) return;
+
+            labels.Add("交換しない");
+            enabled.Add(true);
         }
 
         /// <summary>
@@ -868,6 +969,12 @@ namespace MiniGame.LifeGame
                     break;
                 case LifeCommandType.ChooseHouse:
                     index = command.Value == LifeRuleConfig.NoHouse ? count - 1 : command.Value;
+                    break;
+                case LifeCommandType.ChooseBet:
+                    index = command.Value == DoBet ? 0 : 1;
+                    break;
+                case LifeCommandType.ChooseTarget:
+                    index = command.Value == LifeRules.NoTarget ? count - 1 : TargetSeats().IndexOf(command.Value);
                     break;
                 default:
                     index = command.Value;

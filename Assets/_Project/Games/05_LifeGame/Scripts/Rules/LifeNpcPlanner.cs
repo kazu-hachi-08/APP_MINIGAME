@@ -13,6 +13,9 @@ namespace MiniGame.LifeGame
         private const int RepayThreshold = 500;
         private const int RerollAtOrBelow = 3;
 
+        // 賭けに負けても賭け金の分は手元に残る（手形を切らずに済む）ときだけ賭ける
+        private const int BetMoneyMultiple = 2;
+
         /// <param name="random">
         /// NPC専用の乱数。ルールの乱数（state.Random）を使うと、NPCの考えた回数で出目の列がずれてしまうので分ける
         /// </param>
@@ -39,6 +42,11 @@ namespace MiniGame.LifeGame
                     return new LifeCommand(seat, LifeCommandType.ChooseInsurance, (int)PlanInsurance(state.Config, player));
                 case LifePending.Stock:
                     return new LifeCommand(seat, LifeCommandType.ChooseStock, PlanStock(state.Config, player, random));
+                case LifePending.Bet:
+                    bool bet = player.Money >= state.CurrentCell.Amount * BetMoneyMultiple;
+                    return new LifeCommand(seat, LifeCommandType.ChooseBet, bet ? 1 : 0);
+                case LifePending.ChooseTarget:
+                    return new LifeCommand(seat, LifeCommandType.ChooseTarget, PlanTarget(state));
                 default:
                     return new LifeCommand(seat, LifeCommandType.Spin);
             }
@@ -129,6 +137,27 @@ namespace MiniGame.LifeGame
             }
 
             return chosen;
+        }
+
+        /// <summary>指名は所持金が一番多い人、入れ替えは自分より給料が高い人の中で一番高い人（いなければやめる）</summary>
+        private static int PlanTarget(LifeGameState state)
+        {
+            bool isSwap = state.CurrentCell.Type == LifeCellType.SwapJob;
+            int best = LifeRules.NoTarget;
+            int bestScore = isSwap ? state.Config.SalaryOf(state.Current.JobId) : int.MinValue;
+            foreach (LifePlayerState other in state.Players)
+            {
+                if (!LifeRules.IsValidTarget(state, other.Seat)) continue;
+
+                int score = isSwap ? state.Config.SalaryOf(other.JobId) : other.Money;
+                if (score > bestScore)
+                {
+                    best = other.Seat;
+                    bestScore = score;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>買った後に200以上残るなら、持っていない番号をランダムで1枚。買わないなら 0</summary>

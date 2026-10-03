@@ -24,6 +24,8 @@ namespace MiniGame.LifeGame
         Goal,            // Value = ゴール順（0 = 1着）, Amount = 順位ボーナス
         TurnEnded,
         AllGoaled,
+        BetResult,       // Value = 出目, Amount = 増減（勝ち +賭け金 / 負け -賭け金）
+        JobSwapped,      // OtherSeat = 交換した相手, Value = 交換後の自分の職業
     }
 
     /// <summary>ルールが起こしたこと。見た目側はこの列を順に演出する</summary>

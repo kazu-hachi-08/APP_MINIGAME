@@ -89,6 +89,14 @@ namespace MiniGame.LifeGame
         public int MaxStocks = 3;
         public int Dividend = 50;
 
+        // 賭けマス。賭け金はマスの金額（ギャンブルルートは倍）。出目が BetWinMin 以上で勝ち
+        public int BetStake = 100;
+        public int BetWinMin = 5;
+
+        // 指名・プレゼントマスで動く金額
+        public int TransferMin = 50;
+        public int TransferMax = 150;
+
         public int MarriageGift = 30;
         public int BirthGift = 20;
         public int MaxChildren = 4;

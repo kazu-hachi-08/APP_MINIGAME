@@ -71,11 +71,12 @@ namespace MiniGame.LifeGame
         {
             return new LifeSectionShape(LifeSection.Job, 8)
                 .Fixed(0, LifeCellType.JobOffer)
-                .Cards(LifeCellType.Income, 3)
+                .Cards(LifeCellType.Income, 2)
                 .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.Accident, 1)
                 .Cards(LifeCellType.Insurance, 1)
-                .Cards(LifeCellType.Stock, 1);
+                .Cards(LifeCellType.Stock, 1)
+                .Cards(LifeCellType.Nominate, 1);
         }
 
         private static LifeSectionShape UniversityRoute()
@@ -98,9 +99,10 @@ namespace MiniGame.LifeGame
             // 給料日は、給料の低いフリーターが他のルートに勝てる見込みを残すため（無いと勝率が約11%まで落ちた）
             return new LifeSectionShape(LifeSection.Freeter, 6)
                 .Fixed(3, LifeCellType.Payday)
-                .Cards(LifeCellType.Income, 2)
+                .Cards(LifeCellType.Income, 1)
                 .Cards(LifeCellType.Accident, 1)
-                .Cards(LifeCellType.ChangeJob, 2);
+                .Cards(LifeCellType.ChangeJob, 2)
+                .Cards(LifeCellType.Bet, 1);
         }
 
         private static LifeSectionShape MiddleSection()
@@ -109,15 +111,17 @@ namespace MiniGame.LifeGame
                 .Fixed(5, LifeCellType.Payday)
                 .Fixed(10, LifeCellType.Marriage)
                 .Fixed(15, LifeCellType.Branch)
-                .Cards(LifeCellType.Income, 3)
-                .Cards(LifeCellType.Expense, 2)
+                .Cards(LifeCellType.Income, 2)
+                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.House, 2)
                 .Cards(LifeCellType.Insurance, 1)
                 .Cards(LifeCellType.Stock, 1)
                 .Cards(LifeCellType.Birth, 1)
                 .Cards(LifeCellType.Sickness, 1)
                 .Cards(LifeCellType.Fire, 1)
-                .Cards(LifeCellType.ChangeJob, 1);
+                .Cards(LifeCellType.ChangeJob, 1)
+                .Cards(LifeCellType.Nominate, 1)
+                .Cards(LifeCellType.SwapJob, 1);
         }
 
         private static LifeSectionShape SafeRoute()
@@ -125,23 +129,25 @@ namespace MiniGame.LifeGame
             return new LifeSectionShape(LifeSection.Safe, 10)
                 .Fixed(5, LifeCellType.Payday)
                 .Cards(LifeCellType.Income, 3)
-                .Cards(LifeCellType.Expense, 2)
+                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.House, 1)
                 .Cards(LifeCellType.Birth, 1)
                 .Cards(LifeCellType.Stock, 1)
-                .Cards(LifeCellType.Sickness, 1);
+                .Cards(LifeCellType.Sickness, 1)
+                .Cards(LifeCellType.Present, 1);
         }
 
         private static LifeSectionShape GambleRoute()
         {
             var shape = new LifeSectionShape(LifeSection.Gamble, 10)
                 .Fixed(5, LifeCellType.Payday)
-                .Cards(LifeCellType.Income, 3)
+                .Cards(LifeCellType.Income, 2)
                 .Cards(LifeCellType.Expense, 2)
                 .Cards(LifeCellType.Sickness, 1)
                 .Cards(LifeCellType.Accident, 1)
                 .Cards(LifeCellType.Fire, 1)
-                .Cards(LifeCellType.Stock, 1);
+                .Cards(LifeCellType.Stock, 1)
+                .Cards(LifeCellType.Bet, 1);
             shape.DoubleAmounts = true;
             return shape;
         }
