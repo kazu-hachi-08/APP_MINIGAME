@@ -27,8 +27,7 @@ namespace MiniGame.LifeGame
 
         private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
         private const string DisconnectedDetail = "試合を終了しました";
-        private const string RankingTitle = "順位発表";
-        private const string TitleAnnouncementTitle = "称号発表";
+        private const string SettlementBannerTitle = "けっさん！";
 
         [Header("Life Game")]
         [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。オンラインではこの番号を送る")]
@@ -56,6 +55,9 @@ namespace MiniGame.LifeGame
         [SerializeField] private BoardEffects _effects;
         [SerializeField] private LifeAudio _audio;
         [SerializeField] private SettlementView _settlementView;
+        [SerializeField] private TitleRevealView _titleReveal;
+        [SerializeField] private RankingRaceView _rankingRace;
+        [SerializeField] private ConfettiView _confetti;
         [SerializeField] private VictoryShowView _victoryShow;
         [Tooltip("コマに乗せる結婚相手・子供の顔")]
         [SerializeField] private Sprite _familyFace;
@@ -77,6 +79,8 @@ namespace MiniGame.LifeGame
         [SerializeField] private float _effectInterval = 0.35f;
         [Tooltip("精算で1行ずつ出す間")]
         [SerializeField] private float _settlementStep = 0.6f;
+        [Tooltip("精算の前に出す「けっさん！」のバナーの時間")]
+        [SerializeField] private float _settlementBannerTime = 1.2f;
         [Tooltip("時代が変わったバナーを出す時間。効果の説明を読み切れる長さにする")]
         [SerializeField] private float _eraBannerTime = 2f;
 
@@ -363,6 +367,9 @@ namespace MiniGame.LifeGame
             _turnBanner.gameObject.SetActive(false);
             _walletPanel.gameObject.SetActive(false);
             _settlementView.Hide();
+            _titleReveal.Hide();
+            _rankingRace.Hide();
+            _confetti.gameObject.SetActive(false);
 
             FinishGame(false, DisconnectedTitle, DisconnectedDetail);
         }
@@ -1129,22 +1136,28 @@ namespace MiniGame.LifeGame
         // ------------------------------------------------------------------
         // 精算
         // ------------------------------------------------------------------
-        /// <summary>1人ずつ精算を見せ（仕様書 §8）、順位発表 → 1位の勝利演出 → ResultDialog の順に進める</summary>
+        /// <summary>
+        /// 「けっさん！」→ 1人ずつ精算 → 称号発表 → 総資産レース（順位発表）→ 1位の勝利演出 → ResultDialog の順に進める（仕様書 §8）。
+        /// 精算はルールの結果だけで決まるので、オンラインでも各端末で同じ演出を流すだけ（タップ待ちは各端末で独立）
+        /// </summary>
         private IEnumerator PlaySettlement()
         {
             Phase = LifePhase.Settlement;
             _boardCamera.Follow(null);
             List<LifeSettlementEntry> entries = LifeSettlement.Settle(_state);
-            foreach (LifeSettlementEntry entry in entries) yield return PlaySettlementOf(entry);
 
+            _audio.PlayJan();
+            yield return _turnBanner.Play(SettlementBannerTitle, LifeColors.Celebration, false, _settlementBannerTime);
+            foreach (LifeSettlementEntry entry in entries) yield return PlaySettlementOf(entry);
             _settlementView.Hide();
-            yield return PlayTitleAnnouncement(entries);
+
+            yield return PlayTitleReveal(entries);
             _moneyBar.Refresh(_state);
-            var ranking = new EventPopupContent { Title = RankingTitle };
-            ranking.Lines.Add((LifeTexts.Ranking(entries, DisplayName), Color.white));
-            yield return _eventPopup.Play(ranking);
 
             Phase = LifePhase.GameSet;
+            yield return _rankingRace.Play(RaceEntries(entries));
+            _rankingRace.Hide();
+
             LifeSettlementEntry winner = entries.Find(entry => entry.Rank == 1);
             LifeCharacterData character = CharacterOf(winner.Seat);
             _audio.PlayVictory();
@@ -1156,20 +1169,58 @@ namespace MiniGame.LifeGame
             FinishGame(isVictory, $"{DisplayName(winner.Seat)} の勝ち", $"総資産 {LifeTexts.Money(winner.Total)}");
         }
 
-        /// <summary>称号は全員の精算が終わってから、まとめて発表する（誰が一番かは全員を比べないと決まらないため）</summary>
-        private IEnumerator PlayTitleAnnouncement(List<LifeSettlementEntry> entries)
+        /// <summary>称号は全員の精算が終わってから、1つずつカードで発表する（誰が一番かは全員を比べないと決まらないため）</summary>
+        private IEnumerator PlayTitleReveal(List<LifeSettlementEntry> entries)
         {
-            string lines = LifeTexts.TitleAnnouncement(_state, entries, DisplayName);
-            if (lines == null) yield break;
+            bool shown = false;
+            foreach (LifeTitle title in Enum.GetValues(typeof(LifeTitle)))
+            {
+                var winners = new List<TitleWinner>();
+                int score = 0;
+                foreach (LifeSettlementEntry entry in entries)
+                {
+                    if (!entry.Titles.Contains(title)) continue;
 
-            var content = new EventPopupContent { Title = TitleAnnouncementTitle };
-            content.Lines.Add((lines, LifeColors.Celebration));
-            _audio.PlayPayday();
-            yield return _eventPopup.Play(content);
+                    winners.Add(new TitleWinner
+                    {
+                        Face = CharacterOf(entry.Seat).Face,
+                        Name = DisplayName(entry.Seat),
+                        Color = LifeColors.Seat(entry.Seat),
+                    });
+                    score = LifeSettlement.TitleScore(_state.Players[entry.Seat], title);
+                }
+
+                if (winners.Count == 0) continue;
+
+                if (!shown) _titleReveal.Show();
+                shown = true;
+                yield return _titleReveal.Play(LifeTexts.TitleName(title), LifeTexts.TitleDetail(title, score), winners,
+                    LifeTexts.SignedMoney(_state.Config.TitleBonus));
+            }
+
+            _titleReveal.Hide();
+        }
+
+        private List<RaceEntry> RaceEntries(List<LifeSettlementEntry> entries)
+        {
+            var race = new List<RaceEntry>();
+            foreach (LifeSettlementEntry entry in entries)
+            {
+                race.Add(new RaceEntry
+                {
+                    Face = CharacterOf(entry.Seat).Face,
+                    Name = DisplayName(entry.Seat),
+                    Color = LifeColors.Seat(entry.Seat),
+                    Total = entry.Total,
+                    Rank = entry.Rank,
+                });
+            }
+
+            return race;
         }
 
         /// <summary>
-        /// 家の売却 → 株 → 保険 → 手形 の順に1行ずつ足していく。ルールは精算を一度に済ませているので、
+        /// 家の売却 → 株 → 保険 → 手形 の順に1行ずつ足し、所持金をカウントアップする。ルールは精算を一度に済ませているので、
         /// 精算前の所持金は内訳から逆算する。家の売却のルーレットはルールが決めた出目で止める。
         /// 称号ボーナスは後でまとめて発表するので、ここでは除いた総資産を見せる
         /// </summary>
@@ -1177,10 +1228,11 @@ namespace MiniGame.LifeGame
         {
             int beforeTitles = entry.Total - entry.TitleBonus;
             int money = beforeTitles - entry.HouseSale - entry.StockSale - entry.InsuranceRefund + entry.NoteRepayment;
-            _settlementView.Begin($"{DisplayName(entry.Seat)} の精算", LifeColors.Seat(entry.Seat), LifeTexts.SettlementMoney(money));
-            yield return new WaitForSeconds(_settlementStep);
+            _settlementView.Begin($"{DisplayName(entry.Seat)} の精算", LifeColors.Seat(entry.Seat), money);
+            yield return _settlementView.Pause(_settlementStep);
 
-            if (entry.HouseRoll > 0)
+            // 早送り中はルーレットを回さず、行の出目だけで見せる
+            if (entry.HouseRoll > 0 && !_settlementView.IsFastForward)
             {
                 _rouletteView.SetHint("家の売却ルーレット");
                 yield return _rouletteView.SpinTo(entry.HouseRoll, _remoteFlickStrength);
@@ -1188,24 +1240,22 @@ namespace MiniGame.LifeGame
             }
 
             money += entry.HouseSale;
-            yield return ShowSettlementLine(LifeTexts.HouseSale(entry), money, entry.HouseSale);
+            yield return ShowSettlementLine(LifeTexts.HouseSale(entry), money);
             money += entry.StockSale;
-            yield return ShowSettlementLine(LifeTexts.StockSale(entry), money, entry.StockSale);
+            yield return ShowSettlementLine(LifeTexts.StockSale(entry), money);
             money += entry.InsuranceRefund;
-            yield return ShowSettlementLine(LifeTexts.InsuranceRefund(entry), money, entry.InsuranceRefund);
+            yield return ShowSettlementLine(LifeTexts.InsuranceRefund(entry), money);
             money -= entry.NoteRepayment;
-            yield return ShowSettlementLine(LifeTexts.NoteRepayment(entry), money, -entry.NoteRepayment);
+            yield return ShowSettlementLine(LifeTexts.NoteRepayment(entry), money);
 
-            _settlementView.SetMoney(LifeTexts.SettlementTotal(beforeTitles));
+            _settlementView.ShowTotal(beforeTitles);
             yield return _settlementView.WaitForTap();
         }
 
-        private IEnumerator ShowSettlementLine(string line, int money, int change)
+        private IEnumerator ShowSettlementLine(string line, int money)
         {
-            _settlementView.AddLine(line, LifeTexts.SettlementMoney(money));
-            if (change > 0) _audio.PlayGain();
-            if (change < 0) _audio.PlayLoss();
-            yield return new WaitForSeconds(_settlementStep);
+            yield return _settlementView.AddLine(line, money);
+            yield return _settlementView.Pause(_settlementStep);
         }
     }
 }

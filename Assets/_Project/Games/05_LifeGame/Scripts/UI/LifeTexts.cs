@@ -343,43 +343,18 @@ namespace MiniGame.LifeGame
             }
         }
 
-        /// <summary>称号の決め手になった数字。「子供 3人」のように、なぜもらえたかが分かる形にする</summary>
-        private static string TitleScore(LifeTitle title, int score)
+        /// <summary>称号カードの説明。条件と決め手になった数字（「子供 3人」）を並べ、なぜもらえたかが分かる形にする</summary>
+        public static string TitleDetail(LifeTitle title, int score)
         {
             switch (title)
             {
-                case LifeTitle.ManyChildren: return $"子供 {score}人";
-                case LifeTitle.StockKing: return $"配当 {Money(score)}";
-                case LifeTitle.Turbulent: return $"約束手形 {score}枚";
-                case LifeTitle.Gambler: return $"勝ち {Money(score)}";
-                case LifeTitle.Generous: return $"人に払った {Money(score)}";
+                case LifeTitle.ManyChildren: return $"子供が一番多い\n子供 {score}人";
+                case LifeTitle.StockKing: return $"株の配当が一番多い\n配当 {Money(score)}";
+                case LifeTitle.Turbulent: return $"約束手形を一番多く切った\n約束手形 {score}枚";
+                case LifeTitle.Gambler: return $"賭け・宝くじで一番勝った\n勝ち {Money(score)}";
+                case LifeTitle.Generous: return $"人に一番多く払った\n人に払った {Money(score)}";
                 default: return score.ToString();
             }
-        }
-
-        /// <summary>称号発表の行。誰ももらっていなければ null（発表自体を出さない）</summary>
-        /// <param name="displayName">席番号 → 「P1 らっきー」のような表示名</param>
-        public static string TitleAnnouncement(LifeGameState state, List<LifeSettlementEntry> entries, System.Func<int, string> displayName)
-        {
-            var lines = new List<string>();
-            foreach (LifeTitle title in System.Enum.GetValues(typeof(LifeTitle)))
-            {
-                var winners = new List<string>();
-                int score = 0;
-                foreach (LifeSettlementEntry entry in entries)
-                {
-                    if (!entry.Titles.Contains(title)) continue;
-
-                    winners.Add(displayName(entry.Seat));
-                    score = LifeSettlement.TitleScore(state.Players[entry.Seat], title);
-                }
-
-                if (winners.Count == 0) continue;
-
-                lines.Add($"{TitleName(title)}（{TitleScore(title, score)}）\n{string.Join("・", winners)} {SignedMoney(state.Config.TitleBonus)}");
-            }
-
-            return lines.Count == 0 ? null : string.Join("\n", lines);
         }
 
         public static string HouseSale(LifeSettlementEntry entry) =>
@@ -393,21 +368,5 @@ namespace MiniGame.LifeGame
 
         public static string NoteRepayment(LifeSettlementEntry entry) =>
             entry.NoteRepayment > 0 ? $"約束手形を返済 {SignedMoney(-entry.NoteRepayment)}" : "約束手形 なし";
-
-        /// <summary>順位発表の行（見出しはイベント表示のタイトル欄に出す）</summary>
-        /// <param name="displayName">席番号 → 「P1 らっきー」のような表示名</param>
-        public static string Ranking(List<LifeSettlementEntry> entries, System.Func<int, string> displayName)
-        {
-            var ranking = new List<LifeSettlementEntry>(entries);
-            ranking.Sort((a, b) => a.Rank.CompareTo(b.Rank));
-
-            var lines = new List<string>();
-            foreach (LifeSettlementEntry entry in ranking)
-            {
-                lines.Add($"{entry.Rank}位 {displayName(entry.Seat)}  {Money(entry.Total)}");
-            }
-
-            return string.Join("\n", lines);
-        }
     }
 }
