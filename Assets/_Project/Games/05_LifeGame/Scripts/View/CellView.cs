@@ -47,7 +47,14 @@ namespace MiniGame.LifeGame
             return view;
         }
 
-        public void OnPointerClick(PointerEventData eventData) => _onTapped?.Invoke(_cell);
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            // 盤面をドラッグしてスクロールした指を離したときに、詳細が開かないようにする
+            float threshold = EventSystem.current != null ? EventSystem.current.pixelDragThreshold : 10f;
+            if ((eventData.position - eventData.pressPosition).sqrMagnitude > threshold * threshold) return;
+
+            _onTapped?.Invoke(_cell);
+        }
 
         /// <summary>絵の解像度に関係なく、横幅が size（ワールド単位）になるよう拡大する（手描きに差し替えても大きさが変わらないように）</summary>
         private void CreateSprite(string name, Sprite sprite, Color color, Vector2 position, float size, int sortingOrder)

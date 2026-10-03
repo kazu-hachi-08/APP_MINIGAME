@@ -510,6 +510,8 @@ namespace MiniGame.LifeGame
             {
                 if (e.Type == LifeEventType.Moved)
                 {
+                    // 他のマスを見に行っている間にコマが動き出したら、動きを見逃さないよう追従に戻す
+                    _boardCamera.ResumeFollow();
                     _audio.PlayStep();
                     yield return _cars[e.Seat].StepTo(_boardView.PositionOf(e.Value), _stepDuration);
                     continue;
