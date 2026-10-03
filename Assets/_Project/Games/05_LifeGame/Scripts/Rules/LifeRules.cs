@@ -259,13 +259,29 @@ namespace MiniGame.LifeGame
         private static void StepTo(LifeGameState state, int index, List<LifeEvent> events)
         {
             LifePlayerState player = state.Current;
+            LifeSection from = state.Board[player.Position].Section;
             player.Position = index;
             state.StepsLeft--;
             events.Add(new LifeEvent(LifeEventType.Moved, player.Seat, value: index));
 
             LifeCell cell = state.Board[index];
+            if (cell.Section != from) ChangeEraIfFirst(state, cell.Section, events);
             if (cell.Type == LifeCellType.Payday) PaySalary(state, player, events);
             if (LifeCellTypes.IsStop(cell.Type)) state.StepsLeft = 0;
+        }
+
+        /// <summary>
+        /// 先頭の人が区間B・分岐②の道・区間C に入ったときだけ時代を引く（給料日ごとだと1試合に約20回変わって覚えきれないため）。
+        /// 区間をまたいだときだけ呼ぶ（テストで区間の途中に置いたコマを動かしても引かないように）
+        /// </summary>
+        private static void ChangeEraIfFirst(LifeGameState state, LifeSection section, List<LifeEvent> events)
+        {
+            int stage = LifeEras.StageOf(section);
+            if (stage <= state.EraStage) return;
+
+            state.EraStage = stage;
+            state.Era = LifeEras.Draw(state.Random, state.Era);
+            events.Add(new LifeEvent(LifeEventType.EraChanged, state.CurrentSeat, value: (int)state.Era));
         }
 
         private static void PaySalary(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
@@ -308,17 +324,19 @@ namespace MiniGame.LifeGame
             switch (cell.Type)
             {
                 case LifeCellType.Income:
-                    LifeMoney.Receive(player, cell.Amount, events);
+                    LifeMoney.Receive(player, LifeEras.Multiply(state, cell.Type, cell.Amount), events);
                     return false;
                 case LifeCellType.Expense:
                 case LifeCellType.Tuition:
-                    LifeMoney.PayExpense(state, player, cell.Amount, LifeEvent.Bank, events);
+                    LifeMoney.PayExpense(state, player, LifeEras.Multiply(state, cell.Type, cell.Amount), LifeEvent.Bank, events);
                     return false;
                 case LifeCellType.Sickness:
-                    LifeMoney.PayMishap(state, player, cell.Amount, LifeInsurance.Life, LifeJobRole.Healer, events);
+                    int sickness = LifeEras.Multiply(state, cell.Type, cell.Amount);
+                    LifeMoney.PayMishap(state, player, sickness, LifeInsurance.Life, LifeJobRole.Healer, events);
                     return false;
                 case LifeCellType.Accident:
-                    LifeMoney.PayMishap(state, player, cell.Amount, LifeInsurance.Auto, LifeJobRole.Police, events);
+                    int accident = LifeEras.Multiply(state, cell.Type, cell.Amount);
+                    LifeMoney.PayMishap(state, player, accident, LifeInsurance.Auto, LifeJobRole.Police, events);
                     return false;
                 case LifeCellType.Fire:
                     Fire(state, player, events);
@@ -376,15 +394,21 @@ namespace MiniGame.LifeGame
 
         private static void Fire(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
         {
+            int damage = LifeEras.Multiply(state, LifeCellType.Fire, FireDamage(state.Config, player));
             if (!player.HasHouse)
             {
                 // 家なしは小額の出費だけ。保険・手数料の対象外（仕様書 §5.2）
-                LifeMoney.PayExpense(state, player, state.Config.FireWithoutHouse, LifeEvent.Bank, events);
+                LifeMoney.PayExpense(state, player, damage, LifeEvent.Bank, events);
                 return;
             }
 
-            int damage = state.Config.Houses[player.HouseId].Price / 2;
             LifeMoney.PayMishap(state, player, damage, LifeInsurance.Fire, LifeJobRole.Repair, events);
+        }
+
+        /// <summary>時代の倍率をかける前の火事の額。家なしは小額、家ありは家の値段の半分</summary>
+        public static int FireDamage(LifeRuleConfig config, LifePlayerState player)
+        {
+            return player.HasHouse ? config.Houses[player.HouseId].Price / 2 : config.FireWithoutHouse;
         }
 
         /// <summary>
@@ -425,7 +449,7 @@ namespace MiniGame.LifeGame
 
             player.Children++;
             events.Add(new LifeEvent(LifeEventType.ChildBorn, player.Seat, value: player.Children));
-            LifeMoney.CollectGifts(state, player, state.Config.BirthGift, events);
+            LifeMoney.CollectGifts(state, player, LifeEras.Multiply(state, LifeCellType.Birth, state.Config.BirthGift), events);
         }
 
         private static void Marry(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
@@ -434,7 +458,7 @@ namespace MiniGame.LifeGame
 
             player.IsMarried = true;
             events.Add(new LifeEvent(LifeEventType.Married, player.Seat));
-            LifeMoney.CollectGifts(state, player, state.Config.MarriageGift, events);
+            LifeMoney.CollectGifts(state, player, LifeEras.Multiply(state, LifeCellType.Marriage, state.Config.MarriageGift), events);
         }
 
         private static void Goal(LifeGameState state, LifePlayerState player, List<LifeEvent> events)
@@ -547,7 +571,11 @@ namespace MiniGame.LifeGame
                 bool won = roll >= state.Config.BetWinMin;
                 events.Add(new LifeEvent(LifeEventType.BetResult, player.Seat, won ? stake : -stake, roll));
 
-                if (won) LifeMoney.Receive(player, stake, events);
+                if (won)
+                {
+                    player.GambleWinnings += stake;
+                    LifeMoney.Receive(player, stake, events);
+                }
                 else LifeMoney.Pay(state, player, stake, LifeEvent.Bank, events);
             }
 
@@ -568,7 +596,7 @@ namespace MiniGame.LifeGame
                 else
                 {
                     // 指名：相手から受け取る。相手が払えなければ手形（ご祝儀と同じ）
-                    LifeMoney.Pay(state, other, state.CurrentCell.Amount, player.Seat, events);
+                    LifeMoney.Pay(state, other, LifeEras.Multiply(state, LifeCellType.Nominate, state.CurrentCell.Amount), player.Seat, events);
                 }
             }
 
@@ -591,7 +619,11 @@ namespace MiniGame.LifeGame
             int winner = Array.IndexOf(numbers, roll);
             events.Add(new LifeEvent(LifeEventType.LotteryDrawn, state.CurrentSeat, value: roll, otherSeat: winner));
 
-            if (winner >= 0) LifeMoney.Receive(state.Players[winner], state.Config.LotteryPrize, events);
+            if (winner >= 0)
+            {
+                state.Players[winner].GambleWinnings += state.Config.LotteryPrize;
+                LifeMoney.Receive(state.Players[winner], state.Config.LotteryPrize, events);
+            }
             else LifeMoney.Receive(state.Current, state.Config.LotteryConsolation, events);
 
             EndTurn(state, events);

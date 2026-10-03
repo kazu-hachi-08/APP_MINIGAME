@@ -28,6 +28,7 @@ namespace MiniGame.LifeGame
         private const string DisconnectedTitle = "他のプレイヤーとの接続が切れました";
         private const string DisconnectedDetail = "試合を終了しました";
         private const string RankingTitle = "順位発表";
+        private const string TitleAnnouncementTitle = "称号発表";
 
         [Header("Life Game")]
         [Tooltip("テーマ選択の並び（現代・ファンタジー・宇宙）。オンラインではこの番号を送る")]
@@ -48,6 +49,8 @@ namespace MiniGame.LifeGame
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private CharacterSelectPanel _characterSelectPanel;
         [SerializeField] private TurnBannerView _turnBanner;
+        [Tooltip("画面上部に出しっぱなしにする今の時代")]
+        [SerializeField] private Text _eraLabel;
 
         [Header("Effects")]
         [SerializeField] private BoardEffects _effects;
@@ -74,6 +77,8 @@ namespace MiniGame.LifeGame
         [SerializeField] private float _effectInterval = 0.35f;
         [Tooltip("精算で1行ずつ出す間")]
         [SerializeField] private float _settlementStep = 0.6f;
+        [Tooltip("時代が変わったバナーを出す時間。効果の説明を読み切れる長さにする")]
+        [SerializeField] private float _eraBannerTime = 2f;
 
         [Header("NPC (sec)")]
         [Tooltip("「○○の番」表示とイベント表示を自動で閉じるまでの時間（仕様書 §10.2）")]
@@ -198,6 +203,7 @@ namespace MiniGame.LifeGame
             _boardCamera.Follow(_cars[CurrentSeat].transform);
             _boardCamera.SnapToTarget();
             _moneyBar.Refresh(_state);
+            _eraLabel.text = LifeTexts.EraLabel(_state);
         }
 
         private bool IsNpc(int seat) => _kinds[seat] == LifePlayerKind.Npc;
@@ -509,6 +515,12 @@ namespace MiniGame.LifeGame
                     continue;
                 }
 
+                if (e.Type == LifeEventType.EraChanged)
+                {
+                    yield return PlayEraChanged((LifeEra)e.Value);
+                    continue;
+                }
+
                 if (e.Type == LifeEventType.Rested)
                 {
                     yield return _turnBanner.Play($"{DisplayName(e.Seat)} は1回休み", LifeColors.Seat(e.Seat), false, _npcAutoClose);
@@ -540,6 +552,17 @@ namespace MiniGame.LifeGame
             }
 
             yield return ShowPopup(content, autoClose);
+        }
+
+        /// <summary>
+        /// 移動の途中で区間に入ったときに来るので、コマを止めたまま全画面で知らせる。
+        /// 全員に関わる知らせで手番の人が何かを決めるものではないので、人間の番でもタップ待ちにせず自動で閉じる
+        /// </summary>
+        private IEnumerator PlayEraChanged(LifeEra era)
+        {
+            _eraLabel.text = LifeTexts.EraLabel(_state);
+            _audio.PlayPayday();
+            yield return _turnBanner.Play(LifeTexts.EraBanner(_state.Config, era), LifeColors.Celebration, false, _eraBannerTime);
         }
 
         private IEnumerator SpinBetRoulette(int roll)
@@ -1010,7 +1033,7 @@ namespace MiniGame.LifeGame
             bool isSwap = _state.CurrentCell.Type == LifeCellType.SwapJob;
             title = isSwap
                 ? $"誰と職業を交換する？\n今の職業：{LifeTexts.JobName(_state.Current.JobId)}"
-                : $"誰から {LifeTexts.Money(_state.CurrentCell.Amount)} もらう？";
+                : $"誰から {LifeTexts.Money(LifeEras.Multiply(_state, LifeCellType.Nominate, _state.CurrentCell.Amount))} もらう？";
 
             enabled = new List<bool>();
             foreach (int seat in TargetSeats())
@@ -1115,6 +1138,7 @@ namespace MiniGame.LifeGame
             foreach (LifeSettlementEntry entry in entries) yield return PlaySettlementOf(entry);
 
             _settlementView.Hide();
+            yield return PlayTitleAnnouncement(entries);
             _moneyBar.Refresh(_state);
             var ranking = new EventPopupContent { Title = RankingTitle };
             ranking.Lines.Add((LifeTexts.Ranking(entries, DisplayName), Color.white));
@@ -1132,13 +1156,27 @@ namespace MiniGame.LifeGame
             FinishGame(isVictory, $"{DisplayName(winner.Seat)} の勝ち", $"総資産 {LifeTexts.Money(winner.Total)}");
         }
 
+        /// <summary>称号は全員の精算が終わってから、まとめて発表する（誰が一番かは全員を比べないと決まらないため）</summary>
+        private IEnumerator PlayTitleAnnouncement(List<LifeSettlementEntry> entries)
+        {
+            string lines = LifeTexts.TitleAnnouncement(_state, entries, DisplayName);
+            if (lines == null) yield break;
+
+            var content = new EventPopupContent { Title = TitleAnnouncementTitle };
+            content.Lines.Add((lines, LifeColors.Celebration));
+            _audio.PlayPayday();
+            yield return _eventPopup.Play(content);
+        }
+
         /// <summary>
         /// 家の売却 → 株 → 保険 → 手形 の順に1行ずつ足していく。ルールは精算を一度に済ませているので、
-        /// 精算前の所持金は内訳から逆算する。家の売却のルーレットはルールが決めた出目で止める
+        /// 精算前の所持金は内訳から逆算する。家の売却のルーレットはルールが決めた出目で止める。
+        /// 称号ボーナスは後でまとめて発表するので、ここでは除いた総資産を見せる
         /// </summary>
         private IEnumerator PlaySettlementOf(LifeSettlementEntry entry)
         {
-            int money = entry.Total - entry.HouseSale - entry.StockSale - entry.InsuranceRefund + entry.NoteRepayment;
+            int beforeTitles = entry.Total - entry.TitleBonus;
+            int money = beforeTitles - entry.HouseSale - entry.StockSale - entry.InsuranceRefund + entry.NoteRepayment;
             _settlementView.Begin($"{DisplayName(entry.Seat)} の精算", LifeColors.Seat(entry.Seat), LifeTexts.SettlementMoney(money));
             yield return new WaitForSeconds(_settlementStep);
 
@@ -1158,7 +1196,7 @@ namespace MiniGame.LifeGame
             money -= entry.NoteRepayment;
             yield return ShowSettlementLine(LifeTexts.NoteRepayment(entry), money, -entry.NoteRepayment);
 
-            _settlementView.SetMoney(LifeTexts.SettlementTotal(entry.Total));
+            _settlementView.SetMoney(LifeTexts.SettlementTotal(beforeTitles));
             yield return _settlementView.WaitForTap();
         }
 

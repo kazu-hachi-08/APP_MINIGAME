@@ -30,6 +30,7 @@ namespace MiniGame.LifeGame
         Rested,          // 1回休みで手番を飛ばされた
         LotteryTicket,   // Value = その人の宝くじの番号（全員分が続けて来る）
         LotteryDrawn,    // Value = 出目, OtherSeat = 当たった人（-1 = 誰も当たらない）
+        EraChanged,      // Value = 新しい時代（LifeEra）, Seat = 区間に入った人
     }
 
     /// <summary>ルールが起こしたこと。見た目側はこの列を順に演出する</summary>

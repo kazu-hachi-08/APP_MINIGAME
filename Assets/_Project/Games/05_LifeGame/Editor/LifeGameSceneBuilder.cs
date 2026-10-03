@@ -63,6 +63,11 @@ namespace MiniGame.LifeGame.Editor
         private static readonly Vector2 MoneyBarPosition = new Vector2(20f, -30f);
         private const int MoneyFontSize = 36;
 
+        // 今の時代（所持金バーのすぐ下）。所持金バーと同じ幅で、全体ボタンにかからないようにする
+        private static readonly Vector2 EraLabelPosition = new Vector2(20f, -150f);
+        private const float EraLabelHeight = 50f;
+        private const int EraLabelFontSize = 30;
+
         // ルーレット（下部中央）。フリックの判定はルーレットより広い下部の帯で取り、指が少し外れても回せるようにする
         private const float RouletteAreaHeight = 700f;
         private const float WheelSize = 440f;
@@ -113,6 +118,7 @@ namespace MiniGame.LifeGame.Editor
             Transform safeArea = CreateSafeArea(canvas);
 
             MoneyBarView moneyBar = CreateMoneyBar(safeArea);
+            Text eraLabel = CreateEraLabel(safeArea);
             (RouletteView rouletteView, RouletteInput rouletteInput) = CreateRoulette(safeArea);
             Button walletButton = CreateHudButton(safeArea, "Btn_Wallet", "財布", WalletButtonSize, BottomLeftAnchor, WalletButtonPosition);
             Button overviewButton = CreateHudButton(safeArea, "Btn_Overview", "全体", OverviewButtonSize, TopRightAnchor, OverviewButtonPosition);
@@ -163,7 +169,7 @@ namespace MiniGame.LifeGame.Editor
                 ("_eventPopup", eventPopup), ("_choicePanel", choicePanel), ("_walletPanel", walletPanel),
                 ("_walletButton", walletButton), ("_overviewButton", overviewButton),
                 ("_characterCatalog", characterCatalog), ("_themeSelectPanel", themeSelectPanel), ("_setupPanel", setupPanel),
-                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner),
+                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner), ("_eraLabel", eraLabel),
                 ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", onlineSession), ("_onlineLink", onlineLink),
                 ("_effects", effects), ("_audio", audio), ("_settlementView", settlementView), ("_victoryShow", victoryShow),
                 ("_familyFace", LifeGameArtGenerator.Load(LifeGameArtGenerator.FamilyFaceName)));
@@ -269,6 +275,16 @@ namespace MiniGame.LifeGame.Editor
             SetArray(bar, "_cells", texts);
             SetArray(bar, "_backgrounds", backgrounds);
             return bar;
+        }
+
+        private static Text CreateEraLabel(Transform safeArea)
+        {
+            float width = MoneyCellSize.x * MoneyBarSeats + MoneyCellSpacing * (MoneyBarSeats - 1);
+            Text label = CreateText(safeArea, "EraLabel", EraLabelFontSize, TopLeftAnchor, EraLabelPosition,
+                new Vector2(width, EraLabelHeight), LifeColors.Celebration);
+            label.alignment = TextAnchor.MiddleLeft;
+            AddOutline(label.gameObject);
+            return label;
         }
 
         private static (RouletteView, RouletteInput) CreateRoulette(Transform safeArea)

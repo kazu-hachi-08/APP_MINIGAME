@@ -33,6 +33,18 @@ namespace MiniGame.LifeGame
         /// <summary>残りの休みの回数。手番が回ってくるたびに1減らして飛ばす</summary>
         public int RestTurns;
 
+        // 称号（精算の最後）の判定用に数えておく
+        public int DividendTotal;
+
+        /// <summary>切った約束手形の枚数（返済しても減らない）</summary>
+        public int NotesIssued;
+
+        /// <summary>賭け・宝くじで勝って受け取った額（宝くじの残念賞は含めない）</summary>
+        public int GambleWinnings;
+
+        /// <summary>他の人へ払った額（ご祝儀・係の手数料・指名・プレゼント）</summary>
+        public int PaidToOthers;
+
         /// <summary>ゴールした順番（0 = 1着）。未ゴールは NotGoaled</summary>
         public int GoalOrder = NotGoaled;
 
@@ -62,6 +74,12 @@ namespace MiniGame.LifeGame
 
         /// <summary>進むマスで移動中か。着いたマスの効果を出さないために、分岐で止まっている間も覚えておく</summary>
         public bool IsWarping;
+
+        /// <summary>今の時代。先頭が区間B・分岐②の道・区間C に入るたびに変わる</summary>
+        public LifeEra Era;
+
+        /// <summary>時代を引いた区間の段階（LifeEras.StageOf）。同じ区間で2回引かないように覚えておく</summary>
+        public int EraStage;
 
         /// <summary>職業カード・転職で引いた2枚（職業番号）。選択待ちでなければ空</summary>
         public List<int> JobCards = new List<int>();

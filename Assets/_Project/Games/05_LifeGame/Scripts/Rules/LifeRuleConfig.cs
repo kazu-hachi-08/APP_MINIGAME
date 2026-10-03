@@ -105,6 +105,17 @@ namespace MiniGame.LifeGame
         public int LotteryPrize = 500;
         public int LotteryConsolation = 50;
 
+        // 時代イベントの倍率（%）。LifeEras.PercentOf がどのマスに効くかを決める
+        public int EraBoomPercent = 150;
+        public int EraRecessionIncomePercent = 50;
+        public int EraRecessionExpensePercent = 150;
+        public int EraStockBoomPercent = 200;
+        public int EraBabyBoomPercent = 200;
+        public int EraPeacePercent = 50;
+
+        // 称号ボーナス（精算の最後に称号1つにつき）
+        public int TitleBonus = 100;
+
         public int MarriageGift = 30;
         public int BirthGift = 20;
         public int MaxChildren = 4;
