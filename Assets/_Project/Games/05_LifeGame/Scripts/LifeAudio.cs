@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.LifeGame
 {
     /// <summary>
-    /// 人生ゲームのSE（ルーレットの回転・停止、コマの移動、お金の増減、給料日、結婚・出産、ゴール、勝利）をプログラムで生成して鳴らす（仕様書 §3.4）。
+    /// 人生ゲームのSE（ルーレットの回転・停止、コマの移動、お金の増減、給料日、結婚・出産、ゴール、勝利、精算演出）をプログラムで生成して鳴らす（仕様書 §3.4）。
     /// モルックの MolkkyAudio と同じく、正式な素材が用意できたら Inspector のクリップ欄に差し込めばそのまま置き換わる。
     /// </summary>
     public class LifeAudio : MonoBehaviour
@@ -28,6 +28,10 @@ namespace MiniGame.LifeGame
         [SerializeField] private AudioClip _familyClip;
         [SerializeField] private AudioClip _goalClip;
         [SerializeField] private AudioClip _victoryClip;
+        [SerializeField] private AudioClip _janClip;
+        [SerializeField] private AudioClip _drumrollClip;
+        [SerializeField] private AudioClip _countClip;
+        [SerializeField] private AudioClip _popClip;
 
         [Header("Volume")]
         [Range(0f, 1f)] [SerializeField] private float _tickVolume = 0.35f;
@@ -38,7 +42,11 @@ namespace MiniGame.LifeGame
         [Tooltip("ルーレットのカチカチを鳴らす最短間隔（秒）。回り始めの速いところで音が重なって割れないようにする")]
         [SerializeField] private float _minTickInterval = 0.04f;
 
+        [Tooltip("精算のカウントアップの音を鳴らす最短間隔（秒）。毎フレーム鳴らすと音が潰れるため")]
+        [SerializeField] private float _minCountInterval = 0.06f;
+
         private float _lastTickTime = float.NegativeInfinity;
+        private float _lastCountTime = float.NegativeInfinity;
 
         private void Awake()
         {
@@ -52,6 +60,10 @@ namespace MiniGame.LifeGame
             if (_familyClip == null) _familyClip = CreateBell("Se_LifeFamily", new[] { 1319f, 1568f, 2093f }, 0.14f);
             if (_goalClip == null) _goalClip = CreateNotes("Se_LifeGoal", new[] { 523f, 523f, 784f, 1047f }, 0.12f);
             if (_victoryClip == null) _victoryClip = CreateNotes("Se_LifeVictory", new[] { 523f, 659f, 784f, 1047f, 784f, 1047f }, 0.13f);
+            if (_janClip == null) _janClip = CreateChord("Se_LifeJan", new[] { 523f, 659f, 784f, 1047f }, 0.8f);
+            if (_drumrollClip == null) _drumrollClip = CreateDrumroll("Se_LifeDrumroll", 1.4f);
+            if (_countClip == null) _countClip = CreateClick("Se_LifeCount", 1400f, 0.03f);
+            if (_popClip == null) _popClip = CreateNotes("Se_LifePop", new[] { 784f, 1175f }, 0.05f);
         }
 
         private void OnEnable()
@@ -79,6 +91,23 @@ namespace MiniGame.LifeGame
         public void PlayGoal() => Play(_goalClip, _jingleVolume, 1f);
 
         public void PlayVictory() => Play(_victoryClip, _jingleVolume, 1f);
+
+        /// <summary>「けっさん！」のバナーや1位の発表など、場面の区切りを強調する和音</summary>
+        public void PlayJan() => Play(_janClip, _jingleVolume, 1f);
+
+        public void PlayDrumroll() => Play(_drumrollClip, _jingleVolume, 1f);
+
+        /// <summary>称号カードの顔や順位の札が出たとき</summary>
+        public void PlayPop() => Play(_popClip, _moneyVolume, 1f);
+
+        /// <summary>数字が増えていく間に連続で呼ぶ。増えるときは高く、減るときは低くして向きを音でも伝える</summary>
+        public void PlayCount(bool increasing)
+        {
+            if (Time.time - _lastCountTime < _minCountInterval) return;
+
+            _lastCountTime = Time.time;
+            Play(_countClip, _tickVolume, increasing ? 1.2f : 0.8f);
+        }
 
         private void PlayTick()
         {
@@ -130,6 +159,37 @@ namespace MiniGame.LifeGame
                 float envelope = Mathf.Exp(-local * 6f);
                 return (Mathf.Sin(2f * Mathf.PI * f * t) + Mathf.Sin(2f * Mathf.PI * f * overtoneRatio * t) * overtoneGain)
                        * envelope * 0.4f;
+            });
+        }
+
+        /// <summary>全部の音を同時に鳴らす「ジャン！」。頭にノイズを混ぜてシンバルのような打撃感を出す</summary>
+        private static AudioClip CreateChord(string name, float[] frequencies, float duration)
+        {
+            const float noiseDecay = 25f;
+            var random = new System.Random(1);
+            return CreateClip(name, duration, t =>
+            {
+                float sum = 0f;
+                foreach (float f in frequencies) sum += Mathf.Sin(2f * Mathf.PI * f * t);
+                float tone = sum / frequencies.Length * Mathf.Exp(-t * 4f) * 0.6f;
+                float noise = ((float)random.NextDouble() * 2f - 1f) * Mathf.Exp(-t * noiseDecay) * 0.4f;
+                return tone + noise;
+            });
+        }
+
+        /// <summary>
+        /// 小刻みなノイズの連打をだんだん大きくするドラムロール。止められないので、1位の発表までの間に収まる長さにする
+        /// </summary>
+        private static AudioClip CreateDrumroll(string name, float duration)
+        {
+            const float hitsPerSecond = 22f;
+            const float hitDecay = 40f;
+            var random = new System.Random(2);
+            return CreateClip(name, duration, t =>
+            {
+                float local = t % (1f / hitsPerSecond);
+                float crescendo = Mathf.Lerp(0.25f, 0.7f, t / duration);
+                return ((float)random.NextDouble() * 2f - 1f) * Mathf.Exp(-local * hitDecay) * crescendo;
             });
         }
 

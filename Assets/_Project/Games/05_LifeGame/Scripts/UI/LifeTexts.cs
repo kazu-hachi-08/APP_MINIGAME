@@ -59,6 +59,14 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Insurance: return "保険";
                 case LifeCellType.Stock: return "株";
                 case LifeCellType.ChangeJob: return "転職";
+                case LifeCellType.Bet: return "賭け";
+                case LifeCellType.Nominate: return "指名";
+                case LifeCellType.Present: return "プレゼント";
+                case LifeCellType.SwapJob: return "入れ替え";
+                case LifeCellType.Forward: return "進む";
+                case LifeCellType.Back: return "戻る";
+                case LifeCellType.Rest: return "1回休み";
+                case LifeCellType.Lottery: return "宝くじ";
                 default: return type.ToString();
             }
         }
@@ -69,7 +77,113 @@ namespace MiniGame.LifeGame
         /// </summary>
         public static string CellLabel(LifeCell cell)
         {
+            // 進む・戻るの Amount は歩数なので、数字だけだと金額と見分けがつかない
+            if (cell.Type == LifeCellType.Forward) return $"{cell.Amount}進む";
+            if (cell.Type == LifeCellType.Back) return $"{cell.Amount}戻る";
+
             return cell.Amount > 0 ? cell.Amount.ToString() : CellName(cell.Type);
+        }
+
+        /// <summary>マスの効果の1行。手番の人の能力・保険・家を反映した額を出す（押した人がそのまま比べられるように）</summary>
+        public static string CellEffect(LifeGameState state, LifeCell cell)
+        {
+            string effect = BaseCellEffect(state, cell);
+            return LifeEras.Affects(state, cell.Type) ? $"{effect}{EraNote(state)}" : effect;
+        }
+
+        /// <summary>金額は時代の倍率をかけた後の額（ルールと同じ LifeEras.Multiply を通し、実際の増減とずれないようにする）</summary>
+        private static string BaseCellEffect(LifeGameState state, LifeCell cell)
+        {
+            LifeRuleConfig config = state.Config;
+            LifePlayerState player = state.Current;
+            int amount = LifeEras.Multiply(state, cell.Type, cell.Amount);
+            switch (cell.Type)
+            {
+                case LifeCellType.Income: return $"{SignedMoney(amount)} もらえる";
+                case LifeCellType.Expense:
+                case LifeCellType.Tuition: return $"{SignedMoney(-LifeMoney.Discounted(config, player, amount))} 払う";
+                case LifeCellType.Sickness: return MishapEffect(config, player, amount, LifeInsurance.Life);
+                case LifeCellType.Accident: return MishapEffect(config, player, amount, LifeInsurance.Auto);
+                case LifeCellType.Fire:
+                    int damage = LifeEras.Multiply(state, cell.Type, LifeRules.FireDamage(config, player));
+                    if (!player.HasHouse) return $"{SignedMoney(-LifeMoney.Discounted(config, player, damage))} 払う（家なし）";
+                    return MishapEffect(config, player, damage, LifeInsurance.Fire);
+                case LifeCellType.Birth:
+                    return $"子供が生まれる。全員からお祝い {Money(LifeEras.Multiply(state, cell.Type, config.BirthGift))}ずつ";
+                case LifeCellType.Marriage:
+                    return $"必ず止まる。結婚して全員からお祝い {Money(LifeEras.Multiply(state, cell.Type, config.MarriageGift))}ずつ";
+                case LifeCellType.Payday: return $"通るだけで給料 {Money(LifeRules.SalaryOf(config, player, player.JobId))}";
+                case LifeCellType.JobOffer: return "必ず止まる。職業カード2枚から選ぶ";
+                case LifeCellType.Graduation: return "必ず止まる。上級職を含む職業カード2枚から選ぶ";
+                case LifeCellType.ChangeJob: return "転職できる（今のままでもOK）";
+                case LifeCellType.House: return player.HasHouse ? "家を持っているので何もなし" : "家を買える";
+                case LifeCellType.Insurance: return "保険に入れる";
+                case LifeCellType.Stock: return $"株を1枚 {Money(config.StockPrice)} で買える";
+                case LifeCellType.Bet:
+                    return $"{Money(cell.Amount)} 賭けられる。{config.BetWinMin}以上で {SignedMoney(cell.Amount)}、外れたら没収";
+                case LifeCellType.Nominate: return $"自分以外を1人選び、{Money(amount)} もらう";
+                case LifeCellType.Present: return $"所持金が一番少ない人に {Money(cell.Amount)} 渡す";
+                case LifeCellType.SwapJob: return "職業を持っている人を1人選び、職業を交換できる（しなくてもOK）";
+                case LifeCellType.Forward: return $"{cell.Amount}マス進む（着いたマスの効果はなし）";
+                case LifeCellType.Back: return $"{cell.Amount}マス戻る（着いたマスの効果はなし）";
+                case LifeCellType.Rest: return "次の自分の番を1回休む";
+                case LifeCellType.Lottery:
+                    return $"番号を1つ選ぶ。当たった人が {Money(config.LotteryPrize)}、誰も当たらなければ {Money(config.LotteryConsolation)}";
+                case LifeCellType.Branch: return "道を選ぶ";
+                case LifeCellType.Goal: return $"必ず止まる。1着ボーナス {Money(config.GoalBonuses[0])}";
+                default: return "何もなし";
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 時代
+        // ------------------------------------------------------------------
+        public static string EraName(LifeEra era)
+        {
+            switch (era)
+            {
+                case LifeEra.Boom: return "好景気";
+                case LifeEra.Recession: return "不況";
+                case LifeEra.StockBoom: return "株ブーム";
+                case LifeEra.BabyBoom: return "ベビーブーム";
+                case LifeEra.Peace: return "平和な時代";
+                default: return "";
+            }
+        }
+
+        /// <summary>時代の効果の説明。倍率は LifeRuleConfig から作る（数字を変えたときに説明だけ古くならないように）</summary>
+        public static string EraEffect(LifeRuleConfig config, LifeEra era)
+        {
+            switch (era)
+            {
+                case LifeEra.Boom: return $"収入・指名マス {Ratio(config.EraBoomPercent)}";
+                case LifeEra.Recession:
+                    return $"収入マス {Ratio(config.EraRecessionIncomePercent)}・出費マス {Ratio(config.EraRecessionExpensePercent)}";
+                case LifeEra.StockBoom: return $"株の配当 {Ratio(config.EraStockBoomPercent)}";
+                case LifeEra.BabyBoom: return $"結婚・出産のお祝い {Ratio(config.EraBabyBoomPercent)}";
+                case LifeEra.Peace: return $"病気・事故・火事の支払い {Ratio(config.EraPeacePercent)}";
+                default: return "";
+            }
+        }
+
+        /// <summary>画面上部に出しっぱなしにする1行。最初の時代が来る前は空</summary>
+        public static string EraLabel(LifeGameState state) =>
+            state.Era == LifeEra.None ? "" : $"時代：{EraName(state.Era)}（{EraEffect(state.Config, state.Era)}）";
+
+        public static string EraBanner(LifeRuleConfig config, LifeEra era) =>
+            $"時代が変わった！\n{EraName(era)}\n<size=48>{EraEffect(config, era)}</size>";
+
+        private static string EraNote(LifeGameState state) => $"（{EraName(state.Era)}）";
+
+        // 150 → ×1.5、200 → ×2。倍率は 10% 刻みで決める前提
+        private static string Ratio(int percent) =>
+            percent % 100 == 0 ? $"×{percent / 100}" : $"×{percent / 100}.{percent % 100 / 10}";
+
+        private static string MishapEffect(LifeRuleConfig config, LifePlayerState player, int amount, LifeInsurance insurance)
+        {
+            if ((player.Insurances & insurance) != 0) return $"{InsuranceName(insurance)}があるので払わない";
+
+            return $"{SignedMoney(-LifeMoney.Discounted(config, player, amount))} 払う（{InsuranceName(insurance)}なら0）";
         }
 
         /// <summary>給料は手番の人の能力込みの額を見せる（がんばり屋が実際にもらえる額で比べられるように）</summary>
@@ -121,13 +235,48 @@ namespace MiniGame.LifeGame
                     return $"{who}株（{e.Value}番）を買った";
                 case LifeEventType.Goal:
                     return $"{who}ゴール！ {e.Value + 1}着 ボーナス {SignedMoney(e.Amount)}";
+                case LifeEventType.BetResult:
+                    return $"{who}出目 {e.Value} … {(e.Amount > 0 ? "賭けに勝った！" : "賭けに負けた")}";
+                case LifeEventType.JobSwapped:
+                    return $"{who}{PlayerName(e.OtherSeat)}と職業を交換！ {JobName(e.Value)}になった";
+                case LifeEventType.Warped:
+                    return e.Amount > 0 ? $"{who}{e.Amount}マス進む！" : $"{who}{-e.Amount}マス戻る…";
+                case LifeEventType.LotteryDrawn:
+                    string result = e.OtherSeat == LifeEvent.Bank ? "はずれ… 残念賞" : $"{PlayerName(e.OtherSeat)}が大当たり！";
+                    return $"当選番号 {e.Value} … {result}";
                 default:
                     return null;
             }
         }
 
-        /// <summary>止まったマスのテーマの一言。無いマスは null</summary>
-        public static string CellFlavor(LifeCell cell) => _theme.CellText(cell.Type, cell.TextVariant);
+        /// <summary>
+        /// 止まったマスのテーマの一言。無いマスは null。
+        /// 生成済みのテーマのアセットは上書きされず、後から足したマスの文面が入っていないので、そのときは共通の一言を出す
+        /// </summary>
+        public static string CellFlavor(LifeCell cell) => _theme.CellText(cell.Type, cell.TextVariant) ?? CommonFlavor(cell.Type);
+
+        private static string CommonFlavor(LifeCellType type)
+        {
+            switch (type)
+            {
+                case LifeCellType.Bet: return "一か八か、勝負する？";
+                case LifeCellType.Nominate: return "誰からもらおうかな";
+                case LifeCellType.Present: return "困っている人におすそ分け";
+                case LifeCellType.SwapJob: return "あの人の仕事、うらやましい…";
+                case LifeCellType.Forward: return "追い風が吹いてきた！";
+                case LifeCellType.Back: return "忘れ物に気づいた！";
+                case LifeCellType.Rest: return "ちょっとひと休み";
+                case LifeCellType.Lottery: return "夢を買ってみる";
+                default: return null;
+            }
+        }
+
+        /// <summary>指名・入れ替えの選択肢の1行。「P2 がんばり屋（所持金 500 / 医者）」</summary>
+        public static string TargetChoice(LifeGameState state, int seat, string displayName)
+        {
+            LifePlayerState player = state.Players[seat];
+            return $"{displayName}\n（所持金 {Money(player.Money)} / {JobName(player.JobId)}）";
+        }
 
         /// <param name="owner">「P1 らっきー」のような席番号＋キャラ名</param>
         /// <param name="abilityText">キャラの能力の説明</param>
@@ -181,6 +330,33 @@ namespace MiniGame.LifeGame
 
         public static string SettlementTotal(int total) => $"総資産 {Money(total)}";
 
+        public static string TitleName(LifeTitle title)
+        {
+            switch (title)
+            {
+                case LifeTitle.ManyChildren: return "子だくさん賞";
+                case LifeTitle.StockKing: return "株王";
+                case LifeTitle.Turbulent: return "波乱万丈賞";
+                case LifeTitle.Gambler: return "ギャンブラー賞";
+                case LifeTitle.Generous: return "お人よし賞";
+                default: return title.ToString();
+            }
+        }
+
+        /// <summary>称号カードの説明。条件と決め手になった数字（「子供 3人」）を並べ、なぜもらえたかが分かる形にする</summary>
+        public static string TitleDetail(LifeTitle title, int score)
+        {
+            switch (title)
+            {
+                case LifeTitle.ManyChildren: return $"子供が一番多い\n子供 {score}人";
+                case LifeTitle.StockKing: return $"株の配当が一番多い\n配当 {Money(score)}";
+                case LifeTitle.Turbulent: return $"約束手形を一番多く切った\n約束手形 {score}枚";
+                case LifeTitle.Gambler: return $"賭け・宝くじで一番勝った\n勝ち {Money(score)}";
+                case LifeTitle.Generous: return $"人に一番多く払った\n人に払った {Money(score)}";
+                default: return score.ToString();
+            }
+        }
+
         public static string HouseSale(LifeSettlementEntry entry) =>
             entry.HouseRoll > 0 ? $"家を売った（出目 {entry.HouseRoll}） {SignedMoney(entry.HouseSale)}" : "家 なし";
 
@@ -192,21 +368,5 @@ namespace MiniGame.LifeGame
 
         public static string NoteRepayment(LifeSettlementEntry entry) =>
             entry.NoteRepayment > 0 ? $"約束手形を返済 {SignedMoney(-entry.NoteRepayment)}" : "約束手形 なし";
-
-        /// <summary>順位発表の行（見出しはイベント表示のタイトル欄に出す）</summary>
-        /// <param name="displayName">席番号 → 「P1 らっきー」のような表示名</param>
-        public static string Ranking(List<LifeSettlementEntry> entries, System.Func<int, string> displayName)
-        {
-            var ranking = new List<LifeSettlementEntry>(entries);
-            ranking.Sort((a, b) => a.Rank.CompareTo(b.Rank));
-
-            var lines = new List<string>();
-            foreach (LifeSettlementEntry entry in ranking)
-            {
-                lines.Add($"{entry.Rank}位 {displayName(entry.Seat)}  {Money(entry.Total)}");
-            }
-
-            return string.Join("\n", lines);
-        }
     }
 }

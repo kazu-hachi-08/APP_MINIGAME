@@ -100,6 +100,34 @@ namespace MiniGame.LifeGame.Tests
             }
         }
 
+        [Test]
+        public void 一つ前のマスは同じ区間の中だけを指す()
+        {
+            LifeBoard board = Generate(0);
+            foreach (LifeCell cell in board.Cells)
+            {
+                LifeCell prev = board[cell.Prev];
+                Assert.AreEqual(cell.Section, prev.Section, $"{cell.Index} の前が別の区間");
+                if (prev.Index != cell.Index) CollectionAssert.Contains(prev.Next, cell.Index);
+            }
+        }
+
+        [Test]
+        public void 進む戻るの歩数は倍にならない()
+        {
+            var config = new LifeRuleConfig();
+            for (int seed = 0; seed < SeedCount; seed++)
+            {
+                foreach (LifeCell cell in Generate(seed).Cells)
+                {
+                    if (cell.Type != LifeCellType.Forward && cell.Type != LifeCellType.Back) continue;
+
+                    Assert.GreaterOrEqual(cell.Amount, config.WarpMin);
+                    Assert.LessOrEqual(cell.Amount, config.WarpMax);
+                }
+            }
+        }
+
         private static Dictionary<LifeSection, List<LifeCellType>> SectionTypes(LifeBoard board)
         {
             var sections = new Dictionary<LifeSection, List<LifeCellType>>();

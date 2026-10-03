@@ -22,7 +22,11 @@ namespace MiniGame.LifeGame
 
             IssueNotesIfShort(state.Config, payer, amount, events);
             payer.Money -= amount;
-            if (toSeat != LifeEvent.Bank) state.Players[toSeat].Money += amount;
+            if (toSeat != LifeEvent.Bank)
+            {
+                state.Players[toSeat].Money += amount;
+                payer.PaidToOthers += amount;
+            }
 
             events.Add(new LifeEvent(LifeEventType.Payment, payer.Seat, amount, otherSeat: toSeat));
         }
@@ -35,7 +39,8 @@ namespace MiniGame.LifeGame
             Pay(state, payer, Discounted(state.Config, payer, amount), toSeat, events);
         }
 
-        private static int Discounted(LifeRuleConfig config, LifePlayerState payer, int amount)
+        /// <summary>しっかり者の割引後の額。マスの効果の説明でも同じ額を見せるため公開する</summary>
+        public static int Discounted(LifeRuleConfig config, LifePlayerState payer, int amount)
         {
             if (payer.Ability != LifeAbility.Thrift) return amount;
 
@@ -50,6 +55,7 @@ namespace MiniGame.LifeGame
             // 1枚単位で切り上げる
             int notes = (shortfall + config.NoteUnit - 1) / config.NoteUnit;
             payer.Notes += notes;
+            payer.NotesIssued += notes;
             payer.Money += notes * config.NoteUnit;
             events.Add(new LifeEvent(LifeEventType.NoteIssued, payer.Seat, notes * config.NoteUnit, notes));
         }
@@ -107,9 +113,10 @@ namespace MiniGame.LifeGame
             return LifeEvent.Bank;
         }
 
-        /// <summary>出目と同じ番号の株を持つ人全員に、1枚ごとに配当を払う（仕様書 §7.4）</summary>
+        /// <summary>出目と同じ番号の株を持つ人全員に、1枚ごとに配当を払う（仕様書 §7.4）。株ブームなら倍</summary>
         public static void PayDividends(LifeGameState state, int roll, List<LifeEvent> events)
         {
+            int dividend = LifeEras.Multiply(state, LifeCellType.Stock, state.Config.Dividend);
             foreach (LifePlayerState player in state.Players)
             {
                 int count = 0;
@@ -120,8 +127,9 @@ namespace MiniGame.LifeGame
 
                 if (count == 0) continue;
 
-                player.Money += count * state.Config.Dividend;
-                events.Add(new LifeEvent(LifeEventType.Dividend, player.Seat, count * state.Config.Dividend, roll));
+                player.Money += count * dividend;
+                player.DividendTotal += count * dividend;
+                events.Add(new LifeEvent(LifeEventType.Dividend, player.Seat, count * dividend, roll));
             }
         }
     }

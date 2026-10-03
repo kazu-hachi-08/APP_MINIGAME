@@ -44,21 +44,10 @@ namespace MiniGame.LifeGame.Editor
                 },
             };
 
-        [MenuItem("Tools/MiniGame/LifeGame/Regenerate Board Layout")]
-        public static void Regenerate()
+        /// <summary>座標を計算し直して上書きする（Rebuild LifeGame から呼ばれる）</summary>
+        public static LifeBoardLayout Regenerate()
         {
-            Save(AssetDatabase.LoadAssetAtPath<LifeBoardLayout>(LayoutPath), Compute(SampleBoard()));
-            Debug.Log($"[LifeBoardLayoutGenerator] 盤面レイアウトを作り直しました: {LayoutPath}");
-        }
-
-        /// <summary>無いか、マス数が盤面と合わなければ作る（LifeGameSceneBuilder から呼ばれる）</summary>
-        public static LifeBoardLayout EnsureLayout()
-        {
-            LifeBoard board = SampleBoard();
-            var layout = AssetDatabase.LoadAssetAtPath<LifeBoardLayout>(LayoutPath);
-            if (layout != null && layout.Count == board.Cells.Count) return layout;
-
-            return Save(layout, Compute(board));
+            return Save(AssetDatabase.LoadAssetAtPath<LifeBoardLayout>(LayoutPath), Compute(SampleBoard()));
         }
 
         /// <summary>マスの並び（区間・分岐）はシードで変わらないので、どのシードの盤面でも同じ座標になる</summary>

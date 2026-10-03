@@ -89,6 +89,33 @@ namespace MiniGame.LifeGame
         public int MaxStocks = 3;
         public int Dividend = 50;
 
+        // 賭けマス。賭け金はマスの金額（ギャンブルルートは倍）。出目が BetWinMin 以上で勝ち
+        public int BetStake = 100;
+        public int BetWinMin = 5;
+
+        // 指名・プレゼントマスで動く金額
+        public int TransferMin = 50;
+        public int TransferMax = 150;
+
+        // 進む・戻るマスの歩数
+        public int WarpMin = 2;
+        public int WarpMax = 4;
+
+        // 宝くじマス。当たった人が LotteryPrize、誰も当たらなければ止まった人が LotteryConsolation
+        public int LotteryPrize = 500;
+        public int LotteryConsolation = 50;
+
+        // 時代イベントの倍率（%）。LifeEras.PercentOf がどのマスに効くかを決める
+        public int EraBoomPercent = 150;
+        public int EraRecessionIncomePercent = 50;
+        public int EraRecessionExpensePercent = 150;
+        public int EraStockBoomPercent = 200;
+        public int EraBabyBoomPercent = 200;
+        public int EraPeacePercent = 50;
+
+        // 称号ボーナス（精算の最後に称号1つにつき）
+        public int TitleBonus = 100;
+
         public int MarriageGift = 30;
         public int BirthGift = 20;
         public int MaxChildren = 4;

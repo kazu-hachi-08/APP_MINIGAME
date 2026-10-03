@@ -41,16 +41,20 @@ namespace MiniGame.LifeGame
         /// <summary>盤面全体を囲む範囲（マスの大きさ込み）</summary>
         public Rect Bounds { get; private set; }
 
+        /// <summary>マスが押された（効果の説明を出すため）</summary>
+        public event System.Action<LifeCell> CellTapped;
+
         public Vector2 PositionOf(int cellIndex) => (Vector2)transform.position + _layout.PositionOf(cellIndex);
 
         /// <summary>イベント表示でも盤面と同じアイコンを出し、どのマスに止まったか見比べられるようにする</summary>
-        public Sprite IconOf(LifeCellType type) => _icons[(int)type];
+        /// <remarks>マスの種類を足した直後で Rebuild LifeGame 前のシーンでも落ちないよう、アイコンが無ければ null</remarks>
+        public Sprite IconOf(LifeCellType type) => (int)type < _icons.Length ? _icons[(int)type] : null;
 
         public void Build(LifeBoard board, LifeThemeData theme)
         {
             if (_layout.Count != board.Cells.Count)
             {
-                Debug.LogError($"[BoardView] レイアウトのマス数 {_layout.Count} と盤面のマス数 {board.Cells.Count} が違う。Tools > MiniGame > LifeGame > Regenerate Board Layout で作り直す");
+                Debug.LogError($"[BoardView] レイアウトのマス数 {_layout.Count} と盤面のマス数 {board.Cells.Count} が違う。Tools > MiniGame > Rebuild LifeGame で作り直す");
                 return;
             }
 
@@ -60,7 +64,8 @@ namespace MiniGame.LifeGame
                 Vector2 position = _layout.PositionOf(cell.Index);
                 foreach (int next in cell.Next) CreateSegment(position, _layout.PositionOf(next), theme.Road);
 
-                CellView.Create(transform, cell, position, theme.CellColor(cell.Type), _icons[(int)cell.Type], style);
+                CellView.Create(transform, cell, position, theme.CellColor(cell.Type), IconOf(cell.Type), style,
+                    tapped => CellTapped?.Invoke(tapped));
             }
 
             _scenery.Build(board, _layout, theme);

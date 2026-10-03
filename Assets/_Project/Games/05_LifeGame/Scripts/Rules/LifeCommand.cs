@@ -24,6 +24,15 @@ namespace MiniGame.LifeGame
 
         /// <summary>Value = 1 で振り直す、0 でこのまま進む</summary>
         ChooseReroll,
+
+        /// <summary>Value = 1 で賭ける、0 でやめる</summary>
+        ChooseBet,
+
+        /// <summary>Value = 相手の席。入れ替えのときだけ -1 でやめる</summary>
+        ChooseTarget,
+
+        /// <summary>Value = 宝くじの番号（1〜10）</summary>
+        ChooseLottery,
     }
 
     /// <summary>

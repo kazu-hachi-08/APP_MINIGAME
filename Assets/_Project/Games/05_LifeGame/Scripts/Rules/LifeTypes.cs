@@ -25,6 +25,16 @@ namespace MiniGame.LifeGame
         Insurance,
         Stock,
         ChangeJob,
+
+        // 追加マス。アイコン（BoardView._icons）が番号順なので、既存の番号をずらさないよう末尾に足す
+        Bet,
+        Nominate,
+        Present,
+        SwapJob,
+        Forward,
+        Back,
+        Rest,
+        Lottery,
     }
 
     /// <summary>盤面の区間。シャッフルは区間ごとに行う</summary>
@@ -89,6 +99,15 @@ namespace MiniGame.LifeGame
         House,
         Insurance,
         Stock,
+
+        /// <summary>賭けマスで賭けるか決める</summary>
+        Bet,
+
+        /// <summary>指名・入れ替えマスで相手を選ぶ。どちらのマスかは CurrentCell.Type で分かる</summary>
+        ChooseTarget,
+
+        /// <summary>宝くじマスで番号を選ぶ</summary>
+        Lottery,
         Finished,
     }
 

@@ -14,6 +14,9 @@ namespace MiniGame.LifeGame
         /// <summary>文面の選び番号。テーマの文面リストの数で割った余りで使う（テーマが決まる前に盤面を作れるようにするため）</summary>
         public int TextVariant;
 
+        /// <summary>1つ前のマス（戻るマス用）。区間の先頭は自分自身（分岐・合流を逆走させないため）</summary>
+        public int Prev;
+
         /// <summary>次のマス。2つ以上あれば分岐</summary>
         public List<int> Next = new List<int>();
 
@@ -33,7 +36,7 @@ namespace MiniGame.LifeGame
 
         internal LifeCell Add(LifeCellType type, LifeSection section)
         {
-            var cell = new LifeCell { Index = Cells.Count, Type = type, Section = section };
+            var cell = new LifeCell { Index = Cells.Count, Type = type, Section = section, Prev = Cells.Count };
             Cells.Add(cell);
             return cell;
         }

@@ -5,7 +5,7 @@ namespace MiniGame.LifeGame.Editor
 {
     /// <summary>
     /// マスのアイコンとコマの乗り物を1文字＝1ピクセルの文字列で持つ（LifeGameArtGenerator が PNG にする）。
-    /// 絵を直したいときは文字を書き換えて Tools > MiniGame > LifeGame > Regenerate Art を実行する。
+    /// 絵を直したいときは文字を書き換えて Tools > MiniGame > Rebuild LifeGame を実行する。
     /// </summary>
     internal static class LifeArtPatterns
     {
@@ -341,6 +341,142 @@ namespace MiniGame.LifeGame.Editor
                     ".kkkkkkkkkk.",
                     "..kk........",
                     "...k........",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Bet, new[]
+                {
+                    "............",
+                    ".kkkkkkkkkk.",
+                    ".kwwwwwwwwk.",
+                    ".kwkkwwwwwk.",
+                    ".kwkkwwwwwk.",
+                    ".kwwwkkwwwk.",
+                    ".kwwwkkwwwk.",
+                    ".kwwwwwkkwk.",
+                    ".kwwwwwkkwk.",
+                    ".kwwwwwwwwk.",
+                    ".kkkkkkkkkk.",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Nominate, new[]
+                {
+                    "....kkkk....",
+                    "..kkrrrrkk..",
+                    ".krrwwwwrrk.",
+                    ".krwwwwwwrk.",
+                    "krwwrrrrwwrk",
+                    "krwwrkkrwwrk",
+                    "krwwrkkrwwrk",
+                    "krwwrrrrwwrk",
+                    ".krwwwwwwrk.",
+                    ".krrwwwwrrk.",
+                    "..kkrrrrkk..",
+                    "....kkkk....",
+                }
+            },
+            {
+                LifeCellType.Present, new[]
+                {
+                    "...kk..kk...",
+                    "..kyykkyyk..",
+                    "...kkyykk...",
+                    "kkkkkyykkkkk",
+                    "krrrryyrrrrk",
+                    "kkkkkyykkkkk",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".krrryyrrrk.",
+                    ".kkkkkkkkkk.",
+                }
+            },
+            {
+                LifeCellType.SwapJob, new[]
+                {
+                    "............",
+                    "kkkk........",
+                    "kbbk....k...",
+                    "kbbkkkkkkk..",
+                    "kkkk....k...",
+                    "............",
+                    "............",
+                    "...k....kkkk",
+                    "..kkkkkkkook",
+                    "...k....kook",
+                    "........kkkk",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Forward, new[]
+                {
+                    "............",
+                    ".....kk.....",
+                    ".....kgk....",
+                    ".....kggk...",
+                    "kkkkkkgggk..",
+                    "kgggggggggk.",
+                    "kgggggggggk.",
+                    "kkkkkkgggk..",
+                    ".....kggk...",
+                    ".....kgk....",
+                    ".....kk.....",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Back, new[]
+                {
+                    "............",
+                    ".....kk.....",
+                    "....krk.....",
+                    "...krrk.....",
+                    "..krrrkkkkkk",
+                    ".krrrrrrrrrk",
+                    ".krrrrrrrrrk",
+                    "..krrrkkkkkk",
+                    "...krrk.....",
+                    "....krk.....",
+                    ".....kk.....",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Rest, new[]
+                {
+                    "............",
+                    "............",
+                    "bbbbbb......",
+                    "....bb......",
+                    "...bb.......",
+                    "..bb........",
+                    ".bb...bbbb..",
+                    "bbbbbb..b...",
+                    ".......b....",
+                    "......bbbb..",
+                    "............",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Lottery, new[]
+                {
+                    "............",
+                    "............",
+                    "kkkkkkkkkkkk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrrryk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrrryk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrryyk",
+                    "kkkkkkkkkkkk",
+                    "............",
                     "............",
                 }
             },

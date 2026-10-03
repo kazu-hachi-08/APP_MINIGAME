@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace MiniGame.LifeGame
 {
-    /// <summary>1マスの見た目（テーマの色に染めたマス＋種類のアイコン＋金額か名前）</summary>
-    public class CellView : MonoBehaviour
+    /// <summary>1マスの見た目（テーマの色に染めたマス＋種類のアイコン＋金額か名前）。押すと効果の説明を出せるよう通知する</summary>
+    public class CellView : MonoBehaviour, IPointerClickHandler
     {
         // 道（0）の上にマス、その上にアイコンと文字
         private const int BodySortingOrder = 1;
@@ -23,7 +25,11 @@ namespace MiniGame.LifeGame
             public float LabelY;
         }
 
-        public static CellView Create(Transform parent, LifeCell cell, Vector2 position, Color color, Sprite icon, Style style)
+        private LifeCell _cell;
+        private Action<LifeCell> _onTapped;
+
+        public static CellView Create(Transform parent, LifeCell cell, Vector2 position, Color color, Sprite icon, Style style,
+            Action<LifeCell> onTapped)
         {
             var obj = new GameObject($"Cell_{cell.Index}_{cell.Type}");
             obj.transform.SetParent(parent, false);
@@ -33,7 +39,21 @@ namespace MiniGame.LifeGame
             view.CreateSprite("Body", style.Tile, color, Vector2.zero, style.Size, BodySortingOrder);
             view.CreateSprite("Icon", icon, Color.white, new Vector2(0f, style.IconY), style.IconSize, IconSortingOrder);
             view.CreateLabel(LifeTexts.CellLabel(cell), style);
+
+            view._cell = cell;
+            view._onTapped = onTapped;
+            // 盤面のマスは UI ではないので、Physics2DRaycaster で押せるよう当たり判定を付ける
+            obj.AddComponent<BoxCollider2D>().size = Vector2.one * style.Size;
             return view;
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            // 盤面をドラッグしてスクロールした指を離したときに、詳細が開かないようにする
+            float threshold = EventSystem.current != null ? EventSystem.current.pixelDragThreshold : 10f;
+            if ((eventData.position - eventData.pressPosition).sqrMagnitude > threshold * threshold) return;
+
+            _onTapped?.Invoke(_cell);
         }
 
         /// <summary>絵の解像度に関係なく、横幅が size（ワールド単位）になるよう拡大する（手描きに差し替えても大きさが変わらないように）</summary>

@@ -63,6 +63,11 @@ namespace MiniGame.LifeGame.Editor
         private static readonly Vector2 MoneyBarPosition = new Vector2(20f, -30f);
         private const int MoneyFontSize = 36;
 
+        // 今の時代（所持金バーのすぐ下）。所持金バーと同じ幅で、全体ボタンにかからないようにする
+        private static readonly Vector2 EraLabelPosition = new Vector2(20f, -150f);
+        private const float EraLabelHeight = 50f;
+        private const int EraLabelFontSize = 30;
+
         // ルーレット（下部中央）。フリックの判定はルーレットより広い下部の帯で取り、指が少し外れても回せるようにする
         private const float RouletteAreaHeight = 700f;
         private const float WheelSize = 440f;
@@ -98,8 +103,9 @@ namespace MiniGame.LifeGame.Editor
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             LifeCharacterCatalog characterCatalog = LifeDataGenerator.EnsureCharacters();
             LifeThemeData[] themes = LifeDataGenerator.EnsureThemes();
-            LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.EnsureLayout();
-            LifeGameArtGenerator.EnsureGenerated();
+            // 座標や絵のコードを直したときも反映されるよう、既存アセットを使い回さず毎回作り直す
+            LifeBoardLayout boardLayout = LifeBoardLayoutGenerator.Regenerate();
+            LifeGameArtGenerator.GenerateAll();
             LifeGameArtGenerator.AssignArt(themes, characterCatalog);
 
             Camera camera = CreateCamera();
@@ -113,6 +119,7 @@ namespace MiniGame.LifeGame.Editor
             Transform safeArea = CreateSafeArea(canvas);
 
             MoneyBarView moneyBar = CreateMoneyBar(safeArea);
+            Text eraLabel = CreateEraLabel(safeArea);
             (RouletteView rouletteView, RouletteInput rouletteInput) = CreateRoulette(safeArea);
             Button walletButton = CreateHudButton(safeArea, "Btn_Wallet", "財布", WalletButtonSize, BottomLeftAnchor, WalletButtonPosition);
             Button overviewButton = CreateHudButton(safeArea, "Btn_Overview", "全体", OverviewButtonSize, TopRightAnchor, OverviewButtonPosition);
@@ -124,7 +131,11 @@ namespace MiniGame.LifeGame.Editor
             EventPopupView eventPopup = CreateEventPopup(canvas, out Text popupBody);
             TurnBannerView turnBanner = CreateTurnBanner(canvas);
             SettlementView settlementView = CreateSettlementView(canvas);
+            TitleRevealView titleReveal = CreateTitleReveal(canvas);
+            RankingRaceView rankingRace = CreateRankingRace(canvas);
             VictoryShowView victoryShow = CreateVictoryShow(canvas);
+            // 1位の発表から勝利演出の間も降らせるので、勝利演出より手前に置く
+            ConfettiView confetti = CreateConfetti(canvas);
             ThemeSelectPanel themeSelectPanel = CreateThemeSelectPanel(canvas, themes.Length);
             PlayerSetupPanel setupPanel = CreatePlayerSetupPanel(canvas);
             CharacterSelectPanel characterSelectPanel = CreateCharacterSelectPanel(canvas, characterCatalog);
@@ -148,6 +159,9 @@ namespace MiniGame.LifeGame.Editor
 
             var audio = new GameObject("LifeAudio").AddComponent<LifeAudio>();
             SetRefs(audio, ("_roulette", rouletteView));
+            SetRefs(settlementView, ("_audio", audio));
+            SetRefs(titleReveal, ("_audio", audio));
+            SetRefs(rankingRace, ("_audio", audio), ("_confetti", confetti));
 
             var boardCamera = camera.gameObject.AddComponent<BoardCamera>();
             SetRefs(boardCamera, ("_camera", camera));
@@ -163,9 +177,10 @@ namespace MiniGame.LifeGame.Editor
                 ("_eventPopup", eventPopup), ("_choicePanel", choicePanel), ("_walletPanel", walletPanel),
                 ("_walletButton", walletButton), ("_overviewButton", overviewButton),
                 ("_characterCatalog", characterCatalog), ("_themeSelectPanel", themeSelectPanel), ("_setupPanel", setupPanel),
-                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner),
+                ("_characterSelectPanel", characterSelectPanel), ("_turnBanner", turnBanner), ("_eraLabel", eraLabel),
                 ("_modeSelectPanel", modeSelectPanel), ("_onlineSession", onlineSession), ("_onlineLink", onlineLink),
                 ("_effects", effects), ("_audio", audio), ("_settlementView", settlementView), ("_victoryShow", victoryShow),
+                ("_titleReveal", titleReveal), ("_rankingRace", rankingRace), ("_confetti", confetti),
                 ("_familyFace", LifeGameArtGenerator.Load(LifeGameArtGenerator.FamilyFaceName)));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
@@ -269,6 +284,16 @@ namespace MiniGame.LifeGame.Editor
             SetArray(bar, "_cells", texts);
             SetArray(bar, "_backgrounds", backgrounds);
             return bar;
+        }
+
+        private static Text CreateEraLabel(Transform safeArea)
+        {
+            float width = MoneyCellSize.x * MoneyBarSeats + MoneyCellSpacing * (MoneyBarSeats - 1);
+            Text label = CreateText(safeArea, "EraLabel", EraLabelFontSize, TopLeftAnchor, EraLabelPosition,
+                new Vector2(width, EraLabelHeight), LifeColors.Celebration);
+            label.alignment = TextAnchor.MiddleLeft;
+            AddOutline(label.gameObject);
+            return label;
         }
 
         private static (RouletteView, RouletteInput) CreateRoulette(Transform safeArea)
@@ -689,6 +714,198 @@ namespace MiniGame.LifeGame.Editor
             SetRefs(view, ("_titleText", title), ("_bodyText", body), ("_moneyText", money), ("_hintText", hint),
                 ("_tapArea", tapArea));
             overlay.SetActive(false);
+            return view;
+        }
+
+        /// <summary>
+        /// 称号発表のカード。裏（「？」）と表（称号名・条件・もらった人の顔）を重ねておき、TitleRevealView が切り替えてめくる。
+        /// もらった人の枠は席の数だけ横に並べ、使わない枠は隠す（横並びのレイアウトで残りが中央に寄る）
+        /// </summary>
+        private static TitleRevealView CreateTitleReveal(Transform canvas)
+        {
+            const int headerFontSize = 90;
+            const int backFontSize = 300;
+            const int titleFontSize = 84;
+            const int titleMinFontSize = 48;
+            const int detailFontSize = 46;
+            const int nameFontSize = 34;
+            const int nameMinFontSize = 20;
+            const int bonusFontSize = 48;
+            const float slotWidth = 200f;
+            const float slotHeight = 420f;
+            const float faceSize = 160f;
+            var cardSize = new Vector2(880f, 1000f);
+            var backColor = new Color(0.25f, 0.3f, 0.55f);
+            var frontColor = new Color(1f, 0.97f, 0.88f);
+            var inkColor = new Color(0.2f, 0.18f, 0.25f);
+            var detailColor = new Color(0.4f, 0.38f, 0.45f);
+
+            GameObject overlay = CreatePanelOverlay(canvas, "TitleReveal");
+            var tapArea = overlay.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            Text header = CreateText(overlay.transform, "HeaderText", headerFontSize, CenterAnchor, new Vector2(0f, 680f),
+                new Vector2(1000f, 140f), LifeColors.Celebration);
+            header.text = "称号発表";
+            AddOutline(header.gameObject);
+
+            Image card = CreateUIImage(overlay.transform, "Card", cardSize, Color.clear);
+            SetAnchor(card.rectTransform, CenterAnchor, new Vector2(0f, -40f));
+
+            Image back = CreateUIImage(card.transform, "Back", Vector2.zero, backColor);
+            UIDialogBuilder.SetStretchAll(back.rectTransform);
+            Text mark = CreateStretchText(back.transform, "Mark", backFontSize);
+            mark.text = "？";
+
+            Image front = CreateUIImage(card.transform, "Front", Vector2.zero, frontColor);
+            UIDialogBuilder.SetStretchAll(front.rectTransform);
+            Text title = CreateText(front.transform, "TitleText", titleFontSize, CenterAnchor, new Vector2(0f, 380f),
+                new Vector2(cardSize.x - 60f, 140f), inkColor);
+            FitToOneLine(title, titleMinFontSize);
+            Text detail = CreateText(front.transform, "DetailText", detailFontSize, CenterAnchor, new Vector2(0f, 200f),
+                new Vector2(cardSize.x - 60f, 160f), detailColor);
+
+            Transform row = CreateRow(front.transform, "Winners", cardSize.x - 40f, slotHeight);
+            row.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -200f);
+
+            int seats = PlayerSetupPanel.MaxPlayers;
+            var slots = new RectTransform[seats];
+            var faces = new Image[seats];
+            var names = new Text[seats];
+            var bonuses = new Text[seats];
+            for (int i = 0; i < seats; i++)
+            {
+                var slotObj = UIDialogBuilder.CreateUIObject($"Winner_{i}", row);
+                slots[i] = slotObj.GetComponent<RectTransform>();
+                slots[i].sizeDelta = new Vector2(slotWidth, slotHeight);
+
+                faces[i] = CreatePortrait(slotObj.transform, "Face", new Vector2(faceSize, faceSize));
+                SetAnchor(faces[i].rectTransform, CenterAnchor, new Vector2(0f, 20f));
+                bonuses[i] = CreateText(slotObj.transform, "BonusText", bonusFontSize, CenterAnchor, new Vector2(0f, 140f),
+                    new Vector2(slotWidth, 70f), LifeColors.Gain);
+                AddOutline(bonuses[i].gameObject);
+                names[i] = CreateText(slotObj.transform, "NameText", nameFontSize, CenterAnchor, new Vector2(0f, -130f),
+                    new Vector2(slotWidth, 110f), Color.white);
+                names[i].resizeTextForBestFit = true;
+                names[i].resizeTextMinSize = nameMinFontSize;
+                names[i].resizeTextMaxSize = nameFontSize;
+                AddOutline(names[i].gameObject);
+            }
+
+            var view = overlay.AddComponent<TitleRevealView>();
+            SetRefs(view, ("_tapArea", tapArea), ("_card", card.rectTransform), ("_cardBack", back.gameObject),
+                ("_cardFront", front.gameObject), ("_titleText", title), ("_detailText", detail));
+            SetArray(view, "_slots", slots);
+            SetArray(view, "_slotFaces", faces);
+            SetArray(view, "_slotNames", names);
+            SetArray(view, "_slotBonuses", bonuses);
+            overlay.SetActive(false);
+            return view;
+        }
+
+        /// <summary>
+        /// 総資産レース。席の数だけレーンを横に並べ、各レーンは「下に名前・その上に棒・棒の先端に顔と金額と順位の札」。
+        /// 棒の先端の部品は Top にまとめ、RankingRaceView が棒の高さに合わせて Top だけ動かす
+        /// </summary>
+        private static RankingRaceView CreateRankingRace(Transform canvas)
+        {
+            const int headerFontSize = 80;
+            const int nameFontSize = 36;
+            const int nameMinFontSize = 20;
+            const int moneyFontSize = 40;
+            const int moneyMinFontSize = 24;
+            const int badgeFontSize = 80;
+            const float laneWidth = 240f;
+            const float laneHeight = 1500f;
+            const float nameHeight = 140f;
+            const float barWidth = 160f;
+            const float faceSize = 140f;
+            var overlayColor = new Color(0f, 0f, 0f, 0.85f);
+
+            GameObject overlay = CreatePanelOverlay(canvas, "RankingRace");
+            overlay.GetComponent<Image>().color = overlayColor;
+            var tapArea = overlay.AddComponent<Button>();
+            tapArea.transition = Selectable.Transition.None;
+
+            Text header = CreateText(overlay.transform, "HeaderText", headerFontSize, CenterAnchor, new Vector2(0f, 800f),
+                new Vector2(1000f, 140f), LifeColors.Celebration);
+            header.text = "総資産レース";
+            AddOutline(header.gameObject);
+
+            Transform row = CreateRow(overlay.transform, "Lanes", 1040f, laneHeight);
+            row.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -100f);
+
+            int seats = PlayerSetupPanel.MaxPlayers;
+            var lanes = new RectTransform[seats];
+            var bars = new RectTransform[seats];
+            var tops = new RectTransform[seats];
+            var faces = new Image[seats];
+            var moneys = new Text[seats];
+            var names = new Text[seats];
+            var badges = new Text[seats];
+            for (int i = 0; i < seats; i++)
+            {
+                var laneObj = UIDialogBuilder.CreateUIObject($"Lane_{i}", row);
+                lanes[i] = laneObj.GetComponent<RectTransform>();
+                lanes[i].sizeDelta = new Vector2(laneWidth, laneHeight);
+
+                names[i] = CreateText(laneObj.transform, "NameText", nameFontSize, BottomCenterAnchor, Vector2.zero,
+                    new Vector2(laneWidth, nameHeight), Color.white);
+                names[i].resizeTextForBestFit = true;
+                names[i].resizeTextMinSize = nameMinFontSize;
+                names[i].resizeTextMaxSize = nameFontSize;
+                AddOutline(names[i].gameObject);
+
+                // 棒と先端の部品の高さの基準（0 = 名前のすぐ上）
+                var baseObj = UIDialogBuilder.CreateUIObject("Base", laneObj.transform);
+                SetAnchoredRect(baseObj.GetComponent<RectTransform>(), BottomCenterAnchor, new Vector2(0f, nameHeight),
+                    new Vector2(laneWidth, 0f));
+
+                Image bar = CreateUIImage(baseObj.transform, "Bar", new Vector2(barWidth, 0f), Color.white);
+                bars[i] = bar.rectTransform;
+                SetAnchor(bars[i], BottomCenterAnchor, Vector2.zero);
+
+                var topObj = UIDialogBuilder.CreateUIObject("Top", baseObj.transform);
+                tops[i] = topObj.GetComponent<RectTransform>();
+                SetAnchoredRect(tops[i], BottomCenterAnchor, Vector2.zero, new Vector2(laneWidth, 0f));
+
+                faces[i] = CreatePortrait(topObj.transform, "Face", new Vector2(faceSize, faceSize));
+                SetAnchor(faces[i].rectTransform, BottomCenterAnchor, new Vector2(0f, 10f));
+                moneys[i] = CreateText(topObj.transform, "MoneyText", moneyFontSize, BottomCenterAnchor,
+                    new Vector2(0f, faceSize + 20f), new Vector2(laneWidth, 60f), Color.white);
+                FitToOneLine(moneys[i], moneyMinFontSize);
+                AddOutline(moneys[i].gameObject);
+
+                // 弾ませるときに札の中心で大きくなるよう、ピボットは中央のまま下端基準で置く
+                badges[i] = CreateText(topObj.transform, "BadgeText", badgeFontSize, CenterAnchor, Vector2.zero,
+                    new Vector2(laneWidth, 110f), LifeColors.Celebration);
+                RectTransform badgeRect = badges[i].rectTransform;
+                badgeRect.anchorMin = BottomCenterAnchor;
+                badgeRect.anchorMax = BottomCenterAnchor;
+                badgeRect.anchoredPosition = new Vector2(0f, faceSize + 140f);
+                AddOutline(badges[i].gameObject);
+            }
+
+            var view = overlay.AddComponent<RankingRaceView>();
+            SetRefs(view, ("_tapArea", tapArea));
+            SetArray(view, "_lanes", lanes);
+            SetArray(view, "_bars", bars);
+            SetArray(view, "_tops", tops);
+            SetArray(view, "_faces", faces);
+            SetArray(view, "_moneys", moneys);
+            SetArray(view, "_names", names);
+            SetArray(view, "_badges", badges);
+            overlay.SetActive(false);
+            return view;
+        }
+
+        /// <summary>紙吹雪を降らせる全画面の枠。Image を付けないので入力は奥へ通る</summary>
+        private static ConfettiView CreateConfetti(Transform canvas)
+        {
+            var obj = UIDialogBuilder.CreateUIObject("Confetti", canvas);
+            UIDialogBuilder.SetStretchAll(obj.GetComponent<RectTransform>());
+            var view = obj.AddComponent<ConfettiView>();
+            obj.SetActive(false);
             return view;
         }
 

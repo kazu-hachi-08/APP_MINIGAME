@@ -72,6 +72,28 @@ namespace MiniGame.LifeGame
             onChosen(selected);
         }
 
+        /// <summary>
+        /// 相手の手番で同じ選択肢を見せる（オンライン）。リスナーを付けないので押しても何も起きない。
+        /// interactable を切ると選んだ色まで灰色に沈むため、見た目は通常のままにしている
+        /// </summary>
+        public void ShowWatching(string title, IReadOnlyList<string> labels, IReadOnlyList<bool> enabled)
+        {
+            Open(title, labels, enabled);
+            _confirmButton.gameObject.SetActive(false);
+        }
+
+        /// <summary>相手が何を選んだかを色で見せてから閉じる（結果が急に流れて置いていかれないように）</summary>
+        public IEnumerator RevealAndClose(IReadOnlyList<bool> selected, float seconds)
+        {
+            for (int i = 0; i < _options.Count && i < selected.Count; i++)
+            {
+                if (selected[i]) _options[i].image.color = _selectedColor;
+            }
+
+            yield return new WaitForSeconds(seconds);
+            Close();
+        }
+
         private void Open(string title, IReadOnlyList<string> labels, IReadOnlyList<bool> enabled)
         {
             _titleText.text = title;
