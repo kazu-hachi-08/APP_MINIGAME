@@ -104,6 +104,25 @@ namespace MiniGame.LifeGame
             return player.Ability == LifeAbility.Reroll && !player.RerollUsed;
         }
 
+        /// <summary>
+        /// 出目 roll で手番の人が止まるマス（状態は変えない）。振り直すか決める前に、このままだとどこに止まるかを見せるため。
+        /// 分岐に着いたら、その先は道の選び方で変わるので分岐のマスを返す。止まり方は ContinueMove と揃えること
+        /// </summary>
+        public static int PreviewStop(LifeGameState state, int roll)
+        {
+            int index = state.Current.Position;
+            for (int steps = roll; steps > 0; steps--)
+            {
+                LifeCell cell = state.Board[index];
+                if (cell.IsBranch) return index;
+
+                index = cell.Next[0];
+                if (LifeCellTypes.IsStop(state.Board[index].Type)) return index;
+            }
+
+            return index;
+        }
+
         // ---- 移動 ----
 
         /// <summary>

@@ -72,6 +72,43 @@ namespace MiniGame.LifeGame
             return cell.Amount > 0 ? cell.Amount.ToString() : CellName(cell.Type);
         }
 
+        /// <summary>マスの効果の1行。手番の人の能力・保険・家を反映した額を出す（押した人がそのまま比べられるように）</summary>
+        public static string CellEffect(LifeGameState state, LifeCell cell)
+        {
+            LifeRuleConfig config = state.Config;
+            LifePlayerState player = state.Current;
+            switch (cell.Type)
+            {
+                case LifeCellType.Income: return $"{SignedMoney(cell.Amount)} もらえる";
+                case LifeCellType.Expense:
+                case LifeCellType.Tuition: return $"{SignedMoney(-LifeMoney.Discounted(config, player, cell.Amount))} 払う";
+                case LifeCellType.Sickness: return MishapEffect(config, player, cell.Amount, LifeInsurance.Life);
+                case LifeCellType.Accident: return MishapEffect(config, player, cell.Amount, LifeInsurance.Auto);
+                case LifeCellType.Fire:
+                    if (!player.HasHouse) return $"{SignedMoney(-LifeMoney.Discounted(config, player, config.FireWithoutHouse))} 払う（家なし）";
+                    return MishapEffect(config, player, config.Houses[player.HouseId].Price / 2, LifeInsurance.Fire);
+                case LifeCellType.Birth: return $"子供が生まれる。全員からお祝い {Money(config.BirthGift)}ずつ";
+                case LifeCellType.Marriage: return $"必ず止まる。結婚して全員からお祝い {Money(config.MarriageGift)}ずつ";
+                case LifeCellType.Payday: return $"通るだけで給料 {Money(LifeRules.SalaryOf(config, player, player.JobId))}";
+                case LifeCellType.JobOffer: return "必ず止まる。職業カード2枚から選ぶ";
+                case LifeCellType.Graduation: return "必ず止まる。上級職を含む職業カード2枚から選ぶ";
+                case LifeCellType.ChangeJob: return "転職できる（今のままでもOK）";
+                case LifeCellType.House: return player.HasHouse ? "家を持っているので何もなし" : "家を買える";
+                case LifeCellType.Insurance: return "保険に入れる";
+                case LifeCellType.Stock: return $"株を1枚 {Money(config.StockPrice)} で買える";
+                case LifeCellType.Branch: return "道を選ぶ";
+                case LifeCellType.Goal: return $"必ず止まる。1着ボーナス {Money(config.GoalBonuses[0])}";
+                default: return "何もなし";
+            }
+        }
+
+        private static string MishapEffect(LifeRuleConfig config, LifePlayerState player, int amount, LifeInsurance insurance)
+        {
+            if ((player.Insurances & insurance) != 0) return $"{InsuranceName(insurance)}があるので払わない";
+
+            return $"{SignedMoney(-LifeMoney.Discounted(config, player, amount))} 払う（{InsuranceName(insurance)}なら0）";
+        }
+
         /// <summary>給料は手番の人の能力込みの額を見せる（がんばり屋が実際にもらえる額で比べられるように）</summary>
         public static string JobCard(LifeGameState state, int jobId) =>
             $"{JobName(jobId)}\n給料 {Money(LifeRules.SalaryOf(state.Config, state.Current, jobId))}";

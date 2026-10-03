@@ -111,6 +111,7 @@ namespace MiniGame.LifeGame
             _walletButton.onClick.AddListener(OpenWallet);
             _walletPanel.RepayRequested += HandleRepayRequested;
             _overviewButton.onClick.AddListener(_boardCamera.ToggleOverview);
+            _boardView.CellTapped += ShowCellInfo;
             SubscribeOnline();
 
             if (_modeSelectPanel != null)
@@ -533,6 +534,22 @@ namespace MiniGame.LifeGame
             content.Flavor = LifeTexts.CellFlavor(cell);
         }
 
+        /// <summary>
+        /// 押したマスの効果を見せる。自分がフリックする前だけ受け付ける（振り直しのフリック待ちも含む）。
+        /// 移動などの演出中はイベント表示を取り合うので受け付けない
+        /// </summary>
+        private void ShowCellInfo(LifeCell cell)
+        {
+            if (!_rouletteInput.Accepting || _walletPanel.IsOpen || _eventPopup.gameObject.activeSelf) return;
+
+            var content = new EventPopupContent();
+            SetLandedCell(content, cell);
+            // テーマの一言は「止まったとき」の文なので、見るだけのときは出さない
+            content.Flavor = null;
+            content.Lines.Add((LifeTexts.CellEffect(_state, cell), LifeColors.Info));
+            StartCoroutine(_eventPopup.Play(content));
+        }
+
         private IEnumerator ShowPopup(EventPopupContent content, bool autoClose)
         {
             if (content.IsEmpty) yield break;
@@ -782,7 +799,10 @@ namespace MiniGame.LifeGame
             switch (_state.Pending)
             {
                 case LifePending.Reroll:
-                    title = $"出目は {_state.LastRoll}！\n振り直す？（1試合に1回だけ）";
+                    // このまま進んだら止まるマスを見せ、振り直すかをマスの効果で決められるようにする
+                    LifeCell stop = _state.Board[LifeRules.PreviewStop(_state, _state.LastRoll)];
+                    title = $"出目は {_state.LastRoll}！ このままだと「{LifeTexts.CellName(stop.Type)}」\n"
+                        + $"{LifeTexts.CellEffect(_state, stop)}\n振り直す？（1試合に1回だけ）";
                     labels.Add("振り直す");
                     labels.Add("このまま進む");
                     break;

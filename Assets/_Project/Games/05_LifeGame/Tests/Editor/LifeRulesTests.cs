@@ -34,6 +34,26 @@ namespace MiniGame.LifeGame.Tests
         }
 
         [Test]
+        public void 止まるマスの予想は実際に動いた位置と同じ()
+        {
+            // スタート（分岐の手前）と区間B（給料日・結婚をまたぐ）から、全部の出目で比べる
+            foreach (int start in new[] { LifeBoard.StartIndex, _middle })
+            {
+                for (int roll = 1; roll <= LifeRuleConfig.RouletteMax; roll++)
+                {
+                    LifeGameState state = LifeGameState.Create(2, 1, new LifeRuleConfig());
+                    LifePlayerState player = state.Players[0];
+                    player.Position = start;
+                    int preview = LifeRules.PreviewStop(state, roll);
+
+                    LifeRules.Move(state, roll);
+
+                    Assert.AreEqual(player.Position, preview, $"start={start} roll={roll}");
+                }
+            }
+        }
+
+        [Test]
         public void 分岐で止まり残りの歩数で進む()
         {
             LifeRules.Move(_state, 5);

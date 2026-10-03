@@ -41,6 +41,9 @@ namespace MiniGame.LifeGame
         /// <summary>盤面全体を囲む範囲（マスの大きさ込み）</summary>
         public Rect Bounds { get; private set; }
 
+        /// <summary>マスが押された（効果の説明を出すため）</summary>
+        public event System.Action<LifeCell> CellTapped;
+
         public Vector2 PositionOf(int cellIndex) => (Vector2)transform.position + _layout.PositionOf(cellIndex);
 
         /// <summary>イベント表示でも盤面と同じアイコンを出し、どのマスに止まったか見比べられるようにする</summary>
@@ -60,7 +63,8 @@ namespace MiniGame.LifeGame
                 Vector2 position = _layout.PositionOf(cell.Index);
                 foreach (int next in cell.Next) CreateSegment(position, _layout.PositionOf(next), theme.Road);
 
-                CellView.Create(transform, cell, position, theme.CellColor(cell.Type), _icons[(int)cell.Type], style);
+                CellView.Create(transform, cell, position, theme.CellColor(cell.Type), _icons[(int)cell.Type], style,
+                    tapped => CellTapped?.Invoke(tapped));
             }
 
             _scenery.Build(board, _layout, theme);

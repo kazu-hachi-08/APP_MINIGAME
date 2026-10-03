@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace MiniGame.LifeGame
 {
@@ -18,6 +19,12 @@ namespace MiniGame.LifeGame
         private Rect _boardBounds;
 
         public bool IsOverview { get; private set; }
+
+        private void Awake()
+        {
+            // マスを押して効果を見るため。シーンを編集せず実行時に付ける（2人でシーンを触って競合しないように）
+            if (!_camera.TryGetComponent(out Physics2DRaycaster _)) _camera.gameObject.AddComponent<Physics2DRaycaster>();
+        }
 
         public void SetBoardBounds(Rect bounds)
         {

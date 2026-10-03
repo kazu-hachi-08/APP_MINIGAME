@@ -35,7 +35,8 @@ namespace MiniGame.LifeGame
             Pay(state, payer, Discounted(state.Config, payer, amount), toSeat, events);
         }
 
-        private static int Discounted(LifeRuleConfig config, LifePlayerState payer, int amount)
+        /// <summary>しっかり者の割引後の額。マスの効果の説明でも同じ額を見せるため公開する</summary>
+        public static int Discounted(LifeRuleConfig config, LifePlayerState payer, int amount)
         {
             if (payer.Ability != LifeAbility.Thrift) return amount;
 
