@@ -85,13 +85,15 @@ namespace MiniGame.LifeGame
                 .Fixed(2, LifeCellType.Tuition)
                 .Fixed(7, LifeCellType.Tuition)
                 .Fixed(11, LifeCellType.Graduation)
-                .Cards(LifeCellType.Income, 2)
-                .Cards(LifeCellType.Expense, 2)
+                .Cards(LifeCellType.Income, 1)
+                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.Sickness, 1)
                 .Cards(LifeCellType.Accident, 1)
                 .Cards(LifeCellType.Insurance, 1)
                 .Cards(LifeCellType.Stock, 1)
-                .Cards(LifeCellType.Birth, 1);
+                .Cards(LifeCellType.Birth, 1)
+                .Cards(LifeCellType.Lottery, 1)
+                .Cards(LifeCellType.Forward, 1);
         }
 
         private static LifeSectionShape FreeterRoute()
@@ -128,13 +130,14 @@ namespace MiniGame.LifeGame
         {
             return new LifeSectionShape(LifeSection.Safe, 10)
                 .Fixed(5, LifeCellType.Payday)
-                .Cards(LifeCellType.Income, 3)
+                .Cards(LifeCellType.Income, 2)
                 .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.House, 1)
                 .Cards(LifeCellType.Birth, 1)
                 .Cards(LifeCellType.Stock, 1)
                 .Cards(LifeCellType.Sickness, 1)
-                .Cards(LifeCellType.Present, 1);
+                .Cards(LifeCellType.Present, 1)
+                .Cards(LifeCellType.Forward, 1);
         }
 
         private static LifeSectionShape GambleRoute()
@@ -142,12 +145,13 @@ namespace MiniGame.LifeGame
             var shape = new LifeSectionShape(LifeSection.Gamble, 10)
                 .Fixed(5, LifeCellType.Payday)
                 .Cards(LifeCellType.Income, 2)
-                .Cards(LifeCellType.Expense, 2)
+                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.Sickness, 1)
                 .Cards(LifeCellType.Accident, 1)
                 .Cards(LifeCellType.Fire, 1)
                 .Cards(LifeCellType.Stock, 1)
-                .Cards(LifeCellType.Bet, 1);
+                .Cards(LifeCellType.Bet, 1)
+                .Cards(LifeCellType.Back, 1);
             shape.DoubleAmounts = true;
             return shape;
         }
@@ -157,14 +161,16 @@ namespace MiniGame.LifeGame
             return new LifeSectionShape(LifeSection.Final, 14)
                 .Fixed(3, LifeCellType.Payday)
                 .Fixed(10, LifeCellType.Payday)
-                .Cards(LifeCellType.Income, 3)
-                .Cards(LifeCellType.Expense, 2)
+                .Cards(LifeCellType.Income, 2)
+                .Cards(LifeCellType.Expense, 1)
                 .Cards(LifeCellType.Birth, 2)
                 .Cards(LifeCellType.House, 1)
                 .Cards(LifeCellType.Insurance, 1)
                 .Cards(LifeCellType.Fire, 1)
                 .Cards(LifeCellType.Accident, 1)
-                .Cards(LifeCellType.ChangeJob, 1);
+                .Cards(LifeCellType.ChangeJob, 1)
+                .Cards(LifeCellType.Lottery, 1)
+                .Cards(LifeCellType.Rest, 1);
         }
     }
 }

@@ -97,6 +97,14 @@ namespace MiniGame.LifeGame
         public int TransferMin = 50;
         public int TransferMax = 150;
 
+        // 進む・戻るマスの歩数
+        public int WarpMin = 2;
+        public int WarpMax = 4;
+
+        // 宝くじマス。当たった人が LotteryPrize、誰も当たらなければ止まった人が LotteryConsolation
+        public int LotteryPrize = 500;
+        public int LotteryConsolation = 50;
+
         public int MarriageGift = 30;
         public int BirthGift = 20;
         public int MaxChildren = 4;

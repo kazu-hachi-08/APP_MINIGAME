@@ -30,6 +30,9 @@ namespace MiniGame.LifeGame
         public bool IsMarried;
         public int Children;
 
+        /// <summary>残りの休みの回数。手番が回ってくるたびに1減らして飛ばす</summary>
+        public int RestTurns;
+
         /// <summary>ゴールした順番（0 = 1着）。未ゴールは NotGoaled</summary>
         public int GoalOrder = NotGoaled;
 
@@ -56,6 +59,9 @@ namespace MiniGame.LifeGame
         public int StepsLeft;
 
         public int LastRoll;
+
+        /// <summary>進むマスで移動中か。着いたマスの効果を出さないために、分岐で止まっている間も覚えておく</summary>
+        public bool IsWarping;
 
         /// <summary>職業カード・転職で引いた2枚（職業番号）。選択待ちでなければ空</summary>
         public List<int> JobCards = new List<int>();

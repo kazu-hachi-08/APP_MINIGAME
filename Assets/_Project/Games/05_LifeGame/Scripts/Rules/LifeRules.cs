@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace MiniGame.LifeGame
@@ -10,6 +11,7 @@ namespace MiniGame.LifeGame
     {
         private const int JobCardCount = 2;
         private const int KeepCurrentJob = -1;
+        private const int RestTurnCount = 1;
         public const int NoTarget = -1;
 
         public static bool IsValid(LifeGameState state, LifeCommand command)
@@ -43,6 +45,8 @@ namespace MiniGame.LifeGame
                     return state.Pending == LifePending.Bet && (value == 0 || value == 1);
                 case LifeCommandType.ChooseTarget:
                     return state.Pending == LifePending.ChooseTarget && IsValidTarget(state, value);
+                case LifeCommandType.ChooseLottery:
+                    return state.Pending == LifePending.Lottery && value >= 1 && value <= LifeRuleConfig.RouletteMax;
                 default:
                     return false;
             }
@@ -87,6 +91,9 @@ namespace MiniGame.LifeGame
                     break;
                 case LifeCommandType.ChooseTarget:
                     ChooseTarget(state, command.Value, events);
+                    break;
+                case LifeCommandType.ChooseLottery:
+                    DrawLottery(state, command.Value, events);
                     break;
             }
 
@@ -276,6 +283,17 @@ namespace MiniGame.LifeGame
         {
             LifePlayerState player = state.Current;
             LifeCell cell = state.CurrentCell;
+
+            // 進むマスで着いたマスは効果を出さない（「進む → 戻る → 進む」の連鎖を避けるため）。
+            // 必ず止まるマスだけは効果を出す（ゴール・卒業・就職を素通りすると職業なしやゴールなしになるため）
+            bool warped = state.IsWarping;
+            state.IsWarping = false;
+            if (warped && !LifeCellTypes.IsStop(cell.Type))
+            {
+                EndTurn(state, events);
+                return;
+            }
+
             events.Add(new LifeEvent(LifeEventType.Landed, player.Seat, cell.Amount, cell.Index));
 
             if (ApplyCell(state, player, cell, events)) return;
@@ -283,7 +301,7 @@ namespace MiniGame.LifeGame
             EndTurn(state, events);
         }
 
-        /// <summary>マスの効果を適用する。選択待ちになったら true（手番はまだ終わらない）</summary>
+        /// <summary>マスの効果を適用する。選択待ちになったか、進むマスで移動の続きを引き受けたら true（ここでは手番を終えない）</summary>
         private static bool ApplyCell(LifeGameState state, LifePlayerState player, LifeCell cell, List<LifeEvent> events)
         {
             LifeRuleConfig config = state.Config;
@@ -334,6 +352,17 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Nominate:
                 case LifeCellType.SwapJob:
                     return WaitFor(state, LifePending.ChooseTarget, HasAnyTarget(state));
+                case LifeCellType.Forward:
+                    WarpForward(state, cell.Amount, events);
+                    return true;
+                case LifeCellType.Back:
+                    WarpBack(state, player, cell.Amount, events);
+                    return false;
+                case LifeCellType.Rest:
+                    player.RestTurns = RestTurnCount;
+                    return false;
+                case LifeCellType.Lottery:
+                    return WaitFor(state, LifePending.Lottery, true);
                 default:
                     return false;
             }
@@ -356,6 +385,32 @@ namespace MiniGame.LifeGame
 
             int damage = state.Config.Houses[player.HouseId].Price / 2;
             LifeMoney.PayMishap(state, player, damage, LifeInsurance.Fire, LifeJobRole.Repair, events);
+        }
+
+        /// <summary>
+        /// 普通の移動と同じく、途中の給料日はもらい分岐では道を選ばせる。
+        /// 着地（または分岐の後の着地）は ContinueMove → Land が IsWarping を見て効果なしで手番を終える
+        /// </summary>
+        private static void WarpForward(LifeGameState state, int steps, List<LifeEvent> events)
+        {
+            events.Add(new LifeEvent(LifeEventType.Warped, state.CurrentSeat, steps));
+            state.IsWarping = true;
+            state.StepsLeft = steps;
+            ContinueMove(state, events);
+        }
+
+        /// <summary>区間の先頭で止まる（分岐・合流を逆走させないため）。給料日は通ってももらえない</summary>
+        private static void WarpBack(LifeGameState state, LifePlayerState player, int steps, List<LifeEvent> events)
+        {
+            events.Add(new LifeEvent(LifeEventType.Warped, player.Seat, -steps));
+            for (int i = 0; i < steps; i++)
+            {
+                LifeCell cell = state.Board[player.Position];
+                if (cell.Prev == cell.Index) return;
+
+                player.Position = cell.Prev;
+                events.Add(new LifeEvent(LifeEventType.Moved, player.Seat, value: player.Position));
+            }
         }
 
         private static void Present(LifeGameState state, LifePlayerState player, int amount, List<LifeEvent> events)
@@ -520,13 +575,61 @@ namespace MiniGame.LifeGame
             EndTurn(state, events);
         }
 
+        /// <summary>
+        /// 宝くじ。移動ではないので株の配当は出さず、LastRoll も変えない（賭けと同じ）。
+        /// 番号は見た目側が全員分を並べてからルーレットを回せるよう、出目より先にイベントにする
+        /// </summary>
+        private static void DrawLottery(LifeGameState state, int number, List<LifeEvent> events)
+        {
+            int[] numbers = DealLotteryNumbers(state, number);
+            for (int seat = 0; seat < numbers.Length; seat++)
+            {
+                events.Add(new LifeEvent(LifeEventType.LotteryTicket, seat, value: numbers[seat]));
+            }
+
+            int roll = RollDice(state);
+            int winner = Array.IndexOf(numbers, roll);
+            events.Add(new LifeEvent(LifeEventType.LotteryDrawn, state.CurrentSeat, value: roll, otherSeat: winner));
+
+            if (winner >= 0) LifeMoney.Receive(state.Players[winner], state.Config.LotteryPrize, events);
+            else LifeMoney.Receive(state.Current, state.Config.LotteryConsolation, events);
+
+            EndTurn(state, events);
+        }
+
+        /// <summary>
+        /// 席ごとの番号。止まった人以外は、残りの番号をルールの乱数で混ぜて席順に配る
+        /// （他の人に選ばせると手番以外の操作が要り、オンラインの送受信の作りを変えることになるため）
+        /// </summary>
+        private static int[] DealLotteryNumbers(LifeGameState state, int chosen)
+        {
+            var pool = new List<int>();
+            for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++)
+            {
+                if (n != chosen) pool.Add(n);
+            }
+
+            state.Random.Shuffle(pool);
+            var numbers = new int[state.Players.Count];
+            int next = 0;
+            for (int seat = 0; seat < numbers.Length; seat++)
+            {
+                numbers[seat] = seat == state.CurrentSeat ? chosen : pool[next++];
+            }
+
+            return numbers;
+        }
+
         // ---- 手番 ----
 
         private static void EndTurn(LifeGameState state, List<LifeEvent> events)
         {
             events.Add(new LifeEvent(LifeEventType.TurnEnded, state.CurrentSeat));
 
-            int next = LifeTurnOrder.NextSeat(state.Players, state.CurrentSeat);
+            var rested = new List<int>();
+            int next = LifeTurnOrder.NextSeat(state.Players, state.CurrentSeat, rested);
+            foreach (int seat in rested) events.Add(new LifeEvent(LifeEventType.Rested, seat));
+
             if (next == LifeTurnOrder.None)
             {
                 state.Pending = LifePending.Finished;

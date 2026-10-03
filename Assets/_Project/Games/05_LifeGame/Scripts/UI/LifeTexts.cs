@@ -63,6 +63,10 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Nominate: return "指名";
                 case LifeCellType.Present: return "プレゼント";
                 case LifeCellType.SwapJob: return "入れ替え";
+                case LifeCellType.Forward: return "進む";
+                case LifeCellType.Back: return "戻る";
+                case LifeCellType.Rest: return "1回休み";
+                case LifeCellType.Lottery: return "宝くじ";
                 default: return type.ToString();
             }
         }
@@ -73,6 +77,10 @@ namespace MiniGame.LifeGame
         /// </summary>
         public static string CellLabel(LifeCell cell)
         {
+            // 進む・戻るの Amount は歩数なので、数字だけだと金額と見分けがつかない
+            if (cell.Type == LifeCellType.Forward) return $"{cell.Amount}進む";
+            if (cell.Type == LifeCellType.Back) return $"{cell.Amount}戻る";
+
             return cell.Amount > 0 ? cell.Amount.ToString() : CellName(cell.Type);
         }
 
@@ -105,6 +113,11 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Nominate: return $"自分以外を1人選び、{Money(cell.Amount)} もらう";
                 case LifeCellType.Present: return $"所持金が一番少ない人に {Money(cell.Amount)} 渡す";
                 case LifeCellType.SwapJob: return "職業を持っている人を1人選び、職業を交換できる（しなくてもOK）";
+                case LifeCellType.Forward: return $"{cell.Amount}マス進む（着いたマスの効果はなし）";
+                case LifeCellType.Back: return $"{cell.Amount}マス戻る（着いたマスの効果はなし）";
+                case LifeCellType.Rest: return "次の自分の番を1回休む";
+                case LifeCellType.Lottery:
+                    return $"番号を1つ選ぶ。当たった人が {Money(config.LotteryPrize)}、誰も当たらなければ {Money(config.LotteryConsolation)}";
                 case LifeCellType.Branch: return "道を選ぶ";
                 case LifeCellType.Goal: return $"必ず止まる。1着ボーナス {Money(config.GoalBonuses[0])}";
                 default: return "何もなし";
@@ -171,6 +184,11 @@ namespace MiniGame.LifeGame
                     return $"{who}出目 {e.Value} … {(e.Amount > 0 ? "賭けに勝った！" : "賭けに負けた")}";
                 case LifeEventType.JobSwapped:
                     return $"{who}{PlayerName(e.OtherSeat)}と職業を交換！ {JobName(e.Value)}になった";
+                case LifeEventType.Warped:
+                    return e.Amount > 0 ? $"{who}{e.Amount}マス進む！" : $"{who}{-e.Amount}マス戻る…";
+                case LifeEventType.LotteryDrawn:
+                    string result = e.OtherSeat == LifeEvent.Bank ? "はずれ… 残念賞" : $"{PlayerName(e.OtherSeat)}が大当たり！";
+                    return $"当選番号 {e.Value} … {result}";
                 default:
                     return null;
             }
@@ -190,6 +208,10 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Nominate: return "誰からもらおうかな";
                 case LifeCellType.Present: return "困っている人におすそ分け";
                 case LifeCellType.SwapJob: return "あの人の仕事、うらやましい…";
+                case LifeCellType.Forward: return "追い風が吹いてきた！";
+                case LifeCellType.Back: return "忘れ物に気づいた！";
+                case LifeCellType.Rest: return "ちょっとひと休み";
+                case LifeCellType.Lottery: return "夢を買ってみる";
                 default: return null;
             }
         }

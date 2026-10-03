@@ -30,6 +30,9 @@ namespace MiniGame.LifeGame
 
         /// <summary>Value = 相手の席。入れ替えのときだけ -1 でやめる</summary>
         ChooseTarget,
+
+        /// <summary>Value = 宝くじの番号（1〜10）</summary>
+        ChooseLottery,
     }
 
     /// <summary>

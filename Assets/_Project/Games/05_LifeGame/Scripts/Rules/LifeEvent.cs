@@ -26,6 +26,10 @@ namespace MiniGame.LifeGame
         AllGoaled,
         BetResult,       // Value = 出目, Amount = 増減（勝ち +賭け金 / 負け -賭け金）
         JobSwapped,      // OtherSeat = 交換した相手, Value = 交換後の自分の職業
+        Warped,          // Amount = 進む歩数（戻るはマイナス）。この後に Moved が続く
+        Rested,          // 1回休みで手番を飛ばされた
+        LotteryTicket,   // Value = その人の宝くじの番号（全員分が続けて来る）
+        LotteryDrawn,    // Value = 出目, OtherSeat = 当たった人（-1 = 誰も当たらない）
     }
 
     /// <summary>ルールが起こしたこと。見た目側はこの列を順に演出する</summary>

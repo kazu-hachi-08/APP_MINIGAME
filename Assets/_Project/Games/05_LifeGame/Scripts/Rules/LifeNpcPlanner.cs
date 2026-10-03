@@ -47,6 +47,9 @@ namespace MiniGame.LifeGame
                     return new LifeCommand(seat, LifeCommandType.ChooseBet, bet ? 1 : 0);
                 case LifePending.ChooseTarget:
                     return new LifeCommand(seat, LifeCommandType.ChooseTarget, PlanTarget(state));
+                case LifePending.Lottery:
+                    // どの番号でも当たる確率は同じなので、考えずにランダム
+                    return new LifeCommand(seat, LifeCommandType.ChooseLottery, random.Range(1, LifeRuleConfig.RouletteMax));
                 default:
                     return new LifeCommand(seat, LifeCommandType.Spin);
             }

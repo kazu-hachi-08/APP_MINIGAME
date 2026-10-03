@@ -31,6 +31,10 @@ namespace MiniGame.LifeGame
         Nominate,
         Present,
         SwapJob,
+        Forward,
+        Back,
+        Rest,
+        Lottery,
     }
 
     /// <summary>盤面の区間。シャッフルは区間ごとに行う</summary>
@@ -101,6 +105,9 @@ namespace MiniGame.LifeGame
 
         /// <summary>指名・入れ替えマスで相手を選ぶ。どちらのマスかは CurrentCell.Type で分かる</summary>
         ChooseTarget,
+
+        /// <summary>宝くじマスで番号を選ぶ</summary>
+        Lottery,
         Finished,
     }
 

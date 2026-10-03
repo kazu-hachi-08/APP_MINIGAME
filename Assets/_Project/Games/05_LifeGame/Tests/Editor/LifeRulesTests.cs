@@ -467,6 +467,195 @@ namespace MiniGame.LifeGame.Tests
             Assert.AreEqual(LifeRules.NoTarget, LifeNpcPlanner.Plan(_state, new LifeRandom(0)).Value, "自分より給料が高い人がいなければやめる");
         }
 
+        // ---- コマが動くマス ----
+
+        /// <summary>index のマスを指定の種類にする（給料日などの固定マスを避けて結果を読みやすくするため）</summary>
+        private LifeCell SetCell(int index, LifeCellType type, int amount = 0)
+        {
+            LifeCell cell = _state.Board[index];
+            cell.Type = type;
+            cell.Amount = amount;
+            return cell;
+        }
+
+        [Test]
+        public void 進むマスは途中の給料日をもらい着いたマスの効果は出ない()
+        {
+            _p1.JobId = 1;
+            _p1.Position = _middle + 2;
+            SetCell(_middle + 3, LifeCellType.Forward, 3);
+            SetCell(_middle + 6, LifeCellType.Income, 100);
+
+            List<LifeEvent> events = LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(_middle + MiddlePayday + 1, _p1.Position);
+            Assert.AreEqual(300 + _state.Config.SalaryOf(1), _p1.Money, "着いた収入マスはもらえない");
+            Assert.IsTrue(events.Exists(e => e.Type == LifeEventType.Warped && e.Amount == 3));
+            Assert.IsFalse(_state.IsWarping);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 進むマスで分岐に来たら道を選び着いたマスの効果は出ない()
+        {
+            const int middleBranch = 15;
+            _p1.Position = _middle + middleBranch - 3;
+            SetCell(_middle + middleBranch - 2, LifeCellType.Forward, 3);
+
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(LifePending.Branch, _state.Pending);
+            Assert.AreEqual(_middle + middleBranch, _p1.Position);
+            Assert.AreEqual(0, _state.CurrentSeat);
+
+            int safe = _state.Board.BranchChoiceOf(_state.CurrentCell, LifeSection.Safe);
+            LifeCell first = SetCell(_state.CurrentCell.Next[safe], LifeCellType.Income, 100);
+            LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseBranch, safe));
+
+            Assert.AreEqual(first.Index, _p1.Position);
+            Assert.AreEqual(300, _p1.Money);
+            Assert.IsFalse(_state.IsWarping);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 進むマスでゴールに着いたらゴール扱い()
+        {
+            int goal = _state.Board.GoalIndex;
+            _p1.Position = goal - 3;
+            SetCell(goal - 2, LifeCellType.Forward, 4);
+            SetCell(goal - 1, LifeCellType.Income, 100);
+
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(goal, _p1.Position);
+            Assert.AreEqual(0, _p1.GoalOrder);
+            Assert.AreEqual(300 + _state.Config.GoalBonuses[0], _p1.Money);
+        }
+
+        [Test]
+        public void 戻るマスは給料日をもらわず着いたマスの効果も出ない()
+        {
+            _p1.JobId = 1;
+            _p1.Position = _middle + MiddlePayday + 1;
+            SetCell(_middle + MiddlePayday + 2, LifeCellType.Back, 3);
+            SetCell(_middle + MiddlePayday - 1, LifeCellType.Income, 100);
+
+            List<LifeEvent> events = LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(_middle + MiddlePayday - 1, _p1.Position);
+            Assert.AreEqual(300, _p1.Money);
+            Assert.IsTrue(events.Exists(e => e.Type == LifeEventType.Warped && e.Amount == -3));
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 戻るマスは区間の先頭より前に戻らない()
+        {
+            int gamble = _state.Board.Cells.FindIndex(c => c.Section == LifeSection.Gamble);
+            _p1.Position = gamble;
+            SetCell(gamble + 1, LifeCellType.Back, 4);
+
+            LifeRules.Move(_state, 1);
+
+            Assert.AreEqual(gamble, _p1.Position);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        [Test]
+        public void 一回休みは次の自分の番を飛ばす()
+        {
+            PrepareNextCell(LifeCellType.Rest);
+            LifeRules.Move(_state, 1);
+            Assert.AreEqual(1, _p1.RestTurns);
+            Assert.AreEqual(1, _state.CurrentSeat);
+
+            // P2 がスタートから分岐まで進んで手番を終えると、P1 が飛ばされて P2 がもう一度回す
+            List<LifeEvent> events = LifeRules.Move(_state, 1);
+
+            Assert.IsTrue(events.Exists(e => e.Type == LifeEventType.Rested && e.Seat == 0));
+            Assert.AreEqual(0, _p1.RestTurns);
+            Assert.AreEqual(1, _state.CurrentSeat);
+        }
+
+        // ---- 宝くじ ----
+
+        /// <summary>P1 を宝くじマスに止めて番号を選ぶ。出目は乱数なので、当たり・はずれはシードを変えて探す</summary>
+        private List<LifeEvent> DrawLottery(int playerCount, int seed, int number)
+        {
+            _state = LifeGameState.Create(playerCount, seed, new LifeRuleConfig());
+            _p1 = _state.Players[0];
+            _middle = _state.Board.Cells.FindIndex(c => c.Section == LifeSection.Middle);
+            PrepareNextCell(LifeCellType.Lottery);
+            LifeRules.Move(_state, 1);
+            Assert.AreEqual(LifePending.Lottery, _state.Pending);
+            Assert.IsFalse(LifeRules.IsValid(_state, new LifeCommand(0, LifeCommandType.ChooseLottery, 0)));
+            Assert.IsFalse(LifeRules.IsValid(_state, new LifeCommand(0, LifeCommandType.ChooseLottery, LifeRuleConfig.RouletteMax + 1)));
+
+            return LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseLottery, number));
+        }
+
+        [Test]
+        public void 宝くじは当たった人がもらい誰も当たらなければ止まった人が残念賞()
+        {
+            bool sawWin = false;
+            bool sawLoss = false;
+            for (int seed = 0; seed < 100 && !(sawWin && sawLoss); seed++)
+            {
+                List<LifeEvent> events = DrawLottery(2, seed, 3);
+                LifeEvent drawn = events.Find(e => e.Type == LifeEventType.LotteryDrawn);
+                int winner = drawn.OtherSeat;
+                if (winner == LifeEvent.Bank)
+                {
+                    sawLoss = true;
+                    Assert.AreEqual(300 + _state.Config.LotteryConsolation, _p1.Money, $"seed={seed}");
+                    Assert.AreEqual(300, _state.Players[1].Money, $"seed={seed}");
+                }
+                else
+                {
+                    sawWin = true;
+                    LifeEvent ticket = events.Find(e => e.Type == LifeEventType.LotteryTicket && e.Seat == winner);
+                    Assert.AreEqual(drawn.Value, ticket.Value, $"seed={seed}");
+                    Assert.AreEqual(300 + _state.Config.LotteryPrize, _state.Players[winner].Money, $"seed={seed}");
+                    Assert.AreEqual(300, _state.Players[1 - winner].Money, $"seed={seed}");
+                }
+
+                Assert.AreEqual(1, _state.CurrentSeat);
+            }
+
+            Assert.IsTrue(sawWin && sawLoss);
+        }
+
+        [Test]
+        public void 宝くじの番号は全員違い止まった人は選んだ番号()
+        {
+            for (int seed = 0; seed < 20; seed++)
+            {
+                List<LifeEvent> events = DrawLottery(4, seed, 7);
+                List<LifeEvent> tickets = events.FindAll(e => e.Type == LifeEventType.LotteryTicket);
+
+                Assert.AreEqual(4, tickets.Count);
+                Assert.AreEqual(7, tickets[0].Value);
+                var numbers = new HashSet<int>();
+                foreach (LifeEvent ticket in tickets) Assert.IsTrue(numbers.Add(ticket.Value), $"seed={seed} 番号が重複");
+            }
+        }
+
+        [Test]
+        public void 宝くじのルーレットでは配当を出さない()
+        {
+            _p2.Stocks.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
+            PrepareNextCell(LifeCellType.Lottery);
+            LifeRules.Move(_state, 1);
+            int p2Money = _p2.Money;
+
+            List<LifeEvent> events = LifeRules.Apply(_state, new LifeCommand(0, LifeCommandType.ChooseLottery, 1));
+
+            Assert.IsFalse(events.Exists(e => e.Type == LifeEventType.Dividend));
+            int prize = events.Exists(e => e.Type == LifeEventType.LotteryDrawn && e.OtherSeat == 1) ? _state.Config.LotteryPrize : 0;
+            Assert.AreEqual(p2Money + prize, _p2.Money);
+        }
+
         [Test]
         public void ゴール順にボーナスをもらい全員ゴールで終わる()
         {

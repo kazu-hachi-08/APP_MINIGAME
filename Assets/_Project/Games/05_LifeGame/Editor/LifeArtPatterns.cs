@@ -412,6 +412,74 @@ namespace MiniGame.LifeGame.Editor
                     "............",
                 }
             },
+            {
+                LifeCellType.Forward, new[]
+                {
+                    "............",
+                    ".....kk.....",
+                    ".....kgk....",
+                    ".....kggk...",
+                    "kkkkkkgggk..",
+                    "kgggggggggk.",
+                    "kgggggggggk.",
+                    "kkkkkkgggk..",
+                    ".....kggk...",
+                    ".....kgk....",
+                    ".....kk.....",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Back, new[]
+                {
+                    "............",
+                    ".....kk.....",
+                    "....krk.....",
+                    "...krrk.....",
+                    "..krrrkkkkkk",
+                    ".krrrrrrrrrk",
+                    ".krrrrrrrrrk",
+                    "..krrrkkkkkk",
+                    "...krrk.....",
+                    "....krk.....",
+                    ".....kk.....",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Rest, new[]
+                {
+                    "............",
+                    "............",
+                    "bbbbbb......",
+                    "....bb......",
+                    "...bb.......",
+                    "..bb........",
+                    ".bb...bbbb..",
+                    "bbbbbb..b...",
+                    ".......b....",
+                    "......bbbb..",
+                    "............",
+                    "............",
+                }
+            },
+            {
+                LifeCellType.Lottery, new[]
+                {
+                    "............",
+                    "............",
+                    "kkkkkkkkkkkk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrrryk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrrryk",
+                    "kyyykyyyyyyk",
+                    "kyyykyrrryyk",
+                    "kkkkkkkkkkkk",
+                    "............",
+                    "............",
+                }
+            },
         };
 
         /// <summary>

@@ -34,6 +34,7 @@ namespace MiniGame.LifeGame
 
             LifeCell goal = board.Add(LifeCellType.Goal, LifeSection.Final);
             finalLast.Next.Add(goal.Index);
+            goal.Prev = finalLast.Index;
             board.GoalIndex = goal.Index;
             return board;
         }
@@ -63,7 +64,12 @@ namespace MiniGame.LifeGame
                 cell.Amount = RollAmount(type, shape.DoubleAmounts, config, random);
                 cell.TextVariant = random.Next(TextVariantCount);
 
-                if (last != null) last.Next.Add(cell.Index);
+                if (last != null)
+                {
+                    last.Next.Add(cell.Index);
+                    cell.Prev = last.Index;
+                }
+
                 if (first == null) first = cell;
                 last = cell;
             }
@@ -141,6 +147,10 @@ namespace MiniGame.LifeGame
                     return RollStep(config.TransferMin, config.TransferMax, config.AmountStep, random) * multiplier;
                 case LifeCellType.Bet:
                     return config.BetStake * multiplier;
+                case LifeCellType.Forward:
+                case LifeCellType.Back:
+                    // 歩数はギャンブルルートでも倍にしない（お金ではないので）
+                    return random.Range(config.WarpMin, config.WarpMax);
                 case LifeCellType.Tuition:
                     return config.Tuition;
                 default:

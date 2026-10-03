@@ -65,6 +65,8 @@ namespace MiniGame.LifeGame
         [Range(0f, 1f)] [SerializeField] private float _remoteFlickStrength = 0.6f;
         [Tooltip("相手が選んだ選択肢を色付けして見せる時間")]
         [SerializeField] private float _remoteRevealTime = 0.8f;
+        [Tooltip("宝くじの当たり番号を光らせて見せる時間")]
+        [SerializeField] private float _lotteryRevealTime = 1.5f;
 
         [Header("Timing (sec)")]
         [SerializeField] private float _stepDuration = 0.22f;
@@ -427,6 +429,9 @@ namespace MiniGame.LifeGame
                 case LifePending.ChooseTarget:
                     yield return ChooseTarget();
                     break;
+                case LifePending.Lottery:
+                    yield return ChooseLottery();
+                    break;
             }
         }
 
@@ -487,6 +492,7 @@ namespace MiniGame.LifeGame
         private IEnumerator PlayEvents(List<LifeEvent> events, bool autoClose)
         {
             var content = new EventPopupContent();
+            var lotteryTickets = new List<LifeEvent>();
             foreach (LifeEvent e in events)
             {
                 if (e.Type == LifeEventType.Moved)
@@ -503,12 +509,34 @@ namespace MiniGame.LifeGame
                     continue;
                 }
 
+                if (e.Type == LifeEventType.Rested)
+                {
+                    yield return _turnBanner.Play($"{DisplayName(e.Seat)} は1回休み", LifeColors.Seat(e.Seat), false, _npcAutoClose);
+                    continue;
+                }
+
+                // 宝くじの番号は出目の前に全員分まとめて届くので、ためておいて抽選のときに並べて見せる
+                if (e.Type == LifeEventType.LotteryTicket)
+                {
+                    lotteryTickets.Add(e);
+                    continue;
+                }
+
+                if (e.Type == LifeEventType.LotteryDrawn) yield return SpinLottery(lotteryTickets, e);
+
                 // 賭けの出目はルールが Apply で決めているので、人間・NPC・相手の手番どれでも、ここで出目に合わせてルーレットを止める
                 if (e.Type == LifeEventType.BetResult) yield return SpinBetRoulette(e.Value);
 
                 if (PlayEffect(e)) yield return new WaitForSeconds(_effectInterval);
 
                 AddToPopup(content, e);
+
+                // 進む・戻るは、止まったマスの表示を読んでからコマを動かす（いきなり動いて何が起きたか分からなくならないように）
+                if (e.Type == LifeEventType.Warped)
+                {
+                    yield return ShowPopup(content, autoClose);
+                    content = new EventPopupContent();
+                }
             }
 
             yield return ShowPopup(content, autoClose);
@@ -519,6 +547,24 @@ namespace MiniGame.LifeGame
             _rouletteView.SetHint($"賭けのルーレット\n{_state.Config.BetWinMin}以上で勝ち");
             yield return _rouletteView.SpinTo(roll, _remoteFlickStrength);
             _rouletteView.SetHint("");
+        }
+
+        /// <summary>全員の番号を並べてからルーレットを回し、当たった人の番号を光らせる。出目はルールが決めた値で止める</summary>
+        private IEnumerator SpinLottery(List<LifeEvent> tickets, LifeEvent drawn)
+        {
+            var labels = new List<string>();
+            var winner = new bool[tickets.Count];
+            for (int i = 0; i < tickets.Count; i++)
+            {
+                labels.Add($"{DisplayName(tickets[i].Seat)}\n{tickets[i].Value}番");
+                winner[i] = tickets[i].Seat == drawn.OtherSeat;
+            }
+
+            _choicePanel.ShowWatching($"宝くじの抽選！\n当たったら {LifeTexts.Money(_state.Config.LotteryPrize)}", labels, null);
+            _rouletteView.SetHint("宝くじの抽選");
+            yield return _rouletteView.SpinTo(drawn.Value, _remoteFlickStrength);
+            _rouletteView.SetHint("");
+            yield return _choicePanel.RevealAndClose(winner, _lotteryRevealTime);
         }
 
         private void AddToPopup(EventPopupContent content, LifeEvent e)
@@ -629,6 +675,15 @@ namespace MiniGame.LifeGame
                     Popup(e.OtherSeat, "職業交換！", LifeColors.Celebration);
                     _audio.PlayGain();
                     break;
+                case LifeEventType.Warped:
+                    bool forward = e.Amount > 0;
+                    Popup(e.Seat, forward ? $"{e.Amount}マス進む！" : $"{-e.Amount}マス戻る…", forward ? LifeColors.Gain : LifeColors.Loss);
+                    if (forward) _audio.PlayGain();
+                    else _audio.PlayLoss();
+                    break;
+                case LifeEventType.LotteryDrawn:
+                    PlayLotteryResult(e);
+                    break;
                 default:
                     return false;
             }
@@ -649,6 +704,21 @@ namespace MiniGame.LifeGame
 
             Popup(e.Seat, "負け…", LifeColors.Loss);
             _audio.PlayLoss();
+        }
+
+        private void PlayLotteryResult(LifeEvent e)
+        {
+            if (e.OtherSeat == LifeEvent.Bank)
+            {
+                Popup(e.Seat, "はずれ…", LifeColors.Loss);
+                _audio.PlayLoss();
+                return;
+            }
+
+            // 当たりは1試合に何度もないので、ゴールと同じ一番派手な音で盛り上げる
+            Popup(e.OtherSeat, "大当たり！", LifeColors.Celebration);
+            _cars[e.OtherSeat].Celebrate();
+            _audio.PlayGoal();
         }
 
         private void Popup(int seat, string text, Color color)
@@ -848,6 +918,15 @@ namespace MiniGame.LifeGame
             yield return PlayEvents(Apply(LifeCommandType.ChooseTarget, target), false);
         }
 
+        private IEnumerator ChooseLottery()
+        {
+            BuildChoice(out string title, out List<string> labels, out List<bool> enabled);
+            int choice = 0;
+            yield return _choicePanel.ChooseOne(title, labels, enabled, index => choice = index);
+            // 選択肢の並び 0〜9 が番号 1〜10
+            yield return PlayEvents(Apply(LifeCommandType.ChooseLottery, choice + 1), false);
+        }
+
         /// <summary>指名・入れ替えの選択肢に並べる席（自分以外を席順に）。選べない人も灰色で出す（なぜ選べないか見せるため）</summary>
         private List<int> TargetSeats()
         {
@@ -914,6 +993,10 @@ namespace MiniGame.LifeGame
                 case LifePending.ChooseTarget:
                     BuildTargetChoice(out title, labels, out enabled);
                     break;
+                case LifePending.Lottery:
+                    title = $"宝くじの番号を選ぶ\n当たったら {LifeTexts.Money(_state.Config.LotteryPrize)}（他の人の番号は自動で決まる）";
+                    for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++) labels.Add($"{n}番");
+                    break;
                 default:
                     title = $"株を買う？（1枚 {LifeTexts.Money(_state.Config.StockPrice)}）\nその番号が出るたびに配当";
                     for (int n = 1; n <= LifeRuleConfig.RouletteMax; n++) labels.Add($"{n}番");
@@ -975,6 +1058,9 @@ namespace MiniGame.LifeGame
                     break;
                 case LifeCommandType.ChooseTarget:
                     index = command.Value == LifeRules.NoTarget ? count - 1 : TargetSeats().IndexOf(command.Value);
+                    break;
+                case LifeCommandType.ChooseLottery:
+                    index = command.Value - 1;
                     break;
                 default:
                     index = command.Value;

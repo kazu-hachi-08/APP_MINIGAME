@@ -40,6 +40,7 @@ namespace MiniGame.LifeGame
                     return Family;
                 case LifeEventType.Goal:
                 case LifeEventType.JobSwapped:
+                case LifeEventType.LotteryDrawn:
                     return Celebration;
                 default:
                     return Color.white;

@@ -138,6 +138,7 @@ namespace MiniGame.LifeGame.Tests
             Assert.AreEqual(expected.CurrentSeat, actual.CurrentSeat, at);
             Assert.AreEqual(expected.LastRoll, actual.LastRoll, at);
             Assert.AreEqual(expected.GoalCount, actual.GoalCount, at);
+            Assert.AreEqual(expected.IsWarping, actual.IsWarping, at);
             Assert.AreEqual(expected.Random.NextUInt64(), actual.Random.NextUInt64(), at);
 
             for (int seat = 0; seat < expected.Players.Count; seat++)
@@ -157,6 +158,7 @@ namespace MiniGame.LifeGame.Tests
                 Assert.AreEqual(e.IsMarried, a.IsMarried, who);
                 Assert.AreEqual(e.Children, a.Children, who);
                 Assert.AreEqual(e.GoalOrder, a.GoalOrder, who);
+                Assert.AreEqual(e.RestTurns, a.RestTurns, who);
             }
         }
     }

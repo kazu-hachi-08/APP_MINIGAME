@@ -131,6 +131,7 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Payday:
                 case LifeCellType.Nominate:
                 case LifeCellType.Bet:
+                case LifeCellType.Lottery:
                     return _moneyGood;
                 case LifeCellType.Expense:
                 case LifeCellType.Tuition:
@@ -139,6 +140,8 @@ namespace MiniGame.LifeGame
                 case LifeCellType.Sickness:
                 case LifeCellType.Accident:
                 case LifeCellType.Fire:
+                case LifeCellType.Back:
+                case LifeCellType.Rest:
                     return _mishap;
                 case LifeCellType.Birth:
                 case LifeCellType.Marriage:
@@ -154,6 +157,7 @@ namespace MiniGame.LifeGame
                     return _job;
                 case LifeCellType.Start:
                 case LifeCellType.Goal:
+                case LifeCellType.Forward:
                     return _milestone;
                 default:
                     return _plain;
