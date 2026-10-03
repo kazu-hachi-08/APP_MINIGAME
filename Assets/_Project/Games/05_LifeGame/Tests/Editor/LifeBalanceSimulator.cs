@@ -6,8 +6,8 @@ namespace MiniGame.LifeGame.Tests
 {
     /// <summary>
     /// 金額バランス調整用に、NPC同士の大量試合の統計を文字列で返す（NUnit に依存しないので dotnet のコンソールからも回せる）。
-    /// ルートの有利不利を公平に比べるため、分岐はNPCの判断ではなく等確率で選ばせる
-    /// （NPCは「負けている人がギャンブル」を選ぶので、そのままだとギャンブルの勝率が低く見えてしまう）。
+    /// ルートの有利不利を公平に比べるため、分岐・賭け・相手選び・宝くじの番号はNPCの判断ではなく等確率で選ばせる
+    /// （NPCは「負けている人がギャンブル」「お金持ちを指名」のように選ぶので、そのままだと作戦の分だけ勝率がずれて見える）。
     /// </summary>
     public static class LifeBalanceSimulator
     {
@@ -58,17 +58,13 @@ namespace MiniGame.LifeGame.Tests
         {
             LifeGameState state = LifeGameState.Create(abilities, seed, config);
             var npcRandom = new LifeRandom(seed + 10000);
-            var routeRandom = new LifeRandom(seed + 20000);
+            var choiceRandom = new LifeRandom(seed + 20000);
             var records = new List<PlayerRecord>();
             foreach (LifePlayerState _ in state.Players) records.Add(new PlayerRecord());
 
             for (int i = 0; i < MaxCommands && state.Pending != LifePending.Finished; i++)
             {
-                LifeCommand command = LifeNpcPlanner.Plan(state, npcRandom);
-                if (command.Type == LifeCommandType.ChooseBranch)
-                {
-                    command = new LifeCommand(command.Seat, LifeCommandType.ChooseBranch, routeRandom.Next(state.CurrentCell.Next.Count));
-                }
+                LifeCommand command = EvenChoice(state, LifeNpcPlanner.Plan(state, npcRandom), choiceRandom);
 
                 if (command.Type == LifeCommandType.Spin) records[command.Seat].Spins++;
                 LifeRules.Apply(state, command);
@@ -85,6 +81,37 @@ namespace MiniGame.LifeGame.Tests
             }
 
             return records;
+        }
+
+        /// <summary>運で決まらない選択を、選べるものの中から等確率で選び直す。それ以外（家・保険・株など）はNPCの判断のまま</summary>
+        private static LifeCommand EvenChoice(LifeGameState state, LifeCommand command, LifeRandom random)
+        {
+            switch (command.Type)
+            {
+                case LifeCommandType.ChooseBranch:
+                    return new LifeCommand(command.Seat, command.Type, random.Next(state.CurrentCell.Next.Count));
+                case LifeCommandType.ChooseBet:
+                    return new LifeCommand(command.Seat, command.Type, random.Next(2));
+                case LifeCommandType.ChooseTarget:
+                    return new LifeCommand(command.Seat, command.Type, RandomTarget(state, random));
+                case LifeCommandType.ChooseLottery:
+                    return new LifeCommand(command.Seat, command.Type, random.Range(1, LifeRuleConfig.RouletteMax));
+                default:
+                    return command;
+            }
+        }
+
+        /// <summary>選べる相手（入れ替えは「やめる」も含む）から1つ</summary>
+        private static int RandomTarget(LifeGameState state, LifeRandom random)
+        {
+            var targets = new List<int>();
+            if (LifeRules.IsValidTarget(state, LifeRules.NoTarget)) targets.Add(LifeRules.NoTarget);
+            foreach (LifePlayerState player in state.Players)
+            {
+                if (LifeRules.IsValidTarget(state, player.Seat)) targets.Add(player.Seat);
+            }
+
+            return targets[random.Next(targets.Count)];
         }
 
         private static void RecordRoute(LifeGameState state, PlayerRecord record, int seat)
