@@ -23,6 +23,9 @@ namespace MiniGame.Common.Scene
         /// <summary>第5弾: 2D人生ゲーム</summary>
         public const string LifeGame = "LifeGameScene";
 
+        /// <summary>第6弾: ペンギン大戦争</summary>
+        public const string PenguinWars = "PenguinWarsScene";
+
         /// <summary>カードゲーム（THE CHAOS Ⅱ）</summary>
         public const string CardGame = "CardGameScene";
 

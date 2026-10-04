@@ -26,5 +26,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Games/05_LifeGame/Scenes/LifeGameScene.unity
     guid: bfc8baaea92234945b1226ff9d42f729
+  - enabled: 1
+    path: Assets/_Project/Games/06_PenguinWars/Scenes/PenguinWarsScene.unity
+    guid: 665df3cee6c332f40bc1cdfa4f967b6a
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
