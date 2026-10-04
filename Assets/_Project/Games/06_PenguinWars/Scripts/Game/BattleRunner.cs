@@ -237,7 +237,7 @@ namespace MiniGame.PenguinWars
             }
             if (units.Count == 0)
             {
-                Debug.LogWarning("[BattleRunner] カタログが空です。Tools > MiniGame > Generate PenguinWars Units を実行してください");
+                Debug.LogWarning("[BattleRunner] カタログが空です。Tools > MiniGame > Rebuild PenguinWars を実行してください");
             }
             return units;
         }

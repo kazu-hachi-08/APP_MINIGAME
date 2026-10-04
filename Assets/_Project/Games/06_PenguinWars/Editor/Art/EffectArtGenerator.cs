@@ -42,14 +42,6 @@ namespace MiniGame.PenguinWars.Editor
             new Color32(255, 255, 255, 255), new Color32(140, 210, 255, 255), new Color32(60, 140, 255, 255), new Color32(60, 120, 255, 110),
         };
 
-        public static bool IsMissing()
-        {
-            return PenguinSpriteWriter.Load(SmokePath) == null ||
-                   PenguinSpriteWriter.Load(SparkPath) == null ||
-                   PenguinSpriteWriter.Load(SoulPath) == null ||
-                   PenguinSpriteWriter.Load(BeamPath) == null;
-        }
-
         public static void GenerateAll()
         {
             int ppu = PenguinSpriteWriter.PixelsPerUnit;

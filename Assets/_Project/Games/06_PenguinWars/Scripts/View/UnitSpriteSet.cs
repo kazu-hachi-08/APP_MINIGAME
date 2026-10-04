@@ -14,7 +14,7 @@ namespace MiniGame.PenguinWars
     }
 
     /// <summary>
-    /// 1キャラ1陣営分のスプライト。中身は Tools > MiniGame > Generate PenguinWars Art が PenguinUnitData に書き込む
+    /// 1キャラ1陣営分のスプライト。中身は Tools > MiniGame > Rebuild PenguinWars が PenguinUnitData に書き込む
     /// </summary>
     [Serializable]
     public class UnitSpriteSet

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MiniGame.PenguinWars
 {
-    /// <summary>全キャラの一覧。中身は Tools > MiniGame > Generate PenguinWars Units が Data/Units/ から集めて入れる</summary>
+    /// <summary>全キャラの一覧。中身は Tools > MiniGame > Rebuild PenguinWars が Data/Units/ から集めて入れる</summary>
     [CreateAssetMenu(fileName = "PenguinUnitCatalog", menuName = "MiniGame/PenguinWars/Unit Catalog")]
     public class PenguinUnitCatalog : ScriptableObject
     {

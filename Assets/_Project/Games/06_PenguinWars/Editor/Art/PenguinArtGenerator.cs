@@ -16,19 +16,11 @@ namespace MiniGame.PenguinWars.Editor
         // 原点を足元の中央にして、UnitView は X を写すだけで地面に立つようにする
         private static readonly Vector2 FootPivot = new Vector2(0.5f, 0f);
 
-        [MenuItem("Tools/MiniGame/Generate PenguinWars Art", false, 9)]
-        public static void Generate()
-        {
-            GenerateAll(PenguinUnitAssetGenerator.EnsureAssets());
-        }
-
-        /// <summary>SceneBuilder から呼ぶ。Rebuild だけで遊べるよう、絵が足りないときだけ作る</summary>
-        public static void EnsureGenerated(PenguinUnitCatalog catalog)
-        {
-            if (FieldArtGenerator.IsMissing() || EffectArtGenerator.IsMissing() || HasMissingUnitSprites(catalog)) GenerateAll(catalog);
-        }
-
-        private static void GenerateAll(PenguinUnitCatalog catalog)
+        /// <summary>
+        /// SceneBuilder から呼ぶ。見た目の定義を変えたときも Rebuild だけで反映されるよう、毎回すべて描き直す
+        /// （同じ定義からは同じ PNG ができるので、見た目を変えていなければ差分は出ない）
+        /// </summary>
+        public static void Regenerate(PenguinUnitCatalog catalog)
         {
             int count = 0;
             foreach (PenguinUnitData unit in catalog.Units)
@@ -40,16 +32,6 @@ namespace MiniGame.PenguinWars.Editor
 
             AssetDatabase.SaveAssets();
             Debug.Log($"{LogPrefix} ドット絵を生成しました（{count}体＋城・背景・演出）: {PenguinSpriteWriter.SpriteDirectory}");
-        }
-
-        private static bool HasMissingUnitSprites(PenguinUnitCatalog catalog)
-        {
-            foreach (PenguinUnitData unit in catalog.Units)
-            {
-                if (unit == null) continue;
-                if (!unit.GetSprites(Side.Left).IsValid || !unit.GetSprites(Side.Right).IsValid) return true;
-            }
-            return false;
         }
 
         private static bool GenerateUnit(PenguinUnitData unit)

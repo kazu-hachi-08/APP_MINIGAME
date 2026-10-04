@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// タイトルから開くキャラずかん（仕様書 §2.0）。マスはカタログから実行時に作るので、
-    /// キャラを足しても Generate PenguinWars Units だけで並ぶ（Scene に50マス焼き込むと、キャラの追加のたびに Rebuild が要るため）
+    /// キャラを足しても Rebuild PenguinWars でカタログを作り直すだけで並ぶ（Scene に50マス焼き込むと、マスの数を Scene 側でも合わせる必要が出るため）
     /// </summary>
     public class PenguinZukanPanel : MonoBehaviour
     {

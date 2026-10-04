@@ -17,16 +17,7 @@ namespace MiniGame.PenguinWars.Editor
         private const string DataDirectory = "Assets/_Project/Games/06_PenguinWars/Data";
         private const string UnitsDirectory = DataDirectory + "/Units";
         private const string CatalogPath = DataDirectory + "/PenguinUnitCatalog.asset";
-        private const string LogPrefix = "[PenguinUnitAssetGenerator]";
-
-        [MenuItem("Tools/MiniGame/Generate PenguinWars Units", false, 8)]
-        public static void Generate()
-        {
-            PenguinUnitCatalog catalog = EnsureAssets();
-            Debug.Log($"{LogPrefix} キャラデータとカタログを更新しました（{catalog.Units.Count}体）: {CatalogPath}");
-        }
-
-        /// <summary>SceneBuilder からも呼ぶ。Rebuild だけで遊べる状態にするため</summary>
+        /// <summary>SceneBuilder から呼ぶ。生成メニューを Rebuild PenguinWars 1つにまとめるため</summary>
         public static PenguinUnitCatalog EnsureAssets()
         {
             EnsureDirectory(UnitsDirectory);

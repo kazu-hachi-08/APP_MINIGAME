@@ -15,7 +15,7 @@
 | 対象プラットフォーム | Android / iPhone（PCはマウス＋キーボードで確認用・ブラウザ版） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/06_PenguinWars/`。Sceneは他のゲームと同じく `Tools > MiniGame > Rebuild PenguinWars`（`PenguinWarsSceneBuilder`）でコードから生成する。キャラのデータは `Tools > MiniGame > Generate PenguinWars Units`、ドット絵は `Tools > MiniGame > Generate PenguinWars Art` で作る（§11.3）。
+ソースは `Assets/_Project/Games/06_PenguinWars/`。Sceneは他のゲームと同じく `Tools > MiniGame > Rebuild PenguinWars`（`PenguinWarsSceneBuilder`）でコードから生成する。キャラのデータとドット絵も同じメニューでまとめて作り直す（§11.3）。
 
 ### 1.1 モード
 
@@ -36,7 +36,7 @@
 * ボタンは「スタート」（→ モード選択）・「ずかん」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
 * 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで No 順に並べ、各マスのペンギンは歩きコマで足踏みする
   * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・単体/範囲・コスト・再生産・体力・攻撃力・射程・速度・能力を出す
-  * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Generate PenguinWars Units` すればそのまま反映される
+  * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
 * 「設定」は BGM ON/OFF・BGM音量・SE音量（`PenguinWarsSettingsPanel`）。値は共通の `AudioManager` が `PlayerPrefs` に保存するので、ポーズ画面のスライダーや次回の起動とも同じ値になる
 * BGM ON/OFF は BGM だけを止める（SE は鳴る）。OFF 中は BGM 音量のスライダーを触れない
 * タイトル〜モード選択〜ドラフト〜編成発表はタイトルBGM、START! からプレイ中はプレイBGMに切り替える
@@ -194,7 +194,7 @@ START!（1.0秒）
 UnitDefinitions（全50体の定義表：No・名前・役割・コスト・単体/範囲・能力・個別倍率）
   ＋ UnitStatFormula（役割ごとの基準値から体力・攻撃力・射程…を計算）
   ＋ UnitLooks（見た目パーツ。Editor）
-        ↓ Generate PenguinWars Units（Rebuild からも呼ばれる）
+        ↓ Rebuild PenguinWars
 Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.asset
 ```
 
@@ -280,7 +280,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 キャラごとの値はこの仕様書には書かない（定義表と二重管理になってずれるため）。正は次のコード／アセットで、ゲーム内の「ずかん」（§2.0）でも確認できる。
 
 * 名前・役割・コスト・単体/範囲・能力・個別倍率: `Scripts/Battle/UnitDefinitions.cs`
-* 計算後の数値（再生産・体力・攻撃・射程・速度…）: `Data/Units/Unit_001〜050.asset`（`Generate PenguinWars Units` で生成）
+* 計算後の数値（再生産・体力・攻撃・射程・速度…）: `Data/Units/Unit_001〜050.asset`（`Rebuild PenguinWars` で生成）
 * 見た目: `Editor/UnitLooks.cs`
 
 * 攻撃間隔・発生・ノックバック回数は役割ごとに共通（上の基準値の表）
@@ -342,7 +342,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 | 拡大率 | 1〜3（PNG は 32x32 のまま Pixels Per Unit を 16/拡大率 にして大きく見せる） |
 
 * 体のまわりの表現（雪・布団・まわし・かまくら）や足（ながあし・タコあし）は、背中スロットのパーツとして作っている
-* パーツを足すときは `PenguinPartPatterns`（部位ごとの partial）/ `PenguinBodyPatterns` に1項目、見た目の指定は `UnitLooks` に1行足して `Generate PenguinWars Art`
+* パーツを足すときは `PenguinPartPatterns`（部位ごとの partial）/ `PenguinBodyPatterns` に1項目、見た目の指定は `UnitLooks` に1行足して `Rebuild PenguinWars`
 * 敵（エンドレスのCPU、対戦の相手）は同じ見た目でチーム色を赤系にした色違い（右向きは flipX）。味方は青系。虹など陣営で変わらない色もある
 * コマは「歩き（2コマ）」「攻撃（発生待ち・振り下ろしの2コマ）」「ノックバック（1コマ）」。1コマ1PNG（`Sprites/Units/Unit_001_Left_Walk0.png` など。50体×2陣営×5コマ＝500枚）
   * 歩き2コマ目は体を1ドット跳ねて足を前へ。攻撃はのけぞって持ち物を振り上げ → 前に乗り出して振り下ろす
@@ -482,7 +482,7 @@ View（UnitView / CastleView / HUD / 音・演出）
 Assets/_Project/Games/06_PenguinWars/
  ├ Scenes/PenguinWarsScene.unity   PenguinWarsSceneBuilder で生成（手で編集しない）
  ├ Data/                           PenguinWarsBalance.asset・PenguinUnitCatalog.asset
- │  └ Units/                       Unit_001〜050.asset（Generate PenguinWars Units で生成）
+ │  └ Units/                       Unit_001〜050.asset（Rebuild PenguinWars で生成）
  ├ Audio/                          BGM素材（PenguinWars_TitleBgm / PenguinWars_BattleBgm。§9）
  ├ Sprites/                        生成したドット絵（Units / 戦場 / Effects。1単位＝16px）
  ├ Scripts/
@@ -533,9 +533,8 @@ Assets/_Project/Games/06_PenguinWars/
 
 | メニュー | 作るもの | 既にあるとき |
 | --- | --- | --- |
-| `Rebuild PenguinWars` | Scene。無ければ Balance・キャラアセット・絵も作る | Balance は上書きしない／キャラアセットは上書き／絵は足りないときだけ全体を作る |
-| `Generate PenguinWars Units` | `Data/Units/` と カタログ | 定義表の値で上書き（スプライト参照は残す） |
-| `Generate PenguinWars Art` | キャラ・戦場・演出の PNG | 作り直す（見た目を変えたらこれを実行） |
+| `Rebuild PenguinWars` | Scene・`Data/Units/` とカタログ・キャラ・戦場・演出の PNG。無ければ Balance も作る | Balance は上書きしない／キャラアセットは定義表の値で上書き／PNG は毎回すべて描き直す |
+| `Rebuild All` | 全ゲームの Scene と素材（PenguinWars も含む） | 各ゲームの Rebuild と同じ |
 
 * 戦場の長さ（`FieldLength`）を変えたら Rebuild が必要（城の位置を Rebuild 時に置くため）
 * 生成した `.meta` もコミットする（2人で GUID がずれないため）
