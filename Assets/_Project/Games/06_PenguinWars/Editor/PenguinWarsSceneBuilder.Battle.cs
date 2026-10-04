@@ -14,14 +14,17 @@ namespace MiniGame.PenguinWars.Editor
         private const int UnitHpBarBackSortingOrder = 6;
 
         private static BattleRunner CreateBattle(PenguinWarsBalance balance, PenguinUnitCatalog catalog,
-            CastleView leftCastle, CastleView rightCastle)
+            CastleView leftCastle, CastleView rightCastle, FieldBackdrop backdrop, PenguinStageData[] stages)
         {
             var battleObj = new GameObject("Battle");
             UnitViewPool unitViews = CreateUnitViewPool(battleObj.transform, catalog);
 
             var runner = battleObj.AddComponent<BattleRunner>();
             SetRefs(runner, ("_balance", balance), ("_catalog", catalog), ("_unitViews", unitViews),
-                ("_leftCastle", leftCastle), ("_rightCastle", rightCastle));
+                ("_leftCastle", leftCastle), ("_rightCastle", rightCastle), ("_backdrop", backdrop));
+            var so = new UnityEditor.SerializedObject(runner);
+            SerializedArray(so, "_versusStages", stages);
+            so.ApplyModifiedPropertiesWithoutUndo();
 
             // キー入力は UI 部品を呼ぶので、参照は UI を作った後に BuildInternal でつなぐ
             battleObj.AddComponent<KeyboardCommandInput>();

@@ -13,7 +13,7 @@ namespace MiniGame.PenguinWars
     /// ホストだけが BattleWorld を計算し、ゲストは操作を送って届いた状態を表示するだけにする（サッカーと同じ）。
     ///
     /// ゲスト → ホスト：準備完了、ドラフトの選択、操作（出撃・働きペンギン・ペンギン砲）
-    /// ホスト → ゲスト：ドラフトの候補、編成（= ドラフト完了）、試合の状態（約15回/秒）、イベント（出撃・ヒット・撃破・砲・城崩壊・時間切れ）
+    /// ホスト → ゲスト：ドラフトの候補、編成とステージ（= ドラフト完了）、試合の状態（約15回/秒）、イベント（出撃・ヒット・撃破・砲・城崩壊・時間切れ）
     ///
     /// NetworkObject は使わず名前付きメッセージだけで送る（Prefab 登録などの準備を不要にするため）。
     /// 中身のバイト列は Battle 側（BattleSnapshot / BattleEventCodec）が作るので、ここは運ぶだけ
@@ -51,8 +51,8 @@ namespace MiniGame.PenguinWars
         public event Action<int, int> DraftPickReceived;
         /// <summary>ゲスト: ドラフトの新しいラウンド（ラウンド, 自分の候補, 自分がここまでに取ったキャラ）</summary>
         public event Action<int, int[], int[]> DraftRoundReceived;
-        /// <summary>ゲスト: ホストが決めた編成（ホスト基準の Left, Right の順）</summary>
-        public event Action<int[], int[]> DecksReceived;
+        /// <summary>ゲスト: ホストが決めた編成（ホスト基準の Left, Right の順）とステージ番号</summary>
+        public event Action<int[], int[], int> DecksReceived;
         /// <summary>ゲスト: BattleSnapshot のバイト列</summary>
         public event Action<byte[]> SnapshotReceived;
         /// <summary>ゲスト: BattleEventCodec のバイト列</summary>
@@ -138,12 +138,13 @@ namespace MiniGame.PenguinWars
 
         // ---- 送信：ホスト → ゲスト ----
 
-        /// <summary>編成（キャラNo の並び）。ゲストは同じカタログから数値と絵を引く</summary>
-        public void SendDecks(IReadOnlyList<UnitStats> leftDeck, IReadOnlyList<UnitStats> rightDeck)
+        /// <summary>編成（キャラNo の並び）とステージ番号。ゲストは同じカタログ・ステージ一覧から数値と絵を引く</summary>
+        public void SendDecks(IReadOnlyList<UnitStats> leftDeck, IReadOnlyList<UnitStats> rightDeck, int stageIndex)
         {
             using var writer = new FastBufferWriter(DeckBufferSize, Allocator.Temp);
             writer.WriteValueSafe(ToUnitNos(leftDeck));
             writer.WriteValueSafe(ToUnitNos(rightDeck));
+            writer.WriteValueSafe(stageIndex);
             Send(DeckMessage, writer, ReliableDelivery);
         }
 
@@ -262,7 +263,8 @@ namespace MiniGame.PenguinWars
         {
             reader.ReadValueSafe(out int[] leftDeck);
             reader.ReadValueSafe(out int[] rightDeck);
-            DecksReceived?.Invoke(leftDeck, rightDeck);
+            reader.ReadValueSafe(out int stageIndex);
+            DecksReceived?.Invoke(leftDeck, rightDeck, stageIndex);
         }
 
         private void ReceiveDraftRound(ulong senderId, FastBufferReader reader)

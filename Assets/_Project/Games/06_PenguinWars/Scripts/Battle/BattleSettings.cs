@@ -32,6 +32,14 @@ namespace MiniGame.PenguinWars.Battle
         public float SlowSpeedMultiplier { get; set; } = 0.5f;
         /// <summary>城キラーの城へのダメージ倍率（仕様書 §5.3）</summary>
         public float CastleKillerMultiplier { get; set; } = 3f;
+        /// <summary>なだれの間隔（秒。仕様書 §3.4）。0 ならなだれなし</summary>
+        public float AvalancheInterval { get; set; }
+        /// <summary>なだれの何秒前に予告するか。プレイヤーがユニットを下げる・出すのを控えるなど備えられるように</summary>
+        public float AvalancheWarningTime { get; set; } = 5f;
+        /// <summary>なだれの範囲（左城からの戦場の割合）。左右対称にして、どちらの陣営にも同じだけ効くようにする</summary>
+        public float AvalancheStartRatio { get; set; } = 0.4f;
+        public float AvalancheEndRatio { get; set; } = 0.6f;
+        public int AvalancheDamage { get; set; } = 150;
         /// <summary>対戦の制限時間（秒。仕様書 §2.2）。0 なら時間切れなし（エンドレス）</summary>
         public float TimeLimit { get; set; }
         /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>

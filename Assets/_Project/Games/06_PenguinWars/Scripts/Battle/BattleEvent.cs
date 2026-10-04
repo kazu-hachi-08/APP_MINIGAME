@@ -16,6 +16,10 @@ namespace MiniGame.PenguinWars.Battle
         StatusApplied,
         /// <summary>対戦の時間切れ（仕様書 §2.2）。Side は城の残りHP割合が少なかった側、Amount は引き分けなら 1</summary>
         TimeUp,
+        /// <summary>なだれの予告（仕様書 §3.4）。X は範囲の中央、Amount は予告の秒数（ミリ秒）</summary>
+        AvalancheWarning,
+        /// <summary>なだれが起きた。X は範囲の中央、Amount は範囲の半分の幅（1/1000 単位）</summary>
+        Avalanche,
     }
 
     /// <summary>

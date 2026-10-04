@@ -14,7 +14,6 @@ namespace MiniGame.PenguinWars
         [SerializeField] private BattleCamera _battleCamera;
         [SerializeField] private BattleHud _hud;
         [SerializeField] private PenguinWarsAudio _audio;
-        [SerializeField] private PenguinWarsBalance _balance;
         [SerializeField] private CastleCollapse _leftCollapse;
         [SerializeField] private CastleCollapse _rightCollapse;
 
@@ -48,6 +47,12 @@ namespace MiniGame.PenguinWars
         [Header("画面揺れ")]
         [SerializeField] private float _cannonShakeDuration = 0.4f;
         [SerializeField] private float _shakeStrength = 0.25f;
+
+        [Header("なだれ")]
+        [SerializeField] private string _avalancheWarningText = "なだれ注意！";
+        [Tooltip("範囲に並べる煙の数。煙の同時数（_maxSmokes）より少なくして、出撃の煙が出なくならないようにする")]
+        [SerializeField] private int _avalancheSmokeCount = 8;
+        [SerializeField] private float _avalancheShakeDuration = 0.8f;
 
         [Header("城が崩れるときの煙")]
         [SerializeField] private int _collapseSmokeCount = 6;
@@ -105,6 +110,12 @@ namespace MiniGame.PenguinWars
                 case BattleEventType.CastleDestroyed:
                     PresentCastleDestroyed(battleEvent.Side, battleEvent.X);
                     break;
+                case BattleEventType.AvalancheWarning:
+                    _hud.ShowNotice(_avalancheWarningText, battleEvent.Amount / BattleWorld.AvalancheAmountScale);
+                    break;
+                case BattleEventType.Avalanche:
+                    PresentAvalanche(battleEvent);
+                    break;
             }
         }
 
@@ -138,12 +149,32 @@ namespace MiniGame.PenguinWars
         private void PresentCannon(BattleEvent battleEvent)
         {
             int direction = battleEvent.Side.Forward();
-            float castleX = battleEvent.Side == Side.Left ? 0f : _balance.FieldLength;
+            float castleX = battleEvent.Side == Side.Left ? 0f : _battleRunner.FieldLength;
             float startX = castleX + direction * _beamStartOffset;
             float length = Mathf.Max(0f, (battleEvent.X - startX) * direction);
             _beams.Get()?.Play(new Vector3(startX, _beamHeight, 0f), length, direction);
             _battleCamera.Shake(_cannonShakeDuration, _shakeStrength);
             _audio.PlayCannon();
+        }
+
+        /// <summary>
+        /// 範囲いっぱいに煙を並べて「どこまで巻き込まれたか」を見せる。X は範囲の中央なので、ゲストの反転後もそのまま使える。
+        /// 専用の絵は作らず、出撃の煙を流用する
+        /// </summary>
+        private void PresentAvalanche(BattleEvent battleEvent)
+        {
+            _hud.HideNotice();
+            _battleCamera.Shake(_avalancheShakeDuration, _shakeStrength);
+            _audio.PlayCollapse();
+
+            float halfWidth = battleEvent.Amount / BattleWorld.AvalancheAmountScale;
+            float startX = battleEvent.X - halfWidth;
+            float endX = battleEvent.X + halfWidth;
+            for (int i = 0; i < _avalancheSmokeCount; i++)
+            {
+                float rate = _avalancheSmokeCount > 1 ? (float)i / (_avalancheSmokeCount - 1) : 0.5f;
+                _smokes.Get()?.Play(new Vector3(Mathf.Lerp(startX, endX, rate), _smokeHeight, 0f));
+            }
         }
 
         private void PresentCastleDestroyed(Side side, float castleX)

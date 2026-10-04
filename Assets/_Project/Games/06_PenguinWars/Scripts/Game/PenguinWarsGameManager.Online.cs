@@ -87,13 +87,13 @@ namespace MiniGame.PenguinWars
         /// ゲストのみ。ドラフトが終わってホストから届いた編成を受け取り、自分（ホストの右）を左に入れ替えて持つ。
         /// 最終ラウンドの候補より先に届いても困らないよう、ドラフト前（ModeSelect）でも受け付ける
         /// </summary>
-        private void HandleDecksReceived(int[] hostLeftDeck, int[] hostRightDeck)
+        private void HandleDecksReceived(int[] hostLeftDeck, int[] hostRightDeck, int stageIndex)
         {
             if (_mode != MatchMode.Guest) return;
             if (Phase != PenguinWarsPhase.ModeSelect && Phase != PenguinWarsPhase.Draft) return;
 
             _draftPanel.Hide();
-            _battleRunner.InitializeGuest(hostRightDeck, hostLeftDeck, _onlineLink);
+            _battleRunner.InitializeGuest(hostRightDeck, hostLeftDeck, stageIndex, _onlineLink);
             BeginIntro(_versusDeckIntroDuration);
         }
 

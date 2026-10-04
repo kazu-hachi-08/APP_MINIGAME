@@ -26,9 +26,24 @@ namespace MiniGame.PenguinWars
         /// <summary>エンドレスの敵が強くなったことを知らせる（仕様書 §9）。しばらくしたら自動で消える</summary>
         public void ShowLevelUp(int level)
         {
-            _levelUpLabel.text = $"LEVEL {level}!";
+            ShowNotice($"LEVEL {level}!", _levelUpDisplayTime);
+        }
+
+        /// <summary>
+        /// 上部の小さなお知らせ（LEVEL UP・なだれ注意）。中央のメッセージ（START!・TIME UP!）とは別の欄にして、
+        /// 試合の区切りの表示を消してしまわないようにする
+        /// </summary>
+        public void ShowNotice(string text, float duration)
+        {
+            _levelUpLabel.text = text;
             _levelUpLabel.gameObject.SetActive(true);
-            _levelUpTimer = _levelUpDisplayTime;
+            _levelUpTimer = duration;
+        }
+
+        public void HideNotice()
+        {
+            _levelUpTimer = 0f;
+            _levelUpLabel.gameObject.SetActive(false);
         }
 
         public void SetElapsed(float seconds)

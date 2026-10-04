@@ -21,7 +21,7 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector3 RewardShadowOffset = new Vector3(0.04f, -0.04f, 0f);
         private static readonly Color RewardColor = new Color(1f, 0.85f, 0.2f);
 
-        private static (BattleEventPresenter presenter, PenguinWarsAudio audio) CreateEffects(PenguinWarsBalance balance,
+        private static (BattleEventPresenter presenter, PenguinWarsAudio audio) CreateEffects(
             BattleRunner battleRunner, BattleCamera battleCamera, BattleHud hud, CastleView leftCastle, CastleView rightCastle)
         {
             var effectsObj = new GameObject("Effects");
@@ -30,7 +30,7 @@ namespace MiniGame.PenguinWars.Editor
             var presenter = effectsObj.AddComponent<BattleEventPresenter>();
 
             SetRefs(presenter, ("_battleRunner", battleRunner), ("_battleCamera", battleCamera), ("_hud", hud),
-                ("_audio", audio), ("_balance", balance),
+                ("_audio", audio),
                 ("_leftCollapse", leftCastle.GetComponent<CastleCollapse>()),
                 ("_rightCollapse", rightCastle.GetComponent<CastleCollapse>()),
                 ("_smokeTemplate", CreateSpriteEffect<SpawnSmokeEffect>(root, "SmokeTemplate", EffectArtGenerator.SmokePath, SmokeSortingOrder)),

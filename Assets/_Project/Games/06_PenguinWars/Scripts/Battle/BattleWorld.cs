@@ -6,7 +6,7 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>
     /// 戦闘のすべて（ユニット・城・お金・砲）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
     /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）。
-    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs
+    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs、なだれは BattleWorld.Avalanche.cs
     /// </summary>
     public partial class BattleWorld
     {
@@ -143,6 +143,7 @@ namespace MiniGame.PenguinWars.Battle
                 TickUnit(unit, deltaTime);
                 if (IsFinished) break;
             }
+            TickAvalanche(deltaTime);
             _units.RemoveAll(IsDeadPredicate);
             // 最後に見るのは、同じステップで城が落ちていたらそちらを優先するため
             TickTimeLimit(deltaTime);

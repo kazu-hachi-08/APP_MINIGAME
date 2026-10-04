@@ -43,7 +43,7 @@ namespace MiniGame.PenguinWars
         {
             _time = 0f;
             _nextAction = 0;
-            _battleRunner.InitializeDemo();
+            _battleRunner.InitializeDemo(_topic.ShowsAvalanche);
             // 0 秒目の出撃を、作り直したその場で出す（1フレーム空の戦場が見えないように）
             RunDueActions();
         }

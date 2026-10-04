@@ -36,12 +36,20 @@ namespace MiniGame.PenguinWars
         public float LoopSeconds { get; }
         /// <summary>Time の早い順に並べる</summary>
         public IReadOnlyList<GuideAction> Actions { get; }
+        /// <summary>デモの戦場でなだれを起こすか</summary>
+        public bool ShowsAvalanche { get; }
 
         public GuideTopic(string title, string body, float loopSeconds, params GuideAction[] actions)
+            : this(title, body, loopSeconds, false, actions)
+        {
+        }
+
+        public GuideTopic(string title, string body, float loopSeconds, bool showsAvalanche, params GuideAction[] actions)
         {
             Title = title;
             Body = body;
             LoopSeconds = loopSeconds;
+            ShowsAvalanche = showsAvalanche;
             Actions = actions;
         }
     }
@@ -56,6 +64,8 @@ namespace MiniGame.PenguinWars
         private const Side Ally = Side.Left;
         private const Side Enemy = Side.Right;
         private const float DefaultLoop = 10f;
+        // BattleRunner のデモのなだれ（3.5秒目）が1回起きて、押し戻されたところまで見せる
+        private const float AvalancheLoop = 6f;
 
         // 出てくるキャラの No（UnitDefinitions）
         private const int Penguin = 1;
@@ -121,6 +131,14 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 6.5f),
                 GuideAction.Spawn(0f, Enemy, Penguin, 8f),
                 GuideAction.Cannon(3.5f, Ally)),
+
+            new GuideTopic("なだれ",
+                "ステージ「なだれの谷」だけ。60秒ごとに戦場の真ん中にいるユニット全員（敵も味方も）に150ダメージ＋後ろに飛ばす。\n" +
+                "5秒前に「なだれ注意！」が出る。真ん中に出すのを少し待とう。（デモでは短い間隔）",
+                AvalancheLoop, true,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 7f),
+                GuideAction.Spawn(0f, Enemy, WallPenguin, 11f),
+                GuideAction.Spawn(0f, Ally, Penguin, 2f)),
         };
     }
 }

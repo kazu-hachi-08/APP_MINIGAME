@@ -21,6 +21,9 @@ namespace MiniGame.PenguinWars
         [SerializeField] private UnitViewPool _unitViews;
         [SerializeField] private CastleView _leftCastle;
         [SerializeField] private CastleView _rightCastle;
+        [SerializeField] private FieldBackdrop _backdrop;
+        [Tooltip("オンライン対戦のステージ。ドラフト後にホストがこの中から抽選する（仕様書 §3.4）")]
+        [SerializeField] private PenguinStageData[] _versusStages;
         [Tooltip("ゲストが前回の位置から届いた位置まで動かす秒数。ホストの送信間隔（PenguinWarsOnlineLink）と同じにする")]
         [SerializeField] private float _guestInterpolationTime = 1f / 15f;
 
@@ -29,6 +32,11 @@ namespace MiniGame.PenguinWars
         [SerializeField] private int _demoCastleHp = 1500;
         [Tooltip("ペンギン砲のデモで、出した直後に撃てるようにする")]
         [SerializeField] private float _demoCannonChargeTime = 0.1f;
+        [Tooltip("なだれのデモの間隔・予告（秒）。本番（60秒）では待ちきれないので短くする。ループ（GuideTopics）の間に1回起きる値にすること")]
+        [SerializeField] private float _demoAvalancheInterval = 3.5f;
+        [SerializeField] private float _demoAvalancheWarningTime = 2f;
+        [Tooltip("なだれのデモの範囲。タイトル中のカメラは左端しか映さないので、本番（中央）ではなく画面に入る所に起こす")]
+        [SerializeField] private Vector2 _demoAvalancheRatio = new Vector2(0.2f, 0.4f);
 
         private BattleWorld _world;
         // デモ中は World を外に見せない（出撃ボタン・さかな表示がデモの中身を拾わないように）
@@ -42,6 +50,11 @@ namespace MiniGame.PenguinWars
 
         public bool IsRunning { get; private set; }
         public bool IsGuest => _mirror != null;
+        public int VersusStageCount => _versusStages != null ? _versusStages.Length : 0;
+        /// <summary>今の試合のステージ。エンドレス・デモは null（Balance の戦場のまま）</summary>
+        public PenguinStageData CurrentStage { get; private set; }
+        /// <summary>今の試合の戦場の長さ。カメラ・演出はこれで右の城の位置を知る</summary>
+        public float FieldLength { get; private set; }
 
         /// <summary>UI が状態（さかな・再生産など）を読むためだけに公開する。書き換えは Enqueue 経由で行う</summary>
         public BattleWorld World => _isDemo ? null : _world;
@@ -54,7 +67,7 @@ namespace MiniGame.PenguinWars
         {
             // 毎回違う編成・違う湧き方・違う能力の当たり方にする（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
             var random = new System.Random(Environment.TickCount);
-            _world = new BattleWorld(CreateSettings(false, random.Next()));
+            _world = new BattleWorld(CreateSettings(false, random.Next(), null));
 
             List<UnitStats> allUnits = CollectAllUnits();
             _world.SetDeck(Side.Left, PickRandomDeck(allUnits, random));
@@ -64,9 +77,9 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>オンラインのホスト: ドラフトで決まった編成で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
-        public void InitializeVersusHost(IReadOnlyList<int> leftDeckNos, IReadOnlyList<int> rightDeckNos)
+        public void InitializeVersusHost(IReadOnlyList<int> leftDeckNos, IReadOnlyList<int> rightDeckNos, int stageIndex)
         {
-            _world = new BattleWorld(CreateSettings(true, Environment.TickCount));
+            _world = new BattleWorld(CreateSettings(true, Environment.TickCount, GetStage(stageIndex)));
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
             _world.SetDeck(Side.Left, ToSortedDeck(leftDeckNos, statsByNo));
             _world.SetDeck(Side.Right, ToSortedDeck(rightDeckNos, statsByNo));
@@ -76,14 +89,22 @@ namespace MiniGame.PenguinWars
         /// <summary>
         /// あそびかたのデモ: 両方とも本物の城で、能力は毎回発動する。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ
         /// </summary>
-        public void InitializeDemo()
+        /// <param name="avalanche">true ならなだれを短い間隔で起こす</param>
+        public void InitializeDemo(bool avalanche)
         {
-            BattleSettings settings = CreateSettings(true, 0);
+            BattleSettings settings = CreateSettings(true, 0, null);
             settings.LeftCastleHp = _demoCastleHp;
             settings.RightCastleHp = _demoCastleHp;
             settings.TimeLimit = 0f;
             settings.CannonChargeTime = _demoCannonChargeTime;
             settings.AlwaysProcAbilities = true;
+            if (avalanche)
+            {
+                settings.AvalancheInterval = _demoAvalancheInterval;
+                settings.AvalancheWarningTime = _demoAvalancheWarningTime;
+                settings.AvalancheStartRatio = _demoAvalancheRatio.x;
+                settings.AvalancheEndRatio = _demoAvalancheRatio.y;
+            }
 
             _world = new BattleWorld(settings);
             _demoStatsByNo ??= CollectStatsByNo();
@@ -131,9 +152,11 @@ namespace MiniGame.PenguinWars
         /// オンラインのゲスト: 表示用の World を作るだけで進めない。編成はホストが決めて送ってくる。
         /// 左右反転後の向きで持つので、自分の編成が Side.Left になる
         /// </summary>
-        public void InitializeGuest(IReadOnlyList<int> myDeckNos, IReadOnlyList<int> opponentDeckNos, ICommandSink remoteSink)
+        public void InitializeGuest(IReadOnlyList<int> myDeckNos, IReadOnlyList<int> opponentDeckNos, int stageIndex,
+            ICommandSink remoteSink)
         {
-            _world = new BattleWorld(CreateSettings(true, 0));
+            // 反転（SideMirror）に戦場の長さを使うので、ホストと同じステージで作る
+            _world = new BattleWorld(CreateSettings(true, 0, GetStage(stageIndex)));
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
             _world.SetDeck(Side.Left, ToDeck(myDeckNos, statsByNo));
             _world.SetDeck(Side.Right, ToDeck(opponentDeckNos, statsByNo));
@@ -234,7 +257,35 @@ namespace MiniGame.PenguinWars
             }
         }
 
-        private BattleSettings CreateSettings(bool versus, int seed)
+        /// <summary>範囲外（ステージ未設定・バージョン違い）なら null を返し、Balance の戦場で遊べるようにする</summary>
+        private PenguinStageData GetStage(int stageIndex)
+        {
+            if (stageIndex >= 0 && stageIndex < VersusStageCount) return _versusStages[stageIndex];
+
+            Debug.LogWarning($"[BattleRunner] ステージ {stageIndex} がありません。Tools > MiniGame > Rebuild PenguinWars を実行してください");
+            return null;
+        }
+
+        /// <param name="stage">null なら Balance の戦場（エンドレス・デモ）</param>
+        private BattleSettings CreateSettings(bool versus, int seed, PenguinStageData stage)
+        {
+            BattleSettings settings = CreateBaseSettings(versus, seed);
+            if (stage != null) stage.ApplyTo(settings);
+            ApplyField(stage, settings.FieldLength);
+            return settings;
+        }
+
+        /// <summary>シーンは1つの戦場で作ってあるので、ステージの長さに合わせて右の城を動かし、色を変える</summary>
+        private void ApplyField(PenguinStageData stage, float fieldLength)
+        {
+            CurrentStage = stage;
+            FieldLength = fieldLength;
+            Vector3 position = _rightCastle.transform.localPosition;
+            _rightCastle.transform.localPosition = new Vector3(fieldLength, position.y, position.z);
+            _backdrop.SetTint(stage != null ? stage.Tint : Color.white);
+        }
+
+        private BattleSettings CreateBaseSettings(bool versus, int seed)
         {
             int castleHp = versus ? _balance.CastleHpVersus : _balance.CastleHpEndless;
             return new BattleSettings

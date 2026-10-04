@@ -88,7 +88,8 @@ namespace MiniGame.PenguinWars.Battle
             _events.Add(new BattleEvent(BattleEventType.CannonFired, side, BattleEvent.CastleId, originX + side.Forward() * reach));
         }
 
-        private void DamageUnit(UnitState target, int amount)
+        /// <param name="rewardKill">false なら撃破報酬・撃破数を誰にも入れない（なだれで倒れた分を相手の得にしないため）</param>
+        private void DamageUnit(UnitState target, int amount, bool rewardKill = true)
         {
             int hpBefore = target.Hp;
             target.Hp = Math.Max(0, target.Hp - amount);
@@ -100,7 +101,7 @@ namespace MiniGame.PenguinWars.Battle
             }
 
             target.Action = UnitAction.Dead;
-            int reward = RewardKill(target);
+            int reward = rewardKill ? RewardKill(target) : 0;
             _events.Add(new BattleEvent(BattleEventType.Died, target.Side, target.Id, target.X, reward));
         }
 

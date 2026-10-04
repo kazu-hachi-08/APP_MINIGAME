@@ -58,6 +58,7 @@ namespace MiniGame.PenguinWars.Editor
         private const float RevealOpponentRowY = -190f;
         private static readonly Color RevealMyColor = new Color(0.55f, 0.8f, 1f);
         private static readonly Color RevealOpponentColor = new Color(1f, 0.55f, 0.5f);
+        private const float RevealStageY = -360f;
 
         // ------------------------------------------------------------------
         // ドラフト
@@ -141,6 +142,7 @@ namespace MiniGame.PenguinWars.Editor
 
             Text myName = CreateText(panelObj.transform, "MyName", RevealSeatFontSize, CenterAnchor, new Vector2(0f, RevealMyLabelY), RevealSeatSize, RevealMyColor);
             Text opponentName = CreateText(panelObj.transform, "OpponentName", RevealSeatFontSize, CenterAnchor, new Vector2(0f, RevealOpponentLabelY), RevealSeatSize, RevealOpponentColor);
+            Text stage = CreateText(panelObj.transform, "Stage", RevealSeatFontSize, CenterAnchor, new Vector2(0f, RevealStageY), RevealSeatSize, MessageColor);
             (Image[] myIcons, Text[] myNames) = CreateRevealRow(panelObj.transform, "My", RevealMyRowY);
             (Image[] opponentIcons, Text[] opponentNames) = CreateRevealRow(panelObj.transform, "Opponent", RevealOpponentRowY);
 
@@ -151,7 +153,8 @@ namespace MiniGame.PenguinWars.Editor
             SerializedArray(so, "_opponentIcons", opponentIcons);
             SerializedArray(so, "_opponentNames", opponentNames);
             so.ApplyModifiedPropertiesWithoutUndo();
-            SetRefs(panel, ("_catalog", catalog), ("_myNameLabel", myName), ("_opponentNameLabel", opponentName));
+            SetRefs(panel, ("_catalog", catalog), ("_myNameLabel", myName), ("_opponentNameLabel", opponentName),
+                ("_stageLabel", stage));
             panelObj.SetActive(false);
             return panel;
         }

@@ -72,10 +72,12 @@ namespace MiniGame.PenguinWars
         private void FinishDraftAsHost()
         {
             _draftPanel.Hide();
-            _battleRunner.InitializeVersusHost(_draft.GetPicks(Side.Left), _draft.GetPicks(Side.Right));
+            // ステージの抽選もホストだけが行い、編成と一緒に送る（仕様書 §3.4）
+            int stageIndex = UnityEngine.Random.Range(0, _battleRunner.VersusStageCount);
+            _battleRunner.InitializeVersusHost(_draft.GetPicks(Side.Left), _draft.GetPicks(Side.Right), stageIndex);
             BattleWorld world = _battleRunner.World;
             // 編成の送信がドラフト完了の合図を兼ねる（ゲストはこれで編成確認へ進む）
-            _onlineLink.SendDecks(world.GetDeck(Side.Left), world.GetDeck(Side.Right));
+            _onlineLink.SendDecks(world.GetDeck(Side.Left), world.GetDeck(Side.Right), stageIndex);
             BeginIntro(_versusDeckIntroDuration);
         }
 
@@ -109,12 +111,13 @@ namespace MiniGame.PenguinWars
             else if (_mode == MatchMode.Guest) _onlineLink.SubmitDraftPick(_guestDraftRound, offerIndex);
         }
 
-        /// <summary>お互いの10体を見せる。どちらの端末でも World の Left が自分（ゲストは反転済み）</summary>
+        /// <summary>お互いの10体とステージを見せる。どちらの端末でも World の Left が自分（ゲストは反転済み）</summary>
         private void ShowDeckReveal()
         {
             BattleWorld world = _battleRunner.World;
+            PenguinStageData stage = _battleRunner.CurrentStage;
             _deckRevealPanel.Show(world.GetDeck(Side.Left), world.GetDeck(Side.Right),
-                SeatNames.Get(MySeat), SeatNames.Get(OpponentSeat));
+                SeatNames.Get(MySeat), SeatNames.Get(OpponentSeat), stage != null ? stage.DisplayName : string.Empty);
         }
 
         private void HideDraftPanels()

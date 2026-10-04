@@ -99,6 +99,8 @@ namespace MiniGame.PenguinWars
             ElapsedTime = 0f;
             RefreshTime();
             _hud.HideMessage();
+            // 対戦はステージごとに戦場の長さが違うので、試合が決まってからカメラの動ける範囲を合わせる
+            _battleCamera.Initialize(_battleRunner.FieldLength);
             _showingDeck = true;
             _introTimer = deckDuration;
             // 対戦はお互いの10体（ドラフト中は相手の分を隠していたため）、エンドレスは自分の10体だけ

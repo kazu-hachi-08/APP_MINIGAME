@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -42,6 +42,7 @@ namespace MiniGame.PenguinWars.Editor
             // 先に読み込んだアセットがシーンに空の参照で保存されてしまうため
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             PenguinWarsBalance balance = EnsureBalance();
+            PenguinStageData[] stages = EnsureStages();
             PenguinUnitCatalog catalog = PenguinUnitAssetGenerator.EnsureAssets();
             PenguinArtGenerator.Regenerate(catalog);
 
@@ -49,8 +50,8 @@ namespace MiniGame.PenguinWars.Editor
             CreateEventSystem();
             UIManager uiManager = CreateManagers();
 
-            (CastleView leftCastle, CastleView rightCastle) = CreateField(balance.FieldLength);
-            BattleRunner battleRunner = CreateBattle(balance, catalog, leftCastle, rightCastle);
+            (CastleView leftCastle, CastleView rightCastle, FieldBackdrop backdrop) = CreateField(balance.FieldLength);
+            BattleRunner battleRunner = CreateBattle(balance, catalog, leftCastle, rightCastle, backdrop, stages);
 
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
@@ -69,7 +70,7 @@ namespace MiniGame.PenguinWars.Editor
             PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog, battleRunner, battleCamera);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
             (BattleEventPresenter presenter, PenguinWarsAudio audio) =
-                CreateEffects(balance, battleRunner, battleCamera, hud, leftCastle, rightCastle);
+                CreateEffects(battleRunner, battleCamera, hud, leftCastle, rightCastle);
             AssignBgmClips(audio);
 
             var gameManager = new GameObject("PenguinWarsGameManager").AddComponent<PenguinWarsGameManager>();
