@@ -25,7 +25,7 @@ namespace MiniGame.PenguinWars.Battle
         private static UnitAbility Slow() => new UnitAbility(UnitAbilityType.Slow, SlowChance, SlowSeconds);
         private static UnitAbility CastleKiller() => new UnitAbility(UnitAbilityType.CastleKiller);
         private static UnitAbility Steadfast() => new UnitAbility(UnitAbilityType.Steadfast);
-        // 役割キラー: 大型は前に出てくるので単体攻撃でも殴れるが、遠距離・妨害は壁の後ろにいるので範囲攻撃のキャラに持たせる
+        // 役割キラー: 大型は前に出てくるので単体攻撃でも殴れるが、遠距離・妨害は壁の後ろにいるので範囲攻撃のキャラに持たせる（それでも壁が残っている間は届きにくい）
         private static UnitAbility LargeKiller() => new UnitAbility(UnitAbilityType.LargeKiller);
         private static UnitAbility RangedKiller() => new UnitAbility(UnitAbilityType.RangedKiller);
         private static UnitAbility DisruptorKiller() => new UnitAbility(UnitAbilityType.DisruptorKiller);

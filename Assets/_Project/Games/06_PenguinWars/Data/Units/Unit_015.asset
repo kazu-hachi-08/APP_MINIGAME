@@ -17,15 +17,18 @@ MonoBehaviour:
   _role: 1
   _cost: 400
   _cooldown: 8
-  _maxHp: 280
-  _attack: 35
+  _maxHp: 250
+  _attack: 32
   _range: 1.95
   _attackInterval: 1.3
   _windup: 0.4
   _moveSpeed: 1.32
   _isAreaAttack: 1
   _knockbackCount: 3
-  _abilities: []
+  _abilities:
+  - _type: 6
+    _chance: 0
+    _duration: 0
   _look:
     _body: basic
     _bodyColor: standard
