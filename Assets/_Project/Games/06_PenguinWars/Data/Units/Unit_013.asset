@@ -14,14 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinUnitData
   _no: 13
   _displayName: "\u30DC\u30AF\u30B5\u30FC\u30DA\u30F3\u30AE\u30F3"
+  _role: 1
   _cost: 350
-  _cooldown: 7
+  _cooldown: 7.5
   _maxHp: 220
-  _attack: 35
-  _range: 1.4
-  _attackInterval: 1
-  _windup: 0.3
-  _moveSpeed: 1.2
+  _attack: 37
+  _range: 1.5
+  _attackInterval: 1.3
+  _windup: 0.4
+  _moveSpeed: 1.1
   _isAreaAttack: 0
   _knockbackCount: 3
   _abilities:
