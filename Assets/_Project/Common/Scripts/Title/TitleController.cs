@@ -1,4 +1,5 @@
 using MiniGame.Common.Audio;
+using MiniGame.Common.Profile;
 using MiniGame.Common.UI;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,6 +19,9 @@ namespace MiniGame.Common.Title
         [SerializeField] private Text _versionText;
         [SerializeField] private Button _settingsButton;
         [SerializeField] private Button _quitButton;
+
+        [Header("Profile")]
+        [SerializeField] private NameEntryDialog _nameEntryDialog;
 
         private void Start()
         {
@@ -44,6 +48,12 @@ namespace MiniGame.Common.Title
             if (_autoPlayBgm && AudioManager.HasInstance)
             {
                 AudioManager.Instance.PlayBgm(_titleBgm);
+            }
+
+            // 各ゲームが名前を表示するため、未設定のままゲームに入れないようタイトルで必ず決めさせる
+            if (_nameEntryDialog != null && !UserProfile.HasName)
+            {
+                _nameEntryDialog.Show(onDecided: null);
             }
         }
 

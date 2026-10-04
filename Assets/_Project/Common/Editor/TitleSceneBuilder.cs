@@ -151,6 +151,8 @@ namespace MiniGame.Editor
             titleSo.FindProperty("_versionText").objectReferenceValue = versionText;
             titleSo.FindProperty("_settingsButton").objectReferenceValue = settingsButton;
             titleSo.FindProperty("_quitButton").objectReferenceValue = quitButton;
+            // 名前の確認に CommonDialog を重ねて出すため、共通ダイアログより先（背面）に作る
+            titleSo.FindProperty("_nameEntryDialog").objectReferenceValue = NameEntryDialogBuilder.Build(canvasObj.transform);
             titleSo.ApplyModifiedProperties();
 
             // 5. 共通ダイアログ群の作成と配置（初期非アクティブ）

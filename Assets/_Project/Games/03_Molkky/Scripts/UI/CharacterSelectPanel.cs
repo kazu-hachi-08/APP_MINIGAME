@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MiniGame.Common.Profile;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -194,7 +195,8 @@ namespace MiniGame.Molkky
         private string SeatLabel()
         {
             bool isNpc = _kinds[_seat] != PlayerKind.Human;
-            return isNpc ? $"P{_seat + 1}（NPC）" : $"P{_seat + 1}";
+            string name = SeatNames.Get(_seat);
+            return isNpc ? $"{name}（NPC）" : name;
         }
     }
 }

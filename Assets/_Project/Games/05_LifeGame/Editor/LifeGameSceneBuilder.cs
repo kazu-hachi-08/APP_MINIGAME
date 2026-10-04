@@ -277,6 +277,8 @@ namespace MiniGame.LifeGame.Editor
                 backgrounds[seat].raycastTarget = false;
 
                 texts[seat] = CreateStretchText(cellObj.transform, "Text", MoneyFontSize);
+                // 6文字の名前は枠幅ちょうどなので、折り返して名前が2行に割れないようにする
+                texts[seat].horizontalOverflow = HorizontalWrapMode.Overflow;
                 AddOutline(texts[seat].gameObject);
             }
 
@@ -581,9 +583,10 @@ namespace MiniGame.LifeGame.Editor
             const int titleFontSize = 60;
             const float rowHeight = 120f;
             const float countButtonWidth = 240f;
-            const float seatLabelWidth = 160f;
+            // P1 の欄には最大6文字のユーザー名が入るので、6文字が1行に収まる幅と大きさにする（行幅 820 に収まる上限）
+            const float seatLabelWidth = 300f;
             const float kindButtonWidth = 480f;
-            const int seatLabelFontSize = 56;
+            const int seatLabelFontSize = 48;
             int countOptions = PlayerSetupPanel.MaxPlayers - PlayerSetupPanel.MinPlayers + 1;
 
             GameObject overlay = CreatePanelOverlay(canvas, "PlayerSetupPanel");
@@ -605,6 +608,7 @@ namespace MiniGame.LifeGame.Editor
             var rows = new GameObject[PlayerSetupPanel.MaxPlayers];
             var kindButtons = new Button[PlayerSetupPanel.MaxPlayers];
             var kindTexts = new Text[PlayerSetupPanel.MaxPlayers];
+            var seatLabels = new Text[PlayerSetupPanel.MaxPlayers];
             for (int seat = 0; seat < PlayerSetupPanel.MaxPlayers; seat++)
             {
                 Transform row = CreateRow(box, $"Row_P{seat + 1}", PanelInnerWidth, rowHeight);
@@ -612,8 +616,8 @@ namespace MiniGame.LifeGame.Editor
 
                 Text label = CreateText(row, "Label", seatLabelFontSize, CenterAnchor, Vector2.zero,
                     new Vector2(seatLabelWidth, rowHeight), LifeColors.Seat(seat));
-                label.text = LifeTexts.PlayerName(seat);
                 AddOutline(label.gameObject);
+                seatLabels[seat] = label;
 
                 kindButtons[seat] = CreatePanelButton(row, "Btn_Kind", "", kindButtonWidth, rowHeight, ChoiceButtonColor);
                 kindTexts[seat] = kindButtons[seat].GetComponentInChildren<Text>();
@@ -626,6 +630,7 @@ namespace MiniGame.LifeGame.Editor
             var panel = overlay.AddComponent<PlayerSetupPanel>();
             SetArray(panel, "_countButtons", countButtons);
             SetArray(panel, "_playerRows", rows);
+            SetArray(panel, "_seatLabels", seatLabels);
             SetArray(panel, "_kindButtons", kindButtons);
             SetArray(panel, "_kindTexts", kindTexts);
             SetRefs(panel, ("_startButton", start), ("_backButton", back));

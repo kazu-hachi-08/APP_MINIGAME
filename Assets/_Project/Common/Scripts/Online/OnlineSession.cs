@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -7,6 +8,7 @@ using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
+using MiniGame.Common.Profile;
 using UnityEngine;
 
 namespace MiniGame.Common.Online
@@ -25,9 +27,19 @@ namespace MiniGame.Common.Online
         public const int DefaultMaxPlayers = 2;
 
         private const string StartMessage = "session.start";
-        private const int StartMessageSize = sizeof(int) * 2;
+        private const string NameMessage = "session.name";
 
-        /// <summary>接続完了（相手が揃った）。引数は自分がホストかどうか</summary>
+        // 名前は可変長なので書き込み時に伸ばす。6文字×最大4人でも MaxMessageSize には遠く届かない
+        private const int InitialMessageSize = 64;
+        private const int MaxMessageSize = 1024;
+
+        /// <summary>
+        /// 1対1で相手の名前を待つ上限。古いビルドの相手は名前を送ってこないので、
+        /// 待ち続けると永遠に始まらない。過ぎたら名前なし（「P2」等）で始める
+        /// </summary>
+        private const float NameWaitSeconds = 3f;
+
+        /// <summary>接続完了（相手が揃い、1対1では名前交換も済んだ）。引数は自分がホストかどうか</summary>
         public event Action<bool> OnPeerConnected;
 
         /// <summary>試合中に相手との接続が切れた</summary>
@@ -46,6 +58,12 @@ namespace MiniGame.Common.Online
 
         /// <summary>ホストから見た参加者（自分以外）。席番号を参加順で配るため順番を保つ</summary>
         private readonly List<ulong> _memberIds = new List<ulong>();
+
+        /// <summary>3人以上の部屋のホストのみ：参加者から届いた名前。開始メッセージで全員に配る</summary>
+        private readonly Dictionary<ulong, string> _memberNames = new Dictionary<ulong, string>();
+
+        /// <summary>1対1で相手の名前を待っている間だけ動く（届くかタイムアウトで止まる）</summary>
+        private Coroutine _nameWait;
 
         private ISession _session;
         private bool _peerConnected;
@@ -78,6 +96,10 @@ namespace MiniGame.Common.Online
             _maxPlayers = maxPlayers;
             var options = new SessionOptions { MaxPlayers = maxPlayers }.WithRelayNetwork().WithNetworkOptions(PlatformNetworkOptions);
             _session = await MultiplayerService.Instance.CreateSessionAsync(options);
+
+            // CustomMessagingManager は接続開始後にしか無いので、部屋を作ってから登録する。
+            // ゲストは参加コードを受け取ってから入ってくるため、ここより先に名前が届くことはない
+            NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(NameMessage, ReceiveName);
             return _session.Code;
         }
 
@@ -90,11 +112,25 @@ namespace MiniGame.Common.Online
             var options = new JoinSessionOptions().WithNetworkOptions(PlatformNetworkOptions);
             _session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant(), options);
 
-            // 1対1の部屋ではホストが開始メッセージを送らないので、登録しても使われないだけで害はない
-            NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(StartMessage, ReceiveStart);
+            // 部屋の定員はホストが決めるので、参加側は部屋の情報から知る
+            _maxPlayers = _session.MaxPlayers;
 
-            // クライアントは Join が返った時点でホストとつながっている
-            NotifyPeerConnected();
+            var messaging = NetworkManager.Singleton.CustomMessagingManager;
+            messaging.RegisterNamedMessageHandler(StartMessage, ReceiveStart);
+            messaging.RegisterNamedMessageHandler(NameMessage, ReceiveName);
+
+            // ホストからは送らず、ゲストが名乗ったら返事をもらう形にする。
+            // ホストが先に送ると、ゲスト側でハンドラを登録する前に届いて捨てられることがあるため
+            SendName(NetworkManager.ServerClientId);
+
+            if (IsMultiRoom)
+            {
+                // 3人以上の部屋では全員の名前は開始メッセージで届くので、ここでは待たない
+                NotifyPeerConnected();
+                return;
+            }
+
+            StartNameWait();
         }
 
         /// <summary>
@@ -107,11 +143,13 @@ namespace MiniGame.Common.Online
 
             _matchStarted = true;
             int count = _memberIds.Count + 1;
+            string[] names = CollectMemberNames();
             for (int i = 0; i < _memberIds.Count; i++)
             {
-                SendStart(_memberIds[i], i + 1, count);
+                SendStart(_memberIds[i], i + 1, names);
             }
 
+            SeatNames.UseOnline(names);
             OnMatchStarted?.Invoke(0, count);
         }
 
@@ -119,7 +157,9 @@ namespace MiniGame.Common.Online
         public void Leave()
         {
             UnsubscribeNetworkEvents();
+            StopNameWait();
             _memberIds.Clear();
+            _memberNames.Clear();
             _matchStarted = false;
             _maxPlayers = DefaultMaxPlayers;
 
@@ -157,6 +197,8 @@ namespace MiniGame.Common.Online
 
         private async Task PrepareAsync()
         {
+            // 直前にオフラインで遊んでいると席0がユーザー名のままなので、名前交換が済むまでは「P1」「P2」に戻しておく
+            SeatNames.UseOnline(null);
             EnsureNetworkManager();
             await SignInAsync();
             SubscribeNetworkEvents();
@@ -216,6 +258,7 @@ namespace MiniGame.Common.Online
             NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnected;
             NetworkManager.Singleton.CustomMessagingManager?.UnregisterNamedMessageHandler(StartMessage);
+            NetworkManager.Singleton.CustomMessagingManager?.UnregisterNamedMessageHandler(NameMessage);
         }
 
         private void HandleClientConnected(ulong clientId)
@@ -229,7 +272,11 @@ namespace MiniGame.Common.Online
                 return;
             }
 
-            NotifyPeerConnected();
+            // 接続通知より先に名前が届いて開始済みなら、待つものはない
+            if (_peerConnected) return;
+
+            // ゲストの名前が届いたら ReceiveName から開始する。届かなければタイムアウトで開始
+            StartNameWait();
         }
 
         private void AddMember(ulong clientId)
@@ -254,6 +301,12 @@ namespace MiniGame.Common.Online
                 return;
             }
 
+            if (_nameWait != null)
+            {
+                HandleDisconnectedWhileNaming();
+                return;
+            }
+
             if (!_peerConnected) return;
 
             _peerConnected = false;
@@ -268,6 +321,8 @@ namespace MiniGame.Common.Online
         {
             if (!_memberIds.Remove(clientId)) return;
 
+            _memberNames.Remove(clientId);
+
             if (!_matchStarted)
             {
                 _peerConnected = _memberIds.Count > 0;
@@ -279,11 +334,25 @@ namespace MiniGame.Common.Online
             Leave();
         }
 
-        private static void SendStart(ulong clientId, int seat, int count)
+        /// <summary>席順（ホスト=0、以降は参加順）の名前。名前が届いていない人は空欄にして「P{n}」表示に任せる</summary>
+        private string[] CollectMemberNames()
         {
-            using var writer = new FastBufferWriter(StartMessageSize, Allocator.Temp);
+            var names = new string[_memberIds.Count + 1];
+            names[0] = UserProfile.Name;
+            for (int i = 0; i < _memberIds.Count; i++)
+            {
+                names[i + 1] = _memberNames.TryGetValue(_memberIds[i], out string name) ? name : string.Empty;
+            }
+
+            return names;
+        }
+
+        private static void SendStart(ulong clientId, int seat, string[] names)
+        {
+            using var writer = new FastBufferWriter(InitialMessageSize, Allocator.Temp, MaxMessageSize);
             writer.WriteValueSafe(seat);
-            writer.WriteValueSafe(count);
+            writer.WriteValueSafe(names.Length);
+            foreach (string name in names) writer.WriteValueSafe(name);
             NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(StartMessage, clientId, writer,
                 NetworkDelivery.ReliableSequenced);
         }
@@ -292,8 +361,94 @@ namespace MiniGame.Common.Online
         {
             reader.ReadValueSafe(out int seat);
             reader.ReadValueSafe(out int count);
+            var names = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                reader.ReadValueSafe(out string name);
+                names[i] = UserProfile.Sanitize(name);
+            }
+
             _matchStarted = true;
+            SeatNames.UseOnline(names);
             OnMatchStarted?.Invoke(seat, count);
+        }
+
+        // ---- 名前交換 ----
+
+        private static void SendName(ulong clientId)
+        {
+            using var writer = new FastBufferWriter(InitialMessageSize, Allocator.Temp, MaxMessageSize);
+            writer.WriteValueSafe(UserProfile.Name);
+            NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage(NameMessage, clientId, writer,
+                NetworkDelivery.ReliableSequenced);
+        }
+
+        private void ReceiveName(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out string raw);
+            // 相手が別ビルドでも表示を壊さないよう、自分で保存するときと同じ整形をかける
+            string name = UserProfile.Sanitize(raw);
+
+            if (!IsHost)
+            {
+                // 1対1でホストから返事が来た。ホスト=席0、自分=席1
+                FinishNameExchange(new[] { name, UserProfile.Name });
+                return;
+            }
+
+            if (IsMultiRoom)
+            {
+                _memberNames[senderId] = name;
+                return;
+            }
+
+            // 1対1のホスト：返事として自分の名前を返してから始める
+            SendName(senderId);
+            FinishNameExchange(new[] { UserProfile.Name, name });
+        }
+
+        private void StartNameWait()
+        {
+            StopNameWait();
+            _nameWait = StartCoroutine(WaitNameOrTimeout());
+        }
+
+        private void StopNameWait()
+        {
+            if (_nameWait == null) return;
+
+            StopCoroutine(_nameWait);
+            _nameWait = null;
+        }
+
+        private IEnumerator WaitNameOrTimeout()
+        {
+            yield return new WaitForSecondsRealtime(NameWaitSeconds);
+
+            _nameWait = null;
+            Debug.LogWarning("[OnlineSession] 相手の名前が届かなかったので既定の表示名で開始します");
+            FinishNameExchange(IsHost ? new[] { UserProfile.Name, string.Empty } : new[] { string.Empty, UserProfile.Name });
+        }
+
+        private void FinishNameExchange(string[] names)
+        {
+            // 開始済みなら、タイムアウト後に遅れて届いた名前なので無視する（試合中に表示が変わらないように）
+            if (_peerConnected) return;
+
+            StopNameWait();
+            SeatNames.UseOnline(names);
+            Debug.Log($"[OnlineSession] 名前交換完了: {string.Join(" / ", names)}");
+            NotifyPeerConnected();
+        }
+
+        /// <summary>
+        /// 名前を待っている間に相手が抜けた。ホストは次の相手を待ち続け、
+        /// ゲストはホストがいなくなったので待機画面に切断を知らせる
+        /// </summary>
+        private void HandleDisconnectedWhileNaming()
+        {
+            StopNameWait();
+            if (!IsHost) OnPeerDisconnected?.Invoke();
         }
 
         private void NotifyPeerConnected()

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using MiniGame.Common.Core;
 using MiniGame.Common.Online;
+using MiniGame.Common.Profile;
 using UnityEngine;
 
 namespace MiniGame.Molkky
@@ -12,7 +13,7 @@ namespace MiniGame.Molkky
     /// </summary>
     public class MolkkyGameManager : BaseMiniGameManager
     {
-        private const string LocalPlayerName = "あなた";
+        private const string LocalSuffix = "（あなた）";
         private const string SurvivorVictoryLine = "最後まで残った！";
         private const int NotSelected = -1;
         private const string ExactWinDetail = "50点ちょうど！";
@@ -129,7 +130,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// 名前は「P1 パワー型」のように席番号＋キャラ名にする。同じキャラを複数人が選べるので、
+        /// 名前は「たろう パワー型」「P2 パワー型」のように席名＋キャラ名にする。同じキャラを複数人が選べるので、
         /// キャラ名だけだと誰か分からなくなるため
         /// </summary>
         private void HandleCharactersConfirmed(IReadOnlyList<PlayerKind> kinds, IReadOnlyList<int> characters)
@@ -137,7 +138,7 @@ namespace MiniGame.Molkky
             _players.Clear();
             for (int i = 0; i < kinds.Count; i++)
             {
-                _players.Add(new PlayerSlot(BuildPlayerName($"P{i + 1}", characters[i]), kinds[i], characters[i]));
+                _players.Add(new PlayerSlot(BuildPlayerName(SeatNames.Get(i), characters[i]), kinds[i], characters[i]));
             }
 
             StartGame();
@@ -225,7 +226,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// 名前は端末ごとに自分だけ「あなた」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// 名前は端末ごとに自分だけ「（あなた）」を付ける。名前は表示にしか使わないので端末間で違っていてよい
         /// </summary>
         private void StartOnlineGame()
         {
@@ -234,7 +235,7 @@ namespace MiniGame.Molkky
             _players.Clear();
             for (int i = 0; i < _onlineCharacters.Length; i++)
             {
-                string owner = i == _localIndex ? LocalPlayerName : $"P{i + 1}";
+                string owner = i == _localIndex ? SeatNames.Get(i) + LocalSuffix : SeatNames.Get(i);
                 _players.Add(new PlayerSlot(BuildPlayerName(owner, _onlineCharacters[i]), PlayerKind.Human, _onlineCharacters[i]));
             }
 
