@@ -1,10 +1,12 @@
 using MiniGame.Common.Core;
+using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ペンギン大戦争の進行役。Phase 1 では START! 表示 → プレイ中の経過時間だけを扱う
+    /// ペンギン大戦争の進行役。START! 表示 → プレイ中の経過時間 → 自城が落ちたらリザルト。
+    /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ
     /// </summary>
     public class PenguinWarsGameManager : BaseMiniGameManager
     {
@@ -13,8 +15,7 @@ namespace MiniGame.PenguinWars
         [SerializeField] private PenguinWarsBalance _balance;
         [SerializeField] private BattleCamera _battleCamera;
         [SerializeField] private BattleHud _hud;
-        [SerializeField] private CastleView _leftCastle;
-        [SerializeField] private CastleView _rightCastle;
+        [SerializeField] private BattleRunner _battleRunner;
         [SerializeField] private float _startMessageDuration = 1f;
 
         private float _introTimer;
@@ -25,10 +26,15 @@ namespace MiniGame.PenguinWars
         protected override void OnGameReady()
         {
             _battleCamera.Initialize(_balance.FieldLength);
-            _leftCastle.SetHp(_balance.CastleHpEndless, _balance.CastleHpEndless);
-            // エンドレスの右端は無敵の出現ゲートなので HP を出さない（仕様書 §2.1）
-            _rightCastle.HideHp();
+            _battleRunner.Initialize();
+            _battleRunner.EventRaised += HandleBattleEvent;
             BeginIntro();
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            if (_battleRunner != null) _battleRunner.EventRaised -= HandleBattleEvent;
         }
 
         private void BeginIntro()
@@ -63,6 +69,7 @@ namespace MiniGame.PenguinWars
 
             _hud.HideMessage();
             Phase = PenguinWarsPhase.Playing;
+            _battleRunner.SetRunning(true);
             StartGame();
         }
 
@@ -70,6 +77,26 @@ namespace MiniGame.PenguinWars
         {
             ElapsedTime += Time.deltaTime;
             _hud.SetElapsed(ElapsedTime);
+        }
+
+        protected override void OnGamePauseStateChanged(bool isPaused)
+        {
+            if (Phase == PenguinWarsPhase.Playing) _battleRunner.SetRunning(!isPaused);
+        }
+
+        private void HandleBattleEvent(BattleEvent battleEvent)
+        {
+            if (battleEvent.Type != BattleEventType.CastleDestroyed || battleEvent.Side != Side.Left) return;
+
+            EndGame();
+        }
+
+        /// <summary>城が崩れる演出・撃破数・ベスト記録は Phase 4 で足す。今は生存時間だけの仮のリザルト</summary>
+        private void EndGame()
+        {
+            Phase = PenguinWarsPhase.Finished;
+            _battleRunner.SetRunning(false);
+            FinishGame(false, $"生存 {BattleHud.FormatTime(Mathf.FloorToInt(ElapsedTime))}");
         }
     }
 }

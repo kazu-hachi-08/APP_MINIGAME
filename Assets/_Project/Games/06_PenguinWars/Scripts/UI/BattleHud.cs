@@ -34,7 +34,8 @@ namespace MiniGame.PenguinWars
             _messageLabel.gameObject.SetActive(false);
         }
 
-        private static string FormatTime(int totalSeconds)
+        /// <summary>mm:ss。リザルトの生存時間でも同じ書式を使う</summary>
+        public static string FormatTime(int totalSeconds)
         {
             int total = Mathf.Max(0, totalSeconds);
             return $"{total / SecondsPerMinute:00}:{total % SecondsPerMinute:00}";

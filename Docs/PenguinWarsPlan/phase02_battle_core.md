@@ -65,7 +65,7 @@ PCの数字キー 1〜3 で味方ペンギン（仮の四角）を出撃でき�
 
 ## 完了条件
 
-* [ ] EditMode テスト: 出撃したユニットが前進する / 射程内で止まって攻撃する / HP 0 で消える / 範囲攻撃が複数に当たる / 敵城にダメージが入る / 上限30体を超えて出撃しない
+* [x] EditMode テスト: 出撃したユニットが前進する / 射程内で止まって攻撃する / HP 0 で消える / 範囲攻撃が複数に当たる / 敵城にダメージが入る / 上限30体を超えて出撃しない
 * [ ] 再生して 1〜3 キーで出撃、敵と戦闘、自城が落ちたら終了する
 
 ## ユーザー確認手順
@@ -77,6 +77,37 @@ PCの数字キー 1〜3 で味方ペンギン（仮の四角）を出撃でき�
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * `Scripts/Battle/`: `UnitStats` / `UnitState`（+ `UnitAction`）/ `CastleState` / `BattleCommand` / `BattleEvent` / `BattleSettings` / `BattleWorld` / `UnitCombat` / `SimpleEnemySpawner`
+  * `Scripts/Data/`: `PenguinUnitData` / `PenguinUnitCatalog`（`PenguinWarsBalance` に `SpawnOffset`・`MaxUnitsPerSide` を追加）
+  * `Scripts/Game/`: `BattleRunner` / `KeyboardCommandInput`（`PenguinWarsGameManager` を更新）
+  * `Scripts/View/`: `UnitView` / `UnitViewPool` / `HpBarView`（`CastleView` は `HpBarView` を使う形に変更）
+  * `Editor/`: `PenguinUnitAssetGenerator`（メニュー `Tools > MiniGame > Generate PenguinWars Units`）/ `PenguinWarsSceneBuilder.Battle.cs`
+  * `Data/Units/Unit_001・011・023.asset` と `Data/PenguinUnitCatalog.asset`（Generate / Rebuild 時に生成）
+  * `Tests/Editor/BattleWorldTests.cs`（11件）
 * 公開API（次フェーズが使うもの）:
+  * `BattleWorld(BattleSettings)` / `SetDeck(side, IReadOnlyList<UnitStats>)` / `Enqueue(BattleCommand)` / `Step(dt)` / `DrainEvents(List<BattleEvent>)` / `Units` / `GetCastle(side)` / `CountUnits(side)` / `IsFinished` / `Loser`
+  * `BattleCommand.Spawn(side, slot)`。コマンドは次の `Step` の先頭でまとめて処理。デッキ範囲外の slot・上限超えは黙って無視
+  * `BattleEvent`: `Type`（Spawned / Hit / Died / CastleDestroyed）・`Side`（Hit/Died/CastleDestroyed は「やられた側」）・`UnitId`（城は `BattleEvent.CastleId` = -1）・`X`・`Amount`（ダメージ）
+  * `UnitState`: `Id` / `UnitNo` / `Side` / `Stats` / `X` / `Hp` / `HpRatio` / `Action` / `ActionTimer`。setter は `internal`（Battle の外から書き換えない）
+  * `BattleRunner.Initialize()` / `SetRunning(bool)` / `Enqueue(command)` / `IsRunning` / `event EventRaised(BattleEvent)`
+  * `PenguinUnitCatalog.Get(no)` / `Units`、`PenguinUnitData.ToStats()` / `No` / `DisplayName`
+  * `PenguinUnitAssetGenerator.EnsureAssets()`: 既存アセットは上書きせず、カタログは `Data/Units/` から No 順で集め直す。`Rebuild PenguinWars` からも呼ぶので、Generate を先に押さなくても動く
+  * `BattleHud.FormatTime(sec)` を public static にした（リザルトの生存時間用）
 * 計画・仕様から変えた点:
+  * 計画にない `BattleSettings`（戦場の長さ・城HP・出現ゲートかどうか・出撃位置・上限）を足した。BattleWorld をテストで小さい戦場にして作るため
+  * 出現ゲートは `CastleState.IsInvincible`。攻撃対象にならず、ユニットはゲートの X で止まる（射程で止まらない）
+  * 射程判定は「前方距離 0〜Range」。後ろに回り込んだ敵は狙わない
+  * 単体攻撃で敵ユニットと城が同じ距離ならユニットを優先
+  * 範囲攻撃は射程内なら城にも当たる
+  * Cooldown が終わったステップは Walk に戻るだけで、射程の再判定は次のステップ（1/30秒遅れ。体感差なし）
+  * ユニット上限 30 は陣営ごと
+  * 城HPの表示は GameManager ではなく `BattleRunner` が毎フレーム `CastleView` に流す（城の参照も Runner に移した）
+  * 仮の見た目: 陣営色（青/赤）の四角。攻撃発生待ち（Windup）中だけ白っぽくなる。3体の区別は見た目では付かない（Phase 6）
+  * 仮3体のコスト・再生産（Phase 3 用の初期値）: No1=75/2秒、No11=300/6秒、No23=450/8秒
+  * 敵は左と同じ3体の編成から `SimpleEnemySpawner` が4秒ごとにランダムで湧く（間隔は `BattleRunner._enemySpawnInterval`）
 * 次フェーズへの注意:
+  * 編成は `BattleRunner._deckUnitNos`（{1, 11, 23}）。1〜3キーがこの順に対応
+  * お金・再生産を入れるときは `BattleWorld.TrySpawn` にチェックを足す（ロジック側で判定する。オンラインでゲストの出撃もホストが判定するため）
+  * 固定ステップ 1/30 秒・1フレーム最大5ステップ（`BattleRunner` の定数）。ポーズ中は `SetRunning(false)` で止め、キー入力も捨てる
+  * View の位置は 30Hz で更新しているので、速いユニットでカクつくなら補間を検討
+  * Unity が開いていてバッチモードが使えなかったため、テストは `dotnet test`（Battle と Tests の .cs だけを集めたプロジェクト）で実行して 13件合格を確認。Unity 側スクリプトのコンパイルは未確認

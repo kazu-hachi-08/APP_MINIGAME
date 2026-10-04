@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Hud = UI）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = UI）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -42,12 +42,14 @@ namespace MiniGame.PenguinWars.Editor
             // 先に読み込んだアセットがシーンに空の参照で保存されてしまうため
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             PenguinWarsBalance balance = EnsureBalance();
+            PenguinUnitCatalog catalog = PenguinUnitAssetGenerator.EnsureAssets();
 
             BattleCamera battleCamera = CreateCamera();
             CreateEventSystem();
             UIManager uiManager = CreateManagers();
 
             (CastleView leftCastle, CastleView rightCastle) = CreateField(balance.FieldLength);
+            BattleRunner battleRunner = CreateBattle(balance, catalog, leftCastle, rightCastle);
 
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
@@ -60,7 +62,7 @@ namespace MiniGame.PenguinWars.Editor
             so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_balance", balance), ("_battleCamera", battleCamera), ("_hud", hud),
-                ("_leftCastle", leftCastle), ("_rightCastle", rightCastle));
+                ("_battleRunner", battleRunner));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);

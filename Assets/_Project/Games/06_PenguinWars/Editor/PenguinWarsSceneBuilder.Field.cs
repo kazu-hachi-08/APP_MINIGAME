@@ -18,8 +18,8 @@ namespace MiniGame.PenguinWars.Editor
 
         private const int GroundSortingOrder = 0;
         private const int CastleSortingOrder = 1;
+        // ユニット（Battle.cs の 5〜7）より手前に出す
         private const int HpBarBackSortingOrder = 10;
-        private const int HpBarFillSortingOrder = 11;
 
         private static readonly Color SkyColor = new Color(0.55f, 0.75f, 0.95f);
         private static readonly Color GroundColor = new Color(0.92f, 0.95f, 1f);
@@ -67,15 +67,25 @@ namespace MiniGame.PenguinWars.Editor
 
             CreateBox(castleObj.transform, "Body", new Vector2(0f, CastleSize.y * 0.5f), CastleSize, color, CastleSortingOrder);
 
-            var hpBarRoot = new GameObject("HpBar");
-            hpBarRoot.transform.SetParent(castleObj.transform, false);
-            hpBarRoot.transform.localPosition = new Vector3(0f, HpBarOffsetY, 0f);
-            CreateBox(hpBarRoot.transform, "Back", Vector2.zero, HpBarSize, HpBarBackColor, HpBarBackSortingOrder);
-            Transform fill = CreateBox(hpBarRoot.transform, "Fill", Vector2.zero, HpBarSize, HpBarFillColor, HpBarFillSortingOrder);
+            HpBarView hpBar = CreateHpBar(castleObj.transform, HpBarOffsetY, HpBarSize, HpBarBackSortingOrder);
 
             var castleView = castleObj.AddComponent<CastleView>();
-            SetRefs(castleView, ("_hpBarRoot", hpBarRoot), ("_hpFill", fill));
+            SetRefs(castleView, ("_hpBar", hpBar));
             return castleView;
+        }
+
+        /// <summary>城とユニットで共通のHPバー。Fill は Back の1つ上に描く</summary>
+        private static HpBarView CreateHpBar(Transform parent, float offsetY, Vector2 size, int backSortingOrder)
+        {
+            var hpBarRoot = new GameObject("HpBar");
+            hpBarRoot.transform.SetParent(parent, false);
+            hpBarRoot.transform.localPosition = new Vector3(0f, offsetY, 0f);
+            CreateBox(hpBarRoot.transform, "Back", Vector2.zero, size, HpBarBackColor, backSortingOrder);
+            Transform fill = CreateBox(hpBarRoot.transform, "Fill", Vector2.zero, size, HpBarFillColor, backSortingOrder + 1);
+
+            var hpBar = hpBarRoot.AddComponent<HpBarView>();
+            SetRefs(hpBar, ("_fill", fill));
+            return hpBar;
         }
 
         /// <summary>PlaceholderSprite が実行時に 1x1 の四角を貼るので、大きさはスケールで決める</summary>
