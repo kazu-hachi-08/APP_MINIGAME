@@ -23,13 +23,19 @@ namespace MiniGame.Molkky.Editor
             ("パワー型", 1.2f, 0.8f, 1f, "力こそパワー！"),
             ("精密型", 0.95f, 1.15f, 0.9f, "計算どおり！"),
             ("ロング棒", 0.9f, 1f, 1.3f, "まとめていただき！"),
+            ("ショート棒", 1f, 1.25f, 0.8f, "一本釣り！"),
+            ("豪腕ロング", 1.15f, 0.8f, 1.15f, "全部まとめてドーン！"),
         };
 
-        /// <summary>カタログと各キャラが無ければ作り、カタログを返す（MolkkySceneBuilder から呼ばれる）</summary>
+        /// <summary>
+        /// カタログと各キャラが無ければ作り、カタログを返す（MolkkySceneBuilder から呼ばれる）。
+        /// カタログが既にあっても、後から Defaults に足したキャラは末尾に追加する。
+        /// 既存の番号を並べ替えると、オンラインで送る CharacterIndex の意味が端末ごとにずれるため末尾にだけ足す
+        /// </summary>
         public static MolkkyCharacterCatalog EnsureGenerated()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<MolkkyCharacterCatalog>(CatalogPath);
-            if (existing != null) return existing;
+            var catalog = AssetDatabase.LoadAssetAtPath<MolkkyCharacterCatalog>(CatalogPath);
+            if (catalog != null && catalog.Count >= Defaults.Length) return catalog;
 
             if (!Directory.Exists(DataDirectory))
             {
@@ -38,25 +44,39 @@ namespace MiniGame.Molkky.Editor
 
             MolkkyArtGenerator.EnsureGenerated();
 
-            var characters = new MolkkyCharacterData[Defaults.Length];
-            for (int i = 0; i < Defaults.Length; i++)
+            bool isNew = catalog == null;
+            if (isNew)
             {
-                characters[i] = EnsureCharacter(MolkkyArtGenerator.CharacterIds[i], Defaults[i]);
+                catalog = ScriptableObject.CreateInstance<MolkkyCharacterCatalog>();
             }
 
-            var catalog = ScriptableObject.CreateInstance<MolkkyCharacterCatalog>();
-            var so = new SerializedObject(catalog);
-            SerializedProperty list = so.FindProperty("_characters");
-            list.arraySize = characters.Length;
-            for (int i = 0; i < characters.Length; i++)
-            {
-                list.GetArrayElementAtIndex(i).objectReferenceValue = characters[i];
-            }
-            so.ApplyModifiedPropertiesWithoutUndo();
+            AppendMissingCharacters(catalog);
 
-            AssetDatabase.CreateAsset(catalog, CatalogPath);
+            if (isNew)
+            {
+                AssetDatabase.CreateAsset(catalog, CatalogPath);
+            }
+            else
+            {
+                EditorUtility.SetDirty(catalog);
+            }
             AssetDatabase.SaveAssets();
             return catalog;
+        }
+
+        /// <summary>カタログに入っている分はそのまま残し、足りない分だけ Defaults の並びで末尾に足す</summary>
+        private static void AppendMissingCharacters(MolkkyCharacterCatalog catalog)
+        {
+            var so = new SerializedObject(catalog);
+            SerializedProperty list = so.FindProperty("_characters");
+            int existingCount = list.arraySize;
+            list.arraySize = Defaults.Length;
+            for (int i = existingCount; i < Defaults.Length; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue =
+                    EnsureCharacter(MolkkyArtGenerator.CharacterIds[i], Defaults[i]);
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static MolkkyCharacterData EnsureCharacter(string id,

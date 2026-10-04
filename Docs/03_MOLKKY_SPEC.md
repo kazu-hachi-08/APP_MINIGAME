@@ -496,7 +496,7 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 | 項目 | 内容 |
 | --- | --- |
 | キャラの差 | 見た目＋能力倍率（卓球の `CharacterData` / `LoadoutCatalog` と同じ形） |
-| キャラ数 | 4体（バランス型／パワー型／精密型／ロング棒） |
+| キャラ数 | 6体（バランス型／パワー型／精密型／ロング棒／ショート棒／豪腕ロング） |
 | 同じキャラの重複選択 | 可。席の色で区別できる |
 | 追加演出 | キャラ別の勝利演出（立ち絵＋セリフ） |
 
@@ -504,6 +504,7 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 * 1キャラ＝1アセット（`Data/Characters/MolkkyChar_xxx.asset`）、一覧は `MolkkyCharacterCatalog`。2人で同時に数値調整してもコンフリクトしないようにするため
 * `PlayerSlot` にはアセットではなく **カタログの番号（`CharacterIndex`）** だけを持たせる。オンラインで番号だけ送れば全端末で同じキャラになる
 * アセットとカタログは `MolkkyCharacterGenerator` が生成する（`Tools > MiniGame > Rebuild Molkky` 実行時に未生成なら自動で作る。既にあれば調整済みの値を残す）
+* キャラを足すときは末尾に追加する（既存カタログにも足りない分だけ末尾に追加される）。並べ替えるとオンラインで送る `CharacterIndex` の意味がずれるため
 
 ### 8.2 能力とキャラ
 
@@ -519,6 +520,8 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 | パワー型 | 1.2 | 0.8 | 1.0 | 遠くまで届くが強さの調整がシビア | 力こそパワー！ |
 | 精密型 | 0.95 | 1.15 | 0.9 | 狙った強さで投げやすいが、少し奥に届きにくい | 計算どおり！ |
 | ロング棒 | 0.9 | 1.0 | 1.3 | まとめて倒しやすいが、1本狙いが難しい | まとめていただき！ |
+| ショート棒 | 1.0 | 1.25 | 0.8 | 1本狙いの職人。まとめて倒すのは苦手 | 一本釣り！ |
+| 豪腕ロング | 1.15 | 0.8 | 1.15 | 届くし当たるが、強さの調整がとても難しい | 全部まとめてドーン！ |
 
 `MolkkyGameManager` は手番開始時に手番のキャラを `ThrowerView` / `StickThrower` / `ThrowInput` に渡すだけで、能力の反映はそれぞれが行う。
 
