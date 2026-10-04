@@ -38,6 +38,13 @@ namespace MiniGame.Molkky
         [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない")]
         [SerializeField] private float _cancelAngleRatio = 2f;
 
+        [Header("Power Shot")]
+        [Tooltip("パワーショット時に初速へ掛ける倍率。キャラによって奥のピンに届かない問題を補うため")]
+        [SerializeField] private float _powerShotSpeedMultiplier = 1.3f;
+
+        [Tooltip("パワーショット時に方向へ加えるランダムなブレの最大値（度）。遠くへ飛ぶ代わりに狙いを荒らす")]
+        [SerializeField] private float _powerShotAngleSpread = 8f;
+
         private readonly List<Sample> _samples = new List<Sample>(16);
         private bool _tracking;
         private Vector2 _lastPosition;
@@ -53,10 +60,12 @@ namespace MiniGame.Molkky
 
         public ThrowStyle Style { get; private set; } = ThrowStyle.Horizontal;
         public ThrowArc Arc { get; private set; } = ThrowArc.Low;
+        public bool IsPowerShot { get; private set; }
 
         public event Action<float> PositionChanged;
         public event Action<ThrowStyle> StyleChanged;
         public event Action<ThrowArc> ArcChanged;
+        public event Action<bool> PowerShotChanged;
         public event Action<ThrowRequest> ThrowRequested;
 
         public void ResetPosition(float x)
@@ -100,6 +109,20 @@ namespace MiniGame.Molkky
             if (!IsAccepting) return;
 
             SetArc(Arc == ThrowArc.High ? ThrowArc.Low : ThrowArc.High);
+        }
+
+        public void SetPowerShot(bool isPowerShot)
+        {
+            IsPowerShot = isPowerShot;
+            PowerShotChanged?.Invoke(IsPowerShot);
+        }
+
+        /// <summary>パワーショットボタンから呼ぶ。ToggleStyle と同じく構えている間だけ受け付ける</summary>
+        public void TogglePowerShot()
+        {
+            if (!IsAccepting) return;
+
+            SetPowerShot(!IsPowerShot);
         }
 
         private void Update()
@@ -166,7 +189,20 @@ namespace MiniGame.Molkky
             if (Mathf.Abs(angle) > _settings.MaxThrowAngle * _cancelAngleRatio) return;
 
             angle = Mathf.Clamp(angle, -_settings.MaxThrowAngle, _settings.MaxThrowAngle);
-            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, FlickToThrowSpeed(flickSpeed), Style, Arc));
+            float speed = FlickToThrowSpeed(flickSpeed);
+            if (IsPowerShot) ApplyPowerShot(ref angle, ref speed);
+
+            ThrowRequested?.Invoke(new ThrowRequest(PositionX, angle, speed, Style, Arc));
+        }
+
+        /// <summary>
+        /// ブレは投げた端末で決めて ThrowRequest に焼き込む。オンラインの相手端末は受け取った値を
+        /// そのまま再生するので、乱数を揃える同期はいらない
+        /// </summary>
+        private void ApplyPowerShot(ref float angle, ref float speed)
+        {
+            speed *= _powerShotSpeedMultiplier;
+            angle += UnityEngine.Random.Range(-_powerShotAngleSpread, _powerShotAngleSpread);
         }
 
         /// <summary>離す直前の動き（画面高さ比）と速さを測る。上向きで十分な距離・速さがなければ投げない</summary>

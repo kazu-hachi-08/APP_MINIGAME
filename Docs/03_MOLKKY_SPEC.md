@@ -300,7 +300,20 @@ H：高さ（投げた棒の見た目用。当たり判定には使わない）
 * 向き・軌道とも、手番の開始時に毎回「横投げ・低め」に戻す（前の人の設定を引き継いで気づかず投げるのを防ぐため）
 * 切り替えられるのは構え中だけ
 
-### 4.5 入力とゲームロジックの分離
+### 4.5 パワーショット
+
+軌道ボタンの上のボタンで、パワーショットの ON/OFF を切り替える（ON はボタンが赤くなる）。
+
+| 状態 | 挙動 | 狙い |
+| --- | --- | --- |
+| ふつう（初期） | フリックどおりに投げる | 通常の投擲 |
+| パワー! | 初速 ×1.3、方向に最大±8°のランダムなブレ | パワーの低いキャラでも奥のピンに届かせる。代わりに狙いが荒れる |
+
+* 倍率とブレは `ThrowInput` の `_powerShotSpeedMultiplier` / `_powerShotAngleSpread` で調整する
+* 初速とブレは投げた端末で `ThrowRequest` に焼き込むので、オンラインの追加同期はいらない
+* 向き・軌道と同じく、手番の開始時に毎回「ふつう」に戻す。NPCは使わない
+
+### 4.6 入力とゲームロジックの分離
 
 ```text
 ThrowInput（ドラッグ・フリック）   NpcThrower（狙い決め）
@@ -483,7 +496,7 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 | 項目 | 内容 |
 | --- | --- |
 | キャラの差 | 見た目＋能力倍率（卓球の `CharacterData` / `LoadoutCatalog` と同じ形） |
-| キャラ数 | 4体（バランス型／パワー型／精密型／ロング棒） |
+| キャラ数 | 6体（バランス型／パワー型／精密型／ロング棒／ショート棒／豪腕ロング） |
 | 同じキャラの重複選択 | 可。席の色で区別できる |
 | 追加演出 | キャラ別の勝利演出（立ち絵＋セリフ） |
 
@@ -491,6 +504,7 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 * 1キャラ＝1アセット（`Data/Characters/MolkkyChar_xxx.asset`）、一覧は `MolkkyCharacterCatalog`。2人で同時に数値調整してもコンフリクトしないようにするため
 * `PlayerSlot` にはアセットではなく **カタログの番号（`CharacterIndex`）** だけを持たせる。オンラインで番号だけ送れば全端末で同じキャラになる
 * アセットとカタログは `MolkkyCharacterGenerator` が生成する（`Tools > MiniGame > Rebuild Molkky` 実行時に未生成なら自動で作る。既にあれば調整済みの値を残す）
+* キャラを足すときは末尾に追加する（既存カタログにも足りない分だけ末尾に追加される）。並べ替えるとオンラインで送る `CharacterIndex` の意味がずれるため
 
 ### 8.2 能力とキャラ
 
@@ -506,6 +520,8 @@ ScriptableObject `MolkkyNpcDifficulty`（`Data/MolkkyNpc_Weak / Normal / Strong.
 | パワー型 | 1.2 | 0.8 | 1.0 | 遠くまで届くが強さの調整がシビア | 力こそパワー！ |
 | 精密型 | 0.95 | 1.15 | 0.9 | 狙った強さで投げやすいが、少し奥に届きにくい | 計算どおり！ |
 | ロング棒 | 0.9 | 1.0 | 1.3 | まとめて倒しやすいが、1本狙いが難しい | まとめていただき！ |
+| ショート棒 | 1.0 | 1.25 | 0.8 | 1本狙いの職人。まとめて倒すのは苦手 | 一本釣り！ |
+| 豪腕ロング | 1.15 | 0.8 | 1.15 | 届くし当たるが、強さの調整がとても難しい | 全部まとめてドーン！ |
 
 `MolkkyGameManager` は手番開始時に手番のキャラを `ThrowerView` / `StickThrower` / `ThrowInput` に渡すだけで、能力の反映はそれぞれが行う。
 
@@ -683,7 +699,7 @@ Assets/_Project/Games/03_Molkky/
 | | GroundView / BackdropView / MolkkyCameraFitter / ShapeSprites | 地面・背景・カメラ調整・素材未設定時の代用図形 |
 | Scripts/UI/ | ScoreBoardView / ScorePopupView / TurnBannerView | スコア・得点ポップアップ・手番表示 |
 | | PlayerSetupPanel / CharacterSelectPanel / StatBarView | 人数・人間/NPC・個人戦/チーム戦の設定（オンラインはホストのチーム設定と参加者の待機表示）／キャラ選択／能力バー |
-| | ThrowStyleButton / ThrowArcButton | 縦横・軌道の切り替えボタン |
+| | ThrowStyleButton / ThrowArcButton / PowerShotButton | 縦横・軌道・パワーショットの切り替えボタン |
 | | VictoryShowView / MolkkyPlayerColors / MolkkyTeamNames | 勝利演出／プレイヤー色（チーム色も兼ねる）／チームの表示名 |
 | Editor/ | MolkkySceneBuilder | Scene生成（物理設定・NPC難易度のアセットも無ければ作る） |
 | | MolkkyArtGenerator / MolkkyCharacterGenerator | ドット絵生成／キャラデータとカタログの生成 |

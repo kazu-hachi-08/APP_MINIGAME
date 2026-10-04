@@ -23,7 +23,7 @@ namespace MiniGame.Molkky.Editor
         public const string BackdropName = "Backdrop";
 
         /// <summary>キャラの仮素材の種類。MolkkyCharacterGenerator がこの並びでキャラを作る</summary>
-        public static readonly string[] CharacterIds = { "Balance", "Power", "Precision", "Long" };
+        public static readonly string[] CharacterIds = { "Balance", "Power", "Precision", "Long", "Short", "PowerLong" };
 
         // 各素材のピクセル寸法。ピンは PinRackView の見た目の比率（幅0.4：高さ0.55）に合わせ、拡大時の歪みを小さくする
         private const int PinWidth = 16;
@@ -80,6 +80,8 @@ namespace MiniGame.Molkky.Editor
             (new Color32(200, 90, 50, 255), new Color32(40, 36, 40, 255), 5),
             (new Color32(130, 100, 190, 255), new Color32(230, 196, 110, 255), 3),
             (new Color32(230, 160, 60, 255), new Color32(70, 46, 30, 255), 4),
+            (new Color32(80, 120, 160, 255), new Color32(220, 220, 225, 255), 3),
+            (new Color32(150, 60, 80, 255), new Color32(150, 60, 40, 255), 5),
         };
 
         // ピンの頭を斜めに切る深さ（ピクセル）

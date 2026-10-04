@@ -34,6 +34,7 @@ namespace MiniGame.Molkky
         [SerializeField] private PlayerSetupPanel _setupPanel;
         [SerializeField] private ThrowStyleButton _styleButton;
         [SerializeField] private ThrowArcButton _arcButton;
+        [SerializeField] private PowerShotButton _powerShotButton;
 
         [Header("Character")]
         [SerializeField] private MolkkyCharacterCatalog _characterCatalog;
@@ -329,9 +330,10 @@ namespace MiniGame.Molkky
             Phase = MolkkyPhase.TurnStart;
             ShowScoreBoard();
             ApplyCurrentCharacter();
-            // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め（初期値）に戻す
+            // 前の人の投げ方を引き継ぐと気づかず違う投げ方をしてしまうので、毎手番 横・低め・ふつう（初期値）に戻す
             _input.SetStyle(ThrowStyle.Horizontal);
             _input.SetArc(ThrowArc.Low);
+            _input.SetPowerShot(false);
 
             yield return PlayTurnBanner();
 
@@ -460,6 +462,7 @@ namespace MiniGame.Molkky
         {
             _styleButton.SetVisible(visible);
             _arcButton.SetVisible(visible);
+            _powerShotButton.SetVisible(visible);
         }
 
         private void ExecuteThrow(ThrowRequest request)

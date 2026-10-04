@@ -71,6 +71,7 @@ namespace MiniGame.Molkky.Editor
         private const float ThrowOptionButtonRightMargin = -30f;
         private const float ThrowStyleButtonY = 60f;
         private const float ThrowArcButtonY = 210f;
+        private const float PowerShotButtonY = 360f;
         private const int ThrowOptionFontSize = 52;
 
         // 試合前パネル（人数設定・キャラ選択）の共通寸法
@@ -97,6 +98,7 @@ namespace MiniGame.Molkky.Editor
             public PauseButton PauseButton;
             public ThrowStyleButton StyleButton;
             public ThrowArcButton ArcButton;
+            public PowerShotButton PowerShotButton;
             public ModeSelectPanel ModeSelectPanel;
         }
 
@@ -357,6 +359,7 @@ namespace MiniGame.Molkky.Editor
             ui.StyleButton = CreateThrowOptionButton<ThrowStyleButton>(safeArea, "Btn_ThrowStyle", ThrowStyleButtonY, input);
             // 縦横ボタンの真上に積み、右下の同じ場所で投げ方をまとめて選べるようにする
             ui.ArcButton = CreateThrowOptionButton<ThrowArcButton>(safeArea, "Btn_ThrowArc", ThrowArcButtonY, input);
+            ui.PowerShotButton = CreateThrowOptionButton<PowerShotButton>(safeArea, "Btn_PowerShot", PowerShotButtonY, input);
 
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため最後に生成する
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
@@ -778,7 +781,7 @@ namespace MiniGame.Molkky.Editor
                 ("_npc", npcThrower), ("_settleWatcher", settleWatcher),
                 ("_scoreBoard", ui.ScoreBoard), ("_scorePopup", ui.ScorePopup),
                 ("_audio", molkkyAudio), ("_turnBanner", ui.TurnBanner), ("_setupPanel", ui.SetupPanel),
-                ("_styleButton", ui.StyleButton), ("_arcButton", ui.ArcButton), ("_modeSelectPanel", ui.ModeSelectPanel),
+                ("_styleButton", ui.StyleButton), ("_arcButton", ui.ArcButton), ("_powerShotButton", ui.PowerShotButton), ("_modeSelectPanel", ui.ModeSelectPanel),
                 ("_onlineSession", online.Session), ("_onlineLink", online.Link),
                 ("_characterCatalog", characterCatalog), ("_characterSelectPanel", ui.CharacterSelectPanel),
                 ("_throwerView", throwerView), ("_victoryShow", ui.VictoryShow));
