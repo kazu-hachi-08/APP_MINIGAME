@@ -35,7 +35,7 @@
 | 8 | [phase08_unit_data50.md](phase08_unit_data50.md) | 50体のデータ・数値の計算式・ランダム編成の制約 | 50体から編成される（見た目は一部仮） | 完了 |
 | 9 | [phase09_art50.md](phase09_art50.md) | 残り40体の見た目パーツ | 50体すべて見た目が揃う | 完了 |
 | 10 | [phase10_online.md](phase10_online.md) | オンライン対戦（編成はランダム） | 友達と城攻め対戦できる | 完了 |
-| 11 | [phase11_draft.md](phase11_draft.md) | ドラフト | 対戦前にドラフトできる | 未着手 |
+| 11 | [phase11_draft.md](phase11_draft.md) | ドラフト | 対戦前にドラフトできる | 完了 |
 | 12 | [phase12_polish.md](phase12_polish.md) | バランス調整・仕様書反映・計画書削除 | 完成 | 未着手 |
 
 状態: 未着手 / 進行中 / 完了

@@ -54,16 +54,22 @@ namespace MiniGame.PenguinWars
             RefreshViews();
         }
 
-        /// <summary>オンラインのホスト: 両者ランダム10体で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
-        public void InitializeVersusHost()
+        /// <summary>オンラインのホスト: ドラフトで決まった編成で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
+        public void InitializeVersusHost(IReadOnlyList<int> leftDeckNos, IReadOnlyList<int> rightDeckNos)
         {
-            var random = new System.Random(Environment.TickCount);
-            _world = new BattleWorld(CreateSettings(true, random.Next()));
-
-            List<UnitStats> allUnits = CollectAllUnits();
-            _world.SetDeck(Side.Left, PickRandomDeck(allUnits, random));
-            _world.SetDeck(Side.Right, PickRandomDeck(allUnits, random));
+            _world = new BattleWorld(CreateSettings(true, Environment.TickCount));
+            Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
+            _world.SetDeck(Side.Left, ToDeck(leftDeckNos, statsByNo));
+            _world.SetDeck(Side.Right, ToDeck(rightDeckNos, statsByNo));
             RefreshViews();
+        }
+
+        /// <summary>ドラフトの候補にする全キャラの No</summary>
+        public List<int> CollectAllUnitNos()
+        {
+            var unitNos = new List<int>();
+            foreach (UnitStats stats in CollectAllUnits()) unitNos.Add(stats.UnitNo);
+            return unitNos;
         }
 
         /// <summary>
@@ -210,7 +216,7 @@ namespace MiniGame.PenguinWars
             foreach (int no in unitNos)
             {
                 if (statsByNo.TryGetValue(no, out UnitStats stats)) deck.Add(stats);
-                else Debug.LogWarning($"[BattleRunner] ホストの編成の No.{no} がこちらのカタログにありません（ビルドのバージョン違い？）");
+                else Debug.LogWarning($"[BattleRunner] 編成の No.{no} がこちらのカタログにありません（ビルドのバージョン違い？）");
             }
             return deck;
         }

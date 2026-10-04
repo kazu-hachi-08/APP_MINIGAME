@@ -10,7 +10,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// オンライン対戦（仕様書 §2.2・§10）の接続後の流れと決着。
-    /// ホスト: ゲストの準備完了 → 両者の編成を決めて送る → 編成発表。ゲスト: 編成が届く → 編成発表。
+    /// ホスト: ゲストの準備完了 → ドラフト（.Draft.cs）→ 編成を送る → 編成確認。ゲスト: ドラフト → 編成が届く → 編成確認。
     /// 決着（城崩壊・時間切れ）はホストの BattleWorld で決まり、ゲストにもイベントとして届くので、両者とも同じ HandleBattleEvent で終わる
     /// </summary>
     public partial class PenguinWarsGameManager
@@ -68,29 +68,31 @@ namespace MiniGame.PenguinWars
             _onlineLink.DecksReceived -= HandleDecksReceived;
         }
 
-        /// <summary>相手と接続できた。編成はホストが決めるので、ゲストは届くまで待つ</summary>
+        /// <summary>相手と接続できた。ドラフトはホストが仕切るので、ゲストは最初の候補が届くまで待つ</summary>
         private void StartOnline(bool isHost)
         {
             _mode = isHost ? MatchMode.Host : MatchMode.Guest;
             _onlineLink.Begin(isHost);
         }
 
-        /// <summary>ホストのみ。ゲストが受け取れるようになってから編成を決めて送る</summary>
+        /// <summary>ホストのみ。ゲストが受け取れるようになってからドラフトを始める（先に送ると候補が捨てられるため）</summary>
         private void HandleGuestReady()
         {
             if (_mode != MatchMode.Host || Phase != PenguinWarsPhase.ModeSelect) return;
 
-            _battleRunner.InitializeVersusHost();
-            BattleWorld world = _battleRunner.World;
-            _onlineLink.SendDecks(world.GetDeck(Side.Left), world.GetDeck(Side.Right));
-            BeginIntro(_versusDeckIntroDuration);
+            BeginDraftAsHost();
         }
 
-        /// <summary>ゲストのみ。ホスト基準の編成を受け取り、自分（ホストの右）を左に入れ替えて持つ</summary>
+        /// <summary>
+        /// ゲストのみ。ドラフトが終わってホストから届いた編成を受け取り、自分（ホストの右）を左に入れ替えて持つ。
+        /// 最終ラウンドの候補より先に届いても困らないよう、ドラフト前（ModeSelect）でも受け付ける
+        /// </summary>
         private void HandleDecksReceived(int[] hostLeftDeck, int[] hostRightDeck)
         {
-            if (_mode != MatchMode.Guest || Phase != PenguinWarsPhase.ModeSelect) return;
+            if (_mode != MatchMode.Guest) return;
+            if (Phase != PenguinWarsPhase.ModeSelect && Phase != PenguinWarsPhase.Draft) return;
 
+            _draftPanel.Hide();
             _battleRunner.InitializeGuest(hostRightDeck, hostLeftDeck, _onlineLink);
             BeginIntro(_versusDeckIntroDuration);
         }
@@ -165,6 +167,7 @@ namespace MiniGame.PenguinWars
             Phase = PenguinWarsPhase.Finished;
             if (_battleRunner.World != null) _battleRunner.SetRunning(false);
             _deckIntroPanel.Hide();
+            HideDraftPanels();
             _hud.HideMessage();
             _audio.StopBgm();
             FinishGame(true, BuildCastleSummary(), DisconnectedDetail);

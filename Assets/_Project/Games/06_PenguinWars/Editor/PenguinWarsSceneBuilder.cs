@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Effects = 演出・音、.Online = オンライン対戦・モード選択）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -61,6 +61,8 @@ namespace MiniGame.PenguinWars.Editor
             PauseButton pauseButton = CreatePauseButton(safeArea);
             // 操作UIの上に被せて、発表中は押せないようにする
             DeckIntroPanel deckIntroPanel = CreateDeckIntroPanel(canvas, catalog);
+            DraftPanel draftPanel = CreateDraftPanel(canvas, catalog);
+            DeckRevealPanel deckRevealPanel = CreateDeckRevealPanel(canvas, catalog);
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
@@ -74,7 +76,7 @@ namespace MiniGame.PenguinWars.Editor
             SetRefs(gameManager, ("_balance", balance), ("_battleCamera", battleCamera), ("_hud", hud),
                 ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel), ("_presenter", presenter), ("_audio", audio));
             SetRefs(gameManager, ("_modeSelectPanel", online.ModeSelectPanel), ("_onlineSession", online.Session),
-                ("_onlineLink", online.Link));
+                ("_onlineLink", online.Link), ("_draftPanel", draftPanel), ("_deckRevealPanel", deckRevealPanel));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);

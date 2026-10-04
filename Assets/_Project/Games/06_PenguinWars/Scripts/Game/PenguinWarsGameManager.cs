@@ -5,9 +5,9 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ペンギン大戦争の進行役。モード選択 → 編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
+    /// ペンギン大戦争の進行役。モード選択 →（対戦はドラフト →）編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
     /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ。
-    /// このファイルは共通の流れとエンドレス。オンライン対戦の接続・決着は PenguinWarsGameManager.Online.cs
+    /// このファイルは共通の流れとエンドレス。オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
     /// </summary>
     public partial class PenguinWarsGameManager : BaseMiniGameManager
     {
@@ -41,6 +41,7 @@ namespace MiniGame.PenguinWars
             _battleRunner.EventRaised += HandleBattleEvent;
             _presenter.CastleCollapsed += HandleCastleCollapsed;
             SubscribeOnline();
+            SubscribeDraft();
 
             bool restartEndless = s_restartEndless;
             s_restartEndless = false;
@@ -54,6 +55,7 @@ namespace MiniGame.PenguinWars
             if (_battleRunner != null) _battleRunner.EventRaised -= HandleBattleEvent;
             if (_presenter != null) _presenter.CastleCollapsed -= HandleCastleCollapsed;
             UnsubscribeOnline();
+            UnsubscribeDraft();
         }
 
         /// <summary>エンドレスはシーンを読み直してすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>
@@ -77,7 +79,9 @@ namespace MiniGame.PenguinWars
             _hud.HideMessage();
             _showingDeck = true;
             _introTimer = deckDuration;
-            _deckIntroPanel.Show(_battleRunner.World.GetDeck(Side.Left));
+            // 対戦はお互いの10体（ドラフト中は相手の分を隠していたため）、エンドレスは自分の10体だけ
+            if (IsOnline) ShowDeckReveal();
+            else _deckIntroPanel.Show(_battleRunner.World.GetDeck(Side.Left));
         }
 
         protected override void Update()
@@ -87,6 +91,9 @@ namespace MiniGame.PenguinWars
 
             switch (Phase)
             {
+                case PenguinWarsPhase.Draft:
+                    TickDraft();
+                    break;
                 case PenguinWarsPhase.Intro:
                     TickIntro();
                     break;
@@ -119,6 +126,7 @@ namespace MiniGame.PenguinWars
             _showingDeck = false;
             _introTimer = _startMessageDuration;
             _deckIntroPanel.Hide();
+            HideDraftPanels();
             _hud.ShowMessage(StartMessage);
         }
 

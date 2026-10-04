@@ -21,6 +21,10 @@ namespace MiniGame.PenguinWars
 
         [Tooltip("オンライン対戦の制限時間（秒。仕様書 §2.2）")]
         [SerializeField] private float _versusTimeLimit = 300f;
+        [Tooltip("ドラフトで1ラウンドに提示する候補の数（仕様書 §6）")]
+        [SerializeField] private int _draftOfferCount = 3;
+        [Tooltip("ドラフト1ラウンドの制限時間（秒）。過ぎたら候補からランダム")]
+        [SerializeField] private float _draftPickTime = 15f;
 
         [Header("働きペンギン（仕様書 §4.2）。要素の並びがレベル1, 2, 3…")]
         [Tooltip("さかなの上限")]
@@ -73,6 +77,8 @@ namespace MiniGame.PenguinWars
         public int CastleHpEndless => _castleHpEndless;
         public int CastleHpVersus => _castleHpVersus;
         public float VersusTimeLimit => _versusTimeLimit;
+        public int DraftOfferCount => _draftOfferCount;
+        public float DraftPickTime => _draftPickTime;
         public float SpawnOffset => _spawnOffset;
         public int MaxUnitsPerSide => _maxUnitsPerSide;
         public float KillRewardRate => _killRewardRate;
