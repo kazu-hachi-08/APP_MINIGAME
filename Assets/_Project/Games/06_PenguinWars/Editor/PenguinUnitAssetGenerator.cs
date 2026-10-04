@@ -74,6 +74,20 @@ namespace MiniGame.PenguinWars.Editor
                 new UnitAbility(UnitAbilityType.Steadfast)),
         };
 
+        // 見た目（仕様書 §5.5「見た目」列。実装計画 Phase 6）。ここに無い No は基本ペンギンになる
+        private static readonly Dictionary<int, PenguinLook> Looks = new Dictionary<int, PenguinLook>
+        {
+            [2] = new PenguinLook(body: "wide"),
+            [4] = new PenguinLook(head: "helmet"),
+            [11] = new PenguinLook(hand: "axe"),
+            [13] = new PenguinLook(hand: "glove"),
+            [19] = new PenguinLook(back: "bike"),
+            [23] = new PenguinLook(hand: "bow"),
+            [26] = new PenguinLook(body: "tall"),
+            [34] = new PenguinLook(back: "freezer"),
+            [43] = new PenguinLook(scale: 3),
+        };
+
         [MenuItem("Tools/MiniGame/Generate PenguinWars Units", false, 8)]
         public static void Generate()
         {
@@ -100,8 +114,25 @@ namespace MiniGame.PenguinWars.Editor
         private static void EnsureUnit(UnitDef def)
         {
             string path = $"{UnitsDirectory}/Unit_{def.No:000}.asset";
-            if (AssetDatabase.LoadAssetAtPath<PenguinUnitData>(path) != null) return;
+            var existing = AssetDatabase.LoadAssetAtPath<PenguinUnitData>(path);
+            if (existing == null)
+            {
+                CreateUnit(def, path);
+                return;
+            }
 
+            // Phase 5 までに作ったアセットには見た目が無い。数値と違い手で調整していないはずなので、既定のままなら書き足す
+            if (existing.Look.IsDefault && Looks.ContainsKey(def.No))
+            {
+                var so = new SerializedObject(existing);
+                WriteLook(so.FindProperty("_look"), def.No);
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(existing);
+            }
+        }
+
+        private static void CreateUnit(UnitDef def, string path)
+        {
             var unit = ScriptableObject.CreateInstance<PenguinUnitData>();
             var so = new SerializedObject(unit);
             so.FindProperty("_no").intValue = def.No;
@@ -117,6 +148,7 @@ namespace MiniGame.PenguinWars.Editor
             so.FindProperty("_isAreaAttack").boolValue = def.Area;
             so.FindProperty("_knockbackCount").intValue = def.KnockbackCount;
             WriteAbilities(so.FindProperty("_abilities"), def.Abilities);
+            WriteLook(so.FindProperty("_look"), def.No);
             so.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(unit, path);
         }
@@ -132,6 +164,17 @@ namespace MiniGame.PenguinWars.Editor
                 entry.FindPropertyRelative("_chance").floatValue = abilities[i].Chance;
                 entry.FindPropertyRelative("_duration").floatValue = abilities[i].Duration;
             }
+        }
+
+        private static void WriteLook(SerializedProperty look, int no)
+        {
+            if (!Looks.TryGetValue(no, out PenguinLook def)) def = new PenguinLook();
+            look.FindPropertyRelative("_body").stringValue = def.Body;
+            look.FindPropertyRelative("_bodyColor").stringValue = def.BodyColor;
+            look.FindPropertyRelative("_head").stringValue = def.Head;
+            look.FindPropertyRelative("_hand").stringValue = def.Hand;
+            look.FindPropertyRelative("_back").stringValue = def.Back;
+            look.FindPropertyRelative("_scale").intValue = def.Scale;
         }
 
         private static PenguinUnitCatalog EnsureCatalog()

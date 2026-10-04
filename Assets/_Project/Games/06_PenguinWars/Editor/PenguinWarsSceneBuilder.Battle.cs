@@ -2,10 +2,10 @@ using UnityEngine;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>戦闘の進行役（BattleRunner）・キー入力・ユニットの見た目の見本。見た目は Phase 6 でドット絵に差し替えるまでの仮の四角</summary>
+    /// <summary>戦闘の進行役（BattleRunner）・キー入力・ユニットの見た目の見本</summary>
     public static partial class PenguinWarsSceneBuilder
     {
-        private static readonly Vector2 UnitBodySize = new Vector2(0.8f, 1.1f);
+        // HPバーの高さは UnitView がキャラの絵に合わせて置き直す。これは絵が無いときの仮の位置
         private const float UnitHpBarOffsetY = 1.4f;
         private static readonly Vector2 UnitHpBarSize = new Vector2(0.8f, 0.12f);
 
@@ -17,7 +17,7 @@ namespace MiniGame.PenguinWars.Editor
             CastleView leftCastle, CastleView rightCastle)
         {
             var battleObj = new GameObject("Battle");
-            UnitViewPool unitViews = CreateUnitViewPool(battleObj.transform);
+            UnitViewPool unitViews = CreateUnitViewPool(battleObj.transform, catalog);
 
             var runner = battleObj.AddComponent<BattleRunner>();
             SetRefs(runner, ("_balance", balance), ("_catalog", catalog), ("_unitViews", unitViews),
@@ -28,14 +28,14 @@ namespace MiniGame.PenguinWars.Editor
             return runner;
         }
 
-        private static UnitViewPool CreateUnitViewPool(Transform parent)
+        private static UnitViewPool CreateUnitViewPool(Transform parent, PenguinUnitCatalog catalog)
         {
             var poolObj = new GameObject("Units");
             poolObj.transform.SetParent(parent, false);
             UnitView template = CreateUnitTemplate(poolObj.transform);
 
             var pool = poolObj.AddComponent<UnitViewPool>();
-            SetRefs(pool, ("_template", template));
+            SetRefs(pool, ("_template", template), ("_catalog", catalog));
             return pool;
         }
 
@@ -45,13 +45,12 @@ namespace MiniGame.PenguinWars.Editor
             var unitObj = new GameObject("UnitTemplate");
             unitObj.transform.SetParent(parent, false);
 
-            // 色は UnitView が陣営ごとに塗るので白でよい
-            Transform body = CreateBox(unitObj.transform, "Body", new Vector2(0f, UnitBodySize.y * 0.5f),
-                UnitBodySize, Color.white, UnitSortingOrder);
+            // 絵は UnitViewPool がキャラごとに差し替える。スプライトの原点が足元なので位置は (0, 0) のまま
+            SpriteRenderer body = CreateSprite(unitObj.transform, "Body", null, UnitSortingOrder);
             HpBarView hpBar = CreateHpBar(unitObj.transform, UnitHpBarOffsetY, UnitHpBarSize, UnitHpBarBackSortingOrder);
 
             var unitView = unitObj.AddComponent<UnitView>();
-            SetRefs(unitView, ("_body", body.GetComponent<SpriteRenderer>()), ("_hpBar", hpBar));
+            SetRefs(unitView, ("_body", body), ("_hpBar", hpBar));
             unitObj.SetActive(false);
             return unitView;
         }

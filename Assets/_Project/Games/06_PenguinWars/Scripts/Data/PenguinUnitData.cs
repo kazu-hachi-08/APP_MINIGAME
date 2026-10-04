@@ -28,9 +28,20 @@ namespace MiniGame.PenguinWars
         [SerializeField, Min(1)] private int _knockbackCount = 3;
         [Tooltip("特殊能力（仕様書 §5.3）。複数可")]
         [SerializeField] private PenguinAbilityEntry[] _abilities = new PenguinAbilityEntry[0];
+        [Tooltip("見た目のパーツ指定（仕様書 §7.2）。変えたら Generate PenguinWars Art で絵を作り直す")]
+        [SerializeField] private PenguinLook _look = new PenguinLook();
+        [Header("生成メニューが書き込む（手で触らない）")]
+        [SerializeField] private UnitSpriteSet _leftSprites = new UnitSpriteSet();
+        [SerializeField] private UnitSpriteSet _rightSprites = new UnitSpriteSet();
 
         public int No => _no;
         public string DisplayName => _displayName;
+        public PenguinLook Look => _look;
+
+        public UnitSpriteSet GetSprites(Side side)
+        {
+            return side == Side.Left ? _leftSprites : _rightSprites;
+        }
 
         /// <summary>戦闘ロジックは ScriptableObject を知らないので、純C#の数値に詰め替えて渡す</summary>
         public UnitStats ToStats()

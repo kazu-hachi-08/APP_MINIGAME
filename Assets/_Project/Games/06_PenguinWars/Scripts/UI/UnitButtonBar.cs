@@ -77,7 +77,8 @@ namespace MiniGame.PenguinWars
                 UnitStats stats = deck[slot];
                 PenguinUnitData data = _catalog.Get(stats.UnitNo);
                 string displayName = data != null ? data.DisplayName : $"No.{stats.UnitNo}";
-                _buttons[i].SetUnit(stats.UnitNo, displayName, stats.Cost);
+                Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
+                _buttons[i].SetUnit(icon, displayName, stats.Cost);
             }
         }
 

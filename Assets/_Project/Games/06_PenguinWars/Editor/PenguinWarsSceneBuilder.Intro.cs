@@ -65,6 +65,7 @@ namespace MiniGame.PenguinWars.Editor
             cellRect.sizeDelta = IntroCellSize;
 
             Image icon = CreateImage(cellObj.transform, "Icon", CenterAnchor, IntroIconPosition, IntroIconSize, Color.white);
+            icon.preserveAspect = true;
             Text name = CreateText(cellObj.transform, "Name", IntroNameFontSize, CenterAnchor, IntroNamePosition, IntroNameSize, Color.white);
             // 長い名前でも枠に収める（出撃ボタンと同じ理由）
             name.verticalOverflow = VerticalWrapMode.Truncate;

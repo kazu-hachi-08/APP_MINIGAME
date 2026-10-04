@@ -138,6 +138,8 @@ namespace MiniGame.PenguinWars.Editor
             Object.DestroyImmediate(buttonObj.GetComponentInChildren<Text>().gameObject);
 
             Image icon = CreateImage(buttonObj.transform, "Icon", TopCenterAnchor, UnitIconPosition, UnitIconSize, Color.white);
+            // Image は枠いっぱいに引き伸ばすので、ドット絵の縦横比を保つ
+            icon.preserveAspect = true;
             Text nameLabel = CreateText(buttonObj.transform, "Name", UnitNameFontSize, BottomCenterAnchor, UnitNamePosition, UnitNameSize, Color.white);
             // 長い名前（こおりのじょおうペンギン など）でもボタンからはみ出さないよう縮めて収める
             nameLabel.verticalOverflow = VerticalWrapMode.Truncate;

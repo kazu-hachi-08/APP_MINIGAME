@@ -9,11 +9,6 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public class UnitButton : MonoBehaviour
     {
-        // キャラNoごとに色相をずらして、ドット絵（Phase 6）ができるまで見分けられるようにする
-        private const float HueStepPerUnitNo = 0.618f;
-        private const float IconSaturation = 0.55f;
-        private const float IconBrightness = 0.95f;
-
         [SerializeField] private Button _button;
         [SerializeField] private Image _icon;
         [SerializeField] private Text _nameLabel;
@@ -28,18 +23,13 @@ namespace MiniGame.PenguinWars
             _button.onClick.AddListener(() => onClick());
         }
 
-        public void SetUnit(int unitNo, string displayName, int cost)
+        /// <param name="icon">絵が未生成なら null（名前とコストだけ出す）</param>
+        public void SetUnit(Sprite icon, string displayName, int cost)
         {
-            _icon.enabled = true;
-            _icon.color = IconColor(unitNo);
+            _icon.sprite = icon;
+            _icon.enabled = icon != null;
             _nameLabel.text = displayName;
             _costLabel.text = cost.ToString();
-        }
-
-        /// <summary>仮アイコンの色。編成発表（DeckIntroPanel）でも同じ色にして、ボタンと見比べられるようにする</summary>
-        public static Color IconColor(int unitNo)
-        {
-            return Color.HSVToRGB(unitNo * HueStepPerUnitNo % 1f, IconSaturation, IconBrightness);
         }
 
         /// <summary>編成が10体に満たないときの空き枠</summary>

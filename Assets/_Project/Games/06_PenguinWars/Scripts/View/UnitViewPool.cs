@@ -11,6 +11,8 @@ namespace MiniGame.PenguinWars
     {
         [Tooltip("非アクティブの見本。これを複製して使う")]
         [SerializeField] private UnitView _template;
+        [Tooltip("キャラNo から絵を引くため")]
+        [SerializeField] private PenguinUnitCatalog _catalog;
 
         private readonly Dictionary<int, UnitView> _active = new Dictionary<int, UnitView>();
         private readonly Stack<UnitView> _free = new Stack<UnitView>();
@@ -24,7 +26,7 @@ namespace MiniGame.PenguinWars
             foreach (UnitState unit in units)
             {
                 _aliveIds.Add(unit.Id);
-                GetOrCreate(unit.Id).Apply(unit);
+                GetOrCreate(unit).Apply(unit);
             }
 
             _removedIds.Clear();
@@ -38,14 +40,26 @@ namespace MiniGame.PenguinWars
             }
         }
 
-        private UnitView GetOrCreate(int id)
+        private UnitView GetOrCreate(UnitState unit)
         {
-            if (_active.TryGetValue(id, out UnitView view)) return view;
+            if (_active.TryGetValue(unit.Id, out UnitView view)) return view;
 
             view = _free.Count > 0 ? _free.Pop() : Instantiate(_template, transform);
+            // 使い回しの View は前のキャラの絵を持っているので、出し入れのたびに差し替える
+            view.SetSprites(FindSprites(unit));
             view.gameObject.SetActive(true);
-            _active.Add(id, view);
+            _active.Add(unit.Id, view);
             return view;
+        }
+
+        private UnitSpriteSet FindSprites(UnitState unit)
+        {
+            PenguinUnitData data = _catalog.Get(unit.UnitNo);
+            UnitSpriteSet sprites = data != null ? data.GetSprites(unit.Side) : null;
+            if (sprites != null && sprites.IsValid) return sprites;
+
+            Debug.LogWarning($"[UnitViewPool] No.{unit.UnitNo} の絵がありません。Tools > MiniGame > Generate PenguinWars Art を実行してください");
+            return null;
         }
 
         private void Release(int id)

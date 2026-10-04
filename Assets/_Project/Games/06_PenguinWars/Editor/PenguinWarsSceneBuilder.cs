@@ -43,6 +43,7 @@ namespace MiniGame.PenguinWars.Editor
             UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             PenguinWarsBalance balance = EnsureBalance();
             PenguinUnitCatalog catalog = PenguinUnitAssetGenerator.EnsureAssets();
+            PenguinArtGenerator.EnsureGenerated(catalog);
 
             BattleCamera battleCamera = CreateCamera();
             CreateEventSystem();

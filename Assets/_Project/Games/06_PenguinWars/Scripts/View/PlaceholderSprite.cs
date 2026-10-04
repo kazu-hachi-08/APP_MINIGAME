@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ドット絵ができるまで（Phase 6）の仮の四角。1ワールド単位の白い四角を貼り、大きさは Transform のスケール、色は SpriteRenderer の色で決める。
+    /// HPバー用の単色の四角。1ワールド単位の白い四角を貼り、大きさは Transform のスケール、色は SpriteRenderer の色で決める。
     /// 画像アセットを作らずに済むよう実行時に生成する
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]

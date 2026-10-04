@@ -113,7 +113,7 @@ namespace MiniGame.PenguinWars
         private static void ApplyCastle(CastleView view, CastleState castle)
         {
             // 無敵の出現ゲートは HP を持たないものとして見せる（仕様書 §2.1）
-            if (castle.IsInvincible) view.HideHp();
+            if (castle.IsInvincible) view.ShowAsGate();
             else view.SetHp(castle.Hp, castle.MaxHp);
         }
 
