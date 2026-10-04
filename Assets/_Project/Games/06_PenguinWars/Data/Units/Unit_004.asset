@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d880115c3cd30774da271f74cdc05824, type: 3}
+  m_Name: Unit_004
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinUnitData
+  _no: 4
+  _displayName: "\u30D8\u30EB\u30E1\u30C3\u30C8\u30DA\u30F3\u30AE\u30F3"
+  _cost: 150
+  _cooldown: 5
+  _maxHp: 250
+  _attack: 8
+  _range: 1.4
+  _attackInterval: 1.2
+  _windup: 0.3
+  _moveSpeed: 0.8
+  _isAreaAttack: 0
+  _knockbackCount: 1
+  _abilities:
+  - _type: 4
+    _chance: 0
+    _duration: 0
+  _look:
+    _body: basic
+    _bodyColor: standard
+    _head: helmet
+    _hand: 
+    _back: 
+    _scale: 1
+  _leftSprites:
+    _frames:
+    - {fileID: 21300000, guid: 83d4e1a0d0496b44ba622a8acefbc96d, type: 3}
+    - {fileID: 21300000, guid: dc10f776cf9b60048917e1f10148f2b1, type: 3}
+    - {fileID: 21300000, guid: 36d75db182599db428f7779a8741583a, type: 3}
+    - {fileID: 21300000, guid: 84a4186d8161e2a4cb088849d3f9bc44, type: 3}
+    - {fileID: 21300000, guid: a3c574ff829c52f4e934332ec3bb2d76, type: 3}
+    _headHeight: 1.375
+  _rightSprites:
+    _frames:
+    - {fileID: 21300000, guid: 16b6edb0df435954e812ada562d46e4d, type: 3}
+    - {fileID: 21300000, guid: c45e89f0395680f40b84f4661cb47eda, type: 3}
+    - {fileID: 21300000, guid: 7175b2311e809864c9b57627199f64c2, type: 3}
+    - {fileID: 21300000, guid: d482c177eb7167645b750e1120b47753, type: 3}
+    - {fileID: 21300000, guid: 2db36d6771278b3408e702f6485482be, type: 3}
+    _headHeight: 1.375
