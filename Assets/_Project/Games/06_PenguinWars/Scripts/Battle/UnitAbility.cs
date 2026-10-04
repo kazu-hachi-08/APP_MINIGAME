@@ -13,6 +13,13 @@ namespace MiniGame.PenguinWars.Battle
         CastleKiller,
         /// <summary>ふんばる: ノックバックしない</summary>
         Steadfast,
+        // 以下の役割キラーは末尾に足す（アセットは enum を番号で保存しているので、途中に挟むと既存キャラの能力がずれる）
+        /// <summary>大型キラー: 大型へのダメージが増える</summary>
+        LargeKiller,
+        /// <summary>遠距離キラー: 遠距離へのダメージが増える</summary>
+        RangedKiller,
+        /// <summary>妨害キラー: 妨害へのダメージが増える</summary>
+        DisruptorKiller,
     }
 
     /// <summary>1つの特殊能力とそのパラメータ。確率・秒数を使わない能力では 0 のままでよい</summary>

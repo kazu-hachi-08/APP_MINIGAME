@@ -32,6 +32,8 @@ namespace MiniGame.PenguinWars.Battle
         public float SlowSpeedMultiplier { get; set; } = 0.5f;
         /// <summary>城キラーの城へのダメージ倍率（仕様書 §5.3）</summary>
         public float CastleKillerMultiplier { get; set; } = 3f;
+        /// <summary>役割キラー（大型・遠距離・妨害キラー）の狙いの役割へのダメージ倍率（仕様書 §5.3）</summary>
+        public float RoleKillerMultiplier { get; set; } = 3f;
         /// <summary>なだれの間隔（秒。仕様書 §3.4）。0 ならなだれなし</summary>
         public float AvalancheInterval { get; set; }
         /// <summary>なだれの何秒前に予告するか。プレイヤーがユニットを下げる・出すのを控えるなど備えられるように</summary>

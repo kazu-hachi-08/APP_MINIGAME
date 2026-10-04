@@ -21,5 +21,26 @@ namespace MiniGame.PenguinWars.Battle
 
             return (int)Math.Round(attacker.Attack * castleKillerMultiplier);
         }
+
+        /// <summary>役割キラーが狙いの役割を殴ったときだけ倍率をかける。強いキャラにも「合わせれば勝てる」相手を作り、対戦の硬直を崩すため</summary>
+        public static int UnitDamage(UnitStats attacker, UnitRole targetRole, float roleKillerMultiplier)
+        {
+            UnitAbilityType? killer = KillerFor(targetRole);
+            if (killer == null || !attacker.HasAbility(killer.Value)) return attacker.Attack;
+
+            return (int)Math.Round(attacker.Attack * roleKillerMultiplier);
+        }
+
+        /// <summary>その役割を狙うキラー能力。壁・アタッカーは狙う意味が薄いのでキラーなし（null）</summary>
+        private static UnitAbilityType? KillerFor(UnitRole role)
+        {
+            switch (role)
+            {
+                case UnitRole.Large: return UnitAbilityType.LargeKiller;
+                case UnitRole.Ranged: return UnitAbilityType.RangedKiller;
+                case UnitRole.Disruptor: return UnitAbilityType.DisruptorKiller;
+                default: return null;
+            }
+        }
     }
 }

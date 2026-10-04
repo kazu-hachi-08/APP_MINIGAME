@@ -66,7 +66,7 @@ namespace MiniGame.PenguinWars.Battle
 
             foreach (UnitState target in _targets)
             {
-                DamageUnit(target, attacker.Stats.Attack);
+                DamageUnit(target, AbilityResolver.UnitDamage(attacker.Stats, target.Stats.Role, _settings.RoleKillerMultiplier));
                 if (!target.IsDead) ApplyHitAbilities(attacker.Stats, target);
             }
             if (hitCastle) DamageCastle(enemyCastle, AbilityResolver.CastleDamage(attacker.Stats, _settings.CastleKillerMultiplier));

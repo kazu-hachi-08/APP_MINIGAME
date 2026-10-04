@@ -36,6 +36,9 @@ namespace MiniGame.PenguinWars
                 case UnitAbilityType.Slow: return "遅くする";
                 case UnitAbilityType.CastleKiller: return "城キラー";
                 case UnitAbilityType.Steadfast: return "ふんばる";
+                case UnitAbilityType.LargeKiller: return "大型キラー";
+                case UnitAbilityType.RangedKiller: return "遠距離キラー";
+                case UnitAbilityType.DisruptorKiller: return "妨害キラー";
                 default: return type.ToString();
             }
         }

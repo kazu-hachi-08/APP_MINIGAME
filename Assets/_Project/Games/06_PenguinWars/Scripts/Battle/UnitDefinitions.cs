@@ -25,6 +25,10 @@ namespace MiniGame.PenguinWars.Battle
         private static UnitAbility Slow() => new UnitAbility(UnitAbilityType.Slow, SlowChance, SlowSeconds);
         private static UnitAbility CastleKiller() => new UnitAbility(UnitAbilityType.CastleKiller);
         private static UnitAbility Steadfast() => new UnitAbility(UnitAbilityType.Steadfast);
+        // 役割キラー: 大型は前に出てくるので単体攻撃でも殴れるが、遠距離・妨害は壁の後ろにいるので範囲攻撃のキャラに持たせる
+        private static UnitAbility LargeKiller() => new UnitAbility(UnitAbilityType.LargeKiller);
+        private static UnitAbility RangedKiller() => new UnitAbility(UnitAbilityType.RangedKiller);
+        private static UnitAbility DisruptorKiller() => new UnitAbility(UnitAbilityType.DisruptorKiller);
 
         private static UnitDefinition Wall(int no, string name, int cost, bool area, params UnitAbility[] abilities) =>
             new UnitDefinition(no, name, UnitRole.Wall, cost, area, abilities);
@@ -52,12 +56,12 @@ namespace MiniGame.PenguinWars.Battle
             Wall(10, "かまくらペンギン", 150, Single).With(new StatTweak { Hp = 1.3f, Speed = 0.6f }),
 
             // アタッカー（200〜600）
-            Attacker(11, "おのペンギン", 300, Single),
+            Attacker(11, "おのペンギン", 300, Single, LargeKiller()),
             Attacker(12, "さかなけんペンギン", 250, Single),
             Attacker(13, "ボクサーペンギン", 350, Single, Knock(SideKnockChance)),
             Attacker(14, "すもうペンギン", 450, Area, Knock(SideKnockChance)).With(new StatTweak { Hp = 1.2f, Speed = 0.8f }),
-            Attacker(15, "ながあしペンギン", 400, Area).With(new StatTweak { Range = 1.3f, Speed = 1.2f }),
-            Attacker(16, "ハンマーペンギン", 550, Area).With(new StatTweak { Attack = 1.2f, Speed = 0.8f }),
+            Attacker(15, "ながあしペンギン", 400, Area, RangedKiller()).With(new StatTweak { Range = 1.3f, Speed = 1.2f }),
+            Attacker(16, "ハンマーペンギン", 550, Area, DisruptorKiller()).With(new StatTweak { Attack = 1.2f, Speed = 0.8f }),
             Attacker(17, "にんじゃペンギン", 300, Single).With(new StatTweak { Hp = 0.7f, Speed = 1.8f }),
             Attacker(18, "さむらいペンギン", 450, Single).With(new StatTweak { Attack = 1.2f, Hp = 0.9f }),
             Attacker(19, "バイクペンギン", 500, Single, CastleKiller()).With(new StatTweak { Speed = 1.8f }),
@@ -67,13 +71,13 @@ namespace MiniGame.PenguinWars.Battle
 
             // 遠距離（400〜1200）
             Ranged(23, "ゆみペンギン", 450, Single),
-            Ranged(24, "ゆきなげペンギン", 600, Area),
+            Ranged(24, "ゆきなげペンギン", 600, Area, RangedKiller()),
             Ranged(25, "つりざおペンギン", 500, Single),
             Ranged(26, "のっぽペンギン", 900, Area).With(new StatTweak { Hp = 1.3f }),
             Ranged(27, "たいほうペンギン", 1000, Area).With(new StatTweak { Attack = 1.2f, Speed = 0.8f }),
             Ranged(28, "まほうつかいペンギン", 1100, Area),
-            Ranged(29, "スナイパーペンギン", 1200, Single).With(new StatTweak { Range = 1.3f, Hp = 0.8f }),
-            Ranged(30, "ブーメランペンギン", 700, Area),
+            Ranged(29, "スナイパーペンギン", 1200, Single, LargeKiller()).With(new StatTweak { Range = 1.3f, Hp = 0.8f }),
+            Ranged(30, "ブーメランペンギン", 700, Area, DisruptorKiller()),
             Ranged(31, "ロケットペンギン", 800, Single, CastleKiller()),
             Ranged(32, "ペンギンタワー", 1200, Area).With(new StatTweak { Hp = 1.4f, Speed = 0.7f }),
 

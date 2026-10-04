@@ -72,18 +72,45 @@ namespace MiniGame.PenguinWars
         private const int WallPenguin = 2;
         private const int HelmetPenguin = 4;
         private const int AxePenguin = 11;
+        private const int FishSwordPenguin = 12;
         private const int DrillPenguin = 20;
+        private const int BowPenguin = 23;
+        private const int SnowballPenguin = 24;
         private const int FreezePenguin = 34;
         private const int FanPenguin = 35;
         private const int StickyPenguin = 37;
 
         public static readonly IReadOnlyList<GuideTopic> All = new[]
         {
-            new GuideTopic("城キラー",
-                "城へのダメージが3倍になる（ユニットへの攻撃はふつう）。\n" +
-                "ドリル・バイク・ロケット・せんしゃが持っている。城に着く前に止めよう。",
+            // 遊び方の基本 → 戦い方 → 能力 → ステージの順。最初のページで「何をすれば勝ちか」が分かるようにする
+            new GuideTopic("出撃と勝ち方",
+                "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。
+" +
+                "相手の城を先に落とせば勝ち（エンドレスは自分の城を守れた時間を競う）。",
                 DefaultLoop,
-                GuideAction.Spawn(0f, Enemy, DrillPenguin, 6f)),
+                GuideAction.Spawn(0f, Ally, Penguin, 1.5f),
+                GuideAction.Spawn(1.5f, Ally, FishSwordPenguin, 1.5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 10f)),
+
+            new GuideTopic("さかなと働きペンギン",
+                "さかなは時間でたまり、敵を倒しても増える。
+" +
+                "左下の働きペンギンにさかなを払うと、たまる速さと上限が上がる。高いキャラを出す前に上げておこう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, FishSwordPenguin, 2f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 8f),
+                GuideAction.Spawn(2.5f, Enemy, Penguin, 10f),
+                GuideAction.Spawn(5f, Enemy, Penguin, 12f)),
+
+            new GuideTopic("壁と後ろの列",
+                "壁は安くて硬い。前に並べて時間をかせぎ、その後ろから遠距離が攻撃する。
+" +
+                "単体攻撃は一番手前の敵しか狙えないので、壁の後ろには届かない。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Ally, BowPenguin, 1f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
+                GuideAction.Spawn(1.5f, Enemy, Penguin, 10f)),
 
             new GuideTopic("城の守り方",
                 "単体攻撃の敵は、城よりも目の前のユニットを先に殴る。城に張り付かれたら壁を出そう。\n" +
@@ -92,6 +119,15 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, DrillPenguin, 6f),
                 GuideAction.Spawn(3f, Ally, WallPenguin, 1.5f),
                 GuideAction.Spawn(5f, Ally, AxePenguin, 1.5f)),
+
+            new GuideTopic("ペンギン砲",
+                "40秒でたまる。城の近く（戦場の6割まで）の敵全員に100ダメージ＋後ろに飛ばす。\n" +
+                "城に張り付かれたときの立て直しに取っておこう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Enemy, Penguin, 5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 6.5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 8f),
+                GuideAction.Cannon(3.5f, Ally)),
 
             new GuideTopic("ふっとばす",
                 "攻撃が当たると、確率で相手を後ろに飛ばす（妨害は50%・ほかは30%）。\n" +
@@ -123,14 +159,20 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Ally, HelmetPenguin, 2.5f),
                 GuideAction.Spawn(0f, Ally, Penguin, 1.5f)),
 
-            new GuideTopic("ペンギン砲",
-                "40秒でたまる。城の近く（戦場の6割まで）の敵全員に100ダメージ＋後ろに飛ばす。\n" +
-                "城に張り付かれたときの立て直しに取っておこう。",
+            new GuideTopic("城キラー",
+                "城へのダメージが3倍になる（ユニットへの攻撃はふつう）。\n" +
+                "ドリル・バイク・ロケット・せんしゃが持っている。城に着く前に止めよう。",
                 DefaultLoop,
-                GuideAction.Spawn(0f, Enemy, Penguin, 5f),
-                GuideAction.Spawn(0f, Enemy, Penguin, 6.5f),
-                GuideAction.Spawn(0f, Enemy, Penguin, 8f),
-                GuideAction.Cannon(3.5f, Ally)),
+                GuideAction.Spawn(0f, Enemy, DrillPenguin, 6f)),
+
+            new GuideTopic("役割キラー",
+                "大型キラー・遠距離キラー・妨害キラーは、その役割へのダメージが3倍（ほかの相手と城にはふつう）。\n" +
+                "範囲攻撃のキラーは壁の後ろの相手にも当たる。相手が出したのを見てから合わせよう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Enemy, WallPenguin, 8f),
+                GuideAction.Spawn(0f, Enemy, BowPenguin, 10f),
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Ally, SnowballPenguin, 1f)),
 
             new GuideTopic("なだれ",
                 "ステージ「なだれの谷」だけ。60秒ごとに戦場の真ん中にいるユニット全員（敵も味方も）に150ダメージ＋後ろに飛ばす。\n" +

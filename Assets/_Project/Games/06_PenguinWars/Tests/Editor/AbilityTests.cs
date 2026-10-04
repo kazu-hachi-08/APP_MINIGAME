@@ -214,6 +214,35 @@ namespace MiniGame.PenguinWars.Battle.Tests
         }
 
         [Test]
+        public void RoleKiller_TriplesDamageOnlyAgainstItsRole()
+        {
+            var largeKiller = new UnitAbility(UnitAbilityType.LargeKiller);
+            UnitStats large = Target();
+            large.Role = UnitRole.Large;
+            UnitStats ranged = Target();
+            ranged.Role = UnitRole.Ranged;
+
+            BattleWorld vsLarge = CreateWorld(Attacker(10, 10f, false, largeKiller), large);
+            BattleWorld vsRanged = CreateWorld(Attacker(10, 10f, false, largeKiller), ranged);
+            Run(vsLarge, 0.2f);
+            Run(vsRanged, 0.2f);
+
+            Assert.AreEqual(large.MaxHp - 30, FindFirst(vsLarge, Side.Right).Hp);
+            Assert.AreEqual(ranged.MaxHp - 10, FindFirst(vsRanged, Side.Right).Hp);
+        }
+
+        [Test]
+        public void RoleKiller_DoesNotBoostCastleDamage()
+        {
+            var largeKiller = new UnitAbility(UnitAbilityType.LargeKiller);
+            BattleWorld world = CreateWorld(Attacker(10, 10f, true, largeKiller), Target(), rightInvincible: false);
+
+            Run(world, 0.2f);
+
+            Assert.AreEqual(1000 - 10, world.GetCastle(Side.Right).Hp);
+        }
+
+        [Test]
         public void ChanceZero_NeverTriggers()
         {
             var push = new UnitAbility(UnitAbilityType.Knockback, 0f);

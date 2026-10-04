@@ -308,6 +308,7 @@ namespace MiniGame.PenguinWars
                 KnockbackDuration = _balance.KnockbackDuration,
                 SlowSpeedMultiplier = _balance.SlowSpeedMultiplier,
                 CastleKillerMultiplier = _balance.CastleKillerMultiplier,
+                RoleKillerMultiplier = _balance.RoleKillerMultiplier,
                 RandomSeed = seed,
             };
         }

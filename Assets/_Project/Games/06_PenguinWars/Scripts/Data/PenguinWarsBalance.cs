@@ -51,6 +51,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _slowSpeedMultiplier = 0.5f;
         [Tooltip("城キラーの城へのダメージ倍率")]
         [SerializeField] private float _castleKillerMultiplier = 3f;
+        [Tooltip("役割キラー（大型・遠距離・妨害キラー）の狙いの役割へのダメージ倍率")]
+        [SerializeField] private float _roleKillerMultiplier = 3f;
 
         [Header("エンドレス（仕様書 §2.1・§8.1）")]
         [Tooltip("ランダム編成の人数")]
@@ -91,6 +93,7 @@ namespace MiniGame.PenguinWars
         public float KnockbackDuration => _knockbackDuration;
         public float SlowSpeedMultiplier => _slowSpeedMultiplier;
         public float CastleKillerMultiplier => _castleKillerMultiplier;
+        public float RoleKillerMultiplier => _roleKillerMultiplier;
 
         public WalletTable CreateWalletTable()
         {
