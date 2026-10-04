@@ -20,13 +20,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private UnitViewPool _unitViews;
         [SerializeField] private CastleView _leftCastle;
         [SerializeField] private CastleView _rightCastle;
-        [Tooltip("仮の編成（キャラNo。並び順が 1〜5 キーに対応）。敵も同じ編成から湧く。Phase 5 でランダム編成に置き換える")]
-        [SerializeField] private int[] _deckUnitNos = { 1, 11, 23 };
-        [Tooltip("仮の敵の湧き間隔（秒）。Phase 4 で敵レベルに置き換える")]
-        [SerializeField] private float _enemySpawnInterval = 4f;
 
         private BattleWorld _world;
-        private SimpleEnemySpawner _enemySpawner;
         private float _accumulator;
         private readonly List<BattleEvent> _events = new List<BattleEvent>();
 
@@ -51,12 +46,18 @@ namespace MiniGame.PenguinWars
                 WalletTable = _balance.CreateWalletTable(),
                 // エンドレスの敵はお金を持たない（仕様書 §8）
                 RightSpawnsFree = true,
+                KillRewardRate = _balance.KillRewardRate,
+                CannonChargeTime = _balance.CannonChargeTime,
+                CannonRangeRatio = _balance.CannonRangeRatio,
+                CannonDamage = _balance.CannonDamage,
             });
 
-            List<UnitStats> deck = BuildDeck();
-            _world.SetDeck(Side.Left, deck);
-            _world.SetDeck(Side.Right, deck);
-            _enemySpawner = new SimpleEnemySpawner(_enemySpawnInterval, deck.Count, Environment.TickCount);
+            // 毎回違う編成・違う湧き方にする（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
+            var random = new System.Random(Environment.TickCount);
+            List<UnitStats> allUnits = CollectAllUnits();
+            _world.SetDeck(Side.Left, DeckRandomizer.Pick(allUnits, _balance.DeckSize, random));
+            // 敵は味方と同じデータから湧く（仕様書 §8.1）
+            _world.SetEnemyWaves(new EnemyWaveDirector(_balance.CreateEnemyWaveSettings(), allUnits, random.Next()));
             RefreshViews();
         }
 
@@ -89,7 +90,6 @@ namespace MiniGame.PenguinWars
             int steps = 0;
             while (_accumulator >= FixedStep && steps < MaxStepsPerFrame)
             {
-                _enemySpawner.Tick(_world, FixedStep);
                 _world.Step(FixedStep);
                 _accumulator -= FixedStep;
                 steps++;
@@ -122,20 +122,18 @@ namespace MiniGame.PenguinWars
             }
         }
 
-        private List<UnitStats> BuildDeck()
+        private List<UnitStats> CollectAllUnits()
         {
-            var deck = new List<UnitStats>();
-            foreach (int no in _deckUnitNos)
+            var units = new List<UnitStats>();
+            foreach (PenguinUnitData data in _catalog.Units)
             {
-                PenguinUnitData data = _catalog.Get(no);
-                if (data == null)
-                {
-                    Debug.LogWarning($"[BattleRunner] キャラNo {no} がカタログにありません。Tools > MiniGame > Generate PenguinWars Units を実行してください");
-                    continue;
-                }
-                deck.Add(data.ToStats());
+                if (data != null) units.Add(data.ToStats());
             }
-            return deck;
+            if (units.Count == 0)
+            {
+                Debug.LogWarning("[BattleRunner] カタログが空です。Tools > MiniGame > Generate PenguinWars Units を実行してください");
+            }
+            return units;
         }
     }
 }

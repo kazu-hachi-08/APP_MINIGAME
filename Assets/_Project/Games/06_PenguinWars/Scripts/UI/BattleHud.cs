@@ -3,13 +3,33 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars
 {
-    /// <summary>画面上部の時間表示と、中央のメッセージ（START! など）</summary>
+    /// <summary>画面上部の時間表示・敵レベルUP表示と、中央のメッセージ（START! など）</summary>
     public class BattleHud : MonoBehaviour
     {
         private const int SecondsPerMinute = 60;
 
         [SerializeField] private Text _timeLabel;
         [SerializeField] private Text _messageLabel;
+        [SerializeField] private Text _levelUpLabel;
+        [SerializeField] private float _levelUpDisplayTime = 2f;
+
+        private float _levelUpTimer;
+
+        private void Update()
+        {
+            if (_levelUpTimer <= 0f) return;
+
+            _levelUpTimer -= Time.deltaTime;
+            if (_levelUpTimer <= 0f) _levelUpLabel.gameObject.SetActive(false);
+        }
+
+        /// <summary>エンドレスの敵が強くなったことを知らせる（仕様書 §9）。しばらくしたら自動で消える</summary>
+        public void ShowLevelUp(int level)
+        {
+            _levelUpLabel.text = $"LEVEL {level}!";
+            _levelUpLabel.gameObject.SetActive(true);
+            _levelUpTimer = _levelUpDisplayTime;
+        }
 
         public void SetElapsed(float seconds)
         {

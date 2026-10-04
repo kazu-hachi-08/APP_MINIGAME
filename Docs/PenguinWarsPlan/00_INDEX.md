@@ -28,7 +28,7 @@
 | 1 | [phase01_scene_skeleton.md](phase01_scene_skeleton.md) | シーン骨組み・タイトル登録・戦場・カメラ | タイトルから入れて戦場をスクロールできる | 完了 |
 | 2 | [phase02_battle_core.md](phase02_battle_core.md) | 戦闘ロジック（BattleWorld）・3体・敵の湧き・城HP | キーで出撃して敵と殴り合い、城が落ちたら終わる | 完了 |
 | 3 | [phase03_economy_ui.md](phase03_economy_ui.md) | さかな・働きペンギン・再生産・キャラボタン | スマホのボタンで出撃できる | 完了 |
-| 4 | [phase04_endless.md](phase04_endless.md) | 敵レベル・撃破報酬・ペンギン砲・リザルト・ベスト記録 | エンドレスが1本のゲームとして遊べる | 未着手 |
+| 4 | [phase04_endless.md](phase04_endless.md) | 敵レベル・撃破報酬・ペンギン砲・リザルト・ベスト記録 | エンドレスが1本のゲームとして遊べる | 完了 |
 | 5 | [phase05_abilities.md](phase05_abilities.md) | ノックバック・特殊能力5種・キャラ10体 | 10体のランダム編成で遊べる | 未着手 |
 | 6 | [phase06_pixel_art.md](phase06_pixel_art.md) | ペンギンのドット絵生成（パーツ方式）・城・背景 | 見た目がペンギンになる | 未着手 |
 | 7 | [phase07_effects_sound.md](phase07_effects_sound.md) | 演出・サウンド | 手触りが整う | 未着手 |

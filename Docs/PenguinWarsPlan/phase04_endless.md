@@ -45,7 +45,7 @@
 
 ## 完了条件
 
-* [ ] EditMode テスト: 30秒でレベルが上がる / 出現キャラがコスト上限内 / 撃破でさかなが増える / 砲はチャージ前に撃てず、撃つと範囲内の敵だけにダメージ
+* [x] EditMode テスト: 30秒でレベルが上がる / 出現キャラがコスト上限内 / 撃破でさかなが増える / 砲はチャージ前に撃てず、撃つと範囲内の敵だけにダメージ
 * [ ] 再生して、数分遊ぶと敵が明らかに強くなり、いつか負ける
 * [ ] リザルトに生存時間・撃破数、2回目以降でベスト比較が出る。リトライ・タイトルに戻れる
 
@@ -57,6 +57,29 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * `Scripts/Battle/`: `EnemyWaveDirector` / `EnemyWaveSettings` / `CannonState` / `DeckRandomizer` / `BattleWorld.Combat.cs`（`BattleWorld` を partial に分け、ユニット行動・砲・ダメージ・撃破報酬をこちらへ移した）。`UnitStats.Scaled`・`BattleCommand.FireCannon`・`BattleEvent`（`EnemyLevelUp` / `CannonFired`）・`BattleSettings`（報酬率・砲）を追加。`SimpleEnemySpawner` は削除
+  * `Scripts/Game/`: `EndlessRecord`（static クラス）、`PenguinWarsGameManager`（編成発表 → START! → リザルト）、`BattleRunner`（ランダム編成・敵レベル湧き）、`KeyboardCommandInput`（Space）
+  * `Scripts/UI/`: `CannonButton` / `DeckIntroPanel`、`BattleHud`（`ShowLevelUp`）、`UnitButton`（`IconColor` を static 公開）
+  * `Scripts/Data/PenguinWarsBalance`: 報酬率・砲・編成人数・敵レベルの数値、`CreateEnemyWaveSettings()`
+  * `Editor/PenguinWarsSceneBuilder.Intro.cs`（編成発表パネル）、`.Hud.cs`（LEVEL表示）、`.Controls.cs`（砲ボタン）
+  * `Tests/Editor/EndlessTests.cs`（9件）。`BattleWorldTests` から `SimpleEnemySpawner` のテストを削除
 * 公開API（次フェーズが使うもの）:
+  * `BattleWorld.SetEnemyWaves(director)` / `EnemyLevel` / `GetCannon(side)` / `GetKillCount(side)`
+  * `CannonState`: `Charge` / `ChargeTime` / `ChargeRatio` / `IsReady` / `TryFire()`
+  * `EnemyWaveDirector`: `Level` / `SpawnInterval` / `CostLimit` / `StatMultiplier` / `Tick(dt, spawns)`（レベルUPで true）
+  * `DeckRandomizer.Pick(pool, count, random)`（ジェネリック）
+  * `BattleEvent`: `Died.Amount` = 倒した側に入った報酬、`EnemyLevelUp.Amount` = 新レベル、`CannonFired.Side` = 撃った側・`X` = 届いた先端
+  * `BattleWorld.Combat.cs` の `FireCannon` / `DamageUnit` がノックバックを足す場所（Phase 5）
 * 計画・仕様から変えた点:
+  * 湧きは `BattleRunner` ではなく `BattleWorld` が `Step` の中で進める（`EnemyLevelUp` イベントを World から出すため）。敵は編成スロットを使わず直接出す（右陣営の `SetDeck` は不要になった）
+  * 倍率は仕様どおり `1.0 + レベル × 0.15` なので、レベル1でも 1.15 倍
+  * 大型確定は「最もコストの高いキャラ」（コスト上限は無視）。役割データは Phase 8
+  * 湧きが場の上限30体を超えた分は捨てる（溜めない）
+  * 砲は城には当たらない。右陣営（CPU）も砲を持つが撃たない
+  * リザルトの詳細: 更新時 `NEW RECORD!（前回ベスト mm:ss）`（初回は `NEW RECORD!` のみ）、それ以外 `ベスト mm:ss`
+  * 城が崩れる演出（1.5秒）はまだ無し（Phase 7）。砲の「光る」は色変化（オレンジ）
+  * 編成発表パネルのタイトルは「今回の編成」
 * 次フェーズへの注意:
+  * テストは `dotnet test`（Battle と Tests の .cs を集めたプロジェクト）で 28件合格。Unity 側は生成済み csproj（Assembly-CSharp / -Editor）を複製して PenguinWars のファイルを足した一時プロジェクトで `dotnet build` し、エラー0を確認（Unity エディタでのコンパイル・Rebuild・再生は未確認）
+  * ランダム編成は全キャラから。まだ3体なので並び順が毎回変わるだけ
+  * ベスト記録をリセットしたいときは PlayerPrefs の `PenguinWars.Endless.BestSeconds` を消す

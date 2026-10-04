@@ -4,10 +4,11 @@ using System.Collections.Generic;
 namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
-    /// 戦闘のすべて（ユニット・城）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
-    /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）
+    /// 戦闘のすべて（ユニット・城・お金・砲）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
+    /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）。
+    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs
     /// </summary>
-    public class BattleWorld
+    public partial class BattleWorld
     {
         private static readonly Predicate<UnitState> IsDeadPredicate = unit => unit.IsDead;
 
@@ -18,24 +19,33 @@ namespace MiniGame.PenguinWars.Battle
         private readonly IReadOnlyList<UnitStats>[] _decks = new IReadOnlyList<UnitStats>[2];
         private readonly DeckSlotState[][] _slots = new DeckSlotState[2][];
         private readonly WalletState[] _wallets = new WalletState[2];
+        private readonly CannonState[] _cannons = new CannonState[2];
+        private readonly int[] _killCounts = new int[2];
         private readonly Queue<BattleCommand> _commands = new Queue<BattleCommand>();
         private readonly List<BattleEvent> _events = new List<BattleEvent>();
-        // 毎攻撃で List を作らないよう使い回す
+        // 毎攻撃・毎ステップで List を作らないよう使い回す
         private readonly List<UnitState> _targets = new List<UnitState>();
+        private readonly List<UnitStats> _waveSpawns = new List<UnitStats>();
+        private EnemyWaveDirector _enemyWaves;
         private int _nextUnitId = 1;
 
         public IReadOnlyList<UnitState> Units => _units;
         public bool IsFinished { get; private set; }
         /// <summary>城を落とされた側。IsFinished のときだけ意味がある</summary>
         public Side Loser { get; private set; }
+        /// <summary>エンドレスの敵レベル。湧きを設定していなければ 0</summary>
+        public int EnemyLevel => _enemyWaves?.Level ?? 0;
 
         public BattleWorld(BattleSettings settings)
         {
             _settings = settings;
             _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp, false);
             _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp, settings.RightCastleInvincible);
-            _wallets[(int)Side.Left] = new WalletState(settings.WalletTable);
-            _wallets[(int)Side.Right] = new WalletState(settings.WalletTable);
+            for (int side = 0; side < 2; side++)
+            {
+                _wallets[side] = new WalletState(settings.WalletTable);
+                _cannons[side] = new CannonState(settings.CannonChargeTime);
+            }
         }
 
         public CastleState GetCastle(Side side)
@@ -52,6 +62,12 @@ namespace MiniGame.PenguinWars.Battle
             _slots[(int)side] = slots;
         }
 
+        /// <summary>エンドレスの敵の湧き（右陣営）。設定すると Step のたびに進む</summary>
+        public void SetEnemyWaves(EnemyWaveDirector enemyWaves)
+        {
+            _enemyWaves = enemyWaves;
+        }
+
         /// <summary>編成。未設定なら空</summary>
         public IReadOnlyList<UnitStats> GetDeck(Side side)
         {
@@ -66,6 +82,17 @@ namespace MiniGame.PenguinWars.Battle
         public WalletState GetWallet(Side side)
         {
             return _wallets[(int)side];
+        }
+
+        public CannonState GetCannon(Side side)
+        {
+            return _cannons[(int)side];
+        }
+
+        /// <summary>side が倒した敵ユニットの数（リザルトの撃破数）</summary>
+        public int GetKillCount(Side side)
+        {
+            return _killCounts[(int)side];
         }
 
         /// <summary>今出撃できるか。ボタンを暗くする判定と実際の出撃で同じ条件を使うため、ここ1か所にまとめる</summary>
@@ -99,6 +126,7 @@ namespace MiniGame.PenguinWars.Battle
             if (IsFinished) return;
 
             TickEconomy(deltaTime);
+            TickEnemyWaves(deltaTime);
             ProcessCommands();
             // ループ中に死んだユニットは Dead にしておき、最後にまとめて除く（途中で消すと添字がずれるため）
             foreach (UnitState unit in _units)
@@ -131,6 +159,9 @@ namespace MiniGame.PenguinWars.Battle
                     case BattleCommandType.LevelUpWallet:
                         if (!IsSpawnFree(command.Side)) GetWallet(command.Side).TryLevelUp();
                         break;
+                    case BattleCommandType.FireCannon:
+                        if (GetCannon(command.Side).TryFire()) FireCannon(command.Side);
+                        break;
                 }
             }
         }
@@ -145,9 +176,25 @@ namespace MiniGame.PenguinWars.Battle
             for (int side = 0; side < _wallets.Length; side++)
             {
                 _wallets[side].Tick(deltaTime);
+                _cannons[side].Tick(deltaTime);
                 if (_slots[side] == null) continue;
 
                 foreach (DeckSlotState slot in _slots[side]) slot.Tick(deltaTime);
+            }
+        }
+
+        private void TickEnemyWaves(float deltaTime)
+        {
+            if (_enemyWaves == null) return;
+
+            if (_enemyWaves.Tick(deltaTime, _waveSpawns))
+            {
+                _events.Add(new BattleEvent(BattleEventType.EnemyLevelUp, Side.Right, BattleEvent.CastleId, _rightCastle.X, _enemyWaves.Level));
+            }
+            foreach (UnitStats stats in _waveSpawns)
+            {
+                // 上限を超えた分は捨てる（溜めておくと、空いた瞬間に一斉に湧いて理不尽になるため）
+                if (CountUnits(Side.Right) < _settings.MaxUnitsPerSide) AddUnit(Side.Right, stats);
             }
         }
 
@@ -162,88 +209,15 @@ namespace MiniGame.PenguinWars.Battle
                 GetWallet(side).TrySpend(stats.Cost);
                 GetSlot(side, slotIndex).StartCooldown(stats.Cooldown);
             }
+            AddUnit(side, stats);
+        }
 
+        private void AddUnit(Side side, UnitStats stats)
+        {
             float x = GetCastle(side).X + side.Forward() * _settings.SpawnOffset;
             var unit = new UnitState(_nextUnitId++, side, stats, x);
             _units.Add(unit);
             _events.Add(new BattleEvent(BattleEventType.Spawned, side, unit.Id, x));
-        }
-
-        private void TickUnit(UnitState unit, float deltaTime)
-        {
-            switch (unit.Action)
-            {
-                case UnitAction.Walk:
-                    TickWalk(unit, deltaTime);
-                    break;
-                case UnitAction.Windup:
-                    TickWindup(unit, deltaTime);
-                    break;
-                case UnitAction.Cooldown:
-                    unit.ActionTimer -= deltaTime;
-                    if (unit.ActionTimer <= 0f) unit.Action = UnitAction.Walk;
-                    break;
-            }
-        }
-
-        /// <summary>ユニット同士は重なってよい（にゃんこと同じ）。止まるのは射程内に敵がいるときだけ</summary>
-        private void TickWalk(UnitState unit, float deltaTime)
-        {
-            CastleState enemyCastle = GetCastle(unit.Side.Opponent());
-            if (UnitCombat.HasTarget(unit, _units, enemyCastle))
-            {
-                unit.Action = UnitAction.Windup;
-                unit.ActionTimer = unit.Stats.Windup;
-                return;
-            }
-
-            float x = unit.X + unit.Side.Forward() * unit.Stats.MoveSpeed * deltaTime;
-            // 無敵の出現ゲートは攻撃対象にならないので、射程で止まらずゲートで止める
-            unit.X = unit.Side == Side.Left ? Math.Min(x, enemyCastle.X) : Math.Max(x, enemyCastle.X);
-        }
-
-        private void TickWindup(UnitState unit, float deltaTime)
-        {
-            unit.ActionTimer -= deltaTime;
-            if (unit.ActionTimer > 0f) return;
-
-            PerformAttack(unit);
-            unit.Action = UnitAction.Cooldown;
-            unit.ActionTimer = Math.Max(0f, unit.Stats.AttackInterval - unit.Stats.Windup);
-        }
-
-        /// <summary>発生の瞬間に射程内にいる相手だけに当てる。発生前に相手が消えたら空振り（本家と同じ）</summary>
-        private void PerformAttack(UnitState attacker)
-        {
-            CastleState enemyCastle = GetCastle(attacker.Side.Opponent());
-            bool hitCastle = UnitCombat.CollectTargets(attacker, _units, enemyCastle, _targets);
-
-            foreach (UnitState target in _targets)
-            {
-                DamageUnit(target, attacker.Stats.Attack);
-            }
-            if (hitCastle) DamageCastle(enemyCastle, attacker.Stats.Attack);
-        }
-
-        private void DamageUnit(UnitState target, int amount)
-        {
-            target.Hp = Math.Max(0, target.Hp - amount);
-            _events.Add(new BattleEvent(BattleEventType.Hit, target.Side, target.Id, target.X, amount));
-            if (target.Hp > 0) return;
-
-            target.Action = UnitAction.Dead;
-            _events.Add(new BattleEvent(BattleEventType.Died, target.Side, target.Id, target.X));
-        }
-
-        private void DamageCastle(CastleState castle, int amount)
-        {
-            castle.Hp = Math.Max(0, castle.Hp - amount);
-            _events.Add(new BattleEvent(BattleEventType.Hit, castle.Side, BattleEvent.CastleId, castle.X, amount));
-            if (castle.Hp > 0 || IsFinished) return;
-
-            IsFinished = true;
-            Loser = castle.Side;
-            _events.Add(new BattleEvent(BattleEventType.CastleDestroyed, castle.Side, BattleEvent.CastleId, castle.X));
         }
     }
 }

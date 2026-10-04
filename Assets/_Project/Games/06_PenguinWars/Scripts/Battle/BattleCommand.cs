@@ -4,6 +4,7 @@ namespace MiniGame.PenguinWars.Battle
     {
         Spawn,
         LevelUpWallet,
+        FireCannon,
     }
 
     /// <summary>
@@ -30,6 +31,11 @@ namespace MiniGame.PenguinWars.Battle
         public static BattleCommand LevelUpWallet(Side side)
         {
             return new BattleCommand(BattleCommandType.LevelUpWallet, side, 0);
+        }
+
+        public static BattleCommand FireCannon(Side side)
+        {
+            return new BattleCommand(BattleCommandType.FireCannon, side, 0);
         }
     }
 }

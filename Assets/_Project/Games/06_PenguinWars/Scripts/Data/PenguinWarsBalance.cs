@@ -26,16 +26,64 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float[] _walletRates = { 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f };
         [Tooltip("次のレベルに必要なさかな。最大レベルの分は無いので、上限の表より1つ少なくする")]
         [SerializeField] private int[] _walletLevelUpCosts = { 80, 160, 240, 320, 400, 480, 560 };
+        [Tooltip("撃破報酬 = 倒した敵のコスト × この値（仕様書 §4.1）")]
+        [SerializeField] private float _killRewardRate = 0.5f;
+
+        [Header("ペンギン砲（仕様書 §4.4）")]
+        [SerializeField] private float _cannonChargeTime = 40f;
+        [Tooltip("自城から戦場の長さのこの割合までの敵に当たる")]
+        [SerializeField] private float _cannonRangeRatio = 0.6f;
+        [SerializeField] private int _cannonDamage = 100;
+
+        [Header("エンドレス（仕様書 §2.1・§8.1）")]
+        [Tooltip("ランダム編成の人数")]
+        [SerializeField] private int _deckSize = 10;
+        [Tooltip("敵レベルが上がる間隔（秒）")]
+        [SerializeField] private float _enemyLevelUpInterval = 30f;
+        [Tooltip("レベル1の敵の出現間隔（秒）")]
+        [SerializeField] private float _enemyBaseSpawnInterval = 4f;
+        [Tooltip("レベルが1上がるごとに出現間隔にかける値")]
+        [SerializeField] private float _enemySpawnIntervalMultiplier = 0.9f;
+        [SerializeField] private float _enemyMinSpawnInterval = 0.8f;
+        [Tooltip("出現キャラのコスト上限 = 基本 + レベル × 増分")]
+        [SerializeField] private int _enemyCostLimitBase = 300;
+        [SerializeField] private int _enemyCostLimitPerLevel = 250;
+        [Tooltip("敵の体力・攻撃の倍率 = 基本 + レベル × 増分")]
+        [SerializeField] private float _enemyStatMultiplierBase = 1f;
+        [SerializeField] private float _enemyStatMultiplierPerLevel = 0.15f;
+        [Tooltip("このレベルの倍数になったら大型を1体確定で出す")]
+        [SerializeField] private int _enemyBossLevelInterval = 5;
 
         public float FieldLength => _fieldLength;
         public int CastleHpEndless => _castleHpEndless;
         public int CastleHpVersus => _castleHpVersus;
         public float SpawnOffset => _spawnOffset;
         public int MaxUnitsPerSide => _maxUnitsPerSide;
+        public float KillRewardRate => _killRewardRate;
+        public float CannonChargeTime => _cannonChargeTime;
+        public float CannonRangeRatio => _cannonRangeRatio;
+        public int CannonDamage => _cannonDamage;
+        public int DeckSize => _deckSize;
 
         public WalletTable CreateWalletTable()
         {
             return new WalletTable(_walletCaps, _walletRates, _walletLevelUpCosts);
+        }
+
+        public EnemyWaveSettings CreateEnemyWaveSettings()
+        {
+            return new EnemyWaveSettings
+            {
+                LevelUpInterval = _enemyLevelUpInterval,
+                BaseSpawnInterval = _enemyBaseSpawnInterval,
+                SpawnIntervalMultiplier = _enemySpawnIntervalMultiplier,
+                MinSpawnInterval = _enemyMinSpawnInterval,
+                CostLimitBase = _enemyCostLimitBase,
+                CostLimitPerLevel = _enemyCostLimitPerLevel,
+                StatMultiplierBase = _enemyStatMultiplierBase,
+                StatMultiplierPerLevel = _enemyStatMultiplierPerLevel,
+                BossLevelInterval = _enemyBossLevelInterval,
+            };
         }
     }
 }

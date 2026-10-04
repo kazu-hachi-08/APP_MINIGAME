@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>Canvas と HUD（時間表示・中央メッセージ・ポーズボタン）</summary>
+    /// <summary>Canvas と HUD（時間表示・敵レベルUP表示・中央メッセージ・ポーズボタン）</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         // 横画面なのでサッカーと同じ 1920x1080 基準
@@ -19,6 +19,11 @@ namespace MiniGame.PenguinWars.Editor
         private const int TimeFontSize = 56;
         private static readonly Vector2 TimeLabelSize = new Vector2(600f, 90f);
         private static readonly Vector2 TimeLabelPosition = new Vector2(0f, -20f);
+
+        private const int LevelUpFontSize = 64;
+        private static readonly Vector2 LevelUpLabelSize = new Vector2(600f, 90f);
+        private static readonly Vector2 LevelUpLabelPosition = new Vector2(0f, -115f);
+        private static readonly Color LevelUpColor = new Color(1f, 0.45f, 0.35f);
 
         private const int MessageFontSize = 180;
         private static readonly Vector2 MessageLabelSize = new Vector2(1400f, 300f);
@@ -59,10 +64,12 @@ namespace MiniGame.PenguinWars.Editor
         private static BattleHud CreateHud(Transform safeArea, Transform canvas)
         {
             Text timeLabel = CreateText(safeArea, "TimeLabel", TimeFontSize, TopCenterAnchor, TimeLabelPosition, TimeLabelSize, Color.white);
+            Text levelUpLabel = CreateText(safeArea, "LevelUpLabel", LevelUpFontSize, TopCenterAnchor, LevelUpLabelPosition, LevelUpLabelSize, LevelUpColor);
+            levelUpLabel.gameObject.SetActive(false);
             Text messageLabel = CreateText(canvas, "MessageLabel", MessageFontSize, CenterAnchor, Vector2.zero, MessageLabelSize, MessageColor);
 
             var hud = safeArea.gameObject.AddComponent<BattleHud>();
-            SetRefs(hud, ("_timeLabel", timeLabel), ("_messageLabel", messageLabel));
+            SetRefs(hud, ("_timeLabel", timeLabel), ("_messageLabel", messageLabel), ("_levelUpLabel", levelUpLabel));
             return hud;
         }
 

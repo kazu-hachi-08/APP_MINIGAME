@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// PC確認用のキー操作（仕様書 §7.1）。1〜5=表示中ページの出撃、Tab=ページ切替、Q=働きペンギン。
+    /// PC確認用のキー操作（仕様書 §7.1）。1〜5=表示中ページの出撃、Tab=ページ切替、Q=働きペンギン、Space=ペンギン砲。
     /// ボタンと同じ処理を通すため、BattleRunner ではなく UI 部品を呼ぶ
     /// </summary>
     public class KeyboardCommandInput : MonoBehaviour
@@ -13,6 +13,7 @@ namespace MiniGame.PenguinWars
 
         [SerializeField] private UnitButtonBar _buttonBar;
         [SerializeField] private WalletButton _walletButton;
+        [SerializeField] private CannonButton _cannonButton;
 
         private void Update()
         {
@@ -25,6 +26,7 @@ namespace MiniGame.PenguinWars
             }
             if (keyboard.tabKey.wasPressedThisFrame) _buttonBar.TogglePage();
             if (keyboard.qKey.wasPressedThisFrame) _walletButton.LevelUp();
+            if (keyboard.spaceKey.wasPressedThisFrame) _cannonButton.Fire();
         }
     }
 }

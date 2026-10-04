@@ -18,5 +18,12 @@ namespace MiniGame.PenguinWars.Battle
         /// true なら右陣営はさかな・再生産を気にせず出撃できる。エンドレスの敵は §8 のルールで湧くので、お金で縛らない
         /// </summary>
         public bool RightSpawnsFree { get; set; }
+        /// <summary>撃破報酬 = 倒した敵のコスト × この値（仕様書 §4.1・§8.2）</summary>
+        public float KillRewardRate { get; set; } = 0.5f;
+        /// <summary>ペンギン砲（仕様書 §4.4）</summary>
+        public float CannonChargeTime { get; set; } = 40f;
+        /// <summary>自城から戦場の長さのこの割合までが砲の範囲</summary>
+        public float CannonRangeRatio { get; set; } = 0.6f;
+        public int CannonDamage { get; set; } = 100;
     }
 }

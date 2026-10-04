@@ -1,3 +1,5 @@
+using System;
+
 namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
@@ -15,5 +17,17 @@ namespace MiniGame.PenguinWars.Battle
         public float Windup { get; set; }
         public float MoveSpeed { get; set; }
         public bool IsAreaAttack { get; set; }
+
+        /// <summary>
+        /// 体力・攻撃に倍率をかけたコピー（エンドレスの敵レベル。仕様書 §8.1）。
+        /// コストはそのまま残す（撃破報酬は倍率なしのため。§8.2）
+        /// </summary>
+        public UnitStats Scaled(float multiplier)
+        {
+            var copy = (UnitStats)MemberwiseClone();
+            copy.MaxHp = (int)Math.Round(MaxHp * multiplier);
+            copy.Attack = (int)Math.Round(Attack * multiplier);
+            return copy;
+        }
     }
 }

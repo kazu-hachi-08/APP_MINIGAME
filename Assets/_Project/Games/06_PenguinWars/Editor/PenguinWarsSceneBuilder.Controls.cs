@@ -4,11 +4,12 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>画面下の操作UI（働きペンギン・さかな表示・出撃ボタン5個・ページ切替）。仕様書 §7.1</summary>
+    /// <summary>画面下の操作UI（働きペンギン・さかな表示・出撃ボタン5個・ページ切替・ペンギン砲）。仕様書 §7.1</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         private static readonly Vector2 BottomLeftAnchor = new Vector2(0f, 0f);
         private static readonly Vector2 BottomCenterAnchor = new Vector2(0.5f, 0f);
+        private static readonly Vector2 BottomRightAnchor = new Vector2(1f, 0f);
 
         // スマホで押しやすいよう、ボタンの高さは画面高さ（1080）の約15%
         private const float ControlHeight = 162f;
@@ -38,6 +39,10 @@ namespace MiniGame.PenguinWars.Editor
         private const float PageButtonWidth = 120f;
         private const int PageFontSize = 30;
 
+        private const float CannonButtonWidth = 260f;
+        private const int CannonFontSize = 36;
+        private static readonly Color CannonChargeColor = new Color(0.4f, 0.85f, 1f, 0.45f);
+
         private static readonly Color ControlButtonColor = new Color(0.18f, 0.26f, 0.4f, 0.92f);
         private static readonly Color CostColor = new Color(1f, 0.88f, 0.3f);
         private static readonly Color CooldownBackColor = new Color(0f, 0f, 0f, 0.6f);
@@ -45,12 +50,33 @@ namespace MiniGame.PenguinWars.Editor
         // 出せないボタンを暗くする幕
         private static readonly Color DimmerColor = new Color(0f, 0f, 0f, 0.55f);
 
-        private static (UnitButtonBar bar, WalletButton wallet) CreateControls(Transform safeArea,
+        private static (UnitButtonBar bar, WalletButton wallet, CannonButton cannon) CreateControls(Transform safeArea,
             BattleRunner battleRunner, PenguinUnitCatalog catalog)
         {
             WalletButton wallet = CreateWalletButton(safeArea, battleRunner);
             UnitButtonBar bar = CreateUnitButtonBar(safeArea, battleRunner, catalog);
-            return (bar, wallet);
+            CannonButton cannon = CreateCannonButton(safeArea, battleRunner);
+            return (bar, wallet, cannon);
+        }
+
+        /// <summary>右下。チャージは文字の後ろで左から伸びる帯で見せる</summary>
+        private static CannonButton CreateCannonButton(Transform safeArea, BattleRunner battleRunner)
+        {
+            GameObject buttonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_Cannon", "ペンギン砲",
+                CannonButtonWidth, ControlHeight, ControlButtonColor);
+            SetAnchor(buttonObj.GetComponent<RectTransform>(), BottomRightAnchor, new Vector2(-ControlMarginX, ControlMarginY));
+            buttonObj.GetComponentInChildren<Text>().fontSize = CannonFontSize;
+
+            Image charge = CreateImage(buttonObj.transform, "Charge", BottomLeftAnchor, Vector2.zero, Vector2.zero, CannonChargeColor);
+            UIDialogBuilder.SetStretchAll(charge.rectTransform);
+            charge.rectTransform.anchorMax = new Vector2(0f, 1f);
+            // 文字より奥に描く
+            charge.transform.SetAsFirstSibling();
+
+            var cannon = buttonObj.AddComponent<CannonButton>();
+            SetRefs(cannon, ("_battleRunner", battleRunner), ("_button", buttonObj.GetComponent<Button>()),
+                ("_background", buttonObj.GetComponent<Image>()), ("_chargeFill", charge.rectTransform));
+            return cannon;
         }
 
         private static WalletButton CreateWalletButton(Transform safeArea, BattleRunner battleRunner)

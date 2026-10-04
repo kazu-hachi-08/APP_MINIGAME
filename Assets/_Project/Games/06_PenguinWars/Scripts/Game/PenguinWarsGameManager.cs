@@ -5,20 +5,25 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ペンギン大戦争の進行役。START! 表示 → プレイ中の経過時間 → 自城が落ちたらリザルト。
+    /// ペンギン大戦争の進行役。編成発表 → START! → プレイ中の経過時間 → 自城が落ちたらリザルト（仕様書 §2.1）。
     /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ
     /// </summary>
     public class PenguinWarsGameManager : BaseMiniGameManager
     {
         private const string StartMessage = "START!";
+        private const string NewRecordText = "NEW RECORD!";
 
         [SerializeField] private PenguinWarsBalance _balance;
         [SerializeField] private BattleCamera _battleCamera;
         [SerializeField] private BattleHud _hud;
         [SerializeField] private BattleRunner _battleRunner;
+        [SerializeField] private DeckIntroPanel _deckIntroPanel;
+        [SerializeField] private float _deckIntroDuration = 2f;
         [SerializeField] private float _startMessageDuration = 1f;
 
         private float _introTimer;
+        // Intro の前半（編成発表）か後半（START!）か
+        private bool _showingDeck;
 
         public PenguinWarsPhase Phase { get; private set; } = PenguinWarsPhase.Intro;
         public float ElapsedTime { get; private set; }
@@ -40,10 +45,12 @@ namespace MiniGame.PenguinWars
         private void BeginIntro()
         {
             Phase = PenguinWarsPhase.Intro;
-            _introTimer = _startMessageDuration;
             ElapsedTime = 0f;
             _hud.SetElapsed(ElapsedTime);
-            _hud.ShowMessage(StartMessage);
+            _hud.HideMessage();
+            _showingDeck = true;
+            _introTimer = _deckIntroDuration;
+            _deckIntroPanel.Show(_battleRunner.World.GetDeck(Side.Left));
         }
 
         protected override void Update()
@@ -67,10 +74,24 @@ namespace MiniGame.PenguinWars
             _introTimer -= Time.deltaTime;
             if (_introTimer > 0f) return;
 
+            if (_showingDeck)
+            {
+                ShowStartMessage();
+                return;
+            }
+
             _hud.HideMessage();
             Phase = PenguinWarsPhase.Playing;
             _battleRunner.SetRunning(true);
             StartGame();
+        }
+
+        private void ShowStartMessage()
+        {
+            _showingDeck = false;
+            _introTimer = _startMessageDuration;
+            _deckIntroPanel.Hide();
+            _hud.ShowMessage(StartMessage);
         }
 
         private void TickPlaying()
@@ -86,17 +107,37 @@ namespace MiniGame.PenguinWars
 
         private void HandleBattleEvent(BattleEvent battleEvent)
         {
-            if (battleEvent.Type != BattleEventType.CastleDestroyed || battleEvent.Side != Side.Left) return;
-
-            EndGame();
+            switch (battleEvent.Type)
+            {
+                case BattleEventType.EnemyLevelUp:
+                    _hud.ShowLevelUp(battleEvent.Amount);
+                    break;
+                case BattleEventType.CastleDestroyed when battleEvent.Side == Side.Left:
+                    EndGame();
+                    break;
+            }
         }
 
-        /// <summary>城が崩れる演出・撃破数・ベスト記録は Phase 4 で足す。今は生存時間だけの仮のリザルト</summary>
+        /// <summary>城が崩れる演出（1.5秒）は Phase 7 で間に挟む</summary>
         private void EndGame()
         {
             Phase = PenguinWarsPhase.Finished;
             _battleRunner.SetRunning(false);
-            FinishGame(false, $"生存 {BattleHud.FormatTime(Mathf.FloorToInt(ElapsedTime))}");
+
+            int seconds = Mathf.FloorToInt(ElapsedTime);
+            int previousBest = EndlessRecord.LoadBestSeconds();
+            bool isNewRecord = EndlessRecord.TryUpdateBest(seconds);
+            int kills = _battleRunner.World.GetKillCount(Side.Left);
+
+            string score = $"生存 {BattleHud.FormatTime(seconds)} / 撃破 {kills}体";
+            FinishGame(false, score, BuildRecordText(isNewRecord, previousBest));
+        }
+
+        private static string BuildRecordText(bool isNewRecord, int previousBest)
+        {
+            if (!isNewRecord) return $"ベスト {BattleHud.FormatTime(previousBest)}";
+            // 初回プレイは比べる記録がないので、前回ベストは出さない
+            return previousBest > 0 ? $"{NewRecordText}（前回ベスト {BattleHud.FormatTime(previousBest)}）" : NewRecordText;
         }
     }
 }

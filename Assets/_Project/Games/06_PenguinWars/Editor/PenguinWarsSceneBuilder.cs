@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -54,9 +54,12 @@ namespace MiniGame.PenguinWars.Editor
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
             BattleHud hud = CreateHud(safeArea, canvas);
-            (UnitButtonBar buttonBar, WalletButton walletButton) = CreateControls(safeArea, battleRunner, catalog);
-            SetRefs(battleRunner.GetComponent<KeyboardCommandInput>(), ("_buttonBar", buttonBar), ("_walletButton", walletButton));
+            (UnitButtonBar buttonBar, WalletButton walletButton, CannonButton cannonButton) = CreateControls(safeArea, battleRunner, catalog);
+            SetRefs(battleRunner.GetComponent<KeyboardCommandInput>(), ("_buttonBar", buttonBar), ("_walletButton", walletButton),
+                ("_cannonButton", cannonButton));
             PauseButton pauseButton = CreatePauseButton(safeArea);
+            // 操作UIの上に被せて、発表中は押せないようにする
+            DeckIntroPanel deckIntroPanel = CreateDeckIntroPanel(canvas, catalog);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 
             var gameManager = new GameObject("PenguinWarsGameManager").AddComponent<PenguinWarsGameManager>();
@@ -64,7 +67,7 @@ namespace MiniGame.PenguinWars.Editor
             so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_balance", balance), ("_battleCamera", battleCamera), ("_hud", hud),
-                ("_battleRunner", battleRunner));
+                ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);

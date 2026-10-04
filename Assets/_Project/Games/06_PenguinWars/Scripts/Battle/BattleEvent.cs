@@ -6,6 +6,10 @@ namespace MiniGame.PenguinWars.Battle
         Hit,
         Died,
         CastleDestroyed,
+        /// <summary>エンドレスの敵レベルが上がった。Amount は新しいレベル</summary>
+        EnemyLevelUp,
+        /// <summary>ペンギン砲。Side は撃った側、X は届いた先端</summary>
+        CannonFired,
     }
 
     /// <summary>
@@ -21,6 +25,7 @@ namespace MiniGame.PenguinWars.Battle
         public Side Side { get; }
         public int UnitId { get; }
         public float X { get; }
+        /// <summary>Hit はダメージ、Died は倒した側に入った撃破報酬（Phase 7 で獲得さかなを表示するため）、EnemyLevelUp は新しいレベル</summary>
         public int Amount { get; }
 
         public BattleEvent(BattleEventType type, Side side, int unitId, float x, int amount = 0)

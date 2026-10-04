@@ -31,9 +31,15 @@ namespace MiniGame.PenguinWars
         public void SetUnit(int unitNo, string displayName, int cost)
         {
             _icon.enabled = true;
-            _icon.color = Color.HSVToRGB(unitNo * HueStepPerUnitNo % 1f, IconSaturation, IconBrightness);
+            _icon.color = IconColor(unitNo);
             _nameLabel.text = displayName;
             _costLabel.text = cost.ToString();
+        }
+
+        /// <summary>仮アイコンの色。編成発表（DeckIntroPanel）でも同じ色にして、ボタンと見比べられるようにする</summary>
+        public static Color IconColor(int unitNo)
+        {
+            return Color.HSVToRGB(unitNo * HueStepPerUnitNo % 1f, IconSaturation, IconBrightness);
         }
 
         /// <summary>編成が10体に満たないときの空き枠</summary>

@@ -177,26 +177,5 @@ namespace MiniGame.PenguinWars.Battle.Tests
 
             Assert.AreEqual(0, world.CountUnits(Side.Left));
         }
-
-        [Test]
-        public void SimpleEnemySpawner_SpawnsAfterInterval()
-        {
-            BattleWorld world = CreateWorld(Melee(), Melee());
-            var spawner = new SimpleEnemySpawner(1f, 1, 0);
-
-            for (int i = 0; i < 20; i++)
-            {
-                spawner.Tick(world, StepTime);
-                world.Step(StepTime);
-            }
-            Assert.AreEqual(0, world.CountUnits(Side.Right));
-
-            for (int i = 0; i < 15; i++)
-            {
-                spawner.Tick(world, StepTime);
-                world.Step(StepTime);
-            }
-            Assert.AreEqual(1, world.CountUnits(Side.Right));
-        }
     }
 }
