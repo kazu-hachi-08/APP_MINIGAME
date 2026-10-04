@@ -181,7 +181,7 @@ namespace MiniGame.PenguinWars.Editor
                 if (Path.GetFileNameWithoutExtension(path) == fileName) return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
             }
 
-            Debug.Log($"{LogPrefix} {AudioDirectory}/{fileName} が無いので、そのBGMは鳴らしません");
+            Debug.Log($"{LogPrefix} {AudioDirectory}/{fileName} が無いので、コードで作った仮のBGMを鳴らします");
             return null;
         }
     }

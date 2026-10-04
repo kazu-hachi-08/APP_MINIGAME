@@ -440,7 +440,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 * SE は `PenguinWarsAudio` がコードで生成する6種（出撃・ヒット・撃破・砲・レベルUP・城崩れ）。素材の差し込み欄があり、入れればそちらを鳴らす
 * BGM は `Audio/` に決まった名前のファイルを置くと、`Rebuild PenguinWars` で `PenguinWarsAudio` に自動で差し込まれる（Scene は作り直すたびに上書きされるので、Inspector で手で入れると消えるため）
   * `Audio/PenguinWars_TitleBgm.*`（タイトル〜編成発表）・`Audio/PenguinWars_BattleBgm.*`（プレイ中）。拡張子は mp3 / ogg / wav など何でもよい
-  * 無いBGMは鳴らさない。プレイBGMが無いときはタイトルBGMを流し続ける
+  * 無いBGMは `PenguinBgmGenerator` がコードで作った仮のBGMを鳴らす（タイトル: のんびりした行進曲・112BPM、プレイ: 速い戦闘曲・150BPM。どちらも8小節のループ）
 
 ---
 
@@ -558,7 +558,7 @@ Assets/_Project/Games/06_PenguinWars/
 | Scripts/Game/ | PenguinWarsGameManager（.Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／オンラインの流れ／ドラフトと編成確認 |
 | | BattleRunner | World を固定ステップで動かし、View に状態を流す。エンドレス・ホスト・ゲストの初期化 |
 | | KeyboardCommandInput / ICommandSink | PC のキー操作／ゲストのコマンド送り先 |
-| | PenguinWarsAudio / EndlessRecord | 生成SE・タイトル／プレイBGM／ベスト記録 |
+| | PenguinWarsAudio / PenguinBgmGenerator / EndlessRecord | 生成SE・タイトル／プレイBGM／仮BGMの生成／ベスト記録 |
 | Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView | ユニットの絵・コマ選び／使い回し／コマの組／HPバー |
 | | CastleView / CastleCollapse / BattleCamera | 城（ゲート表示）／崩れる演出／スクロール・揺れ |
 | | BattleEventPresenter / Effects/ | イベント → 演出・音／煙・火花・魂・ビーム（使い回しのプール） |
@@ -591,7 +591,7 @@ Assets/_Project/Games/06_PenguinWars/
 * ノックバックのコマは全キャラ「立ち姿を90度倒す」なので、かまくら・戦車・クジラは乗り物ごと倒れる
 * 働きペンギンのレベルアップに音・演出はない
 * 状態異常（止まる・遅い）は色だけで、専用の演出はない
-* BGM 素材はリポジトリに入っていない（`Audio/` に置けば鳴る。§9）。SEは仮の生成音
+* BGM・SE ともに仮の生成音（素材を置けば差し替わる。§9）
 * モード選択（共通の `ModeSelectPanel`）からタイトルへ戻るボタンはない
 * ドラフトにキーボード操作はない
 * 途中セーブ・再接続はしない

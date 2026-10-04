@@ -6,7 +6,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ペンギン大戦争のSE（出撃ポンッ・ヒットペチッ・撃破・ペンギン砲・レベルUP・城崩れ）をプログラムで生成して鳴らす（仕様書 §9）。
+    /// ペンギン大戦争のSE（出撃ポンッ・ヒットペチッ・撃破・ペンギン砲・レベルUP・城崩れ）とBGMをプログラムで生成して鳴らす（仕様書 §9）。
     /// 他のゲームの *Audio と同じく、正式な素材が用意できたらクリップ欄に差し込めばそのまま置き換わる
     /// </summary>
     public class PenguinWarsAudio : MonoBehaviour
@@ -24,9 +24,9 @@ namespace MiniGame.PenguinWars
         [SerializeField] private AudioClip _levelUpClip;
         [SerializeField] private AudioClip _collapseClip;
         [Header("BGM（Audio/ に決まった名前で置くと Rebuild PenguinWars で自動で差し込まれる。仕様書 §9）")]
-        [Tooltip("タイトル〜編成発表のBGM。未設定なら鳴らさない")]
+        [Tooltip("タイトル〜編成発表のBGM。未設定ならコードで作った仮のBGMを鳴らす")]
         [SerializeField] private AudioClip _titleBgmClip;
-        [Tooltip("プレイ中のBGM。未設定ならタイトルのBGMを流し続ける")]
+        [Tooltip("プレイ中のBGM。未設定ならコードで作った仮のBGMを鳴らす")]
         [SerializeField] private AudioClip _bgmClip;
 
         [Header("Volume")]
@@ -54,6 +54,8 @@ namespace MiniGame.PenguinWars
             if (_cannonClip == null) _cannonClip = CreateRumble("Se_PenguinCannon", 0.8f, 70f, 4f);
             if (_levelUpClip == null) _levelUpClip = CreateNotes("Se_PenguinLevelUp", new[] { 523f, 659f, 784f, 1047f }, 0.09f);
             if (_collapseClip == null) _collapseClip = CreateRumble("Se_PenguinCollapse", 1.5f, 45f, 1.8f);
+            if (_titleBgmClip == null) _titleBgmClip = PenguinBgmGenerator.CreateTitle();
+            if (_bgmClip == null) _bgmClip = PenguinBgmGenerator.CreateBattle();
         }
 
         public void PlaySpawn() => Play(_spawnClip, _spawnVolume, RandomPitch(), _defaultMinInterval);
