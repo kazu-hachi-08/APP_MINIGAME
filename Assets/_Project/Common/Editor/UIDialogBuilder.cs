@@ -30,6 +30,17 @@ namespace MiniGame.Editor
             so.ApplyModifiedProperties();
         }
 
+        // 確認ダイアログは名前決定や終了確認など重要な判断に使うため、PauseDialog と同じくスマホの指で押せる大きさにする。
+        // 横画面(1920x1080, match 0.5)の縦に短い端末でも収まるよう、パネルの高さは PausePanel より低く抑える
+        private const float CommonPanelWidth = 820f;
+        private const float CommonPanelHeight = 520f;
+        private const int CommonTitleFontSize = 44;
+        private const int CommonMessageFontSize = 36;
+        private const float CommonButtonWidth = 320f;
+        private const float CommonButtonHeight = 100f;
+        private const int CommonButtonFontSize = 36;
+        private const float DialogButtonSpacing = 30f;
+
         public static CommonDialog CreateCommonDialog(Transform parent)
         {
             var dialogObj = CreateUIObject("CommonDialog", parent);
@@ -44,7 +55,7 @@ namespace MiniGame.Editor
             pRect.anchorMin = new Vector2(0.5f, 0.5f);
             pRect.anchorMax = new Vector2(0.5f, 0.5f);
             pRect.pivot = new Vector2(0.5f, 0.5f);
-            pRect.sizeDelta = new Vector2(520, 320);
+            pRect.sizeDelta = new Vector2(CommonPanelWidth, CommonPanelHeight);
             var panelImg = panelObj.AddComponent<Image>();
             panelImg.color = new Color(0.14f, 0.16f, 0.22f);
 
@@ -57,7 +68,7 @@ namespace MiniGame.Editor
             tRect.offsetMax = Vector2.zero;
             var titleText = titleObj.AddComponent<Text>();
             titleText.text = "確認";
-            titleText.fontSize = 26;
+            titleText.fontSize = CommonTitleFontSize;
             titleText.fontStyle = FontStyle.Bold;
             titleText.alignment = TextAnchor.MiddleCenter;
             titleText.color = Color.white;
@@ -71,7 +82,7 @@ namespace MiniGame.Editor
             mRect.offsetMax = Vector2.zero;
             var msgText = msgObj.AddComponent<Text>();
             msgText.text = "メッセージ内容";
-            msgText.fontSize = 20;
+            msgText.fontSize = CommonMessageFontSize;
             msgText.alignment = TextAnchor.MiddleCenter;
             msgText.color = new Color(0.85f, 0.88f, 0.95f);
 
@@ -83,13 +94,15 @@ namespace MiniGame.Editor
             bRect.offsetMin = Vector2.zero;
             bRect.offsetMax = Vector2.zero;
             var layout = btnAreaObj.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 20;
+            layout.spacing = DialogButtonSpacing;
             layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childControlWidth = false;
             layout.childControlHeight = false;
 
-            var cancelBtnObj = CreateButton(btnAreaObj.transform, "Btn_Cancel", "キャンセル", 150, 48, new Color(0.35f, 0.38f, 0.45f));
-            var confirmBtnObj = CreateButton(btnAreaObj.transform, "Btn_Confirm", "OK", 150, 48, new Color(0.18f, 0.55f, 0.9f));
+            var cancelBtnObj = CreateDialogButton(btnAreaObj.transform, "Btn_Cancel", "キャンセル", CommonButtonWidth, CommonButtonHeight,
+                CommonButtonFontSize, new Color(0.35f, 0.38f, 0.45f));
+            var confirmBtnObj = CreateDialogButton(btnAreaObj.transform, "Btn_Confirm", "OK", CommonButtonWidth, CommonButtonHeight,
+                CommonButtonFontSize, new Color(0.18f, 0.55f, 0.9f));
 
             var dialog = dialogObj.AddComponent<CommonDialog>();
             var so = new SerializedObject(dialog);
@@ -187,6 +200,16 @@ namespace MiniGame.Editor
             return btnObj;
         }
 
+        // リザルトも全ゲーム共通で毎回目にするため、確認ダイアログと同じ基準で大きくする
+        private const float ResultPanelWidth = 820f;
+        private const float ResultPanelHeight = 600f;
+        private const int ResultTitleFontSize = 48;
+        private const int ResultScoreFontSize = 52;
+        private const int ResultDetailFontSize = 36;
+        private const float ResultButtonWidth = 340f;
+        private const float ResultButtonHeight = 100f;
+        private const int ResultButtonFontSize = 36;
+
         public static ResultDialog CreateResultDialog(Transform parent)
         {
             var dialogObj = CreateUIObject("ResultDialog", parent);
@@ -200,7 +223,7 @@ namespace MiniGame.Editor
             pRect.anchorMin = new Vector2(0.5f, 0.5f);
             pRect.anchorMax = new Vector2(0.5f, 0.5f);
             pRect.pivot = new Vector2(0.5f, 0.5f);
-            pRect.sizeDelta = new Vector2(560, 420);
+            pRect.sizeDelta = new Vector2(ResultPanelWidth, ResultPanelHeight);
             var panelImg = panelObj.AddComponent<Image>();
             panelImg.color = new Color(0.12f, 0.15f, 0.2f);
 
@@ -212,7 +235,7 @@ namespace MiniGame.Editor
             tRect.offsetMax = Vector2.zero;
             var titleText = titleObj.AddComponent<Text>();
             titleText.text = "RESULT";
-            titleText.fontSize = 32;
+            titleText.fontSize = ResultTitleFontSize;
             titleText.fontStyle = FontStyle.Bold;
             titleText.alignment = TextAnchor.MiddleCenter;
             titleText.color = new Color(1f, 0.85f, 0.2f);
@@ -225,7 +248,7 @@ namespace MiniGame.Editor
             sRect.offsetMax = Vector2.zero;
             var scoreText = scoreObj.AddComponent<Text>();
             scoreText.text = "SCORE: 100";
-            scoreText.fontSize = 36;
+            scoreText.fontSize = ResultScoreFontSize;
             scoreText.fontStyle = FontStyle.Bold;
             scoreText.alignment = TextAnchor.MiddleCenter;
             scoreText.color = Color.white;
@@ -238,7 +261,7 @@ namespace MiniGame.Editor
             dRect.offsetMax = Vector2.zero;
             var detailText = detailObj.AddComponent<Text>();
             detailText.text = "クリアタイム: 01:23";
-            detailText.fontSize = 20;
+            detailText.fontSize = ResultDetailFontSize;
             detailText.alignment = TextAnchor.MiddleCenter;
             detailText.color = new Color(0.7f, 0.75f, 0.85f);
 
@@ -249,13 +272,15 @@ namespace MiniGame.Editor
             bRect.offsetMin = Vector2.zero;
             bRect.offsetMax = Vector2.zero;
             var layout = btnArea.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 20;
+            layout.spacing = DialogButtonSpacing;
             layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childControlWidth = false;
             layout.childControlHeight = false;
 
-            var retryBtn = CreateButton(btnArea.transform, "Btn_Retry", "もう一度遊ぶ", 180, 52, new Color(0.18f, 0.55f, 0.9f));
-            var titleBtn = CreateButton(btnArea.transform, "Btn_Title", "タイトルへ", 180, 52, new Color(0.35f, 0.38f, 0.45f));
+            var retryBtn = CreateDialogButton(btnArea.transform, "Btn_Retry", "もう一度遊ぶ", ResultButtonWidth, ResultButtonHeight,
+                ResultButtonFontSize, new Color(0.18f, 0.55f, 0.9f));
+            var titleBtn = CreateDialogButton(btnArea.transform, "Btn_Title", "タイトルへ", ResultButtonWidth, ResultButtonHeight,
+                ResultButtonFontSize, new Color(0.35f, 0.38f, 0.45f));
 
             var result = dialogObj.AddComponent<ResultDialog>();
             var so = new SerializedObject(result);
@@ -268,6 +293,13 @@ namespace MiniGame.Editor
 
             dialogObj.SetActive(false);
             return result;
+        }
+
+        private static GameObject CreateDialogButton(Transform parent, string name, string label, float width, float height, int fontSize, Color color)
+        {
+            var btnObj = CreateButton(parent, name, label, width, height, color);
+            btnObj.GetComponentInChildren<Text>().fontSize = fontSize;
+            return btnObj;
         }
 
         public static GameObject CreateButton(Transform parent, string name, string label, float width, float height, Color color)
