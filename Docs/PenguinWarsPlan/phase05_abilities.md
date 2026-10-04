@@ -59,7 +59,7 @@
 
 ## 完了条件
 
-* [ ] EditMode テスト: しきい値ごとにノックバック / ふんばるはノックバックしない / 止める中は動かない / 遅くする中は速度半分 / 城キラーは城だけ3倍 / 確率0%・100%で期待通り
+* [x] EditMode テスト: しきい値ごとにノックバック / ふんばるはノックバックしない / 止める中は動かない / 遅くする中は速度半分 / 城キラーは城だけ3倍 / 確率0%・100%で期待通り
 * [ ] 再生してノックバックや状態異常が見て分かる
 
 ## ユーザー確認手順
@@ -70,6 +70,26 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * `Scripts/Battle/`: `UnitAbility`（`UnitAbilityType` enum ＋ 確率・秒数）/ `UnitStatusEffects`（`UnitStatusType` enum も同居）/ `KnockbackRule` / `AbilityResolver` / `BattleWorld.Status.cs`（ノックバック開始・進行、ヒット時の能力判定）
+  * 変更: `UnitStats`（`KnockbackCount` 既定1・`Abilities`・`HasAbility` / `TryGetAbility`）、`UnitState`（`UnitAction.Knockback`・`Status`）、`BattleEvent`（`Knockback` / `StatusApplied`）、`BattleSettings`（ノックバック距離・時間、遅くする倍率、城キラー倍率、`RandomSeed`）、`BattleWorld`（`System.Random` を持つ）、`BattleWorld.Combat.cs`（止まる中は何もしない・遅い中は速度×倍率・城キラー・砲でノックバック・HPしきい値でノックバック）
+  * `Scripts/Data/PenguinAbilityEntry.cs`（インスペクタ用の能力1つ分。`UnitAbility` は readonly struct でシリアライズできないため）、`PenguinUnitData`（`_knockbackCount` 既定3・`_abilities`）、`PenguinWarsBalance`（ノックバック・能力の数値）
+  * `BattleRunner`（新しい設定を渡す・乱数シード）、`UnitView`（止まる=水色・遅い=灰色に寄せる。止まるを優先）
+  * `Editor/PenguinUnitAssetGenerator.cs`（10体。`UnitDef` にノックバック回数と能力を追加）
+  * `Tests/Editor/AbilityTests.cs`（13件）
 * 公開API（次フェーズが使うもの）:
+  * `UnitState.Action == UnitAction.Knockback` / `UnitState.Status.IsFrozen` / `IsSlowed`（Phase 6 のアニメ「ノックバック1コマ」、Phase 10 の同期で状態として送る）
+  * `BattleEvent.Knockback`（やられた側・位置）、`BattleEvent.StatusApplied`（`Amount` = `(int)UnitStatusType`）→ Phase 7 の演出・音
+  * `UnitStats.HasAbility(type)` / `TryGetAbility(type, out ability)`（Phase 8 の編成制約・Phase 11 のカード表示で能力名を出すときに使える）
 * 計画・仕様から変えた点:
+  * ノックバックは「ロジックが 0.5 秒かけて 1.5 を等速で戻す」方式。View は X を写すだけで跳ねて見える（仮表現。Y方向のジャンプは無し）。オンラインでも X を送るだけで済む
+  * 飛ばされている最中の追加ノックバックは無視。自城より後ろには下がらない
+  * ふんばるは HPしきい値・ふっとばす・ペンギン砲のすべてで飛ばされない
+  * HP 0 のときはノックバックせずその場で倒れる（仕様 §5.4 のとおり。しきい値に HP 0 は含めない）
+  * 1回の攻撃で複数のしきい値をまたいでもノックバックは1回
+  * 止まる中は攻撃発生待ち・攻撃後の硬直のタイマーも止まる。状態異常の時間はノックバック中も減る
+  * 能力の数値（仮）: ボクサー ふっとばす30%、れいとう 止める50%・2秒。ヘルメット・きょだいはふんばる（ノックバック回数1）
+  * `DeckRandomizer` は変更不要だった（プール数 ≦ 人数なら全員を並べ替えるので、10体から10体＝並び順だけランダム）
 * 次フェーズへの注意:
+  * テストは `dotnet test`（Battle と Tests の .cs を集めた一時プロジェクト）で 41件合格。Unity 側は生成済み csproj を複製して PenguinWars のファイルを足した一時プロジェクトで `dotnet build` し、エラー0を確認（Unity エディタでのコンパイル・Rebuild・再生は未確認）
+  * キャラアセットは「既にあれば上書きしない」ので、Phase 4 までに作られた `Unit_001/011/023` はそのまま残る。ノックバック回数は初期値の3になる（ゆみの表の値は2）。表どおりにしたければ `Data/Units/` のその3つを消して `Generate PenguinWars Units` し直す
+  * 状態異常の色は `UnitView` のインスペクタで調整できる（Phase 7 で演出に置き換える想定）

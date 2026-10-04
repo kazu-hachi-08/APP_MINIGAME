@@ -35,6 +35,8 @@ namespace MiniGame.PenguinWars
 
         public void Initialize()
         {
+            // 毎回違う編成・違う湧き方・違う能力の当たり方にする（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
+            var random = new System.Random(Environment.TickCount);
             _world = new BattleWorld(new BattleSettings
             {
                 FieldLength = _balance.FieldLength,
@@ -50,10 +52,13 @@ namespace MiniGame.PenguinWars
                 CannonChargeTime = _balance.CannonChargeTime,
                 CannonRangeRatio = _balance.CannonRangeRatio,
                 CannonDamage = _balance.CannonDamage,
+                KnockbackDistance = _balance.KnockbackDistance,
+                KnockbackDuration = _balance.KnockbackDuration,
+                SlowSpeedMultiplier = _balance.SlowSpeedMultiplier,
+                CastleKillerMultiplier = _balance.CastleKillerMultiplier,
+                RandomSeed = random.Next(),
             });
 
-            // 毎回違う編成・違う湧き方にする（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
-            var random = new System.Random(Environment.TickCount);
             List<UnitStats> allUnits = CollectAllUnits();
             _world.SetDeck(Side.Left, DeckRandomizer.Pick(allUnits, _balance.DeckSize, random));
             // 敵は味方と同じデータから湧く（仕様書 §8.1）

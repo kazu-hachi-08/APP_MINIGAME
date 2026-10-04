@@ -2,11 +2,20 @@ using System;
 
 namespace MiniGame.PenguinWars.Battle
 {
-    /// <summary>ユニットの行動（前進・攻撃）・ペンギン砲・ダメージと撃破報酬</summary>
+    /// <summary>ユニットの行動（前進・攻撃）・ペンギン砲・ダメージと撃破報酬。ノックバックと状態異常は BattleWorld.Status.cs</summary>
     public partial class BattleWorld
     {
         private void TickUnit(UnitState unit, float deltaTime)
         {
+            unit.Status.Tick(deltaTime);
+            if (unit.Action == UnitAction.Knockback)
+            {
+                TickKnockback(unit, deltaTime);
+                return;
+            }
+            // 止められている間は移動も攻撃タイマーも進めない（仕様書 §5.3）
+            if (unit.Status.IsFrozen) return;
+
             switch (unit.Action)
             {
                 case UnitAction.Walk:
@@ -33,7 +42,8 @@ namespace MiniGame.PenguinWars.Battle
                 return;
             }
 
-            float x = unit.X + unit.Side.Forward() * unit.Stats.MoveSpeed * deltaTime;
+            float speed = unit.Stats.MoveSpeed * (unit.Status.IsSlowed ? _settings.SlowSpeedMultiplier : 1f);
+            float x = unit.X + unit.Side.Forward() * speed * deltaTime;
             // 無敵の出現ゲートは攻撃対象にならないので、射程で止まらずゲートで止める
             unit.X = unit.Side == Side.Left ? Math.Min(x, enemyCastle.X) : Math.Max(x, enemyCastle.X);
         }
@@ -57,11 +67,12 @@ namespace MiniGame.PenguinWars.Battle
             foreach (UnitState target in _targets)
             {
                 DamageUnit(target, attacker.Stats.Attack);
+                if (!target.IsDead) ApplyHitAbilities(attacker.Stats, target);
             }
-            if (hitCastle) DamageCastle(enemyCastle, attacker.Stats.Attack);
+            if (hitCastle) DamageCastle(enemyCastle, AbilityResolver.CastleDamage(attacker.Stats, _settings.CastleKillerMultiplier));
         }
 
-        /// <summary>自城から戦場の CannonRangeRatio までにいる敵ユニット全員に当てる。城には当てない（仕様書 §4.4）</summary>
+        /// <summary>自城から戦場の CannonRangeRatio までにいる敵ユニット全員に当て、ノックバック1回分を起こす。城には当てない（仕様書 §4.4）</summary>
         private void FireCannon(Side side)
         {
             float reach = _settings.FieldLength * _settings.CannonRangeRatio;
@@ -72,15 +83,21 @@ namespace MiniGame.PenguinWars.Battle
                 if ((unit.X - originX) * side.Forward() > reach) continue;
 
                 DamageUnit(unit, _settings.CannonDamage);
+                StartKnockback(unit);
             }
             _events.Add(new BattleEvent(BattleEventType.CannonFired, side, BattleEvent.CastleId, originX + side.Forward() * reach));
         }
 
         private void DamageUnit(UnitState target, int amount)
         {
+            int hpBefore = target.Hp;
             target.Hp = Math.Max(0, target.Hp - amount);
             _events.Add(new BattleEvent(BattleEventType.Hit, target.Side, target.Id, target.X, amount));
-            if (target.Hp > 0) return;
+            if (target.Hp > 0)
+            {
+                if (KnockbackRule.CrossesThreshold(target.Stats, hpBefore, target.Hp)) StartKnockback(target);
+                return;
+            }
 
             target.Action = UnitAction.Dead;
             int reward = RewardKill(target);

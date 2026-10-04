@@ -7,6 +7,8 @@ namespace MiniGame.PenguinWars.Battle
         Windup,
         /// <summary>攻撃後の硬直。終わったら Walk に戻って射程を見直す</summary>
         Cooldown,
+        /// <summary>後ろに飛ばされている間。動けず攻撃もしない（仕様書 §5.4）</summary>
+        Knockback,
         Dead,
     }
 
@@ -19,8 +21,9 @@ namespace MiniGame.PenguinWars.Battle
         public float X { get; internal set; }
         public int Hp { get; internal set; }
         public UnitAction Action { get; internal set; }
-        /// <summary>Windup / Cooldown の残り秒数</summary>
+        /// <summary>Windup / Cooldown / Knockback の残り秒数</summary>
         public float ActionTimer { get; internal set; }
+        public UnitStatusEffects Status { get; } = new UnitStatusEffects();
 
         public int UnitNo => Stats.UnitNo;
         public bool IsDead => Action == UnitAction.Dead;

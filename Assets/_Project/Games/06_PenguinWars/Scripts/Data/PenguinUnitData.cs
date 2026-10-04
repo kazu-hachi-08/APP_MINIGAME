@@ -24,6 +24,10 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _windup = 0.3f;
         [SerializeField] private float _moveSpeed = 1f;
         [SerializeField] private bool _isAreaAttack;
+        [Tooltip("倒れるまでにノックバックする回数（仕様書 §5.4）。1 ならノックバックせずに倒れる")]
+        [SerializeField, Min(1)] private int _knockbackCount = 3;
+        [Tooltip("特殊能力（仕様書 §5.3）。複数可")]
+        [SerializeField] private PenguinAbilityEntry[] _abilities = new PenguinAbilityEntry[0];
 
         public int No => _no;
         public string DisplayName => _displayName;
@@ -43,7 +47,18 @@ namespace MiniGame.PenguinWars
                 Windup = _windup,
                 MoveSpeed = _moveSpeed,
                 IsAreaAttack = _isAreaAttack,
+                KnockbackCount = _knockbackCount,
+                Abilities = ToAbilities(),
             };
+        }
+
+        private UnitAbility[] ToAbilities()
+        {
+            if (_abilities == null) return new UnitAbility[0];
+
+            var abilities = new UnitAbility[_abilities.Length];
+            for (int i = 0; i < abilities.Length; i++) abilities[i] = _abilities[i].ToAbility();
+            return abilities;
         }
     }
 }

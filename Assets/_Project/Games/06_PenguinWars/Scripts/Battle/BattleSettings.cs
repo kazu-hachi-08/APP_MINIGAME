@@ -25,5 +25,14 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>自城から戦場の長さのこの割合までが砲の範囲</summary>
         public float CannonRangeRatio { get; set; } = 0.6f;
         public int CannonDamage { get; set; } = 100;
+        /// <summary>ノックバックで後ろに飛ばされる距離と、その間動けない秒数（仕様書 §5.4）</summary>
+        public float KnockbackDistance { get; set; } = 1.5f;
+        public float KnockbackDuration { get; set; } = 0.5f;
+        /// <summary>「遅くする」中の移動速度の倍率（仕様書 §5.3）</summary>
+        public float SlowSpeedMultiplier { get; set; } = 0.5f;
+        /// <summary>城キラーの城へのダメージ倍率（仕様書 §5.3）</summary>
+        public float CastleKillerMultiplier { get; set; } = 3f;
+        /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>
+        public int RandomSeed { get; set; }
     }
 }

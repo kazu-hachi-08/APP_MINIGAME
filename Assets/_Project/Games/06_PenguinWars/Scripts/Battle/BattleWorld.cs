@@ -26,6 +26,7 @@ namespace MiniGame.PenguinWars.Battle
         // 毎攻撃・毎ステップで List を作らないよう使い回す
         private readonly List<UnitState> _targets = new List<UnitState>();
         private readonly List<UnitStats> _waveSpawns = new List<UnitStats>();
+        private readonly Random _random;
         private EnemyWaveDirector _enemyWaves;
         private int _nextUnitId = 1;
 
@@ -39,6 +40,7 @@ namespace MiniGame.PenguinWars.Battle
         public BattleWorld(BattleSettings settings)
         {
             _settings = settings;
+            _random = new Random(settings.RandomSeed);
             _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp, false);
             _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp, settings.RightCastleInvincible);
             for (int side = 0; side < 2; side++)

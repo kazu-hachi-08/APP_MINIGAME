@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using MiniGame.PenguinWars.Battle;
 using UnityEditor;
 using UnityEngine;
 
@@ -29,9 +30,12 @@ namespace MiniGame.PenguinWars.Editor
             public readonly float Windup;
             public readonly float Speed;
             public readonly bool Area;
+            public readonly int KnockbackCount;
+            public readonly UnitAbility[] Abilities;
 
             public UnitDef(int no, string name, int cost, float cooldown, int hp, int attack,
-                float range, float interval, float windup, float speed, bool area)
+                float range, float interval, float windup, float speed, bool area, int knockbackCount,
+                params UnitAbility[] abilities)
             {
                 No = no;
                 Name = name;
@@ -44,15 +48,30 @@ namespace MiniGame.PenguinWars.Editor
                 Windup = windup;
                 Speed = speed;
                 Area = area;
+                KnockbackCount = knockbackCount;
+                Abilities = abilities;
             }
         }
 
-        // 壁・アタッカー・遠距離の仮の3体（実装計画 Phase 2）。コスト・再生産は Phase 3 で使う
+        // 役割と能力が一通り揃う仮の10体（実装計画 Phase 5）。数値は手入れで、Phase 8 で計算式に置き換える
+        // 並び: No, 名前, コスト, 再生産, HP, 攻撃, 射程, 攻撃間隔, 発生, 速度, 範囲, ノックバック回数, 能力…
         private static readonly UnitDef[] PlaceholderUnits =
         {
-            new UnitDef(1, "ペンギン", 75, 2f, 100, 8, 1.4f, 1.2f, 0.3f, 1.0f, false),
-            new UnitDef(11, "おのペンギン", 300, 6f, 200, 40, 1.5f, 1.5f, 0.5f, 1.0f, true),
-            new UnitDef(23, "ゆみペンギン", 450, 8f, 120, 30, 3.5f, 2.5f, 0.6f, 0.8f, false),
+            new UnitDef(1, "ペンギン", 75, 2f, 100, 8, 1.4f, 1.2f, 0.3f, 1.0f, false, 3),
+            new UnitDef(2, "かべペンギン", 150, 4f, 350, 5, 1.4f, 1.5f, 0.3f, 0.8f, false, 2),
+            new UnitDef(4, "ヘルメットペンギン", 150, 5f, 250, 8, 1.4f, 1.2f, 0.3f, 0.8f, false, 1,
+                new UnitAbility(UnitAbilityType.Steadfast)),
+            new UnitDef(11, "おのペンギン", 300, 6f, 200, 40, 1.5f, 1.5f, 0.5f, 1.0f, true, 3),
+            new UnitDef(13, "ボクサーペンギン", 350, 7f, 220, 35, 1.4f, 1.0f, 0.3f, 1.2f, false, 3,
+                new UnitAbility(UnitAbilityType.Knockback, 0.3f)),
+            new UnitDef(19, "バイクペンギン", 500, 10f, 250, 60, 1.4f, 1.5f, 0.3f, 2.0f, false, 3,
+                new UnitAbility(UnitAbilityType.CastleKiller)),
+            new UnitDef(23, "ゆみペンギン", 450, 8f, 120, 30, 3.5f, 2.5f, 0.6f, 0.8f, false, 2),
+            new UnitDef(26, "のっぽペンギン", 900, 15f, 300, 50, 4.5f, 3.0f, 0.8f, 0.7f, true, 2),
+            new UnitDef(34, "れいとうペンギン", 600, 12f, 250, 15, 2.5f, 2.0f, 0.4f, 0.9f, false, 3,
+                new UnitAbility(UnitAbilityType.Freeze, 0.5f, 2f)),
+            new UnitDef(43, "きょだいペンギン", 2500, 40f, 2000, 150, 2.0f, 3.0f, 1.0f, 0.6f, true, 1,
+                new UnitAbility(UnitAbilityType.Steadfast)),
         };
 
         [MenuItem("Tools/MiniGame/Generate PenguinWars Units", false, 8)]
@@ -96,8 +115,23 @@ namespace MiniGame.PenguinWars.Editor
             so.FindProperty("_windup").floatValue = def.Windup;
             so.FindProperty("_moveSpeed").floatValue = def.Speed;
             so.FindProperty("_isAreaAttack").boolValue = def.Area;
+            so.FindProperty("_knockbackCount").intValue = def.KnockbackCount;
+            WriteAbilities(so.FindProperty("_abilities"), def.Abilities);
             so.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(unit, path);
+        }
+
+        private static void WriteAbilities(SerializedProperty list, UnitAbility[] abilities)
+        {
+            list.arraySize = abilities.Length;
+            for (int i = 0; i < abilities.Length; i++)
+            {
+                SerializedProperty entry = list.GetArrayElementAtIndex(i);
+                // enum の SerializedProperty は宣言順の添字で指定する
+                entry.FindPropertyRelative("_type").enumValueIndex = (int)abilities[i].Type;
+                entry.FindPropertyRelative("_chance").floatValue = abilities[i].Chance;
+                entry.FindPropertyRelative("_duration").floatValue = abilities[i].Duration;
+            }
         }
 
         private static PenguinUnitCatalog EnsureCatalog()

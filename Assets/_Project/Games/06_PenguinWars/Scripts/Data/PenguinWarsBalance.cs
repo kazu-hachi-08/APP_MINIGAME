@@ -35,6 +35,16 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _cannonRangeRatio = 0.6f;
         [SerializeField] private int _cannonDamage = 100;
 
+        [Header("ノックバック・特殊能力（仕様書 §5.3・§5.4）")]
+        [Tooltip("ノックバックで後ろに飛ばされる距離")]
+        [SerializeField] private float _knockbackDistance = 1.5f;
+        [Tooltip("ノックバック中に動けない秒数")]
+        [SerializeField] private float _knockbackDuration = 0.5f;
+        [Tooltip("「遅くする」中の移動速度の倍率")]
+        [SerializeField] private float _slowSpeedMultiplier = 0.5f;
+        [Tooltip("城キラーの城へのダメージ倍率")]
+        [SerializeField] private float _castleKillerMultiplier = 3f;
+
         [Header("エンドレス（仕様書 §2.1・§8.1）")]
         [Tooltip("ランダム編成の人数")]
         [SerializeField] private int _deckSize = 10;
@@ -64,6 +74,10 @@ namespace MiniGame.PenguinWars
         public float CannonRangeRatio => _cannonRangeRatio;
         public int CannonDamage => _cannonDamage;
         public int DeckSize => _deckSize;
+        public float KnockbackDistance => _knockbackDistance;
+        public float KnockbackDuration => _knockbackDuration;
+        public float SlowSpeedMultiplier => _slowSpeedMultiplier;
+        public float CastleKillerMultiplier => _castleKillerMultiplier;
 
         public WalletTable CreateWalletTable()
         {
