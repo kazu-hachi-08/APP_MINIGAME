@@ -17,14 +17,15 @@ namespace MiniGame.Molkky.Editor
         /// MolkkyArtGenerator.CharacterIds と同じ並び。先頭のバランス型が初期選択になる。
         /// ここは初期値なので、生成後の調整はアセットの数値を直接変える
         /// </summary>
-        private static readonly (string Name, float Power, float Control, float StickLength, string VictoryLine)[] Defaults =
+        private static readonly (string Name, float Power, float Control, float StickLength,
+            float PowerShotSpeed, float PowerShotSpread, string VictoryLine)[] Defaults =
         {
-            ("バランス型", 1f, 1f, 1f, "ぴったり50点！"),
-            ("パワー型", 1.2f, 0.8f, 1f, "力こそパワー！"),
-            ("精密型", 0.95f, 1.15f, 0.9f, "計算どおり！"),
-            ("ロング棒", 0.9f, 1f, 1.3f, "まとめていただき！"),
-            ("ショート棒", 1f, 1.25f, 0.8f, "一本釣り！"),
-            ("豪腕ロング", 1.15f, 0.8f, 1.15f, "全部まとめてドーン！"),
+            ("バランス型", 1f, 1f, 1f, 1.2f, 8f, "ぴったり50点！"),
+            ("パワー型", 1.2f, 0.8f, 1f, 1.35f, 6f, "力こそパワー！"),
+            ("精密型", 0.95f, 1.15f, 0.9f, 1.1f, 10f, "計算どおり！"),
+            ("ロング棒", 0.9f, 1f, 1.3f, 1.2f, 8f, "まとめていただき！"),
+            ("ショート棒", 1f, 1.25f, 0.8f, 1.1f, 10f, "一本釣り！"),
+            ("豪腕ロング", 1.15f, 0.8f, 1.15f, 1.3f, 7f, "全部まとめてドーン！"),
         };
 
         /// <summary>
@@ -80,7 +81,8 @@ namespace MiniGame.Molkky.Editor
         }
 
         private static MolkkyCharacterData EnsureCharacter(string id,
-            (string Name, float Power, float Control, float StickLength, string VictoryLine) values)
+            (string Name, float Power, float Control, float StickLength,
+            float PowerShotSpeed, float PowerShotSpread, string VictoryLine) values)
         {
             string path = $"{DataDirectory}/MolkkyChar_{id}.asset";
             var character = AssetDatabase.LoadAssetAtPath<MolkkyCharacterData>(path);
@@ -96,6 +98,8 @@ namespace MiniGame.Molkky.Editor
             so.FindProperty("_powerMultiplier").floatValue = values.Power;
             so.FindProperty("_controlMultiplier").floatValue = values.Control;
             so.FindProperty("_stickLengthMultiplier").floatValue = values.StickLength;
+            so.FindProperty("_powerShotSpeedMultiplier").floatValue = values.PowerShotSpeed;
+            so.FindProperty("_powerShotAngleSpread").floatValue = values.PowerShotSpread;
             so.FindProperty("_victoryLine").stringValue = values.VictoryLine;
             so.ApplyModifiedPropertiesWithoutUndo();
 

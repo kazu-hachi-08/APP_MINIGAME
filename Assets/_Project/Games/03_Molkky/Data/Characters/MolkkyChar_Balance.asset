@@ -18,4 +18,6 @@ MonoBehaviour:
   _powerMultiplier: 1
   _controlMultiplier: 1
   _stickLengthMultiplier: 1
+  _powerShotSpeedMultiplier: 1.2
+  _powerShotAngleSpread: 8
   _victoryLine: "\u3074\u3063\u305F\u308A50\u70B9\uFF01"

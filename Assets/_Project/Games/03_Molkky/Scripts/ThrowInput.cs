@@ -38,13 +38,6 @@ namespace MiniGame.Molkky
         [Tooltip("最大角度のこの倍率を超える横向きのフリックは投擲としない")]
         [SerializeField] private float _cancelAngleRatio = 2f;
 
-        [Header("Power Shot")]
-        [Tooltip("パワーショット時に初速へ掛ける倍率。キャラによって奥のピンに届かない問題を補うため")]
-        [SerializeField] private float _powerShotSpeedMultiplier = 1.3f;
-
-        [Tooltip("パワーショット時に方向へ加えるランダムなブレの最大値（度）。遠くへ飛ぶ代わりに狙いを荒らす")]
-        [SerializeField] private float _powerShotAngleSpread = 8f;
-
         private readonly List<Sample> _samples = new List<Sample>(16);
         private bool _tracking;
         private Vector2 _lastPosition;
@@ -52,6 +45,10 @@ namespace MiniGame.Molkky
         // 手番のキャラの能力倍率。バランス型＝1
         private float _powerMultiplier = 1f;
         private float _controlMultiplier = 1f;
+
+        // 手番のキャラのパワーショット性能。キャラごとに変えて、パワー系だけが奥を楽に狙えるようにする
+        private float _powerShotSpeedMultiplier = 1f;
+        private float _powerShotAngleSpread;
 
         public bool IsAccepting { get; set; }
 
@@ -81,6 +78,8 @@ namespace MiniGame.Molkky
         {
             _powerMultiplier = character.PowerMultiplier;
             _controlMultiplier = character.ControlMultiplier;
+            _powerShotSpeedMultiplier = character.PowerShotSpeedMultiplier;
+            _powerShotAngleSpread = character.PowerShotAngleSpread;
         }
 
         public void SetStyle(ThrowStyle style)
@@ -101,6 +100,8 @@ namespace MiniGame.Molkky
         {
             Arc = arc;
             ArcChanged?.Invoke(Arc);
+            // パワーは奥のピンに届かせる手段。低めでも使えると、ブレの影響が小さい手前のピンで強打し放題になるため解除する
+            if (Arc == ThrowArc.Low && IsPowerShot) SetPowerShot(false);
         }
 
         /// <summary>軌道の切り替えボタンから呼ぶ。ToggleStyle と同じく構えている間だけ受け付ける</summary>
@@ -117,10 +118,10 @@ namespace MiniGame.Molkky
             PowerShotChanged?.Invoke(IsPowerShot);
         }
 
-        /// <summary>パワーショットボタンから呼ぶ。ToggleStyle と同じく構えている間だけ受け付ける</summary>
+        /// <summary>パワーショットボタンから呼ぶ。構えている間、かつ山なりのときだけ受け付ける</summary>
         public void TogglePowerShot()
         {
-            if (!IsAccepting) return;
+            if (!IsAccepting || Arc != ThrowArc.High) return;
 
             SetPowerShot(!IsPowerShot);
         }
