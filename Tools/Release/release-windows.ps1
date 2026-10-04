@@ -33,7 +33,11 @@ if (-not (Get-ChildItem -Path $buildPath -Filter *.exe -ErrorAction SilentlyCont
 }
 
 # *_DoNotShip / *_ButDontShipItWithYourGame はデバッグ用で配布不要（Unity自身がそう命名している）
-$items = Get-ChildItem -Path $buildPath | Where-Object { $_.Name -notlike "*DoNotShip*" -and $_.Name -notlike "*DontShip*" }
+# .で始まるフォルダ（DLした配布物を展開した .Release など）はビルド成果物ではない。
+# 混ざると次のzipに前回のzipが入れ子で入り、展開時にパスが長すぎてエラーになる
+$items = Get-ChildItem -Path $buildPath | Where-Object {
+    $_.Name -notlike "*DoNotShip*" -and $_.Name -notlike "*DontShip*" -and $_.Name -notlike ".*"
+}
 
 New-Item -ItemType Directory -Force -Path (Split-Path $zipPath) | Out-Null
 if (Test-Path $zipPath) { Remove-Item $zipPath }
