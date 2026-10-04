@@ -35,7 +35,7 @@ namespace MiniGame.PenguinWars.Battle
         /// 出撃ボタンを安い順に並べる。序盤は手持ちのさかなが少ないので、すぐ出せるキャラを左に固めて探しやすくするため。
         /// 同じコストは UnitNo 順にして、並びを毎回同じにする
         /// </summary>
-        private static void SortByCost(List<UnitStats> deck)
+        public static void SortByCost(List<UnitStats> deck)
         {
             deck.Sort((a, b) =>
             {
