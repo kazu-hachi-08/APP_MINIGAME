@@ -45,102 +45,22 @@ namespace MiniGame.PenguinWars.Editor
     }
 
     /// <summary>
-    /// 頭・手・背中（乗り物）パーツのドットパターン（仕様書 §7.2）。ID 文字列で引くので、Phase 9 でパーツを足すときはここに1項目足すだけでよい
+    /// 頭・手・背中（乗り物）パーツのドットパターン（仕様書 §7.2）。ID 文字列で引くので、パーツを足すときは辞書に1項目足すだけでよい。
+    /// 部位ごとにファイルを分けている（Heads / Hands / Backs）。1ファイルが長くなりすぎず、2人で別の部位を触ってもぶつからないため
     /// </summary>
-    public static class PenguinPartPatterns
+    public static partial class PenguinPartPatterns
     {
-        public static readonly Dictionary<string, PartPattern> Heads = new Dictionary<string, PartPattern>
+        /// <summary>同じ形の色違い（マントの青・赤など）を、パターンを二重に書かずに作る</summary>
+        private static string[] Recolor(string[] rows, params (char from, char to)[] pairs)
         {
-            ["helmet"] = new PartPattern(PartAttach.Head, PartLayer.Front, new Vector2Int(7, 3), new[]
+            var result = new string[rows.Length];
+            for (int r = 0; r < rows.Length; r++)
             {
-                "....ooooooo....",
-                "..oottttttsoo..",
-                ".otttttttttsso.",
-                ".otttttttttttso",
-                ".ouuuuuuuuuuuuo",
-                ".ooooooooooooooo",
-            }),
-        };
-
-        public static readonly Dictionary<string, PartPattern> Hands = new Dictionary<string, PartPattern>
-        {
-            ["axe"] = new PartPattern(PartAttach.Hand, PartLayer.Front, new Vector2Int(2, 11), new[]
-            {
-                "..ooooo...",
-                ".obsssso..",
-                ".obssssso.",
-                ".obmsssso.",
-                ".obmmmoo..",
-                ".obo......",
-                ".obo......",
-                ".obo......",
-                ".obo......",
-                ".obo......",
-                "okkko.....",
-                "okkko.....",
-                ".ooo......",
-            }),
-            ["glove"] = new PartPattern(PartAttach.Hand, PartLayer.Front, new Vector2Int(1, 3), new[]
-            {
-                "..oooo..",
-                ".ottttoo",
-                "okttttto",
-                "okttttuo",
-                "okkuuuuo",
-                ".ooooo..",
-            }),
-            ["bow"] = new PartPattern(PartAttach.Hand, PartLayer.Front, new Vector2Int(2, 7), new[]
-            {
-                ".oo.......",
-                ".nboo.....",
-                ".n.bbo....",
-                ".n..bo....",
-                ".n...bo...",
-                ".n...bo...",
-                ".n...bo...",
-                ".ndddbddso",
-                ".n...bo...",
-                ".n...bo...",
-                ".n...bo...",
-                ".n..bo....",
-                ".n.bbo....",
-                ".nboo.....",
-                ".oo.......",
-            }),
-        };
-
-        public static readonly Dictionary<string, PartPattern> Backs = new Dictionary<string, PartPattern>
-        {
-            ["freezer"] = new PartPattern(PartAttach.Back, PartLayer.Behind, new Vector2Int(10, 6), new[]
-            {
-                "oooooooooooo",
-                "ollllllllllo",
-                "olsssssssslo",
-                "olsttttttslo",
-                "olsssssssslo",
-                "oiiiiiiiiiio",
-                "olsssssssslo",
-                "olsmsssssslo",
-                "olsmsssssslo",
-                "olsssssssslo",
-                "olsssssssslo",
-                "oiiiiiiiiiio",
-                "oooooooooooo",
-            }),
-            // 乗り物は体を持ち上げて座らせ、足は隠す
-            ["bike"] = new PartPattern(PartAttach.Ground, PartLayer.Front, new Vector2Int(12, 9), new[]
-            {
-                "......................oo..",
-                ".....................omo..",
-                "....................omo...",
-                "..ooooooooooooooooooomo...",
-                ".ottttttttttttttttttttoo..",
-                ".ouuuuuuuuuuuuuuuuuuuuuo..",
-                "..oonnoo........oonnoo....",
-                "..onmmno........onmmno....",
-                "..onmmno........onmmno....",
-                "...onno..........onno.....",
-            }, bodyLift: 5, hideFeet: true),
-        };
+                string row = rows[r];
+                foreach ((char from, char to) in pairs) row = row.Replace(from, to);
+                result[r] = row;
+            }
+            return result;
+        }
     }
 }

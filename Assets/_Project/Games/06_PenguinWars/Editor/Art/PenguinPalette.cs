@@ -23,7 +23,7 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Color32 RightTeam = new Color32(225, 60, 60, 255);
         private static readonly Color32 RightTeamDark = new Color32(140, 30, 35, 255);
 
-        /// <summary>陣営に関係なく同じ色の文字。Phase 9 で色が足りなければここに足す</summary>
+        /// <summary>陣営に関係なく同じ色の文字。色が足りなければここに足す（数字は虹色の帯）</summary>
         private static readonly Dictionary<char, Color32> FixedColors = new Dictionary<char, Color32>
         {
             ['o'] = new Color32(20, 24, 38, 255),    // 輪郭
@@ -38,6 +38,23 @@ namespace MiniGame.PenguinWars.Editor
             ['l'] = new Color32(170, 225, 250, 255), // 氷（明）
             ['i'] = new Color32(100, 175, 225, 255), // 氷（暗）
             ['g'] = new Color32(255, 210, 60, 255),  // 金
+            ['c'] = new Color32(215, 170, 110, 255), // 段ボール（明）
+            ['h'] = new Color32(165, 120, 70, 255),  // 段ボール（暗）
+            ['r'] = new Color32(220, 50, 55, 255),   // 赤（風船・タコ・キングのマント）
+            ['x'] = new Color32(140, 25, 35, 255),   // 赤（暗）
+            ['p'] = new Color32(250, 150, 190, 255), // ピンク（布団・リボン）
+            ['v'] = new Color32(135, 75, 195, 255),  // 紫（魔法使いの帽子）
+            ['f'] = new Color32(50, 90, 200, 255),   // 青いマント（明）
+            ['j'] = new Color32(30, 55, 140, 255),   // 青いマント（暗）
+            ['a'] = new Color32(70, 110, 165, 255),  // クジラ
+            ['q'] = new Color32(105, 125, 65, 255),  // 戦車（明）
+            ['z'] = new Color32(65, 80, 40, 255),    // 戦車（暗）
+            ['1'] = new Color32(235, 70, 80, 255),   // 虹: 赤
+            ['2'] = new Color32(250, 150, 50, 255),  // 虹: だいだい（ロケットの炎にも使う）
+            ['3'] = new Color32(250, 225, 70, 255),  // 虹: 黄
+            ['4'] = new Color32(90, 205, 110, 255),  // 虹: 緑
+            ['5'] = new Color32(80, 160, 240, 255),  // 虹: 青
+            ['6'] = new Color32(160, 100, 230, 255), // 虹: 紫
         };
 
         /// <summary>体の形とは別に指定する体色（PenguinLook.BodyColor）。"standard" は黒白のペンギン</summary>
@@ -46,6 +63,7 @@ namespace MiniGame.PenguinWars.Editor
             ["standard"] = new Color32(20, 20, 28, 255),
             ["ice"] = new Color32(110, 190, 235, 255),
             ["gray"] = new Color32(125, 125, 135, 255),
+            ["aurora"] = new Color32(150, 90, 215, 255),
         };
 
         public static bool HasBodyColor(string id)

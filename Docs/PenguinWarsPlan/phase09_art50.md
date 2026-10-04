@@ -37,9 +37,9 @@
 
 ## 完了条件
 
-* [ ] 50体すべてにパーツが付き、仮見た目のキャラが残っていない
-* [ ] 敵味方どちらの色でも崩れない
-* [ ] ボタンアイコンでも何のキャラか分かる
+* [x] 50体すべてにパーツが付き、仮見た目のキャラが残っていない（No.1 ペンギン・No.43 きょだいは仕様どおり基本形のみ）
+* [x] 敵味方どちらの色でも崩れない（dotnet のプレビュー画像で確認。Unity での目視待ち）
+* [ ] ボタンアイコンでも何のキャラか分かる（Unity での目視待ち）
 
 ## ユーザー確認手順
 
@@ -49,6 +49,25 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル / 追加したパーツID:
-* どこまで終わったか（区切った場合）:
+  * `PenguinPartPatterns` を `partial` にして部位ごとに分割: `.cs`（クラス定義・色違い用の `Recolor`）/ `.Heads.cs` / `.Hands.cs` / `.Backs.cs` / `.Large.cs`（かまくら・氷山・オーロラ・戦車・クジラ。行数が多いのでメソッドに分けた）
+  * 体の形: `round`（まんまる）/ `small`（ひな）/ `tower`（3段重ね）/ `robot`（四角いメカ。脚は体の一部）
+  * 体色: `aurora`（紫）
+  * 頭: `box` / `chonmage` / `hood` / `wizard_hat` / `nightcap` / `ribbon` / `crown` / `halo` / `drill`（くちばしの位置に描く）/ `slime`（雪どけ水）
+  * 手: `big_snowball` / `snowball_throw` / `fish_sword` / `hammer` / `katana` / `sword_shield`（剣と盾を1パーツ）/ `muscle_arm` / `fishing_rod` / `cannon` / `staff` / `sniper_rifle` / `boomerang` / `fan` / `harisen` / `mic` / `balloon`
+  * 背中・体のまわり: `rocket` / `cape_blue` / `cape_red` / `wings` / `futon`（手前）/ `mawashi`（wide 体用・手前）/ `snow_aura`（手前）/ `kamakura`（Ground・手前）/ `iceberg` / `aurora`
+  * 乗り物・足（Ground）: `long_legs` / `octopus_legs` / `tank` / `whale`
+  * 色文字（`PenguinPalette`）: `c` `h` 段ボール、`r` `x` 赤、`p` ピンク、`v` 紫、`f` `j` 青マント、`a` クジラ、`q` `z` 戦車、`1`〜`6` 虹（`2` `3` はロケットの炎にも使用）
+  * `UnitLooks` に全50体の見た目を記入
+* どこまで終わったか（区切った場合）: 9-A〜9-C すべて完了
 * 計画・仕様から変えた点:
+  * 1キャラに付けられるのは頭・手・背中が1つずつなので、体のまわりの表現（ふぶきの雪・布団・まわし・かまくら）や足（ながあし・タコあし）は背中スロットのパーツとして作った
+  * ながあしペンギン（No.15）は仮の `tall` 体をやめ、基本形＋`long_legs` に（のっぽと区別するため）
+  * ひょうざんペンギン（No.46）は体色を ice → standard に戻した（氷山の水色と体が混ざって見分けにくいため）
+  * オーロラペンギン（No.49）の「虹色」は体1色では出せないので、紫の体＋体の後ろの虹の輪で表した。虹は陣営で色が変わらないので敵でも分かる
+  * こおりのじょおう（青マント）とペンギンキング（白ふち赤マント・2倍）は同じ王冠で、マントの色と大きさで区別
+  * `Heads` の `drill` / `Backs` の `mawashi` は目印より下に描くため Anchor が負の値（コメントに記載）
 * 次フェーズへの注意:
+  * 確認は前フェーズと同じく dotnet のプレビュー（スタブの UnityEngine で Composer を動かして PNG 化）と、Editor csproj の複製でのコンパイル（変更したファイルにエラー0）。Unity エディタでの生成・目視は未確認
+  * ルートの `MiniGame.PenguinWars.Battle.csproj` は Phase 8 の新ファイル（UnitRole など）が入っておらず古い。Unity を開けば再生成される
+  * 見た目を変えたキャラは Rebuild だけでは絵が作り直されないので、必ず `Generate PenguinWars Art` を実行する（PNG が約500枚になる）
+  * ノックバックのコマは全キャラ「立ち姿を90度倒す」なので、かまくら・戦車・クジラは乗り物ごと倒れる。気になれば Phase 12 で調整
