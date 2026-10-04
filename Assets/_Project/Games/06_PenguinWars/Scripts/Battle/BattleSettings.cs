@@ -36,5 +36,7 @@ namespace MiniGame.PenguinWars.Battle
         public float TimeLimit { get; set; }
         /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>
         public int RandomSeed { get; set; }
+        /// <summary>true なら確率の能力が毎回発動する。あそびかたのデモで、外れて何も起きない回をなくすため</summary>
+        public bool AlwaysProcAbilities { get; set; }
     }
 }

@@ -20,7 +20,7 @@ MonoBehaviour:
   _versusTimeLimit: 300
   _draftOfferCount: 3
   _draftPickTime: 15
-  _walletCaps: f4010000200300004c04000078050000a4060000d0070000fc080000280a0000i
+  _walletCaps: 58020000e80300007805000008070000980800008c0a0000800c0000a00f0000i
   _walletRates:
   - 30
   - 40

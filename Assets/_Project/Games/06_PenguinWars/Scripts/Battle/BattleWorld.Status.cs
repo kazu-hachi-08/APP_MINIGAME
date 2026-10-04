@@ -8,7 +8,7 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>撃破されなかった相手にだけ呼ぶ。確率判定は持っている能力の分だけ乱数を引く</summary>
         private void ApplyHitAbilities(UnitStats attacker, UnitState target)
         {
-            if (attacker.TryGetAbility(UnitAbilityType.Knockback, out UnitAbility knockback) && AbilityResolver.Roll(_random, knockback.Chance))
+            if (attacker.TryGetAbility(UnitAbilityType.Knockback, out UnitAbility knockback) && RollAbility(knockback.Chance))
             {
                 StartKnockback(target);
             }
@@ -19,10 +19,15 @@ namespace MiniGame.PenguinWars.Battle
         private void TryApplyStatus(UnitStats attacker, UnitState target, UnitAbilityType abilityType, UnitStatusType statusType)
         {
             if (!attacker.TryGetAbility(abilityType, out UnitAbility ability)) return;
-            if (!AbilityResolver.Roll(_random, ability.Chance)) return;
+            if (!RollAbility(ability.Chance)) return;
 
             target.Status.Apply(statusType, ability.Duration);
             _events.Add(new BattleEvent(BattleEventType.StatusApplied, target.Side, target.Id, target.X, (int)statusType));
+        }
+
+        private bool RollAbility(float chance)
+        {
+            return _settings.AlwaysProcAbilities || AbilityResolver.Roll(_random, chance);
         }
 
         /// <summary>
