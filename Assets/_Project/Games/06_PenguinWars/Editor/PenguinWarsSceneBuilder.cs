@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -66,7 +66,7 @@ namespace MiniGame.PenguinWars.Editor
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
             // 最初に見える画面なのでモード選択より手前
-            PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog);
+            PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog, battleRunner, battleCamera);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
             (BattleEventPresenter presenter, PenguinWarsAudio audio) =
                 CreateEffects(balance, battleRunner, battleCamera, hud, leftCastle, rightCastle);

@@ -33,10 +33,15 @@
 メニューからペンギン大戦争を選ぶと、まずゲーム固有のタイトル画面（`PenguinWarsTitlePanel`）が出る。
 
 * 戦場の上に半透明の幕をかけ、ロゴ「ペンギン大戦争 / PENGUIN WARS」がふわふわ揺れる。その下でランダムな5体（全50体から重複なし・開くたびに選び直す）がぴょこぴょこ跳ねる
-* ボタンは「スタート」（→ モード選択）・「ずかん」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
+* ボタンは「スタート」（→ モード選択）・「ずかん」・「あそびかた」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
 * 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで No 順に並べ、各マスのペンギンは歩きコマで足踏みする
   * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・単体/範囲・コスト・再生産・体力・攻撃力・射程・速度・能力を出す
   * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
+* 「あそびかた」は能力・仕組みの説明（`PenguinGuidePanel`）。タイトルの幕を閉じ、右上の説明カードと下のページ送りの間に見える**本物の戦場でデモを流す**
+  * トピックは 城キラー・城の守り方・ふっとばす・止める・遅くする・ふんばる・ペンギン砲 の7つ。説明文と出撃の台本は `GuideTopics`（コード）に1か所でまとめる
+  * デモ係（`GuideDemoDirector`）が台本どおり `BattleRunner.SpawnDemoUnit` でユニットを好きな位置に出し、10秒ごとに `InitializeDemo` で作り直してループする
+  * デモは両方とも本物の城（HP は `BattleRunner._demoCastleHp`）で、確率の能力は毎回発動する（`BattleSettings.AlwaysProcAbilities`）。デモ中は `BattleRunner.World` が null を返すので出撃ボタン・さかな表示・キー操作は反応しない
+  * 説明文の数値は手書き。能力の確率・倍率を変えたら `GuideTopics` の文も直す
 * 「設定」は BGM ON/OFF・BGM音量・SE音量（`PenguinWarsSettingsPanel`）。値は共通の `AudioManager` が `PlayerPrefs` に保存するので、ポーズ画面のスライダーや次回の起動とも同じ値になる
 * BGM ON/OFF は BGM だけを止める（SE は鳴る）。OFF 中は BGM 音量のスライダーを触れない
 * タイトル〜モード選択〜ドラフト〜編成発表はタイトルBGM、START! からプレイ中はプレイBGMに切り替える
@@ -518,6 +523,7 @@ Assets/_Project/Games/06_PenguinWars/
 | Scripts/Game/ | PenguinWarsGameManager（.Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／オンラインの流れ／ドラフトと編成確認 |
 | | BattleRunner | World を固定ステップで動かし、View に状態を流す。エンドレス・ホスト・ゲストの初期化 |
 | | KeyboardCommandInput / ICommandSink | PC のキー操作／ゲストのコマンド送り先 |
+| | GuideTopics / GuideDemoDirector | あそびかたの説明文とデモの台本／台本どおりに出撃させてループ（§2.0） |
 | | PenguinWarsAudio / PenguinBgmGenerator / EndlessRecord | 生成SE・タイトル／プレイBGM／仮BGMの生成／ベスト記録 |
 | Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView | ユニットの絵・コマ選び／使い回し／コマの組／HPバー |
 | | CastleView / CastleCollapse / BattleCamera | 城（ゲート表示）／崩れる演出／スクロール・揺れ |
@@ -526,6 +532,7 @@ Assets/_Project/Games/06_PenguinWars/
 | | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／役割・能力の表示名 |
 | | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
 | | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／UI の絵のコマ送り（§2.0） |
+| | PenguinGuidePanel | あそびかたのページ送り（§2.0） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
 | Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .Title / .Zukan） | Scene生成（1ファイルが大きくならないよう partial で分割） |
 | | PenguinUnitAssetGenerator / UnitLooks | 50体のアセット生成（毎回上書き）／見た目の表 |

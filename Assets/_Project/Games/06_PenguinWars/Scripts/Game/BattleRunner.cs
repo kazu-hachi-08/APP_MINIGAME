@@ -24,7 +24,16 @@ namespace MiniGame.PenguinWars
         [Tooltip("ゲストが前回の位置から届いた位置まで動かす秒数。ホストの送信間隔（PenguinWarsOnlineLink）と同じにする")]
         [SerializeField] private float _guestInterpolationTime = 1f / 15f;
 
+        [Header("あそびかたのデモ")]
+        [Tooltip("城キラーのデモで HP バーの減り方が見える程度に低くする。ループ（数秒）の間に落ちない値にすること")]
+        [SerializeField] private int _demoCastleHp = 1500;
+        [Tooltip("ペンギン砲のデモで、出した直後に撃てるようにする")]
+        [SerializeField] private float _demoCannonChargeTime = 0.1f;
+
         private BattleWorld _world;
+        // デモ中は World を外に見せない（出撃ボタン・さかな表示がデモの中身を拾わないように）
+        private bool _isDemo;
+        private Dictionary<int, UnitStats> _demoStatsByNo;
         private float _accumulator;
         private readonly List<BattleEvent> _events = new List<BattleEvent>();
         // ゲストのみ
@@ -35,7 +44,7 @@ namespace MiniGame.PenguinWars
         public bool IsGuest => _mirror != null;
 
         /// <summary>UI が状態（さかな・再生産など）を読むためだけに公開する。書き換えは Enqueue 経由で行う</summary>
-        public BattleWorld World => _world;
+        public BattleWorld World => _isDemo ? null : _world;
 
         /// <summary>出撃・ヒット・撃破・城崩壊。演出・音・進行はこれを見て動く</summary>
         public event Action<BattleEvent> EventRaised;
@@ -62,6 +71,52 @@ namespace MiniGame.PenguinWars
             _world.SetDeck(Side.Left, ToSortedDeck(leftDeckNos, statsByNo));
             _world.SetDeck(Side.Right, ToSortedDeck(rightDeckNos, statsByNo));
             RefreshViews();
+        }
+
+        /// <summary>
+        /// あそびかたのデモ: 両方とも本物の城で、能力は毎回発動する。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ
+        /// </summary>
+        public void InitializeDemo()
+        {
+            BattleSettings settings = CreateSettings(true, 0);
+            settings.LeftCastleHp = _demoCastleHp;
+            settings.RightCastleHp = _demoCastleHp;
+            settings.TimeLimit = 0f;
+            settings.CannonChargeTime = _demoCannonChargeTime;
+            settings.AlwaysProcAbilities = true;
+
+            _world = new BattleWorld(settings);
+            _demoStatsByNo ??= CollectStatsByNo();
+            _isDemo = true;
+            IsRunning = true;
+            RefreshViews();
+        }
+
+        public void SpawnDemoUnit(Side side, int unitNo, float x)
+        {
+            if (!_isDemo) return;
+
+            if (_demoStatsByNo.TryGetValue(unitNo, out UnitStats stats)) _world.SpawnAt(side, stats, x);
+            else Debug.LogWarning($"[BattleRunner] デモの No.{unitNo} がカタログにありません");
+        }
+
+        public void FireDemoCannon(Side side)
+        {
+            if (_isDemo) _world.Enqueue(BattleCommand.FireCannon(side));
+        }
+
+        /// <summary>デモのユニットを消して止める。タイトルの後ろにデモの続きが残らないように</summary>
+        public void EndDemo()
+        {
+            if (!_isDemo) return;
+
+            _isDemo = false;
+            IsRunning = false;
+            _world = null;
+            _unitViews.Sync(Array.Empty<UnitState>());
+            // デモで減った HP バーを満タンに戻す（試合が始まれば実際の値で上書きされる）
+            _leftCastle.SetHp(1, 1);
+            _rightCastle.SetHp(1, 1);
         }
 
         /// <summary>ドラフトの候補にする全キャラの No</summary>
@@ -95,7 +150,8 @@ namespace MiniGame.PenguinWars
 
         public void Enqueue(BattleCommand command)
         {
-            if (!IsRunning) return;
+            // デモ中に 1〜5 キーなどで出撃させない
+            if (!IsRunning || _isDemo) return;
 
             if (IsGuest) _remoteSink.Submit(command);
             else _world.Enqueue(command);

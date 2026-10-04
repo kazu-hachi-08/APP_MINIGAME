@@ -173,7 +173,8 @@ namespace MiniGame.PenguinWars
         /// <summary>演出・音は BattleEventPresenter が受け持つので、ここは進行に関わる出来事だけ見る</summary>
         private void HandleBattleEvent(BattleEvent battleEvent)
         {
-            if (Phase == PenguinWarsPhase.Finished) return;
+            // タイトル中はあそびかたのデモが戦場を動かしているだけなので、試合の進行には使わない
+            if (Phase == PenguinWarsPhase.Finished || Phase == PenguinWarsPhase.Title) return;
 
             // エンドレスの右はゲートで落ちないので、城が落ちるのは自城だけ。対戦はどちらも落ちうる
             if (battleEvent.Type == BattleEventType.CastleDestroyed) BeginFinish();
@@ -190,6 +191,8 @@ namespace MiniGame.PenguinWars
 
         private void HandleCastleCollapsed(Side side)
         {
+            if (Phase == PenguinWarsPhase.Title) return;
+
             if (IsOnline) EndVersus(side, false);
             else if (side == Side.Left) EndEndless();
         }

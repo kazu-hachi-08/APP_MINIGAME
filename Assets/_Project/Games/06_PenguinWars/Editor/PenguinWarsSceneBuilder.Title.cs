@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>ゲーム固有のタイトル画面・音の設定パネル（ずかんは .Zukan）と、Audio/ に置いたBGM素材の差し込み（仕様書 §2.0・§9）</summary>
+    /// <summary>ゲーム固有のタイトル画面・音の設定パネル（ずかんは .Zukan、あそびかたは .Guide）と、Audio/ に置いたBGM素材の差し込み（仕様書 §2.0・§9）</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         private const string AudioDirectory = RootDirectory + "/Audio";
@@ -38,9 +38,11 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 StartButtonSize = new Vector2(620f, 130f);
         private static readonly Vector2 StartButtonPosition = new Vector2(0f, -220f);
         private static readonly Vector2 TitleSubButtonSize = new Vector2(380f, 100f);
-        private static readonly Vector2 ZukanButtonPosition = new Vector2(-420f, -380f);
-        private static readonly Vector2 SettingsButtonPosition = new Vector2(0f, -380f);
-        private static readonly Vector2 BackButtonPosition = new Vector2(420f, -380f);
+        // 4つを 1920 幅に収める（ボタン幅 380 + 隙間 30）
+        private static readonly Vector2 ZukanButtonPosition = new Vector2(-615f, -380f);
+        private static readonly Vector2 GuideButtonPosition = new Vector2(-205f, -380f);
+        private static readonly Vector2 SettingsButtonPosition = new Vector2(205f, -380f);
+        private static readonly Vector2 BackButtonPosition = new Vector2(615f, -380f);
         private static readonly Color StartButtonColor = new Color(0.95f, 0.55f, 0.15f);
         private static readonly Color TitleSubButtonColor = new Color(0.18f, 0.26f, 0.4f, 0.95f);
 
@@ -55,7 +57,8 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Color SettingsCloseColor = new Color(0.18f, 0.55f, 0.9f);
 
         /// <summary>モード選択より手前に作り、最初に見える画面にする</summary>
-        private static PenguinWarsTitlePanel CreateTitlePanel(Transform canvas, PenguinUnitCatalog catalog)
+        private static PenguinWarsTitlePanel CreateTitlePanel(Transform canvas, PenguinUnitCatalog catalog,
+            BattleRunner battleRunner, BattleCamera battleCamera)
         {
             GameObject panelObj = UIDialogBuilder.CreateUIObject("TitlePanel", canvas);
             UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
@@ -73,18 +76,22 @@ namespace MiniGame.PenguinWars.Editor
 
             Button start = CreateTitleButton(panelObj.transform, "Btn_Start", "スタート", StartButtonSize, StartButtonPosition, StartButtonColor);
             Button zukan = CreateTitleButton(panelObj.transform, "Btn_Zukan", "ずかん", TitleSubButtonSize, ZukanButtonPosition, TitleSubButtonColor);
+            Button guide = CreateTitleButton(panelObj.transform, "Btn_Guide", "あそびかた", TitleSubButtonSize, GuideButtonPosition, TitleSubButtonColor);
             Button settings = CreateTitleButton(panelObj.transform, "Btn_Settings", "設定", TitleSubButtonSize, SettingsButtonPosition, TitleSubButtonColor);
             Button back = CreateTitleButton(panelObj.transform, "Btn_Back", "メニューに戻る", TitleSubButtonSize, BackButtonPosition, TitleSubButtonColor);
             // ずかん・設定はタイトルの上に重ねたいので、タイトルの子の一番最後に作る
             PenguinZukanPanel zukanPanel = CreateZukanPanel(panelObj.transform, catalog);
             PenguinWarsSettingsPanel settingsPanel = CreateSettingsPanel(panelObj.transform);
+            // あそびかたはタイトルの幕を閉じて戦場を見せるので、タイトルの子にせず Canvas 直下（タイトルの次）に作る
+            PenguinGuidePanel guidePanel = CreateGuidePanel(canvas, battleRunner, battleCamera);
 
             var panel = panelObj.AddComponent<PenguinWarsTitlePanel>();
             var so = new SerializedObject(panel);
             SerializedArray(so, "_paradeIcons", icons);
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_catalog", catalog), ("_logo", logo), ("_startButton", start), ("_settingsButton", settings),
-                ("_backButton", back), ("_settingsPanel", settingsPanel), ("_zukanButton", zukan), ("_zukanPanel", zukanPanel));
+                ("_backButton", back), ("_settingsPanel", settingsPanel), ("_zukanButton", zukan), ("_zukanPanel", zukanPanel),
+                ("_guideButton", guide), ("_guidePanel", guidePanel));
             panelObj.SetActive(false);
             return panel;
         }

@@ -221,9 +221,22 @@ namespace MiniGame.PenguinWars.Battle
             AddUnit(side, stats);
         }
 
+        /// <summary>
+        /// あそびかたのデモ用。お金・再生産・編成を通さず、好きな位置に出す
+        /// （城から歩かせると接敵まで待たされるため、カメラに映る所へ直接置く）
+        /// </summary>
+        public void SpawnAt(Side side, UnitStats stats, float x)
+        {
+            AddUnit(side, stats, x);
+        }
+
         private void AddUnit(Side side, UnitStats stats)
         {
-            float x = GetCastle(side).X + side.Forward() * _settings.SpawnOffset;
+            AddUnit(side, stats, GetCastle(side).X + side.Forward() * _settings.SpawnOffset);
+        }
+
+        private void AddUnit(Side side, UnitStats stats, float x)
+        {
             var unit = new UnitState(_nextUnitId++, side, stats, x);
             _units.Add(unit);
             _events.Add(new BattleEvent(BattleEventType.Spawned, side, unit.Id, x));
