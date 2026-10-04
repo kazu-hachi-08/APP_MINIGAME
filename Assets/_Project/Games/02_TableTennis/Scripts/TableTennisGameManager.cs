@@ -97,10 +97,14 @@ namespace MiniGame.TableTennis
         private CharacterData _localCharacter;
         private CharacterData _peerCharacter;
 
-        private string OpponentLabel => _isOnline ? "RIVAL" : "NPC";
+        /// <summary>オンラインの席はホスト=0、ゲスト=1（OnlineSession の名前交換と同じ並び）</summary>
+        private int LocalSeat => _isOnline && !_isHost ? 1 : 0;
 
-        /// <summary>NPC戦は1台を1人で遊ぶので自分＝ユーザー名。オンラインは名前交換（Phase 3）までは従来の YOU</summary>
-        private string PlayerLabel => _isOnline ? "YOU" : SeatNames.Get(0);
+        /// <summary>オンラインは相手の名前。届かなかったときは従来の RIVAL</summary>
+        private string OpponentLabel => _isOnline ? SeatNames.Get(1 - LocalSeat, "RIVAL") : "NPC";
+
+        /// <summary>自分＝ユーザー名。オンラインで名前が届かなかったときは従来の YOU</summary>
+        private string PlayerLabel => _isOnline ? SeatNames.Get(LocalSeat, "YOU") : SeatNames.Get(0);
 
         /// <summary>選手の情報が無いオンライン対戦などでは無効化されるため、有効かどうかも見る</summary>
         private bool IsSpecialActive => _special != null && _special.enabled;
@@ -404,8 +408,7 @@ namespace MiniGame.TableTennis
         /// <summary>黄色ボールのラリーは、取れば強必殺技がもらえることをサーブ前に知らせる</summary>
         private void AnnounceServe(CourtSide server)
         {
-            string playerServe = _isOnline ? "YOUR SERVE" : $"{PlayerLabel} SERVE";
-            string serveLabel = server == CourtSide.Player ? playerServe : $"{OpponentLabel} SERVE";
+            string serveLabel = $"{SideLabel(server)} SERVE";
             bool isChance = _special != null && _special.PrepareRally(_score.TotalPoints);
             SetMessage(isChance ? $"CHANCE BALL!\n{serveLabel}" : serveLabel);
         }
@@ -644,7 +647,7 @@ namespace MiniGame.TableTennis
             yield return new WaitForSeconds(_gameSetDuration);
             SetMessage(string.Empty);
 
-            string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : (_isOnline ? "相手の勝ち" : "NPCの勝ち");
+            string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : $"{OpponentLabel}の勝ち";
             FinishGame(isVictory, ScoreSummary, resultMessage);
         }
 

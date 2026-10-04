@@ -28,7 +28,7 @@ namespace MiniGame.Molkky
         private const string LocalTitle = "プレイヤー設定";
         private const string OnlineHostTitle = "チーム設定";
         private const string WaitingTitle = "ホストが設定しています";
-        private const string LocalSeatLabel = "あなた";
+        private const string LocalSuffix = "（あなた）";
 
         [Tooltip("2人・3人・4人 の順")]
         [SerializeField] private Button[] _countButtons;
@@ -192,7 +192,7 @@ namespace MiniGame.Molkky
             for (int i = 0; i < _playerRows.Length; i++)
             {
                 _playerRows[i].SetActive(i < _count);
-                _seatLabels[i].text = _isOnline && i == _localSeat ? LocalSeatLabel : SeatNames.Get(i);
+                _seatLabels[i].text = _isOnline && i == _localSeat ? SeatNames.Get(i) + LocalSuffix : SeatNames.Get(i);
                 _kindTexts[i].text = KindLabels[(int)_kinds[i]];
                 // オンラインは全員人間なので種別は選ばせない
                 _kindButtons[i].gameObject.SetActive(!_isOnline);

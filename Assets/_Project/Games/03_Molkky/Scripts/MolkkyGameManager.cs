@@ -13,7 +13,7 @@ namespace MiniGame.Molkky
     /// </summary>
     public class MolkkyGameManager : BaseMiniGameManager
     {
-        private const string LocalPlayerName = "あなた";
+        private const string LocalSuffix = "（あなた）";
         private const string SurvivorVictoryLine = "最後まで残った！";
         private const int NotSelected = -1;
         private const string ExactWinDetail = "50点ちょうど！";
@@ -226,7 +226,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// 名前は端末ごとに自分だけ「あなた」にする。名前は表示にしか使わないので端末間で違っていてよい
+        /// 名前は端末ごとに自分だけ「（あなた）」を付ける。名前は表示にしか使わないので端末間で違っていてよい
         /// </summary>
         private void StartOnlineGame()
         {
@@ -235,7 +235,7 @@ namespace MiniGame.Molkky
             _players.Clear();
             for (int i = 0; i < _onlineCharacters.Length; i++)
             {
-                string owner = i == _localIndex ? LocalPlayerName : SeatNames.Get(i);
+                string owner = i == _localIndex ? SeatNames.Get(i) + LocalSuffix : SeatNames.Get(i);
                 _players.Add(new PlayerSlot(BuildPlayerName(owner, _onlineCharacters[i]), PlayerKind.Human, _onlineCharacters[i]));
             }
 

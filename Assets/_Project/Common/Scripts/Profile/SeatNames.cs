@@ -8,10 +8,13 @@ namespace MiniGame.Common.Profile
     {
         private static string[] _names = System.Array.Empty<string>();
 
-        public static string Get(int seat)
+        public static string Get(int seat) => Get(seat, DefaultName(seat));
+
+        /// <summary>名前が届いていない席は fallback を返す（卓球の RIVAL、サッカーの AWAY など従来表記に戻すため）</summary>
+        public static string Get(int seat, string fallback)
         {
             bool hasName = seat >= 0 && seat < _names.Length && !string.IsNullOrEmpty(_names[seat]);
-            return hasName ? _names[seat] : DefaultName(seat);
+            return hasName ? _names[seat] : fallback;
         }
 
         public static string DefaultName(int seat) => $"P{seat + 1}";
