@@ -28,6 +28,7 @@
 | 02 | 2D卓球 | [02_TABLE_TENNIS_SPEC.md](Docs/02_TABLE_TENNIS_SPEC.md) | `Assets/_Project/Games/02_TableTennis/` |
 | 03 | 2Dモルック | [03_MOLKKY_SPEC.md](Docs/03_MOLKKY_SPEC.md) | `Assets/_Project/Games/03_Molkky/` |
 | 04 | 2Dゴルフ | [04_GOLF_SPEC.md](Docs/04_GOLF_SPEC.md) | `Assets/_Project/Games/04_Golf/` |
+| 05 | 2D人生ゲーム | [05_LIFE_GAME_SPEC.md](Docs/05_LIFE_GAME_SPEC.md) | `Assets/_Project/Games/05_LifeGame/` |
 | 50 | デジタルカードゲーム（THE CHAOS Ⅱ） | [50_CARD_GAME_SPEC.md](Docs/50_CARD_GAME_SPEC.md) | `Assets/_Project/Games/50_CardGame/` |
 
 ---
