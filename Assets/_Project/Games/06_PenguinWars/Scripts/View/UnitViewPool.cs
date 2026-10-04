@@ -58,7 +58,7 @@ namespace MiniGame.PenguinWars
             UnitSpriteSet sprites = data != null ? data.GetSprites(unit.Side) : null;
             if (sprites != null && sprites.IsValid) return sprites;
 
-            Debug.LogWarning($"[UnitViewPool] No.{unit.UnitNo} の絵がありません。Tools > MiniGame > Generate PenguinWars Art を実行してください");
+            Debug.LogWarning($"[UnitViewPool] No.{unit.UnitNo} の絵がありません。Tools > MiniGame > Rebuild PenguinWars を実行してください");
             return null;
         }
 

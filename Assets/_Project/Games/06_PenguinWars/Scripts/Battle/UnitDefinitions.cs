@@ -4,7 +4,7 @@ namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
     /// 全50体の定義表（仕様書 §5.5）。バランス調整はここだけで済むよう、コスト・能力・個別倍率を1か所に集める。
-    /// 変えたら Tools > MiniGame > Generate PenguinWars Units でアセットに反映する（見た目は Editor の UnitLooks）
+    /// 変えたら Tools > MiniGame > Rebuild PenguinWars でアセットに反映する（見た目は Editor の UnitLooks）
     /// </summary>
     public static class UnitDefinitions
     {

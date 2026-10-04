@@ -14,6 +14,7 @@ namespace MiniGame.Common.Audio
         private const string PrefsKeyBgmVol = "Audio_BgmVolume";
         private const string PrefsKeySeVol = "Audio_SeVolume";
         private const string PrefsKeyMute = "Audio_IsMute";
+        private const string PrefsKeyBgmOff = "Audio_IsBgmOff";
 
         [Header("Audio Sources")]
         [SerializeField] private AudioSource _bgmSourceA;
@@ -32,11 +33,15 @@ namespace MiniGame.Common.Audio
         private AudioSource _activeBgmSource;
         private AudioSource _inactiveBgmSource;
         private Coroutine _bgmCrossfadeRoutine;
+        // 曲ごとの音量倍率。音量スライダーを動かしたときに倍率が外れて急に大きくならないよう覚えておく
+        private float _activeBgmRate = 1f;
 
         public float MasterVolume { get; private set; } = 1.0f;
         public float BgmVolume { get; private set; } = 0.8f;
         public float SeVolume { get; private set; } = 1.0f;
         public bool IsMuted { get; private set; } = false;
+        /// <summary>BGMだけを止める（SEは鳴らしたまま）。全体ミュートの IsMuted とは別に持つ</summary>
+        public bool IsBgmOff { get; private set; } = false;
 
         public BgmId CurrentBgmId { get; private set; } = BgmId.None;
 
@@ -110,6 +115,7 @@ namespace MiniGame.Common.Audio
             BgmVolume = PlayerPrefs.GetFloat(PrefsKeyBgmVol, 0.8f);
             SeVolume = PlayerPrefs.GetFloat(PrefsKeySeVol, 1.0f);
             IsMuted = PlayerPrefs.GetInt(PrefsKeyMute, 0) == 1;
+            IsBgmOff = PlayerPrefs.GetInt(PrefsKeyBgmOff, 0) == 1;
 
             ApplyVolumes();
         }
@@ -120,6 +126,7 @@ namespace MiniGame.Common.Audio
             PlayerPrefs.SetFloat(PrefsKeyBgmVol, BgmVolume);
             PlayerPrefs.SetFloat(PrefsKeySeVol, SeVolume);
             PlayerPrefs.SetInt(PrefsKeyMute, IsMuted ? 1 : 0);
+            PlayerPrefs.SetInt(PrefsKeyBgmOff, IsBgmOff ? 1 : 0);
             PlayerPrefs.Save();
         }
 
@@ -147,9 +154,17 @@ namespace MiniGame.Common.Audio
             ApplyVolumes();
         }
 
+        public void SetBgmOff(bool isOff)
+        {
+            IsBgmOff = isOff;
+            ApplyVolumes();
+        }
+
+        private float EffectiveBgmVolume => IsMuted || IsBgmOff ? 0f : MasterVolume * BgmVolume;
+
         private void ApplyVolumes()
         {
-            float effectiveBgm = IsMuted ? 0f : MasterVolume * BgmVolume;
+            float effectiveBgm = EffectiveBgmVolume * _activeBgmRate;
             if (_activeBgmSource != null) _activeBgmSource.volume = effectiveBgm;
             if (_inactiveBgmSource != null) _inactiveBgmSource.volume = 0f;
         }
@@ -231,7 +246,8 @@ namespace MiniGame.Common.Audio
             newSource.volume = 0f;
             newSource.Play();
 
-            float targetMaxVolume = (IsMuted ? 0f : MasterVolume * BgmVolume) * (nextBgm.volume > 0 ? nextBgm.volume : 1f);
+            _activeBgmRate = nextBgm.volume > 0 ? nextBgm.volume : 1f;
+            float targetMaxVolume = EffectiveBgmVolume * _activeBgmRate;
             float startOldVolume = oldSource.isPlaying ? oldSource.volume : 0f;
 
             float elapsed = 0f;

@@ -9,6 +9,8 @@ namespace MiniGame.PenguinWars
     {
         private const string NoAbility = "能力なし";
         private const string AbilitySeparator = "・";
+        private const string RangeArea = "範囲";
+        private const string RangeSingle = "単体";
 
         public static string Role(UnitRole role)
         {
@@ -22,6 +24,8 @@ namespace MiniGame.PenguinWars
                 default: return role.ToString();
             }
         }
+
+        public static string AttackRange(bool isAreaAttack) => isAreaAttack ? RangeArea : RangeSingle;
 
         public static string Ability(UnitAbilityType type)
         {

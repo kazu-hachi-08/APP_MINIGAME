@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ペンギン大戦争の進行役。モード選択 →（対戦はドラフト →）編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
+    /// ペンギン大戦争の進行役。タイトル → モード選択 →（対戦はドラフト →）編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
     /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ。
     /// このファイルは共通の流れとエンドレス。オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
     /// </summary>
@@ -25,6 +25,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private DeckIntroPanel _deckIntroPanel;
         [SerializeField] private BattleEventPresenter _presenter;
         [SerializeField] private PenguinWarsAudio _audio;
+        [Tooltip("未設定ならタイトルを出さずモード選択から始める")]
+        [SerializeField] private PenguinWarsTitlePanel _titlePanel;
         [SerializeField] private float _deckIntroDuration = 2f;
         [SerializeField] private float _startMessageDuration = 1f;
 
@@ -32,7 +34,7 @@ namespace MiniGame.PenguinWars
         // Intro の前半（編成発表）か後半（START!）か
         private bool _showingDeck;
 
-        public PenguinWarsPhase Phase { get; private set; } = PenguinWarsPhase.ModeSelect;
+        public PenguinWarsPhase Phase { get; private set; } = PenguinWarsPhase.Title;
         public float ElapsedTime { get; private set; }
 
         protected override void OnGameReady()
@@ -45,8 +47,8 @@ namespace MiniGame.PenguinWars
 
             bool restartEndless = s_restartEndless;
             s_restartEndless = false;
-            if (restartEndless || _modeSelectPanel == null) StartEndless();
-            else _modeSelectPanel.Show(StartEndless, StartOnline);
+            if (restartEndless) StartEndless();
+            else ShowTitle();
         }
 
         protected override void OnDestroy()
@@ -63,6 +65,26 @@ namespace MiniGame.PenguinWars
         {
             s_restartEndless = !IsOnline;
             base.RestartGame();
+        }
+
+        private void ShowTitle()
+        {
+            if (_titlePanel == null)
+            {
+                ShowModeSelect();
+                return;
+            }
+
+            Phase = PenguinWarsPhase.Title;
+            _audio.PlayTitleBgm();
+            _titlePanel.Show(ShowModeSelect, ReturnToTitle);
+        }
+
+        private void ShowModeSelect()
+        {
+            Phase = PenguinWarsPhase.ModeSelect;
+            if (_modeSelectPanel == null) StartEndless();
+            else _modeSelectPanel.Show(StartEndless, StartOnline);
         }
 
         private void StartEndless()
@@ -117,7 +139,7 @@ namespace MiniGame.PenguinWars
             _hud.HideMessage();
             Phase = PenguinWarsPhase.Playing;
             _battleRunner.SetRunning(true);
-            _audio.PlayBgm();
+            _audio.PlayBattleBgm();
             StartGame();
         }
 

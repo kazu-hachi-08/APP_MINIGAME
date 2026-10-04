@@ -15,7 +15,7 @@
 | 対象プラットフォーム | Android / iPhone（PCはマウス＋キーボードで確認用・ブラウザ版） |
 | エンジン / 言語 | Unity / C# |
 
-ソースは `Assets/_Project/Games/06_PenguinWars/`。Sceneは他のゲームと同じく `Tools > MiniGame > Rebuild PenguinWars`（`PenguinWarsSceneBuilder`）でコードから生成する。キャラのデータは `Tools > MiniGame > Generate PenguinWars Units`、ドット絵は `Tools > MiniGame > Generate PenguinWars Art` で作る（§11.3）。
+ソースは `Assets/_Project/Games/06_PenguinWars/`。Sceneは他のゲームと同じく `Tools > MiniGame > Rebuild PenguinWars`（`PenguinWarsSceneBuilder`）でコードから生成する。キャラのデータとドット絵も同じメニューでまとめて作り直す（§11.3）。
 
 ### 1.1 モード
 
@@ -27,6 +27,20 @@
 ---
 
 ## 2. ルール・試合の流れ
+
+### 2.0 タイトル
+
+メニューからペンギン大戦争を選ぶと、まずゲーム固有のタイトル画面（`PenguinWarsTitlePanel`）が出る。
+
+* 戦場の上に半透明の幕をかけ、ロゴ「ペンギン大戦争 / PENGUIN WARS」がふわふわ揺れる。その下でランダムな5体（全50体から重複なし・開くたびに選び直す）がぴょこぴょこ跳ねる
+* ボタンは「スタート」（→ モード選択）・「ずかん」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
+* 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで No 順に並べ、各マスのペンギンは歩きコマで足踏みする
+  * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・単体/範囲・コスト・再生産・体力・攻撃力・射程・速度・能力を出す
+  * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
+* 「設定」は BGM ON/OFF・BGM音量・SE音量（`PenguinWarsSettingsPanel`）。値は共通の `AudioManager` が `PlayerPrefs` に保存するので、ポーズ画面のスライダーや次回の起動とも同じ値になる
+* BGM ON/OFF は BGM だけを止める（SE は鳴る）。OFF 中は BGM 音量のスライダーを触れない
+* タイトル〜モード選択〜ドラフト〜編成発表はタイトルBGM、START! からプレイ中はプレイBGMに切り替える
+* リトライ（エンドレス）はタイトルを飛ばしてすぐ編成発表から始める
 
 ### 2.1 エンドレス
 
@@ -45,6 +59,7 @@ START!（1.0秒）
 * 敵側に城はない。右端の「出現ゲート」は無敵で、攻撃対象にならない。敵味方ともゲートの X で止まる（射程で止まらず、ゲートより右には進めない）
 * ベスト記録（生存時間）は `PlayerPrefs` の `PenguinWars.Endless.BestSeconds` に保存する（`EndlessRecord`）
 * ランダム編成は全50体からの重複なし抽選。ただし「壁が最低2体」入るようにする（壁がいないと序盤で詰むため。`DeckRandomizer.PickDeck`）
+* 選んだ10体はコストの低い順に並べる（同コストは No 順）。序盤に出せるキャラを探しやすくするため
 * リトライはモード選択を飛ばしてすぐ編成発表から始める
 
 ### 2.2 オンライン対戦
@@ -85,6 +100,7 @@ START!（1.0秒）
 
 | 状態 | 内容 |
 | --- | --- |
+| `Title` | タイトル画面（§2.0） |
 | `ModeSelect` | モード選択・接続待ち |
 | `Draft` | ドラフト中（オンラインのみ） |
 | `Intro` | 編成発表（確認）・START! 表示 |
@@ -178,7 +194,7 @@ START!（1.0秒）
 UnitDefinitions（全50体の定義表：No・名前・役割・コスト・単体/範囲・能力・個別倍率）
   ＋ UnitStatFormula（役割ごとの基準値から体力・攻撃力・射程…を計算）
   ＋ UnitLooks（見た目パーツ。Editor）
-        ↓ Generate PenguinWars Units（Rebuild からも呼ばれる）
+        ↓ Rebuild PenguinWars
 Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.asset
 ```
 
@@ -259,60 +275,13 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 * 体力 = コスト × 体力/コスト（10単位で丸め）。攻撃力 = コスト × 火力/コスト × 攻撃間隔
 * 範囲攻撃は火力 ×0.75、能力1つごとに体力・火力 ×0.9
 
-**計算後の値**（定義表を変えたら `Generate PenguinWars Units` で反映。範囲: 単=単体 / 範=範囲）
+**各キャラの値**
 
-| No | 名前 | 役割 | 範囲 | 能力 | コスト | 再生産 | 体力 | 攻撃 | 射程 | 速度 | 見た目 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | ペンギン | 壁 | 単 | — | 75 | 2.5 | 150 | 7 | 1.4 | 1.0 | 基本形 |
-| 2 | かべペンギン | 壁 | 単 | — | 150 | 4 | 300 | 14 | 1.4 | 1.0 | 横に広い四角い体 |
-| 3 | ゆきだまペンギン | 壁 | 単 | — | 100 | 3 | 200 | 10 | 1.4 | 1.0 | 雪玉を抱える |
-| 4 | ヘルメットペンギン | 壁 | 単 | ふんばる | 150 | 4 | 270 | 13 | 1.4 | 1.0 | ヘルメット |
-| 5 | こおりペンギン | 壁 | 単 | 遅くする | 120 | 3.4 | 220 | 10 | 1.4 | 1.0 | 水色の体 |
-| 6 | ひなペンギン | 壁 | 単 | — | 50 | 2 | 80 | 5 | 1.4 | 1.3 | 小さい・灰色の毛 |
-| 7 | ダンボールペンギン | 壁 | 単 | — | 75 | 2.5 | 150 | 7 | 1.4 | 1.0 | 箱をかぶる |
-| 8 | まるまるペンギン | 壁 | 範 | — | 125 | 3.5 | 250 | 9 | 1.4 | 1.0 | まんまる |
-| 9 | ふとんペンギン | 壁 | 単 | ふんばる | 150 | 4 | 270 | 13 | 1.4 | 1.0 | 布団にくるまる |
-| 10 | かまくらペンギン | 壁 | 単 | — | 150 | 4 | 390 | 14 | 1.4 | 0.6 | かまくらに入っている |
-| 11 | おのペンギン | アタッカー | 単 | — | 300 | 7 | 210 | 35 | 1.5 | 1.1 | 斧 |
-| 12 | さかなけんペンギン | アタッカー | 単 | — | 250 | 6.5 | 180 | 29 | 1.5 | 1.1 | 魚の剣 |
-| 13 | ボクサーペンギン | アタッカー | 単 | ふっとばす | 350 | 7.5 | 220 | 37 | 1.5 | 1.1 | グローブ |
-| 14 | すもうペンギン | アタッカー | 範 | ふっとばす | 450 | 8.5 | 340 | 36 | 1.5 | 0.88 | まわし・太い |
-| 15 | ながあしペンギン | アタッカー | 範 | — | 400 | 8 | 280 | 35 | 1.95 | 1.32 | 足が長い |
-| 16 | ハンマーペンギン | アタッカー | 範 | — | 550 | 9.5 | 380 | 58 | 1.5 | 0.88 | 大きいハンマー |
-| 17 | にんじゃペンギン | アタッカー | 単 | — | 300 | 7 | 150 | 35 | 1.5 | 1.98 | 黒ずきん・速い |
-| 18 | さむらいペンギン | アタッカー | 単 | — | 450 | 8.5 | 280 | 63 | 1.5 | 1.1 | 刀とちょんまげ |
-| 19 | バイクペンギン | アタッカー | 単 | 城キラー | 500 | 9 | 320 | 53 | 1.5 | 1.98 | バイクに乗る・速い |
-| 20 | ドリルペンギン | アタッカー | 単 | 城キラー | 400 | 8 | 250 | 42 | 1.5 | 1.1 | くちばしがドリル |
-| 21 | ゆうしゃペンギン | アタッカー | 範 | — | 600 | 10 | 460 | 53 | 1.5 | 1.1 | 剣と盾 |
-| 22 | ムキムキペンギン | アタッカー | 範 | — | 550 | 9.5 | 380 | 56 | 1.5 | 0.99 | 腕が太い |
-| 23 | ゆみペンギン | 遠距離 | 単 | — | 450 | 8.75 | 140 | 34 | 3.59 | 0.8 | 弓 |
-| 24 | ゆきなげペンギン | 遠距離 | 範 | — | 600 | 11 | 180 | 34 | 3.88 | 0.8 | 雪玉を投げる |
-| 25 | つりざおペンギン | 遠距離 | 単 | — | 500 | 9.5 | 150 | 38 | 3.69 | 0.8 | 釣り竿で攻撃 |
-| 26 | のっぽペンギン | 遠距離 | 範 | — | 900 | 15.5 | 350 | 51 | 4.44 | 0.8 | 首が長い（本家の「ネコノッポ」枠） |
-| 27 | たいほうペンギン | 遠距離 | 範 | — | 1000 | 17 | 300 | 68 | 4.62 | 0.64 | 大砲を担ぐ |
-| 28 | まほうつかいペンギン | 遠距離 | 範 | — | 1100 | 18.5 | 330 | 62 | 4.81 | 0.8 | とんがり帽子と杖 |
-| 29 | スナイパーペンギン | 遠距離 | 単 | — | 1200 | 20 | 290 | 90 | 6.5 | 0.8 | 長い銃・射程最長 |
-| 30 | ブーメランペンギン | 遠距離 | 範 | — | 700 | 12.5 | 210 | 39 | 4.06 | 0.8 | ブーメラン |
-| 31 | ロケットペンギン | 遠距離 | 単 | 城キラー | 800 | 14 | 220 | 54 | 4.25 | 0.8 | 背中にロケット |
-| 32 | ペンギンタワー | 遠距離 | 範 | — | 1200 | 20 | 500 | 68 | 5.0 | 0.56 | ペンギン3段重ね |
-| 33 | ふぶきペンギン | 妨害 | 範 | 遅くする | 600 | 12 | 320 | 24 | 2.6 | 1.0 | 体のまわりに雪 |
-| 34 | れいとうペンギン | 妨害 | 単 | 止める | 600 | 12 | 320 | 32 | 2.6 | 1.0 | 冷凍庫を背負う |
-| 35 | せんぷうきペンギン | 妨害 | 範 | ふっとばす | 500 | 10.67 | 270 | 20 | 2.47 | 1.0 | 扇風機 |
-| 36 | ねむりペンギン | 妨害 | 範 | 止める | 750 | 14 | 410 | 30 | 2.8 | 1.0 | ナイトキャップ |
-| 37 | ねばねばペンギン | 妨害 | 範 | 遅くする | 400 | 9.33 | 220 | 16 | 2.33 | 1.0 | 体に雪どけ水 |
-| 38 | ハリセンペンギン | 妨害 | 単 | ふっとばす | 300 | 8 | 160 | 16 | 2.2 | 1.0 | ハリセン |
-| 39 | アイドルペンギン | 妨害 | 範 | 止める | 700 | 13.33 | 380 | 28 | 2.73 | 1.0 | マイク・リボン |
-| 40 | タコあしペンギン | 妨害 | 範 | 遅くする | 550 | 11.33 | 300 | 22 | 2.53 | 1.0 | 足がタコ |
-| 41 | ふうせんペンギン | 妨害 | 単 | ふっとばす | 450 | 10 | 240 | 24 | 2.4 | 1.0 | 風船を持つ |
-| 42 | こおりのじょおうペンギン | 妨害 | 範 | 止める・遅くする | 900 | 16 | 440 | 33 | 3.0 | 1.0 | 王冠と青いマント |
-| 43 | きょだいペンギン | 大型 | 範 | ふんばる | 2500 | 60 | 1800 | 202 | 2.5 | 0.6 | 基本形を3倍に拡大 |
-| 44 | ペンギンロボ | 大型 | 範 | ふんばる | 3000 | 70 | 2160 | 267 | 2.75 | 0.6 | 四角いメカ |
-| 45 | ペンギンせんしゃ | 大型 | 範 | 城キラー | 2800 | 66 | 2020 | 227 | 3.44 | 0.6 | 戦車 |
-| 46 | ひょうざんペンギン | 大型 | 範 | ふんばる | 2000 | 50 | 1870 | 130 | 2.25 | 0.6 | 氷山を背負う |
-| 47 | クジラのりペンギン | 大型 | 範 | ふっとばす | 2200 | 54 | 1580 | 178 | 2.35 | 0.78 | クジラに乗る |
-| 48 | ペンギンキング | 大型 | 範 | — | 3500 | 80 | 2800 | 315 | 3.0 | 0.6 | 王冠と赤いマント・2倍 |
-| 49 | オーロラペンギン | 大型 | 範 | 遅くする | 2600 | 62 | 1870 | 211 | 2.55 | 0.6 | 紫の体＋背中に虹の輪 |
-| 50 | ペンギンかみさま | 大型 | 範 | ふっとばす・止める | 3500 | 80 | 2270 | 255 | 3.0 | 0.6 | 後光・羽 |
+キャラごとの値はこの仕様書には書かない（定義表と二重管理になってずれるため）。正は次のコード／アセットで、ゲーム内の「ずかん」（§2.0）でも確認できる。
+
+* 名前・役割・コスト・単体/範囲・能力・個別倍率: `Scripts/Battle/UnitDefinitions.cs`
+* 計算後の数値（再生産・体力・攻撃・射程・速度…）: `Data/Units/Unit_001〜050.asset`（`Rebuild PenguinWars` で生成）
+* 見た目: `Editor/UnitLooks.cs`
 
 * 攻撃間隔・発生・ノックバック回数は役割ごとに共通（上の基準値の表）
 * 大型は拡大率2（きょだいペンギンだけ3）
@@ -332,6 +301,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 * 候補は「自分が取ったキャラを除く全キャラ」から純ランダム。ランダム編成のような「壁を最低2体」の制約は付けない
 * 抽選・時間計測はホストだけが行い、ゲストに提示内容を送る（乱数のずれを防ぐため）。ゲストの残り秒表示は、届いたラウンド開始を基準に自分で減らす
 * 相手が何を取ったかはドラフト中は見えない。終了後の「編成確認」でお互いの10体を公開する
+* 取った10体は、ドラフト終了後にエンドレスと同じくコストの低い順に並べ直して編成にする（同コストは No 順。ホストが並べてゲストへ送る）
 * 画面: 中央に3枚のカード（見た目・名前・コスト・役割・範囲/単体・能力）、上にラウンド数と残り秒、下に取ったキャラの一覧。選んだ後は「相手を待っています...」
 * 選ぶのはクリック / タップのみ（キーボードでの選択はない）
 * 提示数（3）・制限時間（15秒）は `PenguinWarsBalance`
@@ -373,7 +343,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 | 拡大率 | 1〜3（PNG は 32x32 のまま Pixels Per Unit を 16/拡大率 にして大きく見せる） |
 
 * 体のまわりの表現（雪・布団・まわし・かまくら）や足（ながあし・タコあし）は、背中スロットのパーツとして作っている
-* パーツを足すときは `PenguinPartPatterns`（部位ごとの partial）/ `PenguinBodyPatterns` に1項目、見た目の指定は `UnitLooks` に1行足して `Generate PenguinWars Art`
+* パーツを足すときは `PenguinPartPatterns`（部位ごとの partial）/ `PenguinBodyPatterns` に1項目、見た目の指定は `UnitLooks` に1行足して `Rebuild PenguinWars`
 * 敵（エンドレスのCPU、対戦の相手）は同じ見た目でチーム色を赤系にした色違い（右向きは flipX）。味方は青系。虹など陣営で変わらない色もある
 * コマは「歩き（2コマ）」「攻撃（発生待ち・振り下ろしの2コマ）」「ノックバック（1コマ）」。1コマ1PNG（`Sprites/Units/Unit_001_Left_Walk0.png` など。50体×2陣営×5コマ＝500枚）
   * 歩き2コマ目は体を1ドット跳ねて足を前へ。攻撃はのけぞって持ち物を振り上げ → 前に乗り出して振り下ろす
@@ -426,7 +396,9 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 
 * 演出は `BattleEventPresenter` が `BattleEvent` を受けて出す（ゲストも届いたイベントを同じ所に流す）。数の上限・揺れの強さは Inspector で調整できる
 * SE は `PenguinWarsAudio` がコードで生成する6種（出撃・ヒット・撃破・砲・レベルUP・城崩れ）。素材の差し込み欄があり、入れればそちらを鳴らす
-* BGM はプロジェクトに素材が無いため、`PenguinWarsAudio._bgmClip` の差し込み欄だけ用意している（未設定なら鳴らさない）
+* BGM は `Audio/` に決まった名前のファイルを置くと、`Rebuild PenguinWars` で `PenguinWarsAudio` に自動で差し込まれる（Scene は作り直すたびに上書きされるので、Inspector で手で入れると消えるため）
+  * `Audio/PenguinWars_TitleBgm.*`（タイトル〜編成発表）・`Audio/PenguinWars_BattleBgm.*`（プレイ中）。拡張子は mp3 / ogg / wav など何でもよい
+  * 無いBGMは `PenguinBgmGenerator` がコードで作った仮のBGMを鳴らす（タイトル: のんびりした行進曲・112BPM、プレイ: 速い戦闘曲・150BPM。どちらも8小節のループ）
 
 ---
 
@@ -503,7 +475,7 @@ View（UnitView / CastleView / HUD / 音・演出）
 
 * オンラインではホストだけが `BattleWorld` を動かし、ゲストは届いた状態を View に流すだけ（§10）
 * `Battle` は独立した asmdef（`noEngineReferences`）。ScriptableObject は参照せず、SO → `UnitStats` に変換して渡す。乱数は `System.Random`（シード指定可能）
-* 共通基盤（`Assets/_Project/Common/`）への変更はタイトル登録・画面向き（横）・シーン名だけ
+* 共通基盤（`Assets/_Project/Common/`）への変更はタイトル登録・画面向き（横）・シーン名と、`AudioManager` の BGM だけ OFF（`IsBgmOff`）・`UIDialogBuilder.CreateVolumeSlider` の公開だけ
 
 ### 11.2 フォルダ
 
@@ -511,7 +483,8 @@ View（UnitView / CastleView / HUD / 音・演出）
 Assets/_Project/Games/06_PenguinWars/
  ├ Scenes/PenguinWarsScene.unity   PenguinWarsSceneBuilder で生成（手で編集しない）
  ├ Data/                           PenguinWarsBalance.asset・PenguinUnitCatalog.asset
- │  └ Units/                       Unit_001〜050.asset（Generate PenguinWars Units で生成）
+ │  └ Units/                       Unit_001〜050.asset（Rebuild PenguinWars で生成）
+ ├ Audio/                          BGM素材（PenguinWars_TitleBgm / PenguinWars_BattleBgm。§9）
  ├ Sprites/                        生成したドット絵（Units / 戦場 / Effects。1単位＝16px）
  ├ Scripts/
  │  ├ Battle/                      純C#の戦闘ロジック（MiniGame.PenguinWars.Battle.asmdef）
@@ -543,14 +516,16 @@ Assets/_Project/Games/06_PenguinWars/
 | Scripts/Game/ | PenguinWarsGameManager（.Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／オンラインの流れ／ドラフトと編成確認 |
 | | BattleRunner | World を固定ステップで動かし、View に状態を流す。エンドレス・ホスト・ゲストの初期化 |
 | | KeyboardCommandInput / ICommandSink | PC のキー操作／ゲストのコマンド送り先 |
-| | PenguinWarsAudio / EndlessRecord | 生成SE・BGM欄／ベスト記録 |
+| | PenguinWarsAudio / PenguinBgmGenerator / EndlessRecord | 生成SE・タイトル／プレイBGM／仮BGMの生成／ベスト記録 |
 | Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView | ユニットの絵・コマ選び／使い回し／コマの組／HPバー |
 | | CastleView / CastleCollapse / BattleCamera | 城（ゲート表示）／崩れる演出／スクロール・揺れ |
 | | BattleEventPresenter / Effects/ | イベント → 演出・音／煙・火花・魂・ビーム（使い回しのプール） |
 | Scripts/UI/ | UnitButton / UnitButtonBar / WalletButton / CannonButton / BattleHud | 下部の操作ボタン／時間・メッセージ・LEVEL表示 |
 | | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／役割・能力の表示名 |
+| | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
+| | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／UI の絵のコマ送り（§2.0） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
-| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft） | Scene生成（1ファイルが大きくならないよう partial で分割） |
+| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .Title / .Zukan） | Scene生成（1ファイルが大きくならないよう partial で分割） |
 | | PenguinUnitAssetGenerator / UnitLooks | 50体のアセット生成（毎回上書き）／見た目の表 |
 | Editor/Art/ | PenguinArtGenerator / PenguinFrameComposer / PenguinBodyPatterns / PenguinPartPatterns / PenguinPalette / FieldArtGenerator / EffectArtGenerator / PenguinSpriteWriter | ドット絵の生成。体・パーツは文字列（1文字＝1ピクセル）で持ち、コマごとにずらして重ねる |
 | Tests/Editor/ | BattleWorldTests / EconomyTests / EndlessTests / AbilityTests / UnitRosterTests / OnlineSyncTests / DraftTests / SideTests | Battle の EditModeテスト |
@@ -559,9 +534,8 @@ Assets/_Project/Games/06_PenguinWars/
 
 | メニュー | 作るもの | 既にあるとき |
 | --- | --- | --- |
-| `Rebuild PenguinWars` | Scene。無ければ Balance・キャラアセット・絵も作る | Balance は上書きしない／キャラアセットは上書き／絵は足りないときだけ全体を作る |
-| `Generate PenguinWars Units` | `Data/Units/` と カタログ | 定義表の値で上書き（スプライト参照は残す） |
-| `Generate PenguinWars Art` | キャラ・戦場・演出の PNG | 作り直す（見た目を変えたらこれを実行） |
+| `Rebuild PenguinWars` | Scene・`Data/Units/` とカタログ・キャラ・戦場・演出の PNG。無ければ Balance も作る | Balance は上書きしない／キャラアセットは定義表の値で上書き／PNG は毎回すべて描き直す |
+| `Rebuild All` | 全ゲームの Scene と素材（PenguinWars も含む） | 各ゲームの Rebuild と同じ |
 
 * 戦場の長さ（`FieldLength`）を変えたら Rebuild が必要（城の位置を Rebuild 時に置くため）
 * 生成した `.meta` もコミットする（2人で GUID がずれないため）
@@ -575,7 +549,8 @@ Assets/_Project/Games/06_PenguinWars/
 * ノックバックのコマは全キャラ「立ち姿を90度倒す」なので、かまくら・戦車・クジラは乗り物ごと倒れる
 * 働きペンギンのレベルアップに音・演出はない
 * 状態異常（止まる・遅い）は色だけで、専用の演出はない
-* BGM は未設定（素材の差し込み欄のみ）。SEは仮の生成音
+* BGM・SE ともに仮の生成音（素材を置けば差し替わる。§9）
+* モード選択（共通の `ModeSelectPanel`）からタイトルへ戻るボタンはない
 * ドラフトにキーボード操作はない
 * 途中セーブ・再接続はしない
 

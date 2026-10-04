@@ -346,7 +346,7 @@ namespace MiniGame.Editor
         /// ラベル(上) + スライダー(下)の1行。
         /// 見た目のバーは細いまま、タッチ判定をスライダーの行全体に広げて指で掴みやすくする
         /// </summary>
-        private static Slider CreateVolumeSlider(string name, Transform parent, string label)
+        public static Slider CreateVolumeSlider(string name, Transform parent, string label)
         {
             var rowObj = CreateUIObject(name, parent);
             rowObj.GetComponent<RectTransform>().sizeDelta = new Vector2(0, VolumeRowHeight);

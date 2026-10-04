@@ -117,6 +117,20 @@ namespace MiniGame.PenguinWars.Battle.Tests
         }
 
         [Test]
+        public void PickDeck_IsSortedByCost()
+        {
+            List<UnitStats> pool = AllStats();
+            for (int seed = 0; seed < 50; seed++)
+            {
+                List<UnitStats> deck = DeckRandomizer.PickDeck(pool, DeckSize, MinWalls, new System.Random(seed));
+                for (int i = 1; i < deck.Count; i++)
+                {
+                    Assert.LessOrEqual(deck[i - 1].Cost, deck[i].Cost, $"seed {seed}");
+                }
+            }
+        }
+
+        [Test]
         public void PickDeck_TakesAllWallsWhenFewerThanMinimum()
         {
             var pool = new[]

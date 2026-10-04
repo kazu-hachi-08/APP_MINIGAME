@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars.Battle
     public static class DeckRandomizer
     {
         /// <summary>
-        /// 壁を最低 minWalls 体入れて count 体選ぶ（壁がいないと序盤で詰むため）。並び順もランダム。
+        /// 壁を最低 minWalls 体入れて count 体選ぶ（壁がいないと序盤で詰むため）。並び順はコストの低い順。
         /// 壁が minWalls 体に満たないプールでは、いる壁を全員入れる
         /// </summary>
         public static List<UnitStats> PickDeck(IReadOnlyList<UnitStats> pool, int count, int minWalls, Random random)
@@ -27,7 +27,21 @@ namespace MiniGame.PenguinWars.Battle
                 if (!deck.Contains(wall)) others.Add(wall);
             }
             deck.AddRange(Pick(others, count - deck.Count, random));
-            return Pick(deck, deck.Count, random);
+            SortByCost(deck);
+            return deck;
+        }
+
+        /// <summary>
+        /// 出撃ボタンを安い順に並べる。序盤は手持ちのさかなが少ないので、すぐ出せるキャラを左に固めて探しやすくするため。
+        /// 同じコストは UnitNo 順にして、並びを毎回同じにする
+        /// </summary>
+        public static void SortByCost(List<UnitStats> deck)
+        {
+            deck.Sort((a, b) =>
+            {
+                int byCost = a.Cost.CompareTo(b.Cost);
+                return byCost != 0 ? byCost : a.UnitNo.CompareTo(b.UnitNo);
+            });
         }
 
         /// <summary>pool が count より少なければ全員を並べ替えて返す</summary>

@@ -59,8 +59,8 @@ namespace MiniGame.PenguinWars
         {
             _world = new BattleWorld(CreateSettings(true, Environment.TickCount));
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
-            _world.SetDeck(Side.Left, ToDeck(leftDeckNos, statsByNo));
-            _world.SetDeck(Side.Right, ToDeck(rightDeckNos, statsByNo));
+            _world.SetDeck(Side.Left, ToSortedDeck(leftDeckNos, statsByNo));
+            _world.SetDeck(Side.Right, ToSortedDeck(rightDeckNos, statsByNo));
             RefreshViews();
         }
 
@@ -210,6 +210,17 @@ namespace MiniGame.PenguinWars
             return DeckRandomizer.PickDeck(allUnits, _balance.DeckSize, _balance.DeckMinWalls, random);
         }
 
+        /// <summary>
+        /// ドラフトは選んだ順に並ぶので、エンドレスと同じく安い順に並べ直す。
+        /// ゲストにはこの並びのまま編成が送られるので、並べ替えはホストだけでよい
+        /// </summary>
+        private static List<UnitStats> ToSortedDeck(IReadOnlyList<int> unitNos, Dictionary<int, UnitStats> statsByNo)
+        {
+            List<UnitStats> deck = ToDeck(unitNos, statsByNo);
+            DeckRandomizer.SortByCost(deck);
+            return deck;
+        }
+
         private static List<UnitStats> ToDeck(IReadOnlyList<int> unitNos, Dictionary<int, UnitStats> statsByNo)
         {
             var deck = new List<UnitStats>();
@@ -237,7 +248,7 @@ namespace MiniGame.PenguinWars
             }
             if (units.Count == 0)
             {
-                Debug.LogWarning("[BattleRunner] カタログが空です。Tools > MiniGame > Generate PenguinWars Units を実行してください");
+                Debug.LogWarning("[BattleRunner] カタログが空です。Tools > MiniGame > Rebuild PenguinWars を実行してください");
             }
             return units;
         }
