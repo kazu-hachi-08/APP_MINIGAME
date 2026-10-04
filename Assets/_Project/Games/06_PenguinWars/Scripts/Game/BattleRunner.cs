@@ -60,7 +60,7 @@ namespace MiniGame.PenguinWars
             });
 
             List<UnitStats> allUnits = CollectAllUnits();
-            _world.SetDeck(Side.Left, DeckRandomizer.Pick(allUnits, _balance.DeckSize, random));
+            _world.SetDeck(Side.Left, DeckRandomizer.PickDeck(allUnits, _balance.DeckSize, _balance.DeckMinWalls, random));
             // 敵は味方と同じデータから湧く（仕様書 §8.1）
             _world.SetEnemyWaves(new EnemyWaveDirector(_balance.CreateEnemyWaveSettings(), allUnits, random.Next()));
             RefreshViews();

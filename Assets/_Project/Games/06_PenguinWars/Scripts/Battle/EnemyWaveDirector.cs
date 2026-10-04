@@ -14,7 +14,8 @@ namespace MiniGame.PenguinWars.Battle
         private readonly Random _random;
         // 毎回 List を作らないよう使い回す
         private readonly List<UnitStats> _candidates = new List<UnitStats>();
-        private readonly UnitStats _boss;
+        // 5の倍数レベルで確定で出す大型の候補（仕様書 §8.1）
+        private readonly List<UnitStats> _bosses;
         private float _levelTimer;
         private float _spawnTimer;
 
@@ -24,7 +25,7 @@ namespace MiniGame.PenguinWars.Battle
             _settings = settings;
             _pool = pool;
             _random = new Random(seed);
-            _boss = FindMostExpensive(pool);
+            _bosses = FindBosses(pool);
             _levelTimer = settings.LevelUpInterval;
             // 開始直後に湧くと、味方を出す前に押し込まれるので1間隔待つ
             _spawnTimer = SpawnInterval;
@@ -44,9 +45,9 @@ namespace MiniGame.PenguinWars.Battle
         {
             spawns.Clear();
             bool leveledUp = TickLevel(deltaTime);
-            if (leveledUp && Level % _settings.BossLevelInterval == 0 && _boss != null)
+            if (leveledUp && Level % _settings.BossLevelInterval == 0 && _bosses.Count > 0)
             {
-                spawns.Add(_boss.Scaled(StatMultiplier));
+                spawns.Add(_bosses[_random.Next(_bosses.Count)].Scaled(StatMultiplier));
             }
 
             _spawnTimer -= deltaTime;
@@ -79,16 +80,19 @@ namespace MiniGame.PenguinWars.Battle
         }
 
         /// <summary>
-        /// 大型の代わり。役割データ（Phase 8）が揃うまでは、最もコストの高いキャラを大型として扱う
+        /// 大型（コスト上限を無視して出す）。大型が1体もいないプール（テスト用の小さい編成など）では最もコストの高いキャラで代わりにする
         /// </summary>
-        private static UnitStats FindMostExpensive(IReadOnlyList<UnitStats> pool)
+        private static List<UnitStats> FindBosses(IReadOnlyList<UnitStats> pool)
         {
-            UnitStats best = null;
+            var bosses = new List<UnitStats>();
+            UnitStats mostExpensive = null;
             foreach (UnitStats stats in pool)
             {
-                if (best == null || stats.Cost > best.Cost) best = stats;
+                if (stats.Role == UnitRole.Large) bosses.Add(stats);
+                if (mostExpensive == null || stats.Cost > mostExpensive.Cost) mostExpensive = stats;
             }
-            return best;
+            if (bosses.Count == 0 && mostExpensive != null) bosses.Add(mostExpensive);
+            return bosses;
         }
     }
 }

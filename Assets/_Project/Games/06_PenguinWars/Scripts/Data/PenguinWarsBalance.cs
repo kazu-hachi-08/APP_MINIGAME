@@ -48,6 +48,8 @@ namespace MiniGame.PenguinWars
         [Header("エンドレス（仕様書 §2.1・§8.1）")]
         [Tooltip("ランダム編成の人数")]
         [SerializeField] private int _deckSize = 10;
+        [Tooltip("ランダム編成に必ず入れる壁の数（壁がいないと序盤で詰むため）")]
+        [SerializeField] private int _deckMinWalls = 2;
         [Tooltip("敵レベルが上がる間隔（秒）")]
         [SerializeField] private float _enemyLevelUpInterval = 30f;
         [Tooltip("レベル1の敵の出現間隔（秒）")]
@@ -74,6 +76,7 @@ namespace MiniGame.PenguinWars
         public float CannonRangeRatio => _cannonRangeRatio;
         public int CannonDamage => _cannonDamage;
         public int DeckSize => _deckSize;
+        public int DeckMinWalls => _deckMinWalls;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
         public float SlowSpeedMultiplier => _slowSpeedMultiplier;

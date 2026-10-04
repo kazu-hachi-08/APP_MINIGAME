@@ -49,9 +49,9 @@
 
 ## 完了条件
 
-* [ ] 生成メニューで50体のアセットができる。再実行しても GUID が変わらない
-* [ ] EditMode テスト: 抽選に壁が2体以上・重複なし / 全キャラの数値が妥当範囲
-* [ ] 再生して毎回違う10体で遊べる。敵にもいろいろなキャラが出る
+* [ ] 生成メニューで50体のアセットができる。再実行しても GUID が変わらない（コード上は同じパスに上書きするので変わらない。Unity での確認待ち）
+* [x] EditMode テスト: 抽選に壁が2体以上・重複なし / 全キャラの数値が妥当範囲
+* [ ] 再生して毎回違う10体で遊べる。敵にもいろいろなキャラが出る（再生での確認待ち）
 
 ## ユーザー確認手順
 
@@ -60,6 +60,28 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * `Scripts/Battle/UnitRole.cs`（役割 enum: Wall / Attacker / Ranged / Disruptor / Large）
+  * `Scripts/Battle/StatTweak.cs`（個別倍率 Hp / Attack / Range / Speed / Cooldown。既定 1）
+  * `Scripts/Battle/UnitDefinition.cs`（定義表の1行。`With(StatTweak)` で個別倍率を付ける）
+  * `Scripts/Battle/UnitDefinitions.cs`（**全50体の定義表**。No・名前・役割・コスト・単体/範囲・能力・個別倍率。能力の確率・秒数の定数もここ）
+  * `Scripts/Battle/UnitStatFormula.cs`（役割ごとの RoleProfile〔コスト帯・コスト当たり体力/火力・射程・速度・攻撃間隔・発生・ノックバック回数〕から `Calculate(UnitDefinition)` で UnitStats を出す。範囲攻撃は火力×0.75、能力1つごとに体力・火力×0.9）
+  * `Editor/UnitLooks.cs`（全キャラの見た目 `Get(no)`。旧 `PenguinUnitAssetGenerator.Looks` をここへ移した）
+  * `Tests/Editor/UnitRosterTests.cs`（50体揃っている・コストが役割の帯の中・数値が正で発生＜攻撃間隔・抽選の壁2体以上/重複なし/シードで変わる・大型が役割から選ばれる）
+  * 変更: `UnitStats`（`Role` 追加）、`PenguinUnitData`（`_role` 追加・`ToStats` で渡す）、`DeckRandomizer`（`PickDeck(pool, count, minWalls, random)` 追加）、`EnemyWaveDirector`（5の倍数レベルの確定出現を「役割が大型のキャラからランダム」に。大型がいないプールでは最もコストの高いキャラ）、`PenguinWarsBalance`（`_deckMinWalls = 2`）、`BattleRunner`（`PickDeck` を使う）、`PenguinUnitAssetGenerator`（定義表＋計算式＋UnitLooks から50体を書き込む）
 * 公開API（次フェーズが使うもの）:
+  * `UnitDefinitions.All` / `UnitStatFormula.Calculate` / `UnitStatFormula.IsCostInRoleRange`
+  * `DeckRandomizer.PickDeck`（Phase 10 の対戦のランダム編成もこれでよい）
+  * `UnitLooks.Get(no)`（Phase 9 はここの辞書にパーツを足す）
+  * `PenguinUnitData.Role`
 * 計画・仕様から変えた点:
+  * `UnitRole`・計算式・定義表は計画では Data / Editor だったが、**純C#の Battle に置いた**。テスト asmdef は Editor フォルダのコード（Assembly-CSharp-Editor）を参照できず、「全50体の数値が正」のテストを書けないため。また `DeckRandomizer`（Battle）が役割を見る必要がある
+  * 見た目は定義表に入れず `Editor/UnitLooks.cs` に分けた（`PenguinLook` は Unity の型で Battle から使えないため。数値と見た目のファイルが分かれるので、2人で別々に触ってもぶつからない）
+  * 生成メニューは **既存アセットも毎回上書き** する（Phase 5 までは数値を上書きしなかった）。調整は定義表で行い、アセットを Inspector で直しても次の生成・Rebuild で戻る。スプライト欄は触らない
+  * おのペンギンは Phase 5 では範囲だったが、仕様書 §5.5 に合わせて単体にした
+  * 大型の火力は計画の例より上げた（コスト当たり火力 0.04。0.025 だとコスト600のアタッカーと同じくらいの火力しかなかったため）
+  * 仮の見た目: 体色（こおり・ひな・ふぶき・じょおう・ひょうざん等）、横長/縦長（すもう・ムキムキ・ながあし・タワー）、大型は拡大率2（きょだいは3）
 * 次フェーズへの注意:
+  * テストは Battle と Tests の .cs を集めた一時プロジェクトで `dotnet test` し 50件合格。Unity 側は生成済み csproj を複製して新ファイルを足した一時プロジェクトで `dotnet build` しエラー0（Unity での生成・再生は未確認）
+  * 新しいファイルの .meta は Unity が作る
+  * 見た目を変えた既存キャラ（No.2〜50 のうち UnitLooks を変えたもの）は、Rebuild だけでは絵が作り直されないことがある（足りない絵があるときだけ全体を作るため）。Phase 9 でも `Generate PenguinWars Art` を実行してもらう
+  * 状態異常の秒数・確率は `UnitDefinitions` の定数。役割ごとの基準値は `UnitStatFormula.Profiles`

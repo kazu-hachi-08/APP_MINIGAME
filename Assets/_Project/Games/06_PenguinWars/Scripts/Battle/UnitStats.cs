@@ -9,6 +9,7 @@ namespace MiniGame.PenguinWars.Battle
     public class UnitStats
     {
         public int UnitNo { get; set; }
+        public UnitRole Role { get; set; }
         public int Cost { get; set; }
         public float Cooldown { get; set; }
         public int MaxHp { get; set; }

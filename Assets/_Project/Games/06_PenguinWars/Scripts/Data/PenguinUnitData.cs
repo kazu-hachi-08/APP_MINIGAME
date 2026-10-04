@@ -12,6 +12,8 @@ namespace MiniGame.PenguinWars
         [Tooltip("仕様書 §5.5 のキャラNo。編成やオンライン同期はこの番号で指す")]
         [SerializeField] private int _no;
         [SerializeField] private string _displayName;
+        [Tooltip("役割（仕様書 §5.5）。ランダム編成の「壁2体以上」や大型の確定出現で使う")]
+        [SerializeField] private UnitRole _role;
         [SerializeField] private int _cost = 100;
         [Tooltip("再生産時間（秒）")]
         [SerializeField] private float _cooldown = 2f;
@@ -36,6 +38,7 @@ namespace MiniGame.PenguinWars
 
         public int No => _no;
         public string DisplayName => _displayName;
+        public UnitRole Role => _role;
         public PenguinLook Look => _look;
 
         public UnitSpriteSet GetSprites(Side side)
@@ -49,6 +52,7 @@ namespace MiniGame.PenguinWars
             return new UnitStats
             {
                 UnitNo = _no,
+                Role = _role,
                 Cost = _cost,
                 Cooldown = _cooldown,
                 MaxHp = _maxHp,

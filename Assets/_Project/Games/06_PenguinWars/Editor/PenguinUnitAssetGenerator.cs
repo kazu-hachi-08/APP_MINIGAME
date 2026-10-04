@@ -8,7 +8,9 @@ namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
     /// キャラデータ（Data/Units/Unit_NNN.asset）とカタログを作る。
-    /// 既にあるアセットの数値は上書きしない（遊びながら調整した値を消さないため）。カタログは毎回 Data/Units/ から集め直す
+    /// 数値は UnitDefinitions＋UnitStatFormula、見た目は UnitLooks が正。既にあるアセットも毎回上書きする
+    /// （調整の置き場所を定義表1か所にするため。同じパスに書き直すので GUID は変わらず、編成や参照は切れない）。
+    /// カタログは毎回 Data/Units/ から集め直す
     /// </summary>
     public static class PenguinUnitAssetGenerator
     {
@@ -16,77 +18,6 @@ namespace MiniGame.PenguinWars.Editor
         private const string UnitsDirectory = DataDirectory + "/Units";
         private const string CatalogPath = DataDirectory + "/PenguinUnitCatalog.asset";
         private const string LogPrefix = "[PenguinUnitAssetGenerator]";
-
-        private readonly struct UnitDef
-        {
-            public readonly int No;
-            public readonly string Name;
-            public readonly int Cost;
-            public readonly float Cooldown;
-            public readonly int Hp;
-            public readonly int Attack;
-            public readonly float Range;
-            public readonly float Interval;
-            public readonly float Windup;
-            public readonly float Speed;
-            public readonly bool Area;
-            public readonly int KnockbackCount;
-            public readonly UnitAbility[] Abilities;
-
-            public UnitDef(int no, string name, int cost, float cooldown, int hp, int attack,
-                float range, float interval, float windup, float speed, bool area, int knockbackCount,
-                params UnitAbility[] abilities)
-            {
-                No = no;
-                Name = name;
-                Cost = cost;
-                Cooldown = cooldown;
-                Hp = hp;
-                Attack = attack;
-                Range = range;
-                Interval = interval;
-                Windup = windup;
-                Speed = speed;
-                Area = area;
-                KnockbackCount = knockbackCount;
-                Abilities = abilities;
-            }
-        }
-
-        // 役割と能力が一通り揃う仮の10体（実装計画 Phase 5）。数値は手入れで、Phase 8 で計算式に置き換える
-        // 並び: No, 名前, コスト, 再生産, HP, 攻撃, 射程, 攻撃間隔, 発生, 速度, 範囲, ノックバック回数, 能力…
-        private static readonly UnitDef[] PlaceholderUnits =
-        {
-            new UnitDef(1, "ペンギン", 75, 2f, 100, 8, 1.4f, 1.2f, 0.3f, 1.0f, false, 3),
-            new UnitDef(2, "かべペンギン", 150, 4f, 350, 5, 1.4f, 1.5f, 0.3f, 0.8f, false, 2),
-            new UnitDef(4, "ヘルメットペンギン", 150, 5f, 250, 8, 1.4f, 1.2f, 0.3f, 0.8f, false, 1,
-                new UnitAbility(UnitAbilityType.Steadfast)),
-            new UnitDef(11, "おのペンギン", 300, 6f, 200, 40, 1.5f, 1.5f, 0.5f, 1.0f, true, 3),
-            new UnitDef(13, "ボクサーペンギン", 350, 7f, 220, 35, 1.4f, 1.0f, 0.3f, 1.2f, false, 3,
-                new UnitAbility(UnitAbilityType.Knockback, 0.3f)),
-            new UnitDef(19, "バイクペンギン", 500, 10f, 250, 60, 1.4f, 1.5f, 0.3f, 2.0f, false, 3,
-                new UnitAbility(UnitAbilityType.CastleKiller)),
-            new UnitDef(23, "ゆみペンギン", 450, 8f, 120, 30, 3.5f, 2.5f, 0.6f, 0.8f, false, 2),
-            new UnitDef(26, "のっぽペンギン", 900, 15f, 300, 50, 4.5f, 3.0f, 0.8f, 0.7f, true, 2),
-            new UnitDef(34, "れいとうペンギン", 600, 12f, 250, 15, 2.5f, 2.0f, 0.4f, 0.9f, false, 3,
-                new UnitAbility(UnitAbilityType.Freeze, 0.5f, 2f)),
-            new UnitDef(43, "きょだいペンギン", 2500, 40f, 2000, 150, 2.0f, 3.0f, 1.0f, 0.6f, true, 1,
-                new UnitAbility(UnitAbilityType.Steadfast)),
-        };
-
-        // 見た目（仕様書 §5.5「見た目」列。実装計画 Phase 6）。ここに無い No は基本ペンギンになる
-        private static readonly Dictionary<int, PenguinLook> Looks = new Dictionary<int, PenguinLook>
-        {
-            [2] = new PenguinLook(body: "wide"),
-            [4] = new PenguinLook(head: "helmet"),
-            [11] = new PenguinLook(hand: "axe"),
-            [13] = new PenguinLook(hand: "glove"),
-            [19] = new PenguinLook(back: "bike"),
-            [23] = new PenguinLook(hand: "bow"),
-            [26] = new PenguinLook(body: "tall"),
-            [34] = new PenguinLook(back: "freezer"),
-            [43] = new PenguinLook(scale: 3),
-        };
 
         [MenuItem("Tools/MiniGame/Generate PenguinWars Units", false, 8)]
         public static void Generate()
@@ -99,9 +30,9 @@ namespace MiniGame.PenguinWars.Editor
         public static PenguinUnitCatalog EnsureAssets()
         {
             EnsureDirectory(UnitsDirectory);
-            foreach (UnitDef def in PlaceholderUnits)
+            foreach (UnitDefinition def in UnitDefinitions.All)
             {
-                EnsureUnit(def);
+                WriteUnit(def);
             }
             AssetDatabase.SaveAssets();
 
@@ -111,52 +42,45 @@ namespace MiniGame.PenguinWars.Editor
             return catalog;
         }
 
-        private static void EnsureUnit(UnitDef def)
+        private static void WriteUnit(UnitDefinition def)
         {
             string path = $"{UnitsDirectory}/Unit_{def.No:000}.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<PenguinUnitData>(path);
-            if (existing == null)
-            {
-                CreateUnit(def, path);
-                return;
-            }
+            var unit = AssetDatabase.LoadAssetAtPath<PenguinUnitData>(path);
+            bool isNew = unit == null;
+            if (isNew) unit = ScriptableObject.CreateInstance<PenguinUnitData>();
 
-            // Phase 5 までに作ったアセットには見た目が無い。数値と違い手で調整していないはずなので、既定のままなら書き足す
-            if (existing.Look.IsDefault && Looks.ContainsKey(def.No))
-            {
-                var so = new SerializedObject(existing);
-                WriteLook(so.FindProperty("_look"), def.No);
-                so.ApplyModifiedPropertiesWithoutUndo();
-                EditorUtility.SetDirty(existing);
-            }
-        }
-
-        private static void CreateUnit(UnitDef def, string path)
-        {
-            var unit = ScriptableObject.CreateInstance<PenguinUnitData>();
+            // 生成済みのスプライト欄は触らない（アート生成メニューが書き込む）
             var so = new SerializedObject(unit);
-            so.FindProperty("_no").intValue = def.No;
-            so.FindProperty("_displayName").stringValue = def.Name;
-            so.FindProperty("_cost").intValue = def.Cost;
-            so.FindProperty("_cooldown").floatValue = def.Cooldown;
-            so.FindProperty("_maxHp").intValue = def.Hp;
-            so.FindProperty("_attack").intValue = def.Attack;
-            so.FindProperty("_range").floatValue = def.Range;
-            so.FindProperty("_attackInterval").floatValue = def.Interval;
-            so.FindProperty("_windup").floatValue = def.Windup;
-            so.FindProperty("_moveSpeed").floatValue = def.Speed;
-            so.FindProperty("_isAreaAttack").boolValue = def.Area;
-            so.FindProperty("_knockbackCount").intValue = def.KnockbackCount;
-            WriteAbilities(so.FindProperty("_abilities"), def.Abilities);
-            WriteLook(so.FindProperty("_look"), def.No);
+            WriteStats(so, def.Name, UnitStatFormula.Calculate(def));
+            WriteLook(so.FindProperty("_look"), UnitLooks.Get(def.No));
             so.ApplyModifiedPropertiesWithoutUndo();
-            AssetDatabase.CreateAsset(unit, path);
+
+            if (isNew) AssetDatabase.CreateAsset(unit, path);
+            else EditorUtility.SetDirty(unit);
         }
 
-        private static void WriteAbilities(SerializedProperty list, UnitAbility[] abilities)
+        private static void WriteStats(SerializedObject so, string name, UnitStats stats)
         {
-            list.arraySize = abilities.Length;
-            for (int i = 0; i < abilities.Length; i++)
+            so.FindProperty("_no").intValue = stats.UnitNo;
+            so.FindProperty("_displayName").stringValue = name;
+            so.FindProperty("_role").enumValueIndex = (int)stats.Role;
+            so.FindProperty("_cost").intValue = stats.Cost;
+            so.FindProperty("_cooldown").floatValue = stats.Cooldown;
+            so.FindProperty("_maxHp").intValue = stats.MaxHp;
+            so.FindProperty("_attack").intValue = stats.Attack;
+            so.FindProperty("_range").floatValue = stats.Range;
+            so.FindProperty("_attackInterval").floatValue = stats.AttackInterval;
+            so.FindProperty("_windup").floatValue = stats.Windup;
+            so.FindProperty("_moveSpeed").floatValue = stats.MoveSpeed;
+            so.FindProperty("_isAreaAttack").boolValue = stats.IsAreaAttack;
+            so.FindProperty("_knockbackCount").intValue = stats.KnockbackCount;
+            WriteAbilities(so.FindProperty("_abilities"), stats.Abilities);
+        }
+
+        private static void WriteAbilities(SerializedProperty list, IReadOnlyList<UnitAbility> abilities)
+        {
+            list.arraySize = abilities.Count;
+            for (int i = 0; i < abilities.Count; i++)
             {
                 SerializedProperty entry = list.GetArrayElementAtIndex(i);
                 // enum の SerializedProperty は宣言順の添字で指定する
@@ -166,9 +90,8 @@ namespace MiniGame.PenguinWars.Editor
             }
         }
 
-        private static void WriteLook(SerializedProperty look, int no)
+        private static void WriteLook(SerializedProperty look, PenguinLook def)
         {
-            if (!Looks.TryGetValue(no, out PenguinLook def)) def = new PenguinLook();
             look.FindPropertyRelative("_body").stringValue = def.Body;
             look.FindPropertyRelative("_bodyColor").stringValue = def.BodyColor;
             look.FindPropertyRelative("_head").stringValue = def.Head;
