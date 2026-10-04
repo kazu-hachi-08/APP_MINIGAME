@@ -28,6 +28,17 @@
 
 ## 2. ルール・試合の流れ
 
+### 2.0 タイトル
+
+メニューからペンギン大戦争を選ぶと、まずゲーム固有のタイトル画面（`PenguinWarsTitlePanel`）が出る。
+
+* 戦場の上に半透明の幕をかけ、ロゴ「ペンギン大戦争 / PENGUIN WARS」がふわふわ揺れる。その下でランダムな5体（全50体から重複なし・開くたびに選び直す）がぴょこぴょこ跳ねる
+* ボタンは「スタート」（→ モード選択）・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
+* 「設定」は BGM ON/OFF・BGM音量・SE音量（`PenguinWarsSettingsPanel`）。値は共通の `AudioManager` が `PlayerPrefs` に保存するので、ポーズ画面のスライダーや次回の起動とも同じ値になる
+* BGM ON/OFF は BGM だけを止める（SE は鳴る）。OFF 中は BGM 音量のスライダーを触れない
+* タイトル〜モード選択〜ドラフト〜編成発表はタイトルBGM、START! からプレイ中はプレイBGMに切り替える
+* リトライ（エンドレス）はタイトルを飛ばしてすぐ編成発表から始める
+
 ### 2.1 エンドレス
 
 ```text
@@ -85,6 +96,7 @@ START!（1.0秒）
 
 | 状態 | 内容 |
 | --- | --- |
+| `Title` | タイトル画面（§2.0） |
 | `ModeSelect` | モード選択・接続待ち |
 | `Draft` | ドラフト中（オンラインのみ） |
 | `Intro` | 編成発表（確認）・START! 表示 |
@@ -426,7 +438,9 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 
 * 演出は `BattleEventPresenter` が `BattleEvent` を受けて出す（ゲストも届いたイベントを同じ所に流す）。数の上限・揺れの強さは Inspector で調整できる
 * SE は `PenguinWarsAudio` がコードで生成する6種（出撃・ヒット・撃破・砲・レベルUP・城崩れ）。素材の差し込み欄があり、入れればそちらを鳴らす
-* BGM はプロジェクトに素材が無いため、`PenguinWarsAudio._bgmClip` の差し込み欄だけ用意している（未設定なら鳴らさない）
+* BGM は `Audio/` に決まった名前のファイルを置くと、`Rebuild PenguinWars` で `PenguinWarsAudio` に自動で差し込まれる（Scene は作り直すたびに上書きされるので、Inspector で手で入れると消えるため）
+  * `Audio/PenguinWars_TitleBgm.*`（タイトル〜編成発表）・`Audio/PenguinWars_BattleBgm.*`（プレイ中）。拡張子は mp3 / ogg / wav など何でもよい
+  * 無いBGMは鳴らさない。プレイBGMが無いときはタイトルBGMを流し続ける
 
 ---
 
@@ -503,7 +517,7 @@ View（UnitView / CastleView / HUD / 音・演出）
 
 * オンラインではホストだけが `BattleWorld` を動かし、ゲストは届いた状態を View に流すだけ（§10）
 * `Battle` は独立した asmdef（`noEngineReferences`）。ScriptableObject は参照せず、SO → `UnitStats` に変換して渡す。乱数は `System.Random`（シード指定可能）
-* 共通基盤（`Assets/_Project/Common/`）への変更はタイトル登録・画面向き（横）・シーン名だけ
+* 共通基盤（`Assets/_Project/Common/`）への変更はタイトル登録・画面向き（横）・シーン名と、`AudioManager` の BGM だけ OFF（`IsBgmOff`）・`UIDialogBuilder.CreateVolumeSlider` の公開だけ
 
 ### 11.2 フォルダ
 
@@ -512,6 +526,7 @@ Assets/_Project/Games/06_PenguinWars/
  ├ Scenes/PenguinWarsScene.unity   PenguinWarsSceneBuilder で生成（手で編集しない）
  ├ Data/                           PenguinWarsBalance.asset・PenguinUnitCatalog.asset
  │  └ Units/                       Unit_001〜050.asset（Generate PenguinWars Units で生成）
+ ├ Audio/                          BGM素材（PenguinWars_TitleBgm / PenguinWars_BattleBgm。§9）
  ├ Sprites/                        生成したドット絵（Units / 戦場 / Effects。1単位＝16px）
  ├ Scripts/
  │  ├ Battle/                      純C#の戦闘ロジック（MiniGame.PenguinWars.Battle.asmdef）
@@ -543,14 +558,15 @@ Assets/_Project/Games/06_PenguinWars/
 | Scripts/Game/ | PenguinWarsGameManager（.Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／オンラインの流れ／ドラフトと編成確認 |
 | | BattleRunner | World を固定ステップで動かし、View に状態を流す。エンドレス・ホスト・ゲストの初期化 |
 | | KeyboardCommandInput / ICommandSink | PC のキー操作／ゲストのコマンド送り先 |
-| | PenguinWarsAudio / EndlessRecord | 生成SE・BGM欄／ベスト記録 |
+| | PenguinWarsAudio / EndlessRecord | 生成SE・タイトル／プレイBGM／ベスト記録 |
 | Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView | ユニットの絵・コマ選び／使い回し／コマの組／HPバー |
 | | CastleView / CastleCollapse / BattleCamera | 城（ゲート表示）／崩れる演出／スクロール・揺れ |
 | | BattleEventPresenter / Effects/ | イベント → 演出・音／煙・火花・魂・ビーム（使い回しのプール） |
 | Scripts/UI/ | UnitButton / UnitButtonBar / WalletButton / CannonButton / BattleHud | 下部の操作ボタン／時間・メッセージ・LEVEL表示 |
 | | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／役割・能力の表示名 |
+| | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
-| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft） | Scene生成（1ファイルが大きくならないよう partial で分割） |
+| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .Title） | Scene生成（1ファイルが大きくならないよう partial で分割） |
 | | PenguinUnitAssetGenerator / UnitLooks | 50体のアセット生成（毎回上書き）／見た目の表 |
 | Editor/Art/ | PenguinArtGenerator / PenguinFrameComposer / PenguinBodyPatterns / PenguinPartPatterns / PenguinPalette / FieldArtGenerator / EffectArtGenerator / PenguinSpriteWriter | ドット絵の生成。体・パーツは文字列（1文字＝1ピクセル）で持ち、コマごとにずらして重ねる |
 | Tests/Editor/ | BattleWorldTests / EconomyTests / EndlessTests / AbilityTests / UnitRosterTests / OnlineSyncTests / DraftTests / SideTests | Battle の EditModeテスト |
@@ -575,7 +591,8 @@ Assets/_Project/Games/06_PenguinWars/
 * ノックバックのコマは全キャラ「立ち姿を90度倒す」なので、かまくら・戦車・クジラは乗り物ごと倒れる
 * 働きペンギンのレベルアップに音・演出はない
 * 状態異常（止まる・遅い）は色だけで、専用の演出はない
-* BGM は未設定（素材の差し込み欄のみ）。SEは仮の生成音
+* BGM 素材はリポジトリに入っていない（`Audio/` に置けば鳴る。§9）。SEは仮の生成音
+* モード選択（共通の `ModeSelectPanel`）からタイトルへ戻るボタンはない
 * ドラフトにキーボード操作はない
 * 途中セーブ・再接続はしない
 

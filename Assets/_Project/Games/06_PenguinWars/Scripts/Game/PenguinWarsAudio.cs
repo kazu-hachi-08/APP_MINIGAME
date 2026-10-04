@@ -23,7 +23,10 @@ namespace MiniGame.PenguinWars
         [SerializeField] private AudioClip _cannonClip;
         [SerializeField] private AudioClip _levelUpClip;
         [SerializeField] private AudioClip _collapseClip;
-        [Tooltip("プレイ中のBGM。未設定なら鳴らさない（プロジェクトにBGM素材がまだ無いため）")]
+        [Header("BGM（Audio/ に決まった名前で置くと Rebuild PenguinWars で自動で差し込まれる。仕様書 §9）")]
+        [Tooltip("タイトル〜編成発表のBGM。未設定なら鳴らさない")]
+        [SerializeField] private AudioClip _titleBgmClip;
+        [Tooltip("プレイ中のBGM。未設定ならタイトルのBGMを流し続ける")]
         [SerializeField] private AudioClip _bgmClip;
 
         [Header("Volume")]
@@ -65,18 +68,23 @@ namespace MiniGame.PenguinWars
 
         public void PlayCollapse() => Play(_collapseClip, _cannonVolume, 1f, _defaultMinInterval);
 
-        public void PlayBgm()
-        {
-            if (_bgmClip == null || !AudioManager.HasInstance) return;
+        public void PlayTitleBgm() => PlayBgm(_titleBgmClip);
 
-            AudioManager.Instance.PlayBgmClip(_bgmClip, _bgmFadeSeconds, _bgmVolume);
-        }
+        public void PlayBattleBgm() => PlayBgm(_bgmClip);
 
         public void StopBgm()
         {
-            if (_bgmClip == null || !AudioManager.HasInstance) return;
+            if (!AudioManager.HasInstance) return;
 
             AudioManager.Instance.StopBgm(_bgmFadeSeconds);
+        }
+
+        /// <summary>素材が無いときは何もしない（止めると、前に流れていた曲まで消えて無音になるため）</summary>
+        private void PlayBgm(AudioClip clip)
+        {
+            if (clip == null || !AudioManager.HasInstance) return;
+
+            AudioManager.Instance.PlayBgmClip(clip, _bgmFadeSeconds, _bgmVolume);
         }
 
         private static float RandomPitch() => UnityEngine.Random.Range(1f - PitchJitter, 1f + PitchJitter);

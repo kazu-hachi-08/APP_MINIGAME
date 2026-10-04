@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -65,16 +65,20 @@ namespace MiniGame.PenguinWars.Editor
             DeckRevealPanel deckRevealPanel = CreateDeckRevealPanel(canvas, catalog);
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
+            // 最初に見える画面なのでモード選択より手前
+            PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
             (BattleEventPresenter presenter, PenguinWarsAudio audio) =
                 CreateEffects(balance, battleRunner, battleCamera, hud, leftCastle, rightCastle);
+            AssignBgmClips(audio);
 
             var gameManager = new GameObject("PenguinWarsGameManager").AddComponent<PenguinWarsGameManager>();
             var so = new SerializedObject(gameManager);
             so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_balance", balance), ("_battleCamera", battleCamera), ("_hud", hud),
-                ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel), ("_presenter", presenter), ("_audio", audio));
+                ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel), ("_presenter", presenter), ("_audio", audio),
+                ("_titlePanel", titlePanel));
             SetRefs(gameManager, ("_modeSelectPanel", online.ModeSelectPanel), ("_onlineSession", online.Session),
                 ("_onlineLink", online.Link), ("_draftPanel", draftPanel), ("_deckRevealPanel", deckRevealPanel));
             SetRefs(pauseButton, ("_gameManager", gameManager));
