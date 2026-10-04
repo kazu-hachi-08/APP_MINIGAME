@@ -37,6 +37,8 @@ namespace MiniGame.Editor
             var codeInput = CreateCodeInput(menuObj.transform, new Vector2(-150f, -120f), new Vector2(400f, 90f));
             var joinButton = CreatePanelButton(menuObj.transform, "Btn_Join", "参加する", new Vector2(230f, -120f),
                 new Vector2(240f, 90f), new Color(0.3f, 0.33f, 0.4f));
+            var titleButton = CreatePanelButton(menuObj.transform, "Btn_Title", "タイトルへ", new Vector2(0f, -215f),
+                new Vector2(260f, 64f), new Color(0.3f, 0.33f, 0.4f));
 
             // 接続待ち
             var waitingObj = UIDialogBuilder.CreateUIObject("Waiting", boxObj.transform);
@@ -62,6 +64,7 @@ namespace MiniGame.Editor
             so.FindProperty("_hostButton").objectReferenceValue = hostButton;
             so.FindProperty("_joinButton").objectReferenceValue = joinButton;
             so.FindProperty("_codeInput").objectReferenceValue = codeInput;
+            so.FindProperty("_titleButton").objectReferenceValue = titleButton;
             so.FindProperty("_waitingGroup").objectReferenceValue = waitingObj;
             so.FindProperty("_statusText").objectReferenceValue = statusText;
             so.FindProperty("_cancelButton").objectReferenceValue = cancelButton;

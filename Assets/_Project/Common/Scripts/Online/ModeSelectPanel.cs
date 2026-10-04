@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using MiniGame.Common.Scene;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -20,6 +21,8 @@ namespace MiniGame.Common.Online
         [SerializeField] private Button _hostButton;
         [SerializeField] private Button _joinButton;
         [SerializeField] private InputField _codeInput;
+        [Tooltip("ゲームに入った直後に遊ばずに抜けられるようにする。未設定なら出さない（再生成前のSceneでも壊れないように）")]
+        [SerializeField] private Button _titleButton;
 
         [Header("Waiting")]
         [SerializeField] private GameObject _waitingGroup;
@@ -51,6 +54,7 @@ namespace MiniGame.Common.Online
             _cancelButton.onClick.AddListener(CancelWaiting);
             _copyButton.onClick.AddListener(CopyRoomCode);
             if (_startButton != null) _startButton.onClick.AddListener(StartMatch);
+            if (_titleButton != null) _titleButton.onClick.AddListener(ReturnToTitle);
         }
 
         private void OnEnable()
@@ -168,6 +172,22 @@ namespace MiniGame.Common.Online
         {
             _session.Leave();
             ShowMenu();
+        }
+
+        /// <summary>
+        /// メニュー表示中はまだ接続していないので、セッションを切らずにそのまま戻ってよい。
+        /// 接続待ち中は「キャンセル」でメニューに戻ってから押してもらう
+        /// </summary>
+        private void ReturnToTitle()
+        {
+            if (SceneLoader.HasInstance)
+            {
+                SceneLoader.Instance.LoadTitleScene();
+            }
+            else
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.Title);
+            }
         }
 
         private void StartMatch()
