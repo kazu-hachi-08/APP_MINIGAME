@@ -17,9 +17,11 @@ namespace MiniGame.PenguinWars
         [SerializeField] private RectTransform _logo;
         [SerializeField] private Image[] _paradeIcons;
         [SerializeField] private Button _startButton;
+        [SerializeField] private Button _zukanButton;
         [SerializeField] private Button _settingsButton;
         [SerializeField] private Button _backButton;
         [SerializeField] private PenguinWarsSettingsPanel _settingsPanel;
+        [SerializeField] private PenguinZukanPanel _zukanPanel;
 
         [Header("動き")]
         [SerializeField] private float _logoBobHeight = 12f;
@@ -39,6 +41,7 @@ namespace MiniGame.PenguinWars
             _startButton.onClick.AddListener(() => Close(_onStart));
             _backButton.onClick.AddListener(() => Close(_onBack));
             _settingsButton.onClick.AddListener(OpenSettings);
+            _zukanButton.onClick.AddListener(OpenZukan);
 
             _logoBasePosition = _logo.anchoredPosition;
             _iconBasePositions = new Vector2[_paradeIcons.Length];
@@ -51,6 +54,7 @@ namespace MiniGame.PenguinWars
             _onBack = onBack;
             PickParade();
             _settingsPanel.Hide();
+            _zukanPanel.Hide();
             gameObject.SetActive(true);
         }
 
@@ -88,6 +92,12 @@ namespace MiniGame.PenguinWars
         {
             PlayClick();
             _settingsPanel.Show();
+        }
+
+        private void OpenZukan()
+        {
+            PlayClick();
+            _zukanPanel.Show();
         }
 
         private void Close(Action next)

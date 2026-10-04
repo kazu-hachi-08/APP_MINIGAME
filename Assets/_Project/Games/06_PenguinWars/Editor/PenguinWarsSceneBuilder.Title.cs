@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>ゲーム固有のタイトル画面・音の設定パネルと、Audio/ に置いたBGM素材の差し込み（仕様書 §2.0・§9）</summary>
+    /// <summary>ゲーム固有のタイトル画面・音の設定パネル（ずかんは .Zukan）と、Audio/ に置いたBGM素材の差し込み（仕様書 §2.0・§9）</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         private const string AudioDirectory = RootDirectory + "/Audio";
@@ -38,8 +38,9 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 StartButtonSize = new Vector2(620f, 130f);
         private static readonly Vector2 StartButtonPosition = new Vector2(0f, -220f);
         private static readonly Vector2 TitleSubButtonSize = new Vector2(380f, 100f);
-        private static readonly Vector2 SettingsButtonPosition = new Vector2(-210f, -380f);
-        private static readonly Vector2 BackButtonPosition = new Vector2(210f, -380f);
+        private static readonly Vector2 ZukanButtonPosition = new Vector2(-420f, -380f);
+        private static readonly Vector2 SettingsButtonPosition = new Vector2(0f, -380f);
+        private static readonly Vector2 BackButtonPosition = new Vector2(420f, -380f);
         private static readonly Color StartButtonColor = new Color(0.95f, 0.55f, 0.15f);
         private static readonly Color TitleSubButtonColor = new Color(0.18f, 0.26f, 0.4f, 0.95f);
 
@@ -71,9 +72,11 @@ namespace MiniGame.PenguinWars.Editor
             }
 
             Button start = CreateTitleButton(panelObj.transform, "Btn_Start", "スタート", StartButtonSize, StartButtonPosition, StartButtonColor);
+            Button zukan = CreateTitleButton(panelObj.transform, "Btn_Zukan", "ずかん", TitleSubButtonSize, ZukanButtonPosition, TitleSubButtonColor);
             Button settings = CreateTitleButton(panelObj.transform, "Btn_Settings", "設定", TitleSubButtonSize, SettingsButtonPosition, TitleSubButtonColor);
             Button back = CreateTitleButton(panelObj.transform, "Btn_Back", "メニューに戻る", TitleSubButtonSize, BackButtonPosition, TitleSubButtonColor);
-            // 設定はタイトルの上に重ねたいので、タイトルの子の一番最後に作る
+            // ずかん・設定はタイトルの上に重ねたいので、タイトルの子の一番最後に作る
+            PenguinZukanPanel zukanPanel = CreateZukanPanel(panelObj.transform, catalog);
             PenguinWarsSettingsPanel settingsPanel = CreateSettingsPanel(panelObj.transform);
 
             var panel = panelObj.AddComponent<PenguinWarsTitlePanel>();
@@ -81,7 +84,7 @@ namespace MiniGame.PenguinWars.Editor
             SerializedArray(so, "_paradeIcons", icons);
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_catalog", catalog), ("_logo", logo), ("_startButton", start), ("_settingsButton", settings),
-                ("_backButton", back), ("_settingsPanel", settingsPanel));
+                ("_backButton", back), ("_settingsPanel", settingsPanel), ("_zukanButton", zukan), ("_zukanPanel", zukanPanel));
             panelObj.SetActive(false);
             return panel;
         }

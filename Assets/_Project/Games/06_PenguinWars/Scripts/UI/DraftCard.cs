@@ -8,9 +8,6 @@ namespace MiniGame.PenguinWars
     /// <summary>ドラフトの候補カード1枚（仕様書 §6）。見た目・名前・コスト・役割・能力を描くだけで、選んだ後の進行は DraftPanel が持つ</summary>
     public class DraftCard : MonoBehaviour
     {
-        private const string RangeArea = "範囲";
-        private const string RangeSingle = "単体";
-
         [SerializeField] private Button _button;
         [SerializeField] private Image _icon;
         [SerializeField] private Text _nameLabel;
@@ -38,7 +35,7 @@ namespace MiniGame.PenguinWars
 
             UnitStats stats = data != null ? data.ToStats() : null;
             _costLabel.text = stats != null ? stats.Cost.ToString() : string.Empty;
-            _roleLabel.text = stats != null ? $"{UnitLabels.Role(stats.Role)}・{(stats.IsAreaAttack ? RangeArea : RangeSingle)}" : string.Empty;
+            _roleLabel.text = stats != null ? $"{UnitLabels.Role(stats.Role)}・{UnitLabels.AttackRange(stats.IsAreaAttack)}" : string.Empty;
             _abilityLabel.text = stats != null ? UnitLabels.Abilities(stats.Abilities) : string.Empty;
             SetState(true, false);
         }
