@@ -20,7 +20,9 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _strikeHoldSeconds = 0.25f;
         [Tooltip("HPバーを頭のてっぺんからどれだけ上に置くか")]
         [SerializeField] private float _hpBarMargin = 0.2f;
-        [Tooltip("止められている間の色。状態異常が見て分かるようにする仮の表現（Phase 7 で演出に置き換える）")]
+        [Tooltip("ノックバックで後ろに跳ねる高さ（仕様書 §9）")]
+        [SerializeField] private float _knockbackHopHeight = 0.5f;
+        [Tooltip("止められている間の色。状態異常が見て分かるようにする")]
         [SerializeField] private Color _frozenTint = new Color(0.55f, 0.85f, 1f);
         [Tooltip("遅くされている間の色")]
         [SerializeField] private Color _slowedTint = new Color(0.6f, 0.6f, 0.6f);
@@ -28,11 +30,14 @@ namespace MiniGame.PenguinWars
         [SerializeField, Range(0f, 1f)] private float _statusTintAmount = 0.7f;
 
         private UnitSpriteSet _sprites;
+        // 飛ばされた瞬間の残り時間。UnitState は全体の長さを持たないので、ここで覚えて跳ねる放物線の進み具合に使う
+        private float _knockbackLength;
 
         /// <summary>UnitViewPool が View を別のユニットに使い回すたびに呼ぶ</summary>
         public void SetSprites(UnitSpriteSet sprites)
         {
             _sprites = sprites;
+            _knockbackLength = 0f;
             if (sprites == null) return;
 
             // 大型キャラは絵が大きいので、HPバーも頭の上まで上げる
@@ -44,12 +49,27 @@ namespace MiniGame.PenguinWars
         public void Apply(UnitState state)
         {
             // ユニットの原点は足元。城と同じく地面の上端 Y=0 に立たせる。
-            // ノックバック中は BattleWorld が X を少しずつ戻すので、位置を写すだけで後ろに飛ばされて見える
-            transform.localPosition = new Vector3(state.X, 0f, 0f);
+            // ノックバック中は BattleWorld が X を少しずつ戻すので、それに放物線の高さを足して後ろに跳ねさせる
+            transform.localPosition = new Vector3(state.X, KnockbackHop(state), 0f);
             if (_sprites != null) _body.sprite = _sprites.Get(SelectFrame(state));
             _body.flipX = state.Side == Side.Right;
             _body.color = ResolveTint(state);
             _hpBar.SetRatio(state.HpRatio);
+        }
+
+        private float KnockbackHop(UnitState state)
+        {
+            if (state.Action != UnitAction.Knockback)
+            {
+                _knockbackLength = 0f;
+                return 0f;
+            }
+
+            if (_knockbackLength <= 0f) _knockbackLength = state.ActionTimer;
+            if (_knockbackLength <= 0f) return 0f;
+
+            float progress = 1f - Mathf.Clamp01(state.ActionTimer / _knockbackLength);
+            return _knockbackHopHeight * 4f * progress * (1f - progress);
         }
 
         private PenguinFrame SelectFrame(UnitState state)

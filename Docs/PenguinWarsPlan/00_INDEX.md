@@ -31,7 +31,7 @@
 | 4 | [phase04_endless.md](phase04_endless.md) | 敵レベル・撃破報酬・ペンギン砲・リザルト・ベスト記録 | エンドレスが1本のゲームとして遊べる | 完了 |
 | 5 | [phase05_abilities.md](phase05_abilities.md) | ノックバック・特殊能力5種・キャラ10体 | 10体のランダム編成で遊べる | 完了 |
 | 6 | [phase06_pixel_art.md](phase06_pixel_art.md) | ペンギンのドット絵生成（パーツ方式）・城・背景 | 見た目がペンギンになる | 完了 |
-| 7 | [phase07_effects_sound.md](phase07_effects_sound.md) | 演出・サウンド | 手触りが整う | 未着手 |
+| 7 | [phase07_effects_sound.md](phase07_effects_sound.md) | 演出・サウンド | 手触りが整う | 完了 |
 | 8 | [phase08_unit_data50.md](phase08_unit_data50.md) | 50体のデータ・数値の計算式・ランダム編成の制約 | 50体から編成される（見た目は一部仮） | 未着手 |
 | 9 | [phase09_art50.md](phase09_art50.md) | 残り40体の見た目パーツ | 50体すべて見た目が揃う | 未着手 |
 | 10 | [phase10_online.md](phase10_online.md) | オンライン対戦（編成はランダム） | 友達と城攻め対戦できる | 未着手 |

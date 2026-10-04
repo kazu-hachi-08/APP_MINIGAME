@@ -18,6 +18,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private BattleHud _hud;
         [SerializeField] private BattleRunner _battleRunner;
         [SerializeField] private DeckIntroPanel _deckIntroPanel;
+        [SerializeField] private BattleEventPresenter _presenter;
+        [SerializeField] private PenguinWarsAudio _audio;
         [SerializeField] private float _deckIntroDuration = 2f;
         [SerializeField] private float _startMessageDuration = 1f;
 
@@ -33,6 +35,7 @@ namespace MiniGame.PenguinWars
             _battleCamera.Initialize(_balance.FieldLength);
             _battleRunner.Initialize();
             _battleRunner.EventRaised += HandleBattleEvent;
+            _presenter.CastleCollapsed += HandleCastleCollapsed;
             BeginIntro();
         }
 
@@ -40,6 +43,7 @@ namespace MiniGame.PenguinWars
         {
             base.OnDestroy();
             if (_battleRunner != null) _battleRunner.EventRaised -= HandleBattleEvent;
+            if (_presenter != null) _presenter.CastleCollapsed -= HandleCastleCollapsed;
         }
 
         private void BeginIntro()
@@ -83,6 +87,7 @@ namespace MiniGame.PenguinWars
             _hud.HideMessage();
             Phase = PenguinWarsPhase.Playing;
             _battleRunner.SetRunning(true);
+            _audio.PlayBgm();
             StartGame();
         }
 
@@ -105,25 +110,27 @@ namespace MiniGame.PenguinWars
             if (Phase == PenguinWarsPhase.Playing) _battleRunner.SetRunning(!isPaused);
         }
 
+        /// <summary>演出・音は BattleEventPresenter が受け持つので、ここは進行に関わる出来事だけ見る</summary>
         private void HandleBattleEvent(BattleEvent battleEvent)
         {
-            switch (battleEvent.Type)
-            {
-                case BattleEventType.EnemyLevelUp:
-                    _hud.ShowLevelUp(battleEvent.Amount);
-                    break;
-                case BattleEventType.CastleDestroyed when battleEvent.Side == Side.Left:
-                    EndGame();
-                    break;
-            }
+            if (battleEvent.Type == BattleEventType.CastleDestroyed && battleEvent.Side == Side.Left) BeginFinish();
         }
 
-        /// <summary>城が崩れる演出（1.5秒）は Phase 7 で間に挟む</summary>
-        private void EndGame()
+        /// <summary>城が崩れた瞬間に生存時間を止める。リザルトは崩れる演出（1.5秒）が終わってから出す</summary>
+        private void BeginFinish()
         {
             Phase = PenguinWarsPhase.Finished;
             _battleRunner.SetRunning(false);
+            _audio.StopBgm();
+        }
 
+        private void HandleCastleCollapsed(Side side)
+        {
+            if (side == Side.Left) EndGame();
+        }
+
+        private void EndGame()
+        {
             int seconds = Mathf.FloorToInt(ElapsedTime);
             int previousBest = EndlessRecord.LoadBestSeconds();
             bool isNewRecord = EndlessRecord.TryUpdateBest(seconds);

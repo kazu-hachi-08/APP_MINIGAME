@@ -91,6 +91,8 @@ namespace MiniGame.PenguinWars.Editor
 
             var castleView = castleObj.AddComponent<CastleView>();
             SetRefs(castleView, ("_hpBar", hpBar), ("_body", body));
+            var collapse = castleObj.AddComponent<CastleCollapse>();
+            SetRefs(collapse, ("_body", body.transform), ("_hpBar", hpBar.gameObject));
             return castleView;
         }
 

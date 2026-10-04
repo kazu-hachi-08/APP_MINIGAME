@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Effects = 演出・音）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -62,13 +62,15 @@ namespace MiniGame.PenguinWars.Editor
             // 操作UIの上に被せて、発表中は押せないようにする
             DeckIntroPanel deckIntroPanel = CreateDeckIntroPanel(canvas, catalog);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
+            (BattleEventPresenter presenter, PenguinWarsAudio audio) =
+                CreateEffects(balance, battleRunner, battleCamera, hud, leftCastle, rightCastle);
 
             var gameManager = new GameObject("PenguinWarsGameManager").AddComponent<PenguinWarsGameManager>();
             var so = new SerializedObject(gameManager);
             so.FindProperty("_gameTitle").stringValue = GameTitle;
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(gameManager, ("_balance", balance), ("_battleCamera", battleCamera), ("_hud", hud),
-                ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel));
+                ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel), ("_presenter", presenter), ("_audio", audio));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);

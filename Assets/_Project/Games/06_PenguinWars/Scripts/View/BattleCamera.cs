@@ -18,6 +18,8 @@ namespace MiniGame.PenguinWars
         [Tooltip("城の外側に見せる余白。城が画面の端で切れないようにする")]
         [SerializeField] private float _edgeMargin = 2f;
         [SerializeField] private float _keyScrollSpeed = 15f;
+        [Tooltip("揺れが弱まり始めるまでの割合。最初は強く揺らして、だんだん収める")]
+        [SerializeField, Range(0f, 1f)] private float _shakeHoldRate = 0.3f;
 
         private float _fieldLength;
         private bool _pressValid;
@@ -25,6 +27,11 @@ namespace MiniGame.PenguinWars
         private Vector2 _pressScreenPosition;
         private float _pressCameraX;
         private readonly List<RaycastResult> _raycastResults = new List<RaycastResult>();
+        private float _shakeDuration;
+        private float _shakeTimer;
+        private float _shakeStrength;
+        // スクロール位置（ドラッグ・キー・端で止める計算）に揺れが混ざらないよう、足した分を覚えておいて毎フレーム外す
+        private Vector3 _appliedShake;
 
         /// <summary>開始時は自城（左）側を映す</summary>
         public void Initialize(float fieldLength)
@@ -36,9 +43,42 @@ namespace MiniGame.PenguinWars
 
         private void Update()
         {
+            RemoveShake();
             ApplySize();
             HandleKeys();
             HandlePointer();
+            ApplyShake();
+        }
+
+        /// <summary>ペンギン砲・城崩れの画面揺れ（仕様書 §9）。揺れている途中に呼ばれたら新しい方で上書きする</summary>
+        public void Shake(float duration, float strength)
+        {
+            _shakeDuration = duration;
+            _shakeTimer = duration;
+            _shakeStrength = strength;
+        }
+
+        /// <summary>指定した X を画面の中央に映す（戦場の端では止まる）。城が崩れるところを見せるため</summary>
+        public void LookAt(float x)
+        {
+            RemoveShake();
+            SetX(x);
+        }
+
+        private void ApplyShake()
+        {
+            if (_shakeTimer <= 0f || _shakeDuration <= 0f) return;
+
+            _shakeTimer -= Time.deltaTime;
+            float remaining = Mathf.Clamp01(_shakeTimer / (_shakeDuration * (1f - _shakeHoldRate)));
+            _appliedShake = (Vector3)(Random.insideUnitCircle * (_shakeStrength * remaining));
+            _camera.transform.position += _appliedShake;
+        }
+
+        private void RemoveShake()
+        {
+            _camera.transform.position -= _appliedShake;
+            _appliedShake = Vector3.zero;
         }
 
         /// <summary>スマホを回したときに縦横比が変わるので毎フレーム合わせる</summary>

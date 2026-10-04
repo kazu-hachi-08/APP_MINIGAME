@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 全キャラ×陣営2色×5コマのドット絵と、城・背景の絵をコードから生成する（仕様書 §7.2）。
+    /// 全キャラ×陣営2色×5コマのドット絵と、城・背景・演出の絵をコードから生成する（仕様書 §7.2）。
     /// 外部素材に依存せず同じ絵をいつでも作り直せるようにするため。生成した PNG とキャラデータへの参照はコミットする
     /// </summary>
     public static class PenguinArtGenerator
@@ -25,7 +25,7 @@ namespace MiniGame.PenguinWars.Editor
         /// <summary>SceneBuilder から呼ぶ。Rebuild だけで遊べるよう、絵が足りないときだけ作る</summary>
         public static void EnsureGenerated(PenguinUnitCatalog catalog)
         {
-            if (FieldArtGenerator.IsMissing() || HasMissingUnitSprites(catalog)) GenerateAll(catalog);
+            if (FieldArtGenerator.IsMissing() || EffectArtGenerator.IsMissing() || HasMissingUnitSprites(catalog)) GenerateAll(catalog);
         }
 
         private static void GenerateAll(PenguinUnitCatalog catalog)
@@ -36,9 +36,10 @@ namespace MiniGame.PenguinWars.Editor
                 if (unit != null && GenerateUnit(unit)) count++;
             }
             FieldArtGenerator.GenerateAll();
+            EffectArtGenerator.GenerateAll();
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"{LogPrefix} ドット絵を生成しました（{count}体＋城・背景）: {PenguinSpriteWriter.SpriteDirectory}");
+            Debug.Log($"{LogPrefix} ドット絵を生成しました（{count}体＋城・背景・演出）: {PenguinSpriteWriter.SpriteDirectory}");
         }
 
         private static bool HasMissingUnitSprites(PenguinUnitCatalog catalog)
