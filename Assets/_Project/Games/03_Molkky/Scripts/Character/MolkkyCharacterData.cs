@@ -28,6 +28,13 @@ namespace MiniGame.Molkky
         [Tooltip("棒の長さの倍率。長いほどまとめて倒しやすい")]
         [SerializeField] private float _stickLengthMultiplier = 1f;
 
+        [Header("パワーショット（山なり時のみ）")]
+        [Tooltip("パワーショット時に初速へ掛ける倍率。パワー系ほど大きく、奥のピンを狙えるのを持ち味にする")]
+        [SerializeField] private float _powerShotSpeedMultiplier = 1.2f;
+
+        [Tooltip("パワーショット時に方向へ加えるランダムなブレの最大値（度）。精密系は力むと狙いが荒れる、という個性づけ")]
+        [SerializeField] private float _powerShotAngleSpread = 8f;
+
         [Tooltip("勝利演出のセリフ（50点ちょうどで勝ったときだけ使う）")]
         [SerializeField] private string _victoryLine = "ぴったり50点！";
 
@@ -37,6 +44,8 @@ namespace MiniGame.Molkky
         public float PowerMultiplier => _powerMultiplier;
         public float ControlMultiplier => _controlMultiplier;
         public float StickLengthMultiplier => _stickLengthMultiplier;
+        public float PowerShotSpeedMultiplier => _powerShotSpeedMultiplier;
+        public float PowerShotAngleSpread => _powerShotAngleSpread;
         public string VictoryLine => _victoryLine;
     }
 }
