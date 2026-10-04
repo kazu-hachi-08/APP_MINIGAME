@@ -1,3 +1,4 @@
+using MiniGame.Common.Profile;
 using UnityEngine;
 
 namespace MiniGame.Golf
@@ -24,10 +25,11 @@ namespace MiniGame.Golf
             return $"<color=#{ColorUtility.ToHtmlStringRGB(Get(seat))}>{text}</color>";
         }
 
-        public static string Name(int seat) => $"P{seat + 1}";
+        /// <summary>席の呼び名。自分の席はユーザー名、それ以外は「P2」など（SeatNames が決める）</summary>
+        public static string Name(int seat) => SeatNames.Get(seat);
 
         /// <summary>
-        /// 「P1 パワー型」。同じキャラを複数人が選べるので、キャラ名だけだと誰か分からなくなるため席番号も付ける。
+        /// 「たろう パワー型」「P2 パワー型」。同じキャラを複数人が選べるので、キャラ名だけだと誰か分からなくなるため席番号も付ける。
         /// separator に改行を渡すと、幅の狭いスコアカードで2行に分けられる
         /// </summary>
         public static string FullName(GolfPlayerSlot slot, string separator = " ")

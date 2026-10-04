@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MiniGame.Common.Profile;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +18,7 @@ namespace MiniGame.LifeGame
         [Tooltip("2人・3人・4人 の順")]
         [SerializeField] private Button[] _countButtons;
         [SerializeField] private GameObject[] _playerRows;
+        [SerializeField] private Text[] _seatLabels;
         [SerializeField] private Button[] _kindButtons;
         [SerializeField] private Text[] _kindTexts;
         [SerializeField] private Button _startButton;
@@ -74,6 +76,9 @@ namespace MiniGame.LifeGame
 
         private void Refresh()
         {
+            // この画面はオフライン専用。P1 を NPC にしたらユーザー名を外すので、ラベルを描く前に席名を決め直す
+            SeatNames.UseLocal(_kinds[0] == LifePlayerKind.Human);
+
             for (int i = 0; i < _countButtons.Length; i++)
             {
                 _countButtons[i].image.color = MinPlayers + i == _count ? _selectedColor : _unselectedColor;
@@ -82,6 +87,7 @@ namespace MiniGame.LifeGame
             for (int i = 0; i < _playerRows.Length; i++)
             {
                 _playerRows[i].SetActive(i < _count);
+                _seatLabels[i].text = LifeTexts.PlayerName(i);
                 _kindTexts[i].text = _kinds[i] == LifePlayerKind.Human ? "人間" : "NPC";
             }
 

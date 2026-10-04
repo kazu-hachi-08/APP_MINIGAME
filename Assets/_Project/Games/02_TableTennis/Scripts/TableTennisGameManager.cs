@@ -2,6 +2,7 @@ using System.Collections;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using MiniGame.Common.Online;
+using MiniGame.Common.Profile;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -98,6 +99,9 @@ namespace MiniGame.TableTennis
 
         private string OpponentLabel => _isOnline ? "RIVAL" : "NPC";
 
+        /// <summary>NPC戦は1台を1人で遊ぶので自分＝ユーザー名。オンラインは名前交換（Phase 3）までは従来の YOU</summary>
+        private string PlayerLabel => _isOnline ? "YOU" : SeatNames.Get(0);
+
         /// <summary>選手の情報が無いオンライン対戦などでは無効化されるため、有効かどうかも見る</summary>
         private bool IsSpecialActive => _special != null && _special.enabled;
 
@@ -174,6 +178,8 @@ namespace MiniGame.TableTennis
 
         protected override void OnGameReady()
         {
+            // 既定はオフライン。オンラインを選んだら OnlineSession が席名を差し替える
+            SeatNames.UseLocal();
             ResetScore(CourtSide.Player);
             SetShotInfo("フリックして打つ（上:ドライブ 下:カット）", 0f);
 
@@ -398,7 +404,8 @@ namespace MiniGame.TableTennis
         /// <summary>黄色ボールのラリーは、取れば強必殺技がもらえることをサーブ前に知らせる</summary>
         private void AnnounceServe(CourtSide server)
         {
-            string serveLabel = server == CourtSide.Player ? "YOUR SERVE" : $"{OpponentLabel} SERVE";
+            string playerServe = _isOnline ? "YOUR SERVE" : $"{PlayerLabel} SERVE";
+            string serveLabel = server == CourtSide.Player ? playerServe : $"{OpponentLabel} SERVE";
             bool isChance = _special != null && _special.PrepareRally(_score.TotalPoints);
             SetMessage(isChance ? $"CHANCE BALL!\n{serveLabel}" : serveLabel);
         }
@@ -645,7 +652,7 @@ namespace MiniGame.TableTennis
 
         private string SideLabel(CourtSide side)
         {
-            return side == CourtSide.Player ? "YOU" : OpponentLabel;
+            return side == CourtSide.Player ? PlayerLabel : OpponentLabel;
         }
 
         private void UpdateScoreText()
@@ -656,7 +663,7 @@ namespace MiniGame.TableTennis
             bool playerServes = _score.CurrentServer == CourtSide.Player;
             string playerMark = playerServes ? "●" : "  ";
             string opponentMark = playerServes ? "  " : "●";
-            _scoreText.text = $"{playerMark} YOU {ScoreSummary} {OpponentLabel} {opponentMark}";
+            _scoreText.text = $"{playerMark} {PlayerLabel} {ScoreSummary} {OpponentLabel} {opponentMark}";
         }
 
         /// <summary>

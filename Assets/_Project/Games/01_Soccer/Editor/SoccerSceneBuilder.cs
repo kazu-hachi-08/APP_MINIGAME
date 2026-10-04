@@ -697,12 +697,14 @@ namespace MiniGame.Soccer.Editor
         {
             // GOAL!/KICK OFF! など共通で使う中央メッセージ。表示するときだけ有効にする
             Text message = CreateHudText(canvas, "MessageText", "", MessageFontSize, MessageColor,
-                CenterAnchor, new Vector2(900, 220), Vector2.zero);
+                // 「GOAL! (ああああああ)」のように6文字のユーザー名が入っても折り返さない幅
+                CenterAnchor, new Vector2(1400, 220), Vector2.zero);
             message.gameObject.SetActive(false);
 
             // スコアは常時表示、残り試合時間はその直下
+            // CPU戦は HOME の欄に最大6文字のユーザー名が入るので、それでも1行に収まる幅にする
             Text score = CreateHudText(canvas, "ScoreText", "HOME 0 - 0 AWAY", ScoreFontSize, Color.white,
-                TopCenterAnchor, new Vector2(400, 80), new Vector2(0f, -20f));
+                TopCenterAnchor, new Vector2(800, 80), new Vector2(0f, -20f));
             Text timer = CreateHudText(canvas, "TimerText", "2:00", TimerFontSize, TimerColor,
                 TopCenterAnchor, new Vector2(300, 60), new Vector2(0f, -100f));
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MiniGame.Common.Profile;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -185,10 +186,13 @@ namespace MiniGame.Molkky
 
         private void RefreshPlayerRows()
         {
+            // P1 を NPC にしたらユーザー名を外すので、ラベルを描く前に席名を決め直す。オンラインの席名は OnlineSession が決める
+            if (!_isOnline) SeatNames.UseLocal(_kinds[0] == PlayerKind.Human);
+
             for (int i = 0; i < _playerRows.Length; i++)
             {
                 _playerRows[i].SetActive(i < _count);
-                _seatLabels[i].text = _isOnline && i == _localSeat ? LocalSeatLabel : $"P{i + 1}";
+                _seatLabels[i].text = _isOnline && i == _localSeat ? LocalSeatLabel : SeatNames.Get(i);
                 _kindTexts[i].text = KindLabels[(int)_kinds[i]];
                 // オンラインは全員人間なので種別は選ばせない
                 _kindButtons[i].gameObject.SetActive(!_isOnline);

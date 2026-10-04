@@ -104,6 +104,11 @@ public static class SeatNames
 
 **確認:** 6文字の名前（例「ああああああ」）で全5ゲームを1回ずつ遊び、手番バナー・スコア・リザルト・勝利演出が崩れないこと。P1 を NPC にしたとき（Q3）。
 
+**実装メモ（Phase 3 以降で前提にすること）:**
+- `UseLocal` を呼ぶ場所: ゴルフ / 人生ゲーム / モルックは各設定パネルの再描画時（P1 の人間/NPC 切替に追従するため）、卓球 / サッカーは `OnGameReady` の先頭
+- `OnlineSession.PrepareAsync` で `SeatNames.UseOnline(null)` を呼び、オンライン中は全席「P1」「P2」… に戻している。Phase 3 では名前交換後に `UseOnline(names)` を呼べばよい
+- 卓球の YOU / YOUR SERVE、サッカーの HOME はオフラインのときだけユーザー名。オンラインは従来表記のまま（Phase 4 で置き換え）
+
 ### Phase 3: オンラインの名前交換（共通）
 
 **ゴール:** オンライン接続時に全員の名前が `SeatNames` に入る。ゲーム側の表示は Phase 2 の仕組みでそのまま切り替わる。

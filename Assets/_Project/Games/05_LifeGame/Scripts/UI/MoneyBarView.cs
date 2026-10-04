@@ -83,7 +83,8 @@ namespace MiniGame.LifeGame
         private void Draw(int seat)
         {
             int shown = Mathf.RoundToInt(ShownMoney(seat));
-            _cells[seat].text = $"{LifeTexts.PlayerName(seat)} {shown:#,0}{_notes[seat]}";
+            // 名前が最大6文字あるので、金額と同じ行に並べると枠からあふれる。名前と金額で行を分ける
+            _cells[seat].text = $"{LifeTexts.PlayerName(seat)}\n{shown:#,0}{_notes[seat]}";
 
             bool counting = CountRate(seat) < 1f;
             Color changeColor = _target[seat] >= _from[seat] ? _gainColor : _lossColor;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MiniGame.Common.Profile;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -85,6 +86,9 @@ namespace MiniGame.Golf
 
         private void Refresh()
         {
+            // この画面はオフライン専用。P1 を NPC にしたらユーザー名を外すので、ラベルを描く前に席名を決め直す
+            SeatNames.UseLocal(_types[0] == GolfPlayerType.Human);
+
             _oneHoleButton.image.color = SelectionColor(_holeCount == OneHole);
             _threeHoleButton.image.color = SelectionColor(_holeCount == GolfRules.LongModeHoleCount);
 

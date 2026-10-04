@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using MiniGame.Common.Profile;
 
 namespace MiniGame.LifeGame
 {
@@ -14,7 +15,8 @@ namespace MiniGame.LifeGame
 
         public static void SetTheme(LifeThemeData theme) => _theme = theme;
 
-        public static string PlayerName(int seat) => $"P{seat + 1}";
+        /// <summary>自分の席はユーザー名、それ以外は「P2」など（SeatNames が決める）</summary>
+        public static string PlayerName(int seat) => SeatNames.Get(seat);
 
         public static string Money(int amount) => $"{amount:#,0}{_theme.Currency}";
 

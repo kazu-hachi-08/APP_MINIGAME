@@ -3,6 +3,7 @@ using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using MiniGame.Common.Input;
 using MiniGame.Common.Online;
+using MiniGame.Common.Profile;
 using MiniGame.Common.UI;
 using UnityEngine;
 using UnityEngine.UI;
@@ -93,6 +94,9 @@ namespace MiniGame.Soccer
         private bool IsHost => _role == MatchRole.Host;
         private bool IsGuest => _role == MatchRole.Guest;
 
+        /// <summary>CPU戦は自分が操作する HOME をユーザー名にする。オンラインは名前交換（Phase 3）までは従来の HOME</summary>
+        private string HomeName => IsOnline ? HomeLabel : SeatNames.Get(0);
+
         // ---- Unity ライフサイクル ----
 
         private void OnEnable()
@@ -156,6 +160,8 @@ namespace MiniGame.Soccer
 
         protected override void OnGameReady()
         {
+            // 既定はオフライン。オンラインを選んだら OnlineSession が席名を差し替える
+            SeatNames.UseLocal();
             _remainingSeconds = _matchDurationSeconds;
             ResetPositions();
             UpdateScoreText();
@@ -296,7 +302,7 @@ namespace MiniGame.Soccer
                 _onlineLink.SendGoal(scoringTeam);
             }
 
-            string scorerLabel = scoringTeam == TeamSide.Home ? HomeLabel : AwayLabel;
+            string scorerLabel = scoringTeam == TeamSide.Home ? HomeName : AwayLabel;
             yield return StartCoroutine(ShowMessageRoutine($"GOAL! ({scorerLabel})", _goalMessageDuration));
 
             ResetPositions();
@@ -395,9 +401,9 @@ namespace MiniGame.Soccer
             FinishGame(myScore > opponentScore, BuildScoreSummary(homeScore, awayScore), BuildResultDetail(myScore, opponentScore));
         }
 
-        private static string BuildScoreSummary(int homeScore, int awayScore)
+        private string BuildScoreSummary(int homeScore, int awayScore)
         {
-            return $"{HomeLabel} {homeScore} - {awayScore} {AwayLabel}";
+            return $"{HomeName} {homeScore} - {awayScore} {AwayLabel}";
         }
 
         private static string BuildResultDetail(int myScore, int opponentScore)
@@ -602,7 +608,7 @@ namespace MiniGame.Soccer
             if (_scoreText == null) return;
 
             // オンラインではどちらのチームを操作しているか分かるよう、自分側に YOU を付ける
-            string homeLabel = IsHost ? HomeLabel + YouSuffix : HomeLabel;
+            string homeLabel = IsHost ? HomeLabel + YouSuffix : HomeName;
             string awayLabel = IsGuest ? AwayLabel + YouSuffix : AwayLabel;
             _scoreText.text = $"{homeLabel} {_homeScore} - {_awayScore} {awayLabel}";
         }

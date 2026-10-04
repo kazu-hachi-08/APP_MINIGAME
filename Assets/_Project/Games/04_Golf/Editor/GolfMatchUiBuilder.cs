@@ -42,7 +42,8 @@ namespace MiniGame.Golf.Editor
         private const float CountButtonWidth = 240f;
         private const float TypeButtonWidth = 190f;
         private const float TypeButtonHeight = 130f;
-        private const int TypeButtonFontSize = 34;
+        // 6文字のユーザー名（P1 の席）がボタン幅に1行で収まる大きさ。幅は4つ並べた行幅いっぱいなので広げられない
+        private const int TypeButtonFontSize = 30;
 
         private const float CharacterBoxHeight = 1380f;
         private const float PortraitWidth = 360f;

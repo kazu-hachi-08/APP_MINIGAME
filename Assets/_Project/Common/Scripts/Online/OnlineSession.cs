@@ -7,6 +7,7 @@ using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
+using MiniGame.Common.Profile;
 using UnityEngine;
 
 namespace MiniGame.Common.Online
@@ -157,6 +158,8 @@ namespace MiniGame.Common.Online
 
         private async Task PrepareAsync()
         {
+            // 直前にオフラインで遊んでいると席0がユーザー名のままなので、名前交換が済むまでは「P1」「P2」に戻しておく
+            SeatNames.UseOnline(null);
             EnsureNetworkManager();
             await SignInAsync();
             SubscribeNetworkEvents();

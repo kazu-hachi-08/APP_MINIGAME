@@ -70,12 +70,14 @@ namespace MiniGame.TableTennis.Editor
         // 画面最上部はインカメラのノッチと重なるため、その下まで下げて表示する
         private const int ScoreFontSize = 64;
         private static readonly Vector2 ScorePosition = new Vector2(0f, -180f);
-        private static readonly Vector2 ScoreSize = new Vector2(760f, 90f);
+        // 「● ああああああ 10 - 10 NPC ●」のように6文字のユーザー名が入っても1行に収まる幅
+        private static readonly Vector2 ScoreSize = new Vector2(1100f, 90f);
         private static readonly Color ScoreColor = new Color(1f, 1f, 1f);
 
         private const int MessageFontSize = 96;
         private static readonly Vector2 MessagePosition = new Vector2(0f, 120f);
-        private static readonly Vector2 MessageSize = new Vector2(900f, 220f);
+        // 「ああああああ SERVE」「ああああああ POINT」が折り返さない幅
+        private static readonly Vector2 MessageSize = new Vector2(1200f, 220f);
         private static readonly Color MessageColor = new Color(1f, 0.85f, 0.1f);
 
         // 打球の手応え（タイミング・回転）はスコアのすぐ下に返す。
