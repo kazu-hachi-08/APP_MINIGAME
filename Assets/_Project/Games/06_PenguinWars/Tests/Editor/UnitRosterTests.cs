@@ -32,6 +32,18 @@ namespace MiniGame.PenguinWars.Battle.Tests
         }
 
         [Test]
+        public void Definitions_CostFitsInMaxWalletCap()
+        {
+            // 上限より高いキャラは働きペンギンを最大にしても一生出せない（オンラインで発覚したため）
+            WalletTable table = WalletTable.CreateDefault();
+            int maxCap = table.GetCap(table.MaxLevel);
+            foreach (UnitDefinition def in UnitDefinitions.All)
+            {
+                Assert.LessOrEqual(def.Cost, maxCap, $"No.{def.No} {def.Name} コスト{def.Cost}");
+            }
+        }
+
+        [Test]
         public void Definitions_CostIsWithinRoleRange()
         {
             foreach (UnitDefinition def in UnitDefinitions.All)

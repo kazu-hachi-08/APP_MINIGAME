@@ -28,7 +28,7 @@ namespace MiniGame.PenguinWars
 
         [Header("働きペンギン（仕様書 §4.2）。要素の並びがレベル1, 2, 3…")]
         [Tooltip("さかなの上限")]
-        [SerializeField] private int[] _walletCaps = { 500, 800, 1100, 1400, 1700, 2000, 2300, 2600 };
+        [SerializeField] private int[] _walletCaps = { 600, 1000, 1400, 1800, 2200, 2700, 3200, 4000 };
         [Tooltip("さかなが増える速さ（/秒）")]
         [SerializeField] private float[] _walletRates = { 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f };
         [Tooltip("次のレベルに必要なさかな。最大レベルの分は無いので、上限の表より1つ少なくする")]

@@ -35,7 +35,7 @@ namespace MiniGame.PenguinWars.Battle
         public static WalletTable CreateDefault()
         {
             return new WalletTable(
-                new[] { 500, 800, 1100, 1400, 1700, 2000, 2300, 2600 },
+                new[] { 600, 1000, 1400, 1800, 2200, 2700, 3200, 4000 },
                 new[] { 30f, 40f, 50f, 60f, 70f, 80f, 90f, 100f },
                 new[] { 80, 160, 240, 320, 400, 480, 560 });
         }
