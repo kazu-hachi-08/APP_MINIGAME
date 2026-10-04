@@ -84,8 +84,7 @@ namespace MiniGame.PenguinWars
         {
             // 遊び方の基本 → 戦い方 → 能力 → ステージの順。最初のページで「何をすれば勝ちか」が分かるようにする
             new GuideTopic("出撃と勝ち方",
-                "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。
-" +
+                "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
                 "相手の城を先に落とせば勝ち（エンドレスは自分の城を守れた時間を競う）。",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Ally, Penguin, 1.5f),
@@ -93,8 +92,7 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 10f)),
 
             new GuideTopic("さかなと働きペンギン",
-                "さかなは時間でたまり、敵を倒しても増える。
-" +
+                "さかなは時間でたまり、敵を倒しても増える。\n" +
                 "左下の働きペンギンにさかなを払うと、たまる速さと上限が上がる。高いキャラを出す前に上げておこう。",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Ally, FishSwordPenguin, 2f),
@@ -103,8 +101,7 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(5f, Enemy, Penguin, 12f)),
 
             new GuideTopic("壁と後ろの列",
-                "壁は安くて硬い。前に並べて時間をかせぎ、その後ろから遠距離が攻撃する。
-" +
+                "壁は安くて硬い。前に並べて時間をかせぎ、その後ろから遠距離が攻撃する。\n" +
                 "単体攻撃は一番手前の敵しか狙えないので、壁の後ろには届かない。",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
