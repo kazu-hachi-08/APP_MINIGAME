@@ -23,8 +23,8 @@ namespace MiniGame.PenguinWars.Editor
             SetRefs(runner, ("_balance", balance), ("_catalog", catalog), ("_unitViews", unitViews),
                 ("_leftCastle", leftCastle), ("_rightCastle", rightCastle));
 
-            var keyboardInput = battleObj.AddComponent<KeyboardCommandInput>();
-            SetRefs(keyboardInput, ("_battleRunner", runner));
+            // キー入力は UI 部品を呼ぶので、参照は UI を作った後に BuildInternal でつなぐ
+            battleObj.AddComponent<KeyboardCommandInput>();
             return runner;
         }
 

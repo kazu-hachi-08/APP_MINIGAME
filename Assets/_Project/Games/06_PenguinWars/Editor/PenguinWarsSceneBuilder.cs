@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = UI）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -54,6 +54,8 @@ namespace MiniGame.PenguinWars.Editor
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
             BattleHud hud = CreateHud(safeArea, canvas);
+            (UnitButtonBar buttonBar, WalletButton walletButton) = CreateControls(safeArea, battleRunner, catalog);
+            SetRefs(battleRunner.GetComponent<KeyboardCommandInput>(), ("_buttonBar", buttonBar), ("_walletButton", walletButton));
             PauseButton pauseButton = CreatePauseButton(safeArea);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
 

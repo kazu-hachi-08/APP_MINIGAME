@@ -12,5 +12,11 @@ namespace MiniGame.PenguinWars.Battle
         public float SpawnOffset { get; set; } = 1.5f;
         /// <summary>仕様書 §4.3。スマホの処理負荷対策</summary>
         public int MaxUnitsPerSide { get; set; } = 30;
+        /// <summary>働きペンギンのレベル表（仕様書 §4.2）</summary>
+        public WalletTable WalletTable { get; set; } = WalletTable.CreateDefault();
+        /// <summary>
+        /// true なら右陣営はさかな・再生産を気にせず出撃できる。エンドレスの敵は §8 のルールで湧くので、お金で縛らない
+        /// </summary>
+        public bool RightSpawnsFree { get; set; }
     }
 }

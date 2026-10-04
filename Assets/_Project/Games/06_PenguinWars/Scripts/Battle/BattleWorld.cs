@@ -16,6 +16,8 @@ namespace MiniGame.PenguinWars.Battle
         private readonly CastleState _rightCastle;
         private readonly List<UnitState> _units = new List<UnitState>();
         private readonly IReadOnlyList<UnitStats>[] _decks = new IReadOnlyList<UnitStats>[2];
+        private readonly DeckSlotState[][] _slots = new DeckSlotState[2][];
+        private readonly WalletState[] _wallets = new WalletState[2];
         private readonly Queue<BattleCommand> _commands = new Queue<BattleCommand>();
         private readonly List<BattleEvent> _events = new List<BattleEvent>();
         // 毎攻撃で List を作らないよう使い回す
@@ -32,6 +34,8 @@ namespace MiniGame.PenguinWars.Battle
             _settings = settings;
             _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp, false);
             _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp, settings.RightCastleInvincible);
+            _wallets[(int)Side.Left] = new WalletState(settings.WalletTable);
+            _wallets[(int)Side.Right] = new WalletState(settings.WalletTable);
         }
 
         public CastleState GetCastle(Side side)
@@ -43,6 +47,36 @@ namespace MiniGame.PenguinWars.Battle
         public void SetDeck(Side side, IReadOnlyList<UnitStats> deck)
         {
             _decks[(int)side] = deck;
+            var slots = new DeckSlotState[deck.Count];
+            for (int i = 0; i < slots.Length; i++) slots[i] = new DeckSlotState();
+            _slots[(int)side] = slots;
+        }
+
+        /// <summary>編成。未設定なら空</summary>
+        public IReadOnlyList<UnitStats> GetDeck(Side side)
+        {
+            return _decks[(int)side] ?? Array.Empty<UnitStats>();
+        }
+
+        public DeckSlotState GetSlot(Side side, int slotIndex)
+        {
+            return _slots[(int)side][slotIndex];
+        }
+
+        public WalletState GetWallet(Side side)
+        {
+            return _wallets[(int)side];
+        }
+
+        /// <summary>今出撃できるか。ボタンを暗くする判定と実際の出撃で同じ条件を使うため、ここ1か所にまとめる</summary>
+        public bool CanSpawn(Side side, int slotIndex)
+        {
+            IReadOnlyList<UnitStats> deck = _decks[(int)side];
+            if (deck == null || slotIndex < 0 || slotIndex >= deck.Count) return false;
+            if (CountUnits(side) >= _settings.MaxUnitsPerSide) return false;
+            if (IsSpawnFree(side)) return true;
+
+            return GetSlot(side, slotIndex).IsReady && GetWallet(side).CanAfford(deck[slotIndex].Cost);
         }
 
         public int CountUnits(Side side)
@@ -64,6 +98,7 @@ namespace MiniGame.PenguinWars.Battle
         {
             if (IsFinished) return;
 
+            TickEconomy(deltaTime);
             ProcessCommands();
             // ループ中に死んだユニットは Dead にしておき、最後にまとめて除く（途中で消すと添字がずれるため）
             foreach (UnitState unit in _units)
@@ -88,18 +123,48 @@ namespace MiniGame.PenguinWars.Battle
             while (_commands.Count > 0)
             {
                 BattleCommand command = _commands.Dequeue();
-                if (command.Type == BattleCommandType.Spawn) TrySpawn(command.Side, command.SlotIndex);
+                switch (command.Type)
+                {
+                    case BattleCommandType.Spawn:
+                        TrySpawn(command.Side, command.SlotIndex);
+                        break;
+                    case BattleCommandType.LevelUpWallet:
+                        if (!IsSpawnFree(command.Side)) GetWallet(command.Side).TryLevelUp();
+                        break;
+                }
             }
         }
 
+        private bool IsSpawnFree(Side side)
+        {
+            return side == Side.Right && _settings.RightSpawnsFree;
+        }
+
+        private void TickEconomy(float deltaTime)
+        {
+            for (int side = 0; side < _wallets.Length; side++)
+            {
+                _wallets[side].Tick(deltaTime);
+                if (_slots[side] == null) continue;
+
+                foreach (DeckSlotState slot in _slots[side]) slot.Tick(deltaTime);
+            }
+        }
+
+        /// <summary>条件を満たさなければ黙って何もしない（連打やオンラインの遅れて届いた操作で出せないのは普通のことなので）</summary>
         private void TrySpawn(Side side, int slotIndex)
         {
-            IReadOnlyList<UnitStats> deck = _decks[(int)side];
-            if (deck == null || slotIndex < 0 || slotIndex >= deck.Count) return;
-            if (CountUnits(side) >= _settings.MaxUnitsPerSide) return;
+            if (!CanSpawn(side, slotIndex)) return;
+
+            UnitStats stats = _decks[(int)side][slotIndex];
+            if (!IsSpawnFree(side))
+            {
+                GetWallet(side).TrySpend(stats.Cost);
+                GetSlot(side, slotIndex).StartCooldown(stats.Cooldown);
+            }
 
             float x = GetCastle(side).X + side.Forward() * _settings.SpawnOffset;
-            var unit = new UnitState(_nextUnitId++, side, deck[slotIndex], x);
+            var unit = new UnitState(_nextUnitId++, side, stats, x);
             _units.Add(unit);
             _events.Add(new BattleEvent(BattleEventType.Spawned, side, unit.Id, x));
         }

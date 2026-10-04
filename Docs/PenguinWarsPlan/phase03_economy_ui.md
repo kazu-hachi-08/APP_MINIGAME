@@ -47,7 +47,7 @@
 
 ## 完了条件
 
-* [ ] EditMode テスト: さかなが時間で増え上限で止まる / 足りないと出撃できない / 再生産中は出撃できない / レベルアップで上限と速度が変わる・最大レベルで止まる
+* [x] EditMode テスト: さかなが時間で増え上限で止まる / 足りないと出撃できない / 再生産中は出撃できない / レベルアップで上限と速度が変わる・最大レベルで止まる
 * [ ] ボタン・キーの両方で出撃・ページ切替・働きペンギンが動く
 * [ ] 出せないボタンが暗くなり、再生産ゲージが見える
 
@@ -59,6 +59,27 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * `Scripts/Battle/`: `WalletTable` / `WalletState` / `DeckSlotState`（`BattleCommand`・`BattleSettings`・`BattleWorld` を更新）
+  * `Scripts/UI/`: `UnitButton` / `UnitButtonBar` / `WalletButton`
+  * `Scripts/Game/KeyboardCommandInput`（Tab・Q を追加。UI 部品経由で操作するよう変更）、`BattleRunner`（`World` 公開・Wallet 設定）、`PenguinWarsBalance`（働きペンギン表）
+  * `Editor/PenguinWarsSceneBuilder.Controls.cs`（下部の操作UI。計画では `.Hud.cs` だったが、300行を超えそうなので分けた）
+  * `Tests/Editor/EconomyTests.cs`（7件）
 * 公開API（次フェーズが使うもの）:
+  * `BattleWorld.GetWallet(side)` / `GetSlot(side, slot)` / `GetDeck(side)` / `CanSpawn(side, slot)`（ボタンの暗さと実際の出撃で同じ判定）
+  * `WalletState`: `Fish`（int・切り捨て）/ `Level` / `Cap` / `RatePerSecond` / `LevelUpCost` / `IsMaxLevel` / `CanLevelUp` / `TrySpend` / `TryLevelUp` / `Add(amount)`（撃破報酬用。上限で止まる。Phase 4 で使う）
+  * `DeckSlotState`: `Remaining` / `Duration` / `IsReady` / `RemainingRatio`
+  * `BattleCommand.LevelUpWallet(side)`
+  * `BattleSettings.WalletTable`（既定は仕様 §4.2 の表）/ `RightSpawnsFree`（true で右はさかな・再生産チェックなし）
+  * `PenguinWarsBalance.CreateWalletTable()`
+  * `BattleRunner.World`（UI が読むだけ）
+  * `UnitButtonBar.SpawnVisibleSlot(i)` / `TogglePage()` / `SlotsPerPage`、`WalletButton.LevelUp()`
 * 計画・仕様から変えた点:
+  * 開始時のさかなは 0（仕様に記載なし。本家と同じ）。最初の出撃（No1=75）まで約2.5秒
+  * エンドレスの敵は `RightSpawnsFree = true` でさかな・再生産を無視（Wallet オブジェクト自体は両陣営にある）
+  * 働きペンギンのレベルアップはイベントを出していない（音・演出を足すとき Phase 7 で `BattleEvent` を追加）
+  * ページ切替ボタンの表記は `切替 1/2`（`⇄` は既定フォントに無い可能性があるため）
+  * 仮アイコンはキャラNoから色相を決めた色四角＋名前（長い名前は Best Fit で縮小）
 * 次フェーズへの注意:
+  * 画面右下（出撃ボタン列の右、X≒1500〜1890）が空いているので、ペンギン砲ボタンはそこに置ける
+  * 撃破報酬は `GetWallet(side).Add(cost / 2)`。右陣営の撃破で左に入れる処理を `BattleWorld` の死亡処理に足す
+  * テストは前フェーズと同じく `dotnet test`（Battle と Tests の .cs を集めたプロジェクト）で 20件合格。Unity 側スクリプトは生成済み csproj を複製して新ファイルを足した一時プロジェクトで `dotnet build` し、エラー0を確認（Unity エディタでのコンパイル・Rebuild・再生は未確認）

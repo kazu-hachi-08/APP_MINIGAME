@@ -32,6 +32,9 @@ namespace MiniGame.PenguinWars
 
         public bool IsRunning { get; private set; }
 
+        /// <summary>UI が状態（さかな・再生産など）を読むためだけに公開する。書き換えは Enqueue 経由で行う</summary>
+        public BattleWorld World => _world;
+
         /// <summary>出撃・ヒット・撃破・城崩壊。演出・音・進行はこれを見て動く</summary>
         public event Action<BattleEvent> EventRaised;
 
@@ -45,6 +48,9 @@ namespace MiniGame.PenguinWars
                 RightCastleInvincible = true,
                 SpawnOffset = _balance.SpawnOffset,
                 MaxUnitsPerSide = _balance.MaxUnitsPerSide,
+                WalletTable = _balance.CreateWalletTable(),
+                // エンドレスの敵はお金を持たない（仕様書 §8）
+                RightSpawnsFree = true,
             });
 
             List<UnitStats> deck = BuildDeck();
