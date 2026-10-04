@@ -32,6 +32,8 @@ namespace MiniGame.PenguinWars.Battle
         public float SlowSpeedMultiplier { get; set; } = 0.5f;
         /// <summary>城キラーの城へのダメージ倍率（仕様書 §5.3）</summary>
         public float CastleKillerMultiplier { get; set; } = 3f;
+        /// <summary>対戦の制限時間（秒。仕様書 §2.2）。0 なら時間切れなし（エンドレス）</summary>
+        public float TimeLimit { get; set; }
         /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>
         public int RandomSeed { get; set; }
     }

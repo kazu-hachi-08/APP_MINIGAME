@@ -6,7 +6,7 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>
     /// 戦闘のすべて（ユニット・城・お金・砲）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
     /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）。
-    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs
+    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs
     /// </summary>
     public partial class BattleWorld
     {
@@ -37,10 +37,15 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>エンドレスの敵レベル。湧きを設定していなければ 0</summary>
         public int EnemyLevel => _enemyWaves?.Level ?? 0;
 
+        /// <summary>ゲストの写し（GuestWorldMirror）が状態を書き込むため。ホストの計算では使わない</summary>
+        internal BattleSettings Settings => _settings;
+        internal List<UnitState> MutableUnits => _units;
+
         public BattleWorld(BattleSettings settings)
         {
             _settings = settings;
             _random = new Random(settings.RandomSeed);
+            RemainingTime = settings.TimeLimit;
             _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp, false);
             _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp, settings.RightCastleInvincible);
             for (int side = 0; side < 2; side++)
@@ -139,6 +144,8 @@ namespace MiniGame.PenguinWars.Battle
                 if (IsFinished) break;
             }
             _units.RemoveAll(IsDeadPredicate);
+            // 最後に見るのは、同じステップで城が落ちていたらそちらを優先するため
+            TickTimeLimit(deltaTime);
         }
 
         /// <summary>溜まったイベントを output に移す。呼ぶまで溜まり続ける</summary>

@@ -14,6 +14,8 @@ namespace MiniGame.PenguinWars.Battle
         Knockback,
         /// <summary>状態異常がかかった。Amount は UnitStatusType</summary>
         StatusApplied,
+        /// <summary>対戦の時間切れ（仕様書 §2.2）。Side は城の残りHP割合が少なかった側、Amount は引き分けなら 1</summary>
+        TimeUp,
     }
 
     /// <summary>

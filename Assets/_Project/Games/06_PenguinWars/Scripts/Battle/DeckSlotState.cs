@@ -17,6 +17,13 @@ namespace MiniGame.PenguinWars.Battle
             Remaining = duration;
         }
 
+        /// <summary>オンラインのゲスト用。ホストから届いた残り時間を写す（全体の長さはキャラの再生産時間から分かるので送らない）</summary>
+        internal void Restore(float remaining, float duration)
+        {
+            Remaining = remaining;
+            Duration = duration;
+        }
+
         public void Tick(float deltaTime)
         {
             Remaining = Math.Max(0f, Remaining - deltaTime);

@@ -53,7 +53,7 @@ namespace MiniGame.PenguinWars
         [SerializeField] private int _collapseSmokeCount = 6;
         [SerializeField] private Vector2 _collapseSmokeArea = new Vector2(3f, 3f);
 
-        // 撃破の数字は自分が倒したときだけ出す。オンライン（Phase 10）でゲストは Right にする
+        // 撃破の数字・出撃音は自分の分だけ。オンラインのゲストも左右反転したイベントを受け取るので、自分は常に Left
         private readonly Side _localSide = Side.Left;
 
         private EffectPool<SpawnSmokeEffect> _smokes;

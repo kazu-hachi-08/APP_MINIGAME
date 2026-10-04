@@ -6,6 +6,8 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public enum PenguinWarsPhase
     {
+        /// <summary>モード選択・オンラインの接続待ち（編成がまだ決まっていない）</summary>
+        ModeSelect,
         Draft,
         Intro,
         Playing,

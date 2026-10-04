@@ -24,6 +24,12 @@ namespace MiniGame.PenguinWars.Battle
             Charge = Math.Min(ChargeTime, Charge + deltaTime);
         }
 
+        /// <summary>オンラインのゲスト用。ホストから届いたチャージを写す</summary>
+        internal void Restore(float charge)
+        {
+            Charge = charge;
+        }
+
         public bool TryFire()
         {
             if (!IsReady) return false;

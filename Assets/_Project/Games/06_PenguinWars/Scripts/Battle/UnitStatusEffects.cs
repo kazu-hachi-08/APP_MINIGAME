@@ -27,6 +27,16 @@ namespace MiniGame.PenguinWars.Battle
             else SlowTime = Math.Max(SlowTime, duration);
         }
 
+        /// <summary>
+        /// オンラインのゲスト用。届くのは「かかっているか」だけなので、残り時間は仮の値にする。
+        /// ゲストは Tick しないので、次の状態が届くまでそのまま残る
+        /// </summary>
+        internal void Restore(bool isFrozen, bool isSlowed)
+        {
+            FreezeTime = isFrozen ? 1f : 0f;
+            SlowTime = isSlowed ? 1f : 0f;
+        }
+
         public void Tick(float deltaTime)
         {
             FreezeTime = Math.Max(0f, FreezeTime - deltaTime);

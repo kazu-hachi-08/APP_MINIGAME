@@ -48,6 +48,13 @@ namespace MiniGame.PenguinWars.Battle
             return true;
         }
 
+        /// <summary>オンラインのゲスト用。ホストから届いた値をそのまま写す（ゲストは自分で計算しない）</summary>
+        internal void Restore(int level, float fish)
+        {
+            Level = level;
+            _fish = fish;
+        }
+
         /// <summary>撃破報酬（Phase 4）用。上限は超えない</summary>
         public void Add(int amount)
         {

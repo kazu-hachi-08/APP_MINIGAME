@@ -19,6 +19,9 @@ namespace MiniGame.PenguinWars
         [Tooltip("場に出せる自軍ユニットの上限（仕様書 §4.3。スマホの処理負荷対策）")]
         [SerializeField] private int _maxUnitsPerSide = 30;
 
+        [Tooltip("オンライン対戦の制限時間（秒。仕様書 §2.2）")]
+        [SerializeField] private float _versusTimeLimit = 300f;
+
         [Header("働きペンギン（仕様書 §4.2）。要素の並びがレベル1, 2, 3…")]
         [Tooltip("さかなの上限")]
         [SerializeField] private int[] _walletCaps = { 500, 800, 1100, 1400, 1700, 2000, 2300, 2600 };
@@ -69,6 +72,7 @@ namespace MiniGame.PenguinWars
         public float FieldLength => _fieldLength;
         public int CastleHpEndless => _castleHpEndless;
         public int CastleHpVersus => _castleHpVersus;
+        public float VersusTimeLimit => _versusTimeLimit;
         public float SpawnOffset => _spawnOffset;
         public int MaxUnitsPerSide => _maxUnitsPerSide;
         public float KillRewardRate => _killRewardRate;
