@@ -1,4 +1,6 @@
+using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
+using MiniGame.Common.UI;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 
@@ -7,16 +9,18 @@ namespace MiniGame.PenguinWars
     /// <summary>
     /// ペンギン大戦争の進行役。タイトル → モード選択 →（対戦はドラフト →）編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
     /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ。
-    /// このファイルは共通の流れとエンドレス。オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
+    /// このファイルは共通の流れと一人用のステージ。オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
     /// </summary>
     public partial class PenguinWarsGameManager : BaseMiniGameManager
     {
         private const string StartMessage = "START!";
-        private const string NewRecordText = "NEW RECORD!";
+        private const string StageClearTitle = "STAGE CLEAR!";
+        // ステージ選択画面（Phase 2）ができるまで、「ステージ」はこのステージから始める
+        private const string FirstStageId = "1-1";
 
-        // リトライでシーンを読み直したとき、エンドレスならモード選択を飛ばしてすぐ始める（仕様書 §2.3）。
-        // シーンを読み直すとインスタンスの値は消えるので static に置く
-        private static bool s_restartEndless;
+        // リトライでシーンを読み直したとき、ステージならモード選択を飛ばして同じステージから始める（仕様書 §2.3）。
+        // シーンを読み直すとインスタンスの値は消えるので static に置く。null ならリトライではない
+        private static string s_restartStageId;
 
         [SerializeField] private PenguinWarsBalance _balance;
         [SerializeField] private BattleCamera _battleCamera;
@@ -33,9 +37,9 @@ namespace MiniGame.PenguinWars
         private float _introTimer;
         // Intro の前半（編成発表）か後半（START!）か
         private bool _showingDeck;
+        private StageDefinition _currentStage;
 
         public PenguinWarsPhase Phase { get; private set; } = PenguinWarsPhase.Title;
-        public float ElapsedTime { get; private set; }
 
         protected override void OnGameReady()
         {
@@ -45,9 +49,9 @@ namespace MiniGame.PenguinWars
             SubscribeOnline();
             SubscribeDraft();
 
-            bool restartEndless = s_restartEndless;
-            s_restartEndless = false;
-            if (restartEndless) StartEndless();
+            string restartStageId = s_restartStageId;
+            s_restartStageId = null;
+            if (restartStageId != null) StartStage(restartStageId);
             else ShowTitle();
         }
 
@@ -60,10 +64,10 @@ namespace MiniGame.PenguinWars
             UnsubscribeDraft();
         }
 
-        /// <summary>エンドレスはシーンを読み直してすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>
+        /// <summary>ステージはシーンを読み直して同じステージをすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>
         public override void RestartGame()
         {
-            s_restartEndless = !IsOnline;
+            s_restartStageId = IsOnline ? null : _currentStage?.Id;
             base.RestartGame();
         }
 
@@ -83,27 +87,38 @@ namespace MiniGame.PenguinWars
         private void ShowModeSelect()
         {
             Phase = PenguinWarsPhase.ModeSelect;
-            if (_modeSelectPanel == null) StartEndless();
-            else _modeSelectPanel.Show(StartEndless, StartOnline);
+            if (_modeSelectPanel == null) StartFirstStage();
+            else _modeSelectPanel.Show(StartFirstStage, StartOnline);
         }
 
-        private void StartEndless()
+        private void StartFirstStage()
         {
-            _battleRunner.InitializeEndless();
+            StartStage(FirstStageId);
+        }
+
+        private void StartStage(string stageId)
+        {
+            _currentStage = StageDefinitions.Find(stageId);
+            if (_currentStage == null)
+            {
+                Debug.LogWarning($"[PenguinWarsGameManager] ステージ {stageId} がありません。最初のステージで始めます");
+                _currentStage = StageDefinitions.All[0];
+            }
+            // 編成画面（Phase 3）ができるまでは仮でランダム10体
+            _battleRunner.InitializeStage(_currentStage, _battleRunner.PickRandomDeckNos());
             BeginIntro(_deckIntroDuration);
         }
 
         private void BeginIntro(float deckDuration)
         {
             Phase = PenguinWarsPhase.Intro;
-            ElapsedTime = 0f;
             RefreshTime();
             _hud.HideMessage();
             // 対戦はステージごとに戦場の長さが違うので、試合が決まってからカメラの動ける範囲を合わせる
             _battleCamera.Initialize(_battleRunner.FieldLength);
             _showingDeck = true;
             _introTimer = deckDuration;
-            // 対戦はお互いの10体（ドラフト中は相手の分を隠していたため）、エンドレスは自分の10体だけ
+            // 対戦はお互いの10体（ドラフト中は相手の分を隠していたため）、ステージは自分の10体だけ
             if (IsOnline) ShowDeckReveal();
             else _deckIntroPanel.Show(_battleRunner.World.GetDeck(Side.Left));
         }
@@ -156,15 +171,14 @@ namespace MiniGame.PenguinWars
 
         private void TickPlaying()
         {
-            ElapsedTime += Time.deltaTime;
             RefreshTime();
         }
 
-        /// <summary>エンドレスは生存時間、対戦は残り時間（ゲストはホストから届いた値）を出す</summary>
+        /// <summary>ステージは経過時間（★3 の目標タイムと同じ World の時計）、対戦は残り時間（ゲストはホストから届いた値）を出す</summary>
         private void RefreshTime()
         {
             if (IsOnline) _hud.SetRemaining(_battleRunner.World.RemainingTime);
-            else _hud.SetElapsed(ElapsedTime);
+            else _hud.SetElapsed(_battleRunner.World.ElapsedTime);
         }
 
         protected override void OnGamePauseStateChanged(bool isPaused)
@@ -178,7 +192,6 @@ namespace MiniGame.PenguinWars
             // タイトル中はあそびかたのデモが戦場を動かしているだけなので、試合の進行には使わない
             if (Phase == PenguinWarsPhase.Finished || Phase == PenguinWarsPhase.Title) return;
 
-            // エンドレスの右はゲートで落ちないので、城が落ちるのは自城だけ。対戦はどちらも落ちうる
             if (battleEvent.Type == BattleEventType.CastleDestroyed) BeginFinish();
             else if (battleEvent.Type == BattleEventType.TimeUp) BeginTimeUp(battleEvent.Side, battleEvent.Amount != 0);
         }
@@ -196,25 +209,32 @@ namespace MiniGame.PenguinWars
             if (Phase == PenguinWarsPhase.Title) return;
 
             if (IsOnline) EndVersus(side, false);
-            else if (side == Side.Left) EndEndless();
+            else EndStage(side);
         }
 
-        private void EndEndless()
+        /// <summary>結果の文字は仮（Phase 2 でリザルト画面を作り直す）</summary>
+        private void EndStage(Side loser)
         {
-            int seconds = Mathf.FloorToInt(ElapsedTime);
-            int previousBest = EndlessRecord.LoadBestSeconds();
-            bool isNewRecord = EndlessRecord.TryUpdateBest(seconds);
-            int kills = _battleRunner.World.GetKillCount(Side.Left);
+            BattleWorld world = _battleRunner.World;
+            int kills = world.GetKillCount(Side.Left);
+            if (loser == Side.Left)
+            {
+                FinishGame(false, $"撃破 {kills}体", _currentStage.Name);
+                return;
+            }
 
-            string score = $"生存 {BattleHud.FormatTime(seconds)} / 撃破 {kills}体";
-            FinishGame(false, score, BuildRecordText(isNewRecord, previousBest));
+            string clearTime = BattleHud.FormatTime(Mathf.FloorToInt(world.ElapsedTime));
+            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.GameClear);
+            ShowCustomResult(StageClearTitle, true, $"クリア {clearTime} / 撃破 {kills}体", _currentStage.Name);
         }
 
-        private static string BuildRecordText(bool isNewRecord, int previousBest)
+        /// <summary>BaseMiniGameManager.FinishGame はタイトルが VICTORY! / GAME OVER しかないので、別のタイトルを出すときは同じ手順を自前で踏む</summary>
+        private void ShowCustomResult(string title, bool isVictory, string score, string detail)
         {
-            if (!isNewRecord) return $"ベスト {BattleHud.FormatTime(previousBest)}";
-            // 初回プレイは比べる記録がないので、前回ベストは出さない
-            return previousBest > 0 ? $"{NewRecordText}（前回ベスト {BattleHud.FormatTime(previousBest)}）" : NewRecordText;
+            ChangeState(MiniGameState.GameOver);
+            OnGameOver(isVictory);
+            ChangeState(MiniGameState.Result);
+            if (UIManager.HasInstance) UIManager.Instance.ShowResultDialog(title, score, detail, RestartGame, ReturnToTitle);
         }
     }
 }

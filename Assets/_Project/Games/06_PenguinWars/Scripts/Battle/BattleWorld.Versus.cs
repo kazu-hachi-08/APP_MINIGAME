@@ -3,7 +3,7 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>オンライン対戦の制限時間と時間切れの判定（仕様書 §2.2）</summary>
     public partial class BattleWorld
     {
-        /// <summary>対戦の残り秒数。制限時間なし（エンドレス）なら 0 のまま</summary>
+        /// <summary>対戦の残り秒数。制限時間なし（ステージ）なら 0 のまま</summary>
         public float RemainingTime { get; internal set; }
         public bool HasTimeLimit => _settings.TimeLimit > 0f;
         /// <summary>時間切れで城の残りHP割合が同じだった。true のとき Loser は意味を持たない</summary>

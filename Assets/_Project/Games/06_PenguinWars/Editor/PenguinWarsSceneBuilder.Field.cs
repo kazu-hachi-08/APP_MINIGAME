@@ -62,8 +62,6 @@ namespace MiniGame.PenguinWars.Editor
 
             CastleView left = CreateCastle(fieldRoot, "Castle_Left", 0f, Side.Left);
             CastleView right = CreateCastle(fieldRoot, "Castle_Right", fieldLength, Side.Right);
-            // 右の城はエンドレスでは出現ゲートとして見せる（どちらになるかは試合開始時に BattleRunner が決める）
-            SetRefs(right, ("_gateSprite", PenguinSpriteWriter.Load(FieldArtGenerator.GatePath)));
             return (left, right, backdrop);
         }
 
@@ -95,7 +93,7 @@ namespace MiniGame.PenguinWars.Editor
             HpBarView hpBar = CreateHpBar(castleObj.transform, HpBarOffsetY, HpBarSize, HpBarBackSortingOrder);
 
             var castleView = castleObj.AddComponent<CastleView>();
-            SetRefs(castleView, ("_hpBar", hpBar), ("_body", body));
+            SetRefs(castleView, ("_hpBar", hpBar));
             var collapse = castleObj.AddComponent<CastleCollapse>();
             SetRefs(collapse, ("_body", body.transform), ("_hpBar", hpBar.gameObject));
             return castleView;

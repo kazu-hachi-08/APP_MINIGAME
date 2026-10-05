@@ -25,17 +25,17 @@ namespace MiniGame.PenguinWars.Battle
         private readonly List<BattleEvent> _events = new List<BattleEvent>();
         // 毎攻撃・毎ステップで List を作らないよう使い回す
         private readonly List<UnitState> _targets = new List<UnitState>();
-        private readonly List<UnitStats> _waveSpawns = new List<UnitStats>();
+        private readonly List<EnemySpawn> _enemySpawns = new List<EnemySpawn>();
         private readonly Random _random;
-        private EnemyWaveDirector _enemyWaves;
+        private EnemyScriptDirector _enemyScript;
         private int _nextUnitId = 1;
 
         public IReadOnlyList<UnitState> Units => _units;
         public bool IsFinished { get; private set; }
         /// <summary>城を落とされた側。IsFinished のときだけ意味がある</summary>
         public Side Loser { get; private set; }
-        /// <summary>エンドレスの敵レベル。湧きを設定していなければ 0</summary>
-        public int EnemyLevel => _enemyWaves?.Level ?? 0;
+        /// <summary>試合開始からの秒数（★3 の目標タイム・リザルト用）。止めている間は進まない</summary>
+        public float ElapsedTime { get; private set; }
 
         /// <summary>ゲストの写し（GuestWorldMirror）が状態を書き込むため。ホストの計算では使わない</summary>
         internal BattleSettings Settings => _settings;
@@ -46,8 +46,8 @@ namespace MiniGame.PenguinWars.Battle
             _settings = settings;
             _random = new Random(settings.RandomSeed);
             RemainingTime = settings.TimeLimit;
-            _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp, false);
-            _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp, settings.RightCastleInvincible);
+            _leftCastle = new CastleState(Side.Left, 0f, settings.LeftCastleHp);
+            _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp);
             for (int side = 0; side < 2; side++)
             {
                 _wallets[side] = new WalletState(settings.WalletTable);
@@ -69,10 +69,10 @@ namespace MiniGame.PenguinWars.Battle
             _slots[(int)side] = slots;
         }
 
-        /// <summary>エンドレスの敵の湧き（右陣営）。設定すると Step のたびに進む</summary>
-        public void SetEnemyWaves(EnemyWaveDirector enemyWaves)
+        /// <summary>ステージの敵の出方（右陣営）。設定すると Step のたびに進む</summary>
+        public void SetEnemyScript(EnemyScriptDirector enemyScript)
         {
-            _enemyWaves = enemyWaves;
+            _enemyScript = enemyScript;
         }
 
         /// <summary>編成。未設定なら空</summary>
@@ -132,8 +132,9 @@ namespace MiniGame.PenguinWars.Battle
         {
             if (IsFinished) return;
 
+            ElapsedTime += deltaTime;
             TickEconomy(deltaTime);
-            TickEnemyWaves(deltaTime);
+            TickEnemyScript(deltaTime);
             ProcessCommands();
             // ループ中に死んだユニットは Dead にしておき、最後にまとめて除く（途中で消すと添字がずれるため）
             foreach (UnitState unit in _units)
@@ -193,19 +194,18 @@ namespace MiniGame.PenguinWars.Battle
             }
         }
 
-        private void TickEnemyWaves(float deltaTime)
+        private void TickEnemyScript(float deltaTime)
         {
-            if (_enemyWaves == null) return;
+            if (_enemyScript == null) return;
 
-            if (_enemyWaves.Tick(deltaTime, _waveSpawns))
-            {
-                _events.Add(new BattleEvent(BattleEventType.EnemyLevelUp, Side.Right, BattleEvent.CastleId, _rightCastle.X, _enemyWaves.Level));
-            }
-            foreach (UnitStats stats in _waveSpawns)
+            float castleHpRatio = _rightCastle.MaxHp > 0 ? (float)_rightCastle.Hp / _rightCastle.MaxHp : 0f;
+            int bossNo = _enemyScript.Tick(deltaTime, castleHpRatio, _enemySpawns);
+            foreach (EnemySpawn spawn in _enemySpawns)
             {
                 // 上限を超えた分は捨てる（溜めておくと、空いた瞬間に一斉に湧いて理不尽になるため）
-                if (CountUnits(Side.Right) < _settings.MaxUnitsPerSide) AddUnit(Side.Right, stats);
+                if (spawn.IsBoss || CountUnits(Side.Right) < _settings.MaxUnitsPerSide) AddUnit(Side.Right, spawn.Stats);
             }
+            if (bossNo != 0) _events.Add(new BattleEvent(BattleEventType.BossAppeared, Side.Right, BattleEvent.CastleId, _rightCastle.X, bossNo));
         }
 
         /// <summary>条件を満たさなければ黙って何もしない（連打やオンラインの遅れて届いた操作で出せないのは普通のことなので）</summary>

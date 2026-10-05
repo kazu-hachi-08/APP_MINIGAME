@@ -157,29 +157,5 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Assert.AreEqual(2, deck.Count);
             Assert.IsTrue(deck.Exists(s => s.UnitNo == 1));
         }
-
-        [Test]
-        public void Director_BossIsPickedFromLargeRole()
-        {
-            var settings = new EnemyWaveSettings { LevelUpInterval = 1f, BaseSpawnInterval = 1000f };
-            var pool = new[]
-            {
-                new UnitStats { UnitNo = 1, Cost = 100, MaxHp = 100, Role = UnitRole.Wall },
-                new UnitStats { UnitNo = 2, Cost = 9000, MaxHp = 100, Role = UnitRole.Ranged },
-                new UnitStats { UnitNo = 43, Cost = 2500, MaxHp = 100, Role = UnitRole.Large },
-            };
-            var director = new EnemyWaveDirector(settings, pool, 0);
-            var spawns = new List<UnitStats>();
-            var all = new List<UnitStats>();
-            for (int i = 0; i < 125; i++)
-            {
-                director.Tick(1f / 30f, spawns);
-                all.AddRange(spawns);
-            }
-
-            Assert.AreEqual(5, director.Level);
-            Assert.AreEqual(1, all.Count);
-            Assert.AreEqual(43, all[0].UnitNo);
-        }
     }
 }

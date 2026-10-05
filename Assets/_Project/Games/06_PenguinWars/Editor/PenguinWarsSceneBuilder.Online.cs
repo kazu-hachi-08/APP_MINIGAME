@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>オンライン対戦（接続・同期）とモード選択パネル。NetworkManager は OnlineSession が実行時に作るので Scene には置かない</summary>
     public static partial class PenguinWarsSceneBuilder
     {
-        private const string OfflineModeLabel = "エンドレス";
+        private const string OfflineModeLabel = "ステージ";
 
         private struct OnlineParts
         {

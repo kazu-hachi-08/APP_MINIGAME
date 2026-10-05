@@ -12,7 +12,6 @@ namespace MiniGame.PenguinWars
     {
         [Tooltip("戦場の長さ（ワールド単位）。城の位置は SceneBuilder がこの値で置くので、変えたら Rebuild する")]
         [SerializeField] private float _fieldLength = 30f;
-        [SerializeField] private int _castleHpEndless = 3000;
         [SerializeField] private int _castleHpVersus = 5000;
         [Tooltip("城の中心から出撃位置までの距離。城の絵の中から出てこないようにする")]
         [SerializeField] private float _spawnOffset = 1.5f;
@@ -54,29 +53,13 @@ namespace MiniGame.PenguinWars
         [Tooltip("役割キラー（大型・遠距離・妨害キラー）の狙いの役割へのダメージ倍率")]
         [SerializeField] private float _roleKillerMultiplier = 3f;
 
-        [Header("エンドレス（仕様書 §2.1・§8.1）")]
+        [Header("ランダム編成（編成画面ができるまでの仮。Phase 3 で使わなくなる）")]
         [Tooltip("ランダム編成の人数")]
         [SerializeField] private int _deckSize = 10;
         [Tooltip("ランダム編成に必ず入れる壁の数（壁がいないと序盤で詰むため）")]
         [SerializeField] private int _deckMinWalls = 2;
-        [Tooltip("敵レベルが上がる間隔（秒）")]
-        [SerializeField] private float _enemyLevelUpInterval = 30f;
-        [Tooltip("レベル1の敵の出現間隔（秒）")]
-        [SerializeField] private float _enemyBaseSpawnInterval = 4f;
-        [Tooltip("レベルが1上がるごとに出現間隔にかける値")]
-        [SerializeField] private float _enemySpawnIntervalMultiplier = 0.9f;
-        [SerializeField] private float _enemyMinSpawnInterval = 0.8f;
-        [Tooltip("出現キャラのコスト上限 = 基本 + レベル × 増分")]
-        [SerializeField] private int _enemyCostLimitBase = 300;
-        [SerializeField] private int _enemyCostLimitPerLevel = 250;
-        [Tooltip("敵の体力・攻撃の倍率 = 基本 + レベル × 増分")]
-        [SerializeField] private float _enemyStatMultiplierBase = 1f;
-        [SerializeField] private float _enemyStatMultiplierPerLevel = 0.15f;
-        [Tooltip("このレベルの倍数になったら大型を1体確定で出す")]
-        [SerializeField] private int _enemyBossLevelInterval = 5;
 
         public float FieldLength => _fieldLength;
-        public int CastleHpEndless => _castleHpEndless;
         public int CastleHpVersus => _castleHpVersus;
         public float VersusTimeLimit => _versusTimeLimit;
         public int DraftOfferCount => _draftOfferCount;
@@ -98,22 +81,6 @@ namespace MiniGame.PenguinWars
         public WalletTable CreateWalletTable()
         {
             return new WalletTable(_walletCaps, _walletRates, _walletLevelUpCosts);
-        }
-
-        public EnemyWaveSettings CreateEnemyWaveSettings()
-        {
-            return new EnemyWaveSettings
-            {
-                LevelUpInterval = _enemyLevelUpInterval,
-                BaseSpawnInterval = _enemyBaseSpawnInterval,
-                SpawnIntervalMultiplier = _enemySpawnIntervalMultiplier,
-                MinSpawnInterval = _enemyMinSpawnInterval,
-                CostLimitBase = _enemyCostLimitBase,
-                CostLimitPerLevel = _enemyCostLimitPerLevel,
-                StatMultiplierBase = _enemyStatMultiplierBase,
-                StatMultiplierPerLevel = _enemyStatMultiplierPerLevel,
-                BossLevelInterval = _enemyBossLevelInterval,
-            };
         }
     }
 }

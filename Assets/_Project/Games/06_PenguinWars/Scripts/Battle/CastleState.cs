@@ -7,18 +7,14 @@ namespace MiniGame.PenguinWars.Battle
         public float X { get; }
         public int MaxHp { get; }
         public int Hp { get; internal set; }
-        /// <summary>エンドレスの出現ゲート。攻撃対象にならず、ユニットはここより先に進めない（仕様書 §2.1）</summary>
-        public bool IsInvincible { get; }
+        public bool IsDestroyed => Hp <= 0;
 
-        public bool IsDestroyed => !IsInvincible && Hp <= 0;
-
-        public CastleState(Side side, float x, int maxHp, bool isInvincible)
+        public CastleState(Side side, float x, int maxHp)
         {
             Side = side;
             X = x;
             MaxHp = maxHp;
             Hp = maxHp;
-            IsInvincible = isInvincible;
         }
     }
 }

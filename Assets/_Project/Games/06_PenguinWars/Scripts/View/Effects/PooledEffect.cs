@@ -4,7 +4,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// 一定時間だけ動いて自分で非表示になる演出の土台。非表示になったものを EffectPool が使い回す。
-    /// 1回ごとに Instantiate / Destroy しないのは、エンドレス後半は1秒に何十回もヒットして GC でカクつくため
+    /// 1回ごとに Instantiate / Destroy しないのは、乱戦では1秒に何十回もヒットして GC でカクつくため
     /// </summary>
     public abstract class PooledEffect : MonoBehaviour
     {

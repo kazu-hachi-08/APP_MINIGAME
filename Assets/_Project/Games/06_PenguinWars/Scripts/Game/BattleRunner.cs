@@ -51,7 +51,7 @@ namespace MiniGame.PenguinWars
         public bool IsRunning { get; private set; }
         public bool IsGuest => _mirror != null;
         public int VersusStageCount => _versusStages != null ? _versusStages.Length : 0;
-        /// <summary>今の試合のステージ。エンドレス・デモは null（Balance の戦場のまま）</summary>
+        /// <summary>今の対戦のステージ。一人用のステージ・デモは null</summary>
         public PenguinStageData CurrentStage { get; private set; }
         /// <summary>今の試合の戦場の長さ。カメラ・演出はこれで右の城の位置を知る</summary>
         public float FieldLength { get; private set; }
@@ -62,18 +62,32 @@ namespace MiniGame.PenguinWars
         /// <summary>出撃・ヒット・撃破・城崩壊。演出・音・進行はこれを見て動く</summary>
         public event Action<BattleEvent> EventRaised;
 
-        /// <summary>エンドレス: 自分はランダム10体、右は無敵の出現ゲートから敵が湧く（仕様書 §2.1）</summary>
-        public void InitializeEndless()
+        /// <summary>一人用のステージ: 自分は deckNos の編成、右の城からは定義表どおりに敵が湧く</summary>
+        public void InitializeStage(StageDefinition stage, IReadOnlyList<int> deckNos)
         {
-            // 毎回違う編成・違う湧き方・違う能力の当たり方にする（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
-            var random = new System.Random(Environment.TickCount);
-            _world = new BattleWorld(CreateSettings(false, random.Next(), null));
+            // 能力の当たり方は毎回変える（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
+            BattleSettings settings = CreateBaseSettings(false, Environment.TickCount);
+            settings.FieldLength = stage.FieldLength;
+            settings.LeftCastleHp = stage.PlayerCastleHp;
+            settings.RightCastleHp = stage.EnemyCastleHp;
+            _world = new BattleWorld(settings);
+            ApplyField(null, stage.FieldLength);
 
-            List<UnitStats> allUnits = CollectAllUnits();
-            _world.SetDeck(Side.Left, PickRandomDeck(allUnits, random));
-            // 敵は味方と同じデータから湧く（仕様書 §8.1）
-            _world.SetEnemyWaves(new EnemyWaveDirector(_balance.CreateEnemyWaveSettings(), allUnits, random.Next()));
+            Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
+            _world.SetDeck(Side.Left, ToSortedDeck(deckNos, statsByNo));
+            WarnMissingUnits(stage, statsByNo);
+            // 敵は味方と同じデータから湧く
+            _world.SetEnemyScript(new EnemyScriptDirector(stage.Entries, statsByNo));
             RefreshViews();
+        }
+
+        /// <summary>ステージ選択・編成画面ができるまでの仮の編成（Phase 3 で編成画面に置き換える）</summary>
+        public List<int> PickRandomDeckNos()
+        {
+            var deckNos = new List<int>();
+            var random = new System.Random(Environment.TickCount);
+            foreach (UnitStats stats in PickRandomDeck(CollectAllUnits(), random)) deckNos.Add(stats.UnitNo);
+            return deckNos;
         }
 
         /// <summary>オンラインのホスト: ドラフトで決まった編成で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
@@ -244,9 +258,15 @@ namespace MiniGame.PenguinWars
 
         private static void ApplyCastle(CastleView view, CastleState castle)
         {
-            // 無敵の出現ゲートは HP を持たないものとして見せる（仕様書 §2.1）
-            if (castle.IsInvincible) view.ShowAsGate();
-            else view.SetHp(castle.Hp, castle.MaxHp);
+            view.SetHp(castle.Hp, castle.MaxHp);
+        }
+
+        private static void WarnMissingUnits(StageDefinition stage, Dictionary<int, UnitStats> statsByNo)
+        {
+            foreach (EnemySpawnEntry entry in stage.Entries)
+            {
+                if (!statsByNo.ContainsKey(entry.UnitNo)) Debug.LogWarning($"[BattleRunner] ステージ {stage.Id} の敵 No.{entry.UnitNo} がカタログにありません");
+            }
         }
 
         private void DispatchEvents()
@@ -266,7 +286,7 @@ namespace MiniGame.PenguinWars
             return null;
         }
 
-        /// <param name="stage">null なら Balance の戦場（エンドレス・デモ）</param>
+        /// <param name="stage">null なら Balance の戦場（デモ）</param>
         private BattleSettings CreateSettings(bool versus, int seed, PenguinStageData stage)
         {
             BattleSettings settings = CreateBaseSettings(versus, seed);
@@ -287,14 +307,14 @@ namespace MiniGame.PenguinWars
 
         private BattleSettings CreateBaseSettings(bool versus, int seed)
         {
-            int castleHp = versus ? _balance.CastleHpVersus : _balance.CastleHpEndless;
+            // 城HP はステージの定義表・対戦のステージで上書きする（デモもその後で上書きする）
+            int castleHp = _balance.CastleHpVersus;
             return new BattleSettings
             {
                 FieldLength = _balance.FieldLength,
                 LeftCastleHp = castleHp,
                 RightCastleHp = castleHp,
-                // エンドレスの右端は無敵の出現ゲート、敵はお金を持たない（仕様書 §2.1・§8）。対戦は両者が同じルール
-                RightCastleInvincible = !versus,
+                // ステージの敵はお金を持たず定義表どおりに湧く。対戦は両者が同じルール
                 RightSpawnsFree = !versus,
                 TimeLimit = versus ? _balance.VersusTimeLimit : 0f,
                 SpawnOffset = _balance.SpawnOffset,
@@ -319,7 +339,7 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>
-        /// ドラフトは選んだ順に並ぶので、エンドレスと同じく安い順に並べ直す。
+        /// ドラフト・ステージの編成は選んだ順に並ぶので、安い順に並べ直す。
         /// ゲストにはこの並びのまま編成が送られるので、並べ替えはホストだけでよい
         /// </summary>
         private static List<UnitStats> ToSortedDeck(IReadOnlyList<int> unitNos, Dictionary<int, UnitStats> statsByNo)

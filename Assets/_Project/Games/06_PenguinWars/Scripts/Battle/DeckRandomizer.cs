@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MiniGame.PenguinWars.Battle
 {
-    /// <summary>エンドレスのランダム編成（仕様書 §2.1）。全キャラから重複なしで抽選する</summary>
+    /// <summary>ランダム編成（編成画面ができるまでのステージ用）とドラフトの候補選び。全キャラから重複なしで抽選する</summary>
     public static class DeckRandomizer
     {
         /// <summary>

@@ -103,8 +103,8 @@ namespace MiniGame.PenguinWars
                 case BattleEventType.CannonFired:
                     PresentCannon(battleEvent);
                     break;
-                case BattleEventType.EnemyLevelUp:
-                    _hud.ShowLevelUp(battleEvent.Amount);
+                case BattleEventType.BossAppeared:
+                    _hud.ShowBossAppeared();
                     _audio.PlayLevelUp();
                     break;
                 case BattleEventType.CastleDestroyed:

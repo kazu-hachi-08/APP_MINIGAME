@@ -14,6 +14,9 @@ namespace MiniGame.PenguinWars.Battle.Tests
         // 左の攻撃役がその場から右の相手に届くようにする（動かさずに当て続けるため）
         private const float LongRange = 30f;
         private const float Tolerance = 0.01f;
+        private const int CastleHp = 1000;
+        // 城を狙えないようにする代わりに、射程の長い攻撃役が城を落として試合が終わらない量にする
+        private const int UnbreakableCastleHp = 100000000;
 
         /// <summary>左に置く攻撃役。動かず、射程内の相手を一定間隔で殴る</summary>
         private static UnitStats Attacker(int attack, float interval = 1f, bool area = false, params UnitAbility[] abilities)
@@ -37,14 +40,13 @@ namespace MiniGame.PenguinWars.Battle.Tests
             };
         }
 
-        private static BattleWorld CreateWorld(UnitStats left, UnitStats right, bool rightInvincible = true, float cannonChargeTime = 1000f)
+        private static BattleWorld CreateWorld(UnitStats left, UnitStats right, int rightCastleHp = UnbreakableCastleHp, float cannonChargeTime = 1000f)
         {
             var world = new BattleWorld(new BattleSettings
             {
                 FieldLength = FieldLength,
                 SpawnOffset = SpawnOffset,
-                RightCastleHp = 1000,
-                RightCastleInvincible = rightInvincible,
+                RightCastleHp = rightCastleHp,
                 RightSpawnsFree = true,
                 CannonChargeTime = cannonChargeTime,
             });
@@ -204,13 +206,13 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             var castleKiller = new UnitAbility(UnitAbilityType.CastleKiller);
             // 範囲攻撃にして、同じ1発がユニットと城の両方に当たるようにする
-            BattleWorld world = CreateWorld(Attacker(10, 10f, true, castleKiller), Target(), rightInvincible: false);
+            BattleWorld world = CreateWorld(Attacker(10, 10f, true, castleKiller), Target(), CastleHp);
 
             Run(world, 0.2f);
 
             UnitState target = FindFirst(world, Side.Right);
             Assert.AreEqual(target.Stats.MaxHp - 10, target.Hp);
-            Assert.AreEqual(1000 - 30, world.GetCastle(Side.Right).Hp);
+            Assert.AreEqual(CastleHp - 30, world.GetCastle(Side.Right).Hp);
         }
 
         [Test]
@@ -235,11 +237,11 @@ namespace MiniGame.PenguinWars.Battle.Tests
         public void RoleKiller_DoesNotBoostCastleDamage()
         {
             var largeKiller = new UnitAbility(UnitAbilityType.LargeKiller);
-            BattleWorld world = CreateWorld(Attacker(10, 10f, true, largeKiller), Target(), rightInvincible: false);
+            BattleWorld world = CreateWorld(Attacker(10, 10f, true, largeKiller), Target(), CastleHp);
 
             Run(world, 0.2f);
 
-            Assert.AreEqual(1000 - 10, world.GetCastle(Side.Right).Hp);
+            Assert.AreEqual(CastleHp - 10, world.GetCastle(Side.Right).Hp);
         }
 
         [Test]

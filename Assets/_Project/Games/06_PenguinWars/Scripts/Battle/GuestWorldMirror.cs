@@ -5,7 +5,7 @@ namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
     /// オンラインのゲストが持つ「表示用の BattleWorld」に、ホストから届いた状態を左右反転して書き込む（仕様書 §10.2・§10.3）。
-    /// ゲストはこの World を Step しない。UI・View はエンドレスと同じく World を読むだけなので、ゲスト専用の表示コードが要らない。
+    /// ゲストはこの World を Step しない。UI・View はステージと同じく World を読むだけなので、ゲスト専用の表示コードが要らない。
     /// 位置は届くたびに飛ばさず、前回の位置から次の位置へ1回の送信間隔をかけて動かす（約15回/秒の送信でもカクつかないように）
     /// </summary>
     public class GuestWorldMirror

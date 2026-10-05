@@ -17,7 +17,7 @@ namespace MiniGame.PenguinWars
     {
         private enum MatchMode
         {
-            Endless,
+            Stage,
             Host,
             Guest,
         }
@@ -33,7 +33,7 @@ namespace MiniGame.PenguinWars
         private const float PercentScale = 100f;
 
         [Header("オンライン対戦")]
-        [Tooltip("未設定ならモード選択を出さずエンドレスで始める")]
+        [Tooltip("未設定ならモード選択を出さず最初のステージで始める")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private PenguinWarsOnlineLink _onlineLink;
@@ -42,11 +42,11 @@ namespace MiniGame.PenguinWars
         [Tooltip("TIME UP! を見せてからリザルトを出すまでの秒数")]
         [SerializeField] private float _timeUpDuration = 1.5f;
 
-        private MatchMode _mode = MatchMode.Endless;
+        private MatchMode _mode = MatchMode.Stage;
         // オンラインでは相手の端末が止まらないので、ポーズ画面を出しても試合は止めない（サッカーと同じ）
         private bool _isOnlinePauseOpen;
 
-        private bool IsOnline => _mode != MatchMode.Endless;
+        private bool IsOnline => _mode != MatchMode.Stage;
         private int MySeat => _mode == MatchMode.Guest ? GuestSeat : HostSeat;
         private int OpponentSeat => _mode == MatchMode.Guest ? HostSeat : GuestSeat;
 
@@ -126,16 +126,10 @@ namespace MiniGame.PenguinWars
             FinishGame(isVictory, score, isVictory ? WinDetail : LoseDetail);
         }
 
-        /// <summary>BaseMiniGameManager.FinishGame はタイトルが VICTORY! / GAME OVER しかないので、引き分けだけ同じ手順を自前で踏む（仕様書 §2.3）</summary>
+        /// <summary>引き分けは VICTORY! / GAME OVER のどちらでもないので専用のタイトルで出す（仕様書 §2.3）</summary>
         private void FinishAsDraw(string score)
         {
-            ChangeState(MiniGameState.GameOver);
-            OnGameOver(false);
-            ChangeState(MiniGameState.Result);
-            if (UIManager.HasInstance)
-            {
-                UIManager.Instance.ShowResultDialog(DrawTitle, score, DrawDetail, RestartGame, ReturnToTitle);
-            }
+            ShowCustomResult(DrawTitle, false, score, DrawDetail);
         }
 
         /// <summary>「自分 72% - 40% 相手」。時間切れの判定と同じく城の残りHP割合で見せる</summary>

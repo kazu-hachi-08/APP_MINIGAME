@@ -81,7 +81,7 @@ namespace MiniGame.PenguinWars.Battle
 
         private static bool CanHitCastle(UnitState attacker, CastleState enemyCastle)
         {
-            return !enemyCastle.IsInvincible && IsInRange(attacker, enemyCastle.X);
+            return IsInRange(attacker, enemyCastle.X);
         }
     }
 }

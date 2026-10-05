@@ -44,7 +44,7 @@ namespace MiniGame.PenguinWars.Battle
 
             float speed = unit.Stats.MoveSpeed * (unit.Status.IsSlowed ? _settings.SlowSpeedMultiplier : 1f);
             float x = unit.X + unit.Side.Forward() * speed * deltaTime;
-            // 無敵の出現ゲートは攻撃対象にならないので、射程で止まらずゲートで止める
+            // 城より先には進ませない（射程で止まるので普通は届かないが、射程 0 のキャラが城を通り抜けないように）
             unit.X = unit.Side == Side.Left ? Math.Min(x, enemyCastle.X) : Math.Max(x, enemyCastle.X);
         }
 

@@ -90,7 +90,7 @@ namespace MiniGame.PenguinWars
             // 遊び方の基本 → 戦い方 → 能力 → ステージの順。最初のページで「何をすれば勝ちか」が分かるようにする
             new GuideTopic("出撃と勝ち方",
                 "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
-                "相手の城を先に落とせば勝ち（エンドレスは自分の城を守れた時間を競う）。",
+                "相手の城を先に落とせば勝ち。",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Ally, FishSwordPenguin, 1.5f),
                 GuideAction.Spawn(1f, Ally, Penguin, 1.5f),

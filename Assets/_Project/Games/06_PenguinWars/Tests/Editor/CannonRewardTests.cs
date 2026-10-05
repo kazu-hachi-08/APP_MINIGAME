@@ -4,8 +4,8 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>Phase 4: 敵レベル・撃破報酬・ペンギン砲</summary>
-    public class EndlessTests
+    /// <summary>撃破報酬・ペンギン砲・ランダム編成</summary>
+    public class CannonRewardTests
     {
         private const float StepTime = 1f / 30f;
         private const float FieldLength = 10f;
@@ -26,7 +26,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             var world = new BattleWorld(new BattleSettings
             {
                 FieldLength = FieldLength,
-                RightCastleInvincible = true,
                 RightSpawnsFree = true,
                 WalletTable = new WalletTable(new[] { 10000 }, new[] { 0f }, new int[0]),
                 CannonChargeTime = CannonChargeTime,
@@ -40,87 +39,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             int steps = (int)System.Math.Round(seconds / StepTime);
             for (int i = 0; i < steps; i++) world.Step(StepTime);
-        }
-
-        private static List<UnitStats> TickDirector(EnemyWaveDirector director, float seconds)
-        {
-            var all = new List<UnitStats>();
-            var spawns = new List<UnitStats>();
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++)
-            {
-                director.Tick(StepTime, spawns);
-                all.AddRange(spawns);
-            }
-            return all;
-        }
-
-        [Test]
-        public void Director_LevelRisesEvery30Seconds()
-        {
-            var director = new EnemyWaveDirector(new EnemyWaveSettings(), new[] { Unit(1, 100) }, 0);
-            Assert.AreEqual(1, director.Level);
-
-            TickDirector(director, 29f);
-            Assert.AreEqual(1, director.Level);
-
-            TickDirector(director, 2f);
-            Assert.AreEqual(2, director.Level);
-        }
-
-        [Test]
-        public void Director_SpawnsOnlyWithinCostLimit()
-        {
-            // レベルを上げずに、レベル1の上限（300 + 250 = 550）だけを確かめる
-            var settings = new EnemyWaveSettings { LevelUpInterval = 1000f };
-            var director = new EnemyWaveDirector(settings, new[] { Unit(1, 100), Unit(2, 551), Unit(3, 3000) }, 0);
-
-            List<UnitStats> spawned = TickDirector(director, 60f);
-
-            Assert.That(spawned.Count, Is.GreaterThan(5));
-            foreach (UnitStats stats in spawned) Assert.LessOrEqual(stats.Cost, director.CostLimit);
-        }
-
-        [Test]
-        public void Director_BossAppearsAtLevel5EvenIfOverCostLimit()
-        {
-            var settings = new EnemyWaveSettings { LevelUpInterval = 1f, BaseSpawnInterval = 1000f };
-            var director = new EnemyWaveDirector(settings, new[] { Unit(1, 100), Unit(50, 5000) }, 0);
-
-            List<UnitStats> spawned = TickDirector(director, 4.1f);
-
-            Assert.AreEqual(5, director.Level);
-            Assert.AreEqual(1, spawned.Count);
-            Assert.AreEqual(50, spawned[0].UnitNo);
-        }
-
-        [Test]
-        public void Director_SpawnsScaledStats()
-        {
-            var settings = new EnemyWaveSettings { LevelUpInterval = 1000f, BaseSpawnInterval = 0.5f, MinSpawnInterval = 0.5f };
-            var director = new EnemyWaveDirector(settings, new[] { Unit(1, 100, hp: 100) }, 0);
-
-            List<UnitStats> spawned = TickDirector(director, 1f);
-
-            // レベル1の倍率 1.0 + 1 × 0.15
-            Assert.AreEqual(115, spawned[0].MaxHp);
-            Assert.AreEqual(12, spawned[0].Attack);
-            Assert.AreEqual(100, spawned[0].Cost);
-        }
-
-        [Test]
-        public void World_EnemyWavesSpawnRightUnitsAndRaiseLevelEvent()
-        {
-            BattleWorld world = CreateWorld(Unit(2, 100));
-            world.SetEnemyWaves(new EnemyWaveDirector(new EnemyWaveSettings(), new[] { Unit(2, 100) }, 0));
-
-            Run(world, 31f);
-
-            Assert.AreEqual(2, world.EnemyLevel);
-            Assert.That(world.CountUnits(Side.Right), Is.GreaterThan(0));
-            var events = new List<BattleEvent>();
-            world.DrainEvents(events);
-            Assert.IsTrue(events.Exists(e => e.Type == BattleEventType.EnemyLevelUp && e.Amount == 2));
         }
 
         [Test]

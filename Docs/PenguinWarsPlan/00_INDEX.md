@@ -36,7 +36,7 @@
 | 9 | [phase09_art50.md](phase09_art50.md) | 残り40体の見た目パーツ | 50体すべて見た目が揃う | 完了 |
 | 10 | [phase10_online.md](phase10_online.md) | オンライン対戦（編成はランダム） | 友達と城攻め対戦できる | 完了 |
 | 11 | [phase11_draft.md](phase11_draft.md) | ドラフト | 対戦前にドラフトできる | 完了 |
-| 12 | [phase12_polish.md](phase12_polish.md) | バランス調整・仕様書反映・計画書削除 | 完成 | 進行中 |
+| 12 | [phase12_polish.md](phase12_polish.md) | バランス調整・仕様書反映・計画書削除 | 完成 | ステージ計画の Phase 8 に吸収 |
 
 状態: 未着手 / 進行中 / 完了
 

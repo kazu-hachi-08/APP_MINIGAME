@@ -19,14 +19,13 @@ namespace MiniGame.PenguinWars.Battle.Tests
             };
         }
 
-        private static BattleWorld CreateWorld(UnitStats left, UnitStats right, bool rightInvincible = false, int rightCastleHp = CastleHp)
+        private static BattleWorld CreateWorld(UnitStats left, UnitStats right, int rightCastleHp = CastleHp)
         {
             var world = new BattleWorld(new BattleSettings
             {
                 FieldLength = FieldLength,
                 LeftCastleHp = CastleHp,
                 RightCastleHp = rightCastleHp,
-                RightCastleInvincible = rightInvincible,
             });
             world.SetDeck(Side.Left, new[] { left });
             world.SetDeck(Side.Right, new[] { right });
@@ -126,18 +125,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Run(world, 12f);
 
             Assert.Less(world.GetCastle(Side.Right).Hp, CastleHp);
-        }
-
-        [Test]
-        public void InvincibleGate_IsNotDamagedAndBlocksAdvance()
-        {
-            BattleWorld world = CreateWorld(Melee(), Melee(), rightInvincible: true);
-            world.Enqueue(BattleCommand.Spawn(Side.Left, 0));
-
-            Run(world, 15f);
-
-            Assert.AreEqual(CastleHp, world.GetCastle(Side.Right).Hp);
-            Assert.AreEqual(FieldLength, FindFirst(world, Side.Left).X);
         }
 
         [Test]

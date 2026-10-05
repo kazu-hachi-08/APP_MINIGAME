@@ -4,15 +4,13 @@ using UnityEngine;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 戦場の絵（仕様書 §7.3）: 氷の城（青・赤）・エンドレスの出現ゲート（洞窟）・地面・遠くの山・空。
+    /// 戦場の絵（仕様書 §7.3）: 氷の城（青・赤）・地面・遠くの山・空。
     /// 大きい絵は文字パターンだと読みにくいので、四角・三角・楕円の組み合わせで描く
     /// </summary>
     public static class FieldArtGenerator
     {
         public const int CastleWidth = 48;
         public const int CastleHeight = 64;
-        private const int GateWidth = 64;
-        private const int GateHeight = 48;
         /// <summary>地面は縦に繰り返さないよう、SceneBuilder の地面の厚さ（ワールド単位）と同じ高さで1枚にする</summary>
         public const int GroundTileHeight = 96;
         private const int GroundTileWidth = 32;
@@ -25,7 +23,6 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 Center = new Vector2(0.5f, 0.5f);
 
         public static string CastlePath(Side side) => $"{PenguinSpriteWriter.SpriteDirectory}/Castle_{side}.png";
-        public static readonly string GatePath = PenguinSpriteWriter.SpriteDirectory + "/Gate.png";
         public static readonly string GroundPath = PenguinSpriteWriter.SpriteDirectory + "/Ground.png";
         public static readonly string MountainsPath = PenguinSpriteWriter.SpriteDirectory + "/Mountains.png";
         public static readonly string SkyPath = PenguinSpriteWriter.SpriteDirectory + "/Sky.png";
@@ -67,7 +64,6 @@ namespace MiniGame.PenguinWars.Editor
             int ppu = PenguinSpriteWriter.PixelsPerUnit;
             PenguinSpriteWriter.Save(CastlePath(Side.Left), BuildCastle(Side.Left), CastleWidth, CastleHeight, ppu, BottomCenter);
             PenguinSpriteWriter.Save(CastlePath(Side.Right), BuildCastle(Side.Right), CastleWidth, CastleHeight, ppu, BottomCenter);
-            PenguinSpriteWriter.Save(GatePath, BuildGate(), GateWidth, GateHeight, ppu, BottomCenter);
             PenguinSpriteWriter.Save(GroundPath, BuildGround(), GroundTileWidth, GroundTileHeight, ppu, Center);
             PenguinSpriteWriter.Save(MountainsPath, BuildMountains(), MountainTileWidth, MountainTileHeight, ppu, BottomCenter);
             PenguinSpriteWriter.Save(SkyPath, BuildSky(), SkyWidth, SkyHeight, ppu, BottomCenter);
@@ -173,46 +169,6 @@ namespace MiniGame.PenguinWars.Editor
         }
 
         // ------------------------------------------------------------------
-        // エンドレスの出現ゲート（雪をかぶった岩山の洞窟）
-        // ------------------------------------------------------------------
-        private static Color32[] BuildGate()
-        {
-            var rock = new Color32(110, 122, 145, 255);
-            var rockShade = new Color32(85, 95, 118, 255);
-            var outline = new Color32(35, 40, 55, 255);
-            var snow = new Color32(240, 247, 255, 255);
-            var hole = new Color32(18, 18, 28, 255);
-            var holeEdge = new Color32(45, 45, 60, 255);
-
-            const float mountRadiusX = 31.5f;
-            const float mountRadiusY = 46f;
-            const float holeRadiusX = 14f;
-            const float holeRadiusY = 26f;
-            const int snowLine = 36;
-            const float center = (GateWidth - 1) * 0.5f;
-
-            var canvas = new PixelCanvas(GateWidth, GateHeight);
-            for (int y = 0; y < GateHeight; y++)
-            {
-                for (int x = 0; x < GateWidth; x++)
-                {
-                    float mount = Ellipse(x - center, y, mountRadiusX, mountRadiusY);
-                    if (mount > 1f) continue;
-
-                    float hollow = Ellipse(x - center, y, holeRadiusX, holeRadiusY);
-                    Color32 color;
-                    if (mount > 0.93f) color = outline;
-                    else if (hollow <= 0.85f) color = hole;
-                    else if (hollow <= 1f) color = holeEdge;
-                    else if (y >= snowLine - (Hash(x, 0) % 3)) color = snow;
-                    else color = Hash(x, y) % 7 == 0 || x > center + 12 ? rockShade : rock;
-                    canvas.Set(x, y, color);
-                }
-            }
-            return canvas.Pixels;
-        }
-
-        // ------------------------------------------------------------------
         // 地面・遠くの山・空（横に敷き詰めるので左右の端がつながるように描く）
         // ------------------------------------------------------------------
         private static Color32[] BuildGround()
@@ -295,12 +251,7 @@ namespace MiniGame.PenguinWars.Editor
             return delta;
         }
 
-        private static float Ellipse(float dx, float dy, float radiusX, float radiusY)
-        {
-            return dx * dx / (radiusX * radiusX) + dy * dy / (radiusY * radiusY);
-        }
-
-        /// <summary>雪のきらめき・岩の模様用。Random と違い何度生成しても同じ絵になる</summary>
+        /// <summary>雪のきらめき用。Random と違い何度生成しても同じ絵になる</summary>
         private static int Hash(int x, int y)
         {
             unchecked

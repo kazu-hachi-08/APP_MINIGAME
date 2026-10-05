@@ -42,7 +42,7 @@ namespace MiniGame.PenguinWars.Battle
         }
 
         /// <summary>
-        /// 体力・攻撃に倍率をかけたコピー（エンドレスの敵レベル。仕様書 §8.1）。
+        /// 体力・攻撃に倍率をかけたコピー（ステージの敵の倍率。EnemySpawnEntry.StatMultiplier）。
         /// コストはそのまま残す（撃破報酬は倍率なしのため。§8.2）。能力リストは書き換えないので共有してよい
         /// </summary>
         public UnitStats Scaled(float multiplier)

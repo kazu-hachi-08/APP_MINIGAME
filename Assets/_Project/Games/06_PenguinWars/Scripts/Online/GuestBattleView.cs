@@ -6,7 +6,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// ゲストのみ。ホストから届いたバイト列を状態・イベントに戻して BattleRunner に流す。
-    /// 表示（UnitView・UI・演出）はエンドレスと同じものが BattleRunner 経由で動く
+    /// 表示（UnitView・UI・演出）はステージと同じものが BattleRunner 経由で動く
     /// </summary>
     public class GuestBattleView : MonoBehaviour
     {

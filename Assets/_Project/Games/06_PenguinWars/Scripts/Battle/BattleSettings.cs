@@ -6,8 +6,6 @@ namespace MiniGame.PenguinWars.Battle
         public float FieldLength { get; set; } = 30f;
         public int LeftCastleHp { get; set; } = 3000;
         public int RightCastleHp { get; set; } = 3000;
-        /// <summary>エンドレスでは右端が無敵の出現ゲートになる</summary>
-        public bool RightCastleInvincible { get; set; }
         /// <summary>城の中心から出撃位置までの距離。城の絵の中から出てこないようにする</summary>
         public float SpawnOffset { get; set; } = 1.5f;
         /// <summary>仕様書 §4.3。スマホの処理負荷対策</summary>
@@ -15,7 +13,7 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>働きペンギンのレベル表（仕様書 §4.2）</summary>
         public WalletTable WalletTable { get; set; } = WalletTable.CreateDefault();
         /// <summary>
-        /// true なら右陣営はさかな・再生産を気にせず出撃できる。エンドレスの敵は §8 のルールで湧くので、お金で縛らない
+        /// true なら右陣営はさかな・再生産を気にせず出撃できる。ステージの敵は定義表どおりに湧くので、お金で縛らない
         /// </summary>
         public bool RightSpawnsFree { get; set; }
         /// <summary>撃破報酬 = 倒した敵のコスト × この値（仕様書 §4.1・§8.2）</summary>
@@ -42,7 +40,7 @@ namespace MiniGame.PenguinWars.Battle
         public float AvalancheStartRatio { get; set; } = 0.4f;
         public float AvalancheEndRatio { get; set; } = 0.6f;
         public int AvalancheDamage { get; set; } = 150;
-        /// <summary>対戦の制限時間（秒。仕様書 §2.2）。0 なら時間切れなし（エンドレス）</summary>
+        /// <summary>対戦の制限時間（秒。仕様書 §2.2）。0 なら時間切れなし（ステージ）</summary>
         public float TimeLimit { get; set; }
         /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>
         public int RandomSeed { get; set; }
