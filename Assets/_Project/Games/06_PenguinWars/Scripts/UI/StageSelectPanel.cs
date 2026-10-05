@@ -22,6 +22,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Button _nextChapterButton;
         [SerializeField] private Button _backButton;
         [SerializeField] private StageDetailPanel _detailPanel;
+        [SerializeField] private Button _deckButton;
+        [SerializeField] private DeckEditPanel _deckEditPanel;
 
         private readonly List<StageNode> _nodes = new List<StageNode>();
         private CampaignProgress _progress;
@@ -34,6 +36,7 @@ namespace MiniGame.PenguinWars
             _prevChapterButton.onClick.AddListener(() => ChangeChapter(-1));
             _nextChapterButton.onClick.AddListener(() => ChangeChapter(1));
             _backButton.onClick.AddListener(Back);
+            _deckButton.onClick.AddListener(OpenDeckEdit);
         }
 
         /// <summary>最後に遊んだステージの章を開く（クリアして戻ってきたとき、続きがすぐ見えるように）</summary>
@@ -45,6 +48,7 @@ namespace MiniGame.PenguinWars
             StageDefinition last = progress.LastPlayedId != null ? StageDefinitions.Find(progress.LastPlayedId) : null;
             _chapter = last != null ? last.Chapter : FirstChapter;
             _detailPanel.Hide();
+            _deckEditPanel.Hide();
             Refresh();
             gameObject.SetActive(true);
         }
@@ -84,7 +88,19 @@ namespace MiniGame.PenguinWars
         private void OpenDetail(StageDefinition stage)
         {
             PlayClick();
-            _detailPanel.Show(stage, _progress, Sortie);
+            _detailPanel.Show(stage, _progress, Sortie, OpenDeckEdit);
+        }
+
+        private void OpenDeckEdit()
+        {
+            PlayClick();
+            _deckEditPanel.Show(_progress, OnDeckEditClosed);
+        }
+
+        /// <summary>詳細から開いた場合は、詳細の編成アイコンを新しい編成に描き直す</summary>
+        private void OnDeckEditClosed()
+        {
+            if (_detailPanel.gameObject.activeSelf) _detailPanel.RefreshDeck(_progress);
         }
 
         private void Sortie(string stageId)

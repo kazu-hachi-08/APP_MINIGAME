@@ -28,6 +28,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Color _slowedTint = new Color(0.6f, 0.6f, 0.6f);
         [Tooltip("状態異常の色に寄せる割合")]
         [SerializeField, Range(0f, 1f)] private float _statusTintAmount = 0.7f;
+        [Tooltip("ボスの見た目の大きさ。表示だけで、当たり判定・射程は変えない")]
+        [SerializeField] private float _bossScale = 1.3f;
 
         private UnitSpriteSet _sprites;
         // 飛ばされた瞬間の残り時間。UnitState は全体の長さを持たないので、ここで覚えて跳ねる放物線の進み具合に使う
@@ -51,6 +53,8 @@ namespace MiniGame.PenguinWars
             // ユニットの原点は足元。城と同じく地面の上端 Y=0 に立たせる。
             // ノックバック中は BattleWorld が X を少しずつ戻すので、それに放物線の高さを足して後ろに跳ねさせる
             transform.localPosition = new Vector3(state.X, KnockbackHop(state), 0f);
+            // View は使い回すので毎回戻す
+            transform.localScale = Vector3.one * (state.IsBoss ? _bossScale : 1f);
             if (_sprites != null) _body.sprite = _sprites.Get(SelectFrame(state));
             _body.flipX = state.Side == Side.Right;
             _body.color = ResolveTint(state);

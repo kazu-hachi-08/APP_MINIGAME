@@ -14,6 +14,11 @@ namespace MiniGame.PenguinWars.Editor
         private const int IntroTitleFontSize = 90;
         private static readonly Vector2 IntroTitleSize = new Vector2(1000f, 120f);
         private static readonly Vector2 IntroTitlePosition = new Vector2(0f, -110f);
+        // 特別ルールは2段の下（ギミックが無いステージは空）
+        private const int IntroRulesFontSize = 48;
+        private static readonly Vector2 IntroRulesSize = new Vector2(1700f, 80f);
+        private static readonly Vector2 IntroRulesPosition = new Vector2(0f, 110f);
+        private static readonly Color IntroRulesColor = new Color(1f, 0.6f, 0.45f);
 
         private static readonly Vector2 IntroCellSize = new Vector2(300f, 240f);
         // 2段の中心を画面中央より少し下にして、タイトルと重ならないようにする
@@ -32,7 +37,9 @@ namespace MiniGame.PenguinWars.Editor
             // 背景は raycastTarget を残し、発表中に下の出撃ボタンが押せないようにする
             panelObj.AddComponent<Image>().color = IntroBackColor;
 
-            CreateText(panelObj.transform, "Title", IntroTitleFontSize, TopCenterAnchor, IntroTitlePosition, IntroTitleSize, MessageColor).text = "今回の編成";
+            // 中身（ステージ名・特別ルール）は DeckIntroPanel が出すたびに書く
+            Text title = CreateText(panelObj.transform, "Title", IntroTitleFontSize, TopCenterAnchor, IntroTitlePosition, IntroTitleSize, MessageColor);
+            Text rules = CreateText(panelObj.transform, "Rules", IntroRulesFontSize, BottomCenterAnchor, IntroRulesPosition, IntroRulesSize, IntroRulesColor);
 
             int cellCount = IntroColumns * IntroRows;
             var icons = new Image[cellCount];
@@ -47,7 +54,7 @@ namespace MiniGame.PenguinWars.Editor
             SerializedArray(so, "_icons", icons);
             SerializedArray(so, "_names", names);
             so.ApplyModifiedPropertiesWithoutUndo();
-            SetRefs(panel, ("_catalog", catalog));
+            SetRefs(panel, ("_catalog", catalog), ("_titleLabel", title), ("_rulesLabel", rules));
             panelObj.SetActive(false);
             return panel;
         }

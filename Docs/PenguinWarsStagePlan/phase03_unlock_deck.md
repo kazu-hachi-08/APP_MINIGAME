@@ -68,7 +68,30 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * Battle: `CampaignUnlocks.cs`（初期10体・解放判定） / `DeckRules.cs`（編成のきまり・補完・並べ替え）
+  * UI: `DeckEditPanel.cs`
+  * Editor: `PenguinWarsSceneBuilder.Deck.cs`
+  * Tests: `UnlockTests.cs` / `DeckRulesTests.cs`
+  * 変更: `CampaignProgress`（`LastDeckNos`・`StageRecordChange.NewUnlockNos`・JSON に `"deck":[…]`） / `StageDefinitions.Chapter1`（仮の `UnlockNos`） / `ZukanCell`（`SetLocked` / `SetDimmed`。編成画面でも使う） / `UnitSpriteAnimator.SetTint` / `PenguinZukanPanel`（開くたびにセーブを読んでシルエット） / `StageSelectPanel`（「へんせい」ボタン・編成画面） / `StageDetailPanel`（今の編成10体の帯。押すと編成画面） / `StageResultPanel`（右側に「なかまになった！」最大4体） / `PenguinWarsGameManager.Stage`（保存した編成で出撃） / SceneBuilder の `.StageSelect.cs`・`.Zukan.cs`（スクロール生成を列数・上余白の引数付きにした）
 * 公開API:
-* 初期10体の No:
+  * `CampaignUnlocks.InitialNos` / `IsUnlocked(progress, no)` / `UnlockedNos(progress)`（No 順） / `FindUnlockStage(no)`（初期・未割り当ては null。ずかんのヒントや Phase 6 の割り振り確認用）
+  * `DeckRules.DeckSize`（=10） / `IsValid(deck, unlocked)` / `FillDefault(deck, unlocked)`（未解放・重複・定義表に無い No を外して、解放済みからコストの低い順に補完） / `ByCost(nos)` / `CurrentDeck(progress)`（出撃に使う編成。保存→補完→コスト順）
+  * `CampaignProgress.LastDeckNos`（未決定なら空） / `Record(...)` の戻り値 `NewUnlockNos`（初クリア時、記録前に未解放だったものだけ）
+  * `DeckEditPanel.Show(progress, onClosed)`（「けってい」で `CampaignSave.Save` まで行う。「もどる」は変更を捨てる）
+  * `StageResultPanel.Show(title, stars, detail, unlockNos, onNext, onRetry, onSelect)`
+* 初期10体の No: 1 ペンギン / 3 ゆきだま / 6 ひな（壁3） / 11 おの / 12 さかなけん / 17 にんじゃ（アタッカー3） / 23 ゆみ / 25 つりざお（遠距離2） / 37 ねばねば / 38 ハリセン（妨害2）。大型なし
+* 仮ステージの解放: `1-1` → 2 かべ・13 ボクサー / `1-2` → 24 ゆきなげ・41 ふうせん / `1-3` → 7 ダンボール・14 すもう（Phase 6 で作り直す）
 * 計画から変えた点:
+  * ずかんの未解放キャラは「詳細を開けない」ほうにした（ヒント文は出さない。`FindUnlockStage` は用意済みなので、出したくなったら `ZukanCell` に足すだけ）。左上の数値も「？？？」にする（並べ替えは本当の値で並ぶ）
+  * 編成画面の一覧は「並べ替え（ドロップダウン）だけ」。ずかんの昇順/降順・特性しぼりこみは付けていない（解放済みは最大40体で、探すのに困らないため）
+  * 一覧のマスをもう一度押すと枠から外れる（枠を押しても外れる）。枠は常にコストの低い順に詰める
+  * 「もどる」は保存しない（9体の編成が保存されて、次の出撃で勝手に補完されるのを避けるため）
+  * 編成をまだ決めていない・保存した編成が使えないときは `DeckRules.CurrentDeck` が自動で補う（初回は初期10体そのまま）
+  * `PenguinWarsBalance` の `_deckMinWalls` とランダム編成（`BattleRunner.PickRandomDeckNos`）を削除。`DeckRandomizer.PickDeck` は既存テストだけが使っているので残した
+  * 編成の人数は `DeckRules.DeckSize`（定数 10）。`PenguinWarsBalance.DeckSize` はドラフト用に残した（同じ値にしておく）
 * 次フェーズへの注意:
+  * 編成制限（Phase 4）は `DeckRules.IsValid` にステージを渡す形で足すのが自然。`DeckEditPanel` は今は `IsValid(_deck, _unlockedNos)` だけで「けってい」を判定している。出撃前に制限を満たさない保存編成をどうするか（自動で外す／出撃させない）は決めておく
+  * 敵の紹介（Phase 4）は `StageDetailPanel` の「しゅつげき」→ `StartStage` の間に挟む。詳細パネルの高さは 1000 で、もう縦に余裕はない
+  * 解放演出（Phase 7）は `StageResultPanel.ShowUnlocks` が並べているだけ。1ステージ5体以上の解放は表示が4体で切れる（Phase 6 の割り振りで超えないこと）
+  * 全50体の網羅テスト `InitialAndStageUnlocks_CoverAllUnitsExactlyOnce` は `[Ignore]` 中。Phase 6 で外す
+  * Unity 側のコードは、Unity 生成の csproj から参照を写した一時プロジェクトで `dotnet build` し、EditMode テストは反射で NUnit を呼ぶ簡易ランナーで 130 件通過を確認した（エディタでの Rebuild・再生確認はまだ）

@@ -4,23 +4,27 @@ using System.Text;
 
 namespace MiniGame.PenguinWars.Battle
 {
-    /// <summary>Record の戻り値。リザルトに「NEW RECORD!」「新しく取った★」を出すために使う</summary>
+    /// <summary>Record の戻り値。リザルトに「NEW RECORD!」「新しく取った★」「なかまになった！」を出すために使う</summary>
     public readonly struct StageRecordChange
     {
         public bool IsFirstClear { get; }
         public bool IsNewBest { get; }
         public StarFlags NewStars { get; }
+        /// <summary>このクリアで新しく使えるようになったキャラの No。初クリアでなければ空</summary>
+        public IReadOnlyList<int> NewUnlockNos { get; }
 
-        public StageRecordChange(bool isFirstClear, bool isNewBest, StarFlags newStars)
+        public StageRecordChange(bool isFirstClear, bool isNewBest, StarFlags newStars, IReadOnlyList<int> newUnlockNos)
         {
             IsFirstClear = isFirstClear;
             IsNewBest = isNewBest;
             NewStars = newStars;
+            NewUnlockNos = newUnlockNos ?? Array.Empty<int>();
         }
     }
 
     /// <summary>
-    /// ステージモードの進み具合（クリア状況・★・ベストタイム・最後に遊んだステージ）。
+    /// ステージモードの進み具合（クリア状況・★・ベストタイム・最後に遊んだステージ・最後に使った編成）。
+    /// 解放キャラはクリア状況から計算する（CampaignUnlocks）ので持たない。
     /// ステージは番号ではなく ID で持つので、定義表を並べ替えてもセーブが壊れない。
     /// 定義表から消えた ID もそのまま残す（戻したときに記録が復活するように）
     /// </summary>
@@ -32,6 +36,7 @@ namespace MiniGame.PenguinWars.Battle
         private const string StagesKey = "stages";
         private const string StarsKey = "stars";
         private const string BestKey = "best";
+        private const string DeckKey = "deck";
 
         private class StageRecord
         {
@@ -44,6 +49,9 @@ namespace MiniGame.PenguinWars.Battle
 
         /// <summary>ステージ選択を開いたときにこのステージの章を見せる。まだ遊んでいなければ null</summary>
         public string LastPlayedId { get; set; }
+
+        /// <summary>最後に「けってい」した編成。まだ決めていなければ空（使う側が DeckRules.FillDefault で補う）</summary>
+        public IReadOnlyList<int> LastDeckNos { get; set; } = Array.Empty<int>();
 
         public bool IsCleared(string stageId) => StarRule.Has(GetStars(stageId), StarFlags.Clear);
 
@@ -81,10 +89,25 @@ namespace MiniGame.PenguinWars.Battle
             bool isFirstClear = !StarRule.Has(record.Stars, StarFlags.Clear) && StarRule.Has(stars, StarFlags.Clear);
             StarFlags newStars = stars & ~record.Stars;
             bool isNewBest = !record.BestSeconds.HasValue || seconds < record.BestSeconds.Value;
+            // 記録する前の解放状況と比べる（別のステージで先に解放済みのキャラは「新しい仲間」にしない）
+            List<int> newUnlockNos = isFirstClear ? CollectNewUnlocks(stageId) : new List<int>();
 
             record.Stars |= stars;
             if (isNewBest) record.BestSeconds = seconds;
-            return new StageRecordChange(isFirstClear, isNewBest, newStars);
+            return new StageRecordChange(isFirstClear, isNewBest, newStars, newUnlockNos);
+        }
+
+        private List<int> CollectNewUnlocks(string stageId)
+        {
+            var nos = new List<int>();
+            StageDefinition stage = StageDefinitions.Find(stageId);
+            if (stage == null) return nos;
+
+            foreach (int no in stage.UnlockNos)
+            {
+                if (!CampaignUnlocks.IsUnlocked(this, no) && !nos.Contains(no)) nos.Add(no);
+            }
+            return nos;
         }
 
         // ---- 保存形式 ----
@@ -94,6 +117,7 @@ namespace MiniGame.PenguinWars.Battle
             var builder = new StringBuilder("{");
             builder.Append(MiniJson.Quote(VersionKey)).Append(':').Append(SaveVersion);
             if (LastPlayedId != null) builder.Append(',').Append(MiniJson.Quote(LastPlayedKey)).Append(':').Append(MiniJson.Quote(LastPlayedId));
+            AppendDeck(builder);
             builder.Append(',').Append(MiniJson.Quote(StagesKey)).Append(":{");
             bool first = true;
             foreach (KeyValuePair<string, StageRecord> pair in _records)
@@ -103,6 +127,17 @@ namespace MiniGame.PenguinWars.Battle
                 AppendRecord(builder, pair.Key, pair.Value);
             }
             return builder.Append("}}").ToString();
+        }
+
+        private void AppendDeck(StringBuilder builder)
+        {
+            builder.Append(',').Append(MiniJson.Quote(DeckKey)).Append(":[");
+            for (int i = 0; i < LastDeckNos.Count; i++)
+            {
+                if (i > 0) builder.Append(',');
+                builder.Append(LastDeckNos[i]);
+            }
+            builder.Append(']');
         }
 
         private static void AppendRecord(StringBuilder builder, string stageId, StageRecord record)
@@ -128,10 +163,21 @@ namespace MiniGame.PenguinWars.Battle
             return progress;
         }
 
+        private static List<int> ReadNos(List<object> items)
+        {
+            var nos = new List<int>();
+            foreach (object item in items)
+            {
+                if (item is double value) nos.Add((int)value);
+            }
+            return nos;
+        }
+
         /// <summary>型が違う項目は読み飛ばす（手で書き換えられた・古い形式のセーブでも落ちないように）</summary>
         private void Load(Dictionary<string, object> root)
         {
             if (root.TryGetValue(LastPlayedKey, out object last)) LastPlayedId = last as string;
+            if (root.TryGetValue(DeckKey, out object deck) && deck is List<object> deckItems) LastDeckNos = ReadNos(deckItems);
             if (!root.TryGetValue(StagesKey, out object stagesValue) || !(stagesValue is Dictionary<string, object> stages)) return;
 
             foreach (KeyValuePair<string, object> pair in stages)

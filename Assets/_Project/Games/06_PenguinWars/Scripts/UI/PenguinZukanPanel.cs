@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MiniGame.Common.Audio;
+using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -66,6 +67,7 @@ namespace MiniGame.PenguinWars
         public void Show()
         {
             BuildCellsOnce();
+            ApplyUnlocks();
             ResetListState();
             _detailPanel.Hide();
             gameObject.SetActive(true);
@@ -86,6 +88,16 @@ namespace MiniGame.PenguinWars
                 _cells.Add(cell);
                 index++;
             }
+        }
+
+        /// <summary>
+        /// ステージモードでまだ仲間になっていないキャラはシルエットにする。開くたびにセーブを読む
+        /// （ステージをクリアしてタイトルに戻ったとき、増えた仲間がすぐ見えるように）
+        /// </summary>
+        private void ApplyUnlocks()
+        {
+            CampaignProgress progress = CampaignSave.Load();
+            foreach (ZukanCell cell in _cells) cell.SetLocked(!CampaignUnlocks.IsUnlocked(progress, cell.Stats.UnitNo));
         }
 
         /// <summary>開くたびに「コスト・小さい順・すべて」に戻す（前回の絞り込みが残っていると、キャラが減ったように見えるため）</summary>

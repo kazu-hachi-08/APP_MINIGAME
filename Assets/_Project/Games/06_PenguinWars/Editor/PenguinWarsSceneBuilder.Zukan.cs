@@ -54,6 +54,7 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Color ZukanCellValueBackColor = new Color(0f, 0f, 0f, 0.55f);
         private const int ZukanCellValueFontSize = 34;
         private const int ZukanCellValueMinFontSize = 18;
+        private static readonly Color ZukanCellDimColor = new Color(0f, 0f, 0f, 0.6f);
 
         private static readonly Color ZukanDimColor = new Color(0f, 0f, 0f, 0.7f);
         private static readonly Vector2 ZukanDetailBoxSize = new Vector2(1400f, 760f);
@@ -87,7 +88,7 @@ namespace MiniGame.PenguinWars.Editor
             // 文字は PenguinZukanPanel が開くたびに書き換えるので、ここでは仮の文字
             Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, ZukanTopLeftAnchor, ZukanOrderButtonPosition);
 
-            (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform);
+            (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform, ZukanTopMargin, ZukanColumns);
             ZukanCell template = CreateZukanCellTemplate(content);
             // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
             Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, ZukanTopLeftAnchor, ZukanColumnDropdownPosition);
@@ -102,15 +103,15 @@ namespace MiniGame.PenguinWars.Editor
             return panel;
         }
 
-        /// <summary>縦スクロールだけの一覧。Content の高さはグリッドの行数から自動で決まる</summary>
-        private static (ScrollRect scroll, Transform content) CreateZukanScroll(Transform panel)
+        /// <summary>縦スクロールだけの一覧（編成画面でも使う）。Content の高さはグリッドの行数から自動で決まる</summary>
+        private static (ScrollRect scroll, Transform content) CreateZukanScroll(Transform panel, float topMargin, int columns)
         {
             GameObject viewportObj = UIDialogBuilder.CreateUIObject("Viewport", panel);
             RectTransform viewport = viewportObj.GetComponent<RectTransform>();
             viewport.anchorMin = Vector2.zero;
             viewport.anchorMax = Vector2.one;
             viewport.offsetMin = new Vector2(ZukanSideMargin, ZukanBottomMargin);
-            viewport.offsetMax = new Vector2(-ZukanSideMargin, -ZukanTopMargin);
+            viewport.offsetMax = new Vector2(-ZukanSideMargin, -topMargin);
             viewportObj.AddComponent<RectMask2D>();
             // マスの隙間でもドラッグでスクロールできるよう、透明な受け皿を置く
             viewportObj.AddComponent<Image>().color = Color.clear;
@@ -121,7 +122,7 @@ namespace MiniGame.PenguinWars.Editor
             content.anchorMax = Vector2.one;
             content.pivot = new Vector2(0.5f, 1f);
             content.sizeDelta = Vector2.zero;
-            AddZukanGrid(contentObj);
+            AddZukanGrid(contentObj, columns);
 
             var scroll = viewportObj.AddComponent<ScrollRect>();
             scroll.content = content;
@@ -131,7 +132,7 @@ namespace MiniGame.PenguinWars.Editor
             return (scroll, content);
         }
 
-        private static void AddZukanGrid(GameObject content)
+        private static void AddZukanGrid(GameObject content, int columns)
         {
             var grid = content.AddComponent<GridLayoutGroup>();
             grid.cellSize = ZukanCellSize;
@@ -139,7 +140,7 @@ namespace MiniGame.PenguinWars.Editor
             grid.padding = new RectOffset(0, 0, ZukanGridPadding, ZukanGridPadding);
             grid.childAlignment = TextAnchor.UpperCenter;
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = ZukanColumns;
+            grid.constraintCount = columns;
             content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         }
 
@@ -157,9 +158,12 @@ namespace MiniGame.PenguinWars.Editor
             name.resizeTextMinSize = ZukanCellNameMinFontSize;
             name.resizeTextMaxSize = ZukanCellNameFontSize;
             Text value = CreateZukanCellValue(cellObj.transform);
+            // 編成画面で「もう枠に入れた」キャラを暗くする幕。ずかんでは使わない
+            Image dimmer = CreateImage(cellObj.transform, "Dimmer", CenterAnchor, Vector2.zero, ZukanCellSize, ZukanCellDimColor);
+            dimmer.gameObject.SetActive(false);
 
             var cell = cellObj.AddComponent<ZukanCell>();
-            SetRefs(cell, ("_button", button), ("_icon", icon), ("_nameLabel", name), ("_valueLabel", value));
+            SetRefs(cell, ("_button", button), ("_icon", icon), ("_nameLabel", name), ("_valueLabel", value), ("_dimmer", dimmer.gameObject));
             cellObj.SetActive(false);
             return cell;
         }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>BattleWorld を作るときの数値。PenguinWarsBalance から詰め替えて渡す</summary>
@@ -40,6 +43,16 @@ namespace MiniGame.PenguinWars.Battle
         public float AvalancheStartRatio { get; set; } = 0.4f;
         public float AvalancheEndRatio { get; set; } = 0.6f;
         public int AvalancheDamage { get; set; } = 150;
+        /// <summary>最初から持っているさかな（ステージのギミック。両陣営にかかるが、ステージの敵はさかなを使わない）</summary>
+        public int StartingFish { get; set; }
+        /// <summary>働きペンギンをこのレベルより上げられない。0 なら表の最大まで</summary>
+        public int MaxWalletLevel { get; set; }
+        /// <summary>編成制限: これより高いコストのキャラは出せない。0 なら制限なし。左陣営（ステージの自分）だけにかかる</summary>
+        public int DeckMaxUnitCost { get; set; }
+        /// <summary>編成制限: この役割のキャラは出せない。左陣営だけにかかる</summary>
+        public IReadOnlyList<UnitRole> DeckBannedRoles { get; set; } = Array.Empty<UnitRole>();
+        /// <summary>右陣営（ステージの敵の城）が自動で撃つペンギン砲。null なら撃たない</summary>
+        public EnemyCannonSettings EnemyCannon { get; set; }
         /// <summary>対戦の制限時間（秒。仕様書 §2.2）。0 なら時間切れなし（ステージ）</summary>
         public float TimeLimit { get; set; }
         /// <summary>能力の確率判定に使う乱数のシード。テストで固定できるようにする</summary>

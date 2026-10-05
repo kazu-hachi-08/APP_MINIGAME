@@ -56,6 +56,7 @@ namespace MiniGame.PenguinWars.Editor
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
             BattleHud hud = CreateHud(safeArea, canvas);
+            CreateBossHpBar(safeArea, battleRunner, catalog);
             (UnitButtonBar buttonBar, WalletButton walletButton, CannonButton cannonButton) = CreateControls(safeArea, battleRunner, catalog);
             SetRefs(battleRunner.GetComponent<KeyboardCommandInput>(), ("_buttonBar", buttonBar), ("_walletButton", walletButton),
                 ("_cannonButton", cannonButton));
@@ -67,8 +68,8 @@ namespace MiniGame.PenguinWars.Editor
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
             // モード選択の「ステージ」の次に出る画面なので、モード選択より手前
-            StageSelectPanel stageSelectPanel = CreateStageSelectPanel(canvas);
-            StageResultPanel stageResultPanel = CreateStageResultPanel(canvas);
+            StageSelectPanel stageSelectPanel = CreateStageSelectPanel(canvas, catalog);
+            StageResultPanel stageResultPanel = CreateStageResultPanel(canvas, catalog);
             // 最初に見える画面なのでモード選択より手前
             PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog, battleRunner, battleCamera);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);

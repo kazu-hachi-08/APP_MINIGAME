@@ -24,6 +24,8 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>Windup / Cooldown / Knockback の残り秒数</summary>
         public float ActionTimer { get; internal set; }
         public UnitStatusEffects Status { get; } = new UnitStatusEffects();
+        /// <summary>ステージの IsBoss の行で出た敵。表示（拡大・画面上部のHPバー）だけに使い、強さは StatMultiplier で決める</summary>
+        public bool IsBoss { get; internal set; }
 
         public int UnitNo => Stats.UnitNo;
         public bool IsDead => Action == UnitAction.Dead;

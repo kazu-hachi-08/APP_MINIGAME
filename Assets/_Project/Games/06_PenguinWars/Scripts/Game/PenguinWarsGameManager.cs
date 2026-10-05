@@ -91,7 +91,15 @@ namespace MiniGame.PenguinWars
             _introTimer = deckDuration;
             // 対戦はお互いの10体（ドラフト中は相手の分を隠していたため）、ステージは自分の10体だけ
             if (IsOnline) ShowDeckReveal();
-            else _deckIntroPanel.Show(_battleRunner.World.GetDeck(Side.Left));
+            else ShowStageIntro();
+        }
+
+        /// <summary>ステージ名・特別ルールと、編成制限で出せないキャラ（出撃ボタンと同じ判定）を先に見せる</summary>
+        private void ShowStageIntro()
+        {
+            BattleWorld world = _battleRunner.World;
+            _deckIntroPanel.Show(world.GetDeck(Side.Left), StageLabels.Title(_currentStage), StageLabels.Rules(_currentStage),
+                slot => world.IsAllowedByRules(Side.Left, slot));
         }
 
         protected override void Update()

@@ -6,7 +6,8 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>
     /// 戦闘のすべて（ユニット・城・お金・砲）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
     /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）。
-    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs、なだれは BattleWorld.Avalanche.cs
+    /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs、なだれは BattleWorld.Avalanche.cs、
+    /// ステージのギミック（敵の砲・編成制限）は BattleWorld.Gimmicks.cs
     /// </summary>
     public partial class BattleWorld
     {
@@ -50,8 +51,8 @@ namespace MiniGame.PenguinWars.Battle
             _rightCastle = new CastleState(Side.Right, settings.FieldLength, settings.RightCastleHp);
             for (int side = 0; side < 2; side++)
             {
-                _wallets[side] = new WalletState(settings.WalletTable);
-                _cannons[side] = new CannonState(settings.CannonChargeTime);
+                _wallets[side] = new WalletState(settings.WalletTable, settings.MaxWalletLevel, settings.StartingFish);
+                _cannons[side] = new CannonState(CannonChargeTime((Side)side));
             }
         }
 
@@ -108,6 +109,7 @@ namespace MiniGame.PenguinWars.Battle
             IReadOnlyList<UnitStats> deck = _decks[(int)side];
             if (deck == null || slotIndex < 0 || slotIndex >= deck.Count) return false;
             if (CountUnits(side) >= _settings.MaxUnitsPerSide) return false;
+            if (!IsAllowedByRules(side, slotIndex)) return false;
             if (IsSpawnFree(side)) return true;
 
             return GetSlot(side, slotIndex).IsReady && GetWallet(side).CanAfford(deck[slotIndex].Cost);
@@ -135,6 +137,7 @@ namespace MiniGame.PenguinWars.Battle
             ElapsedTime += deltaTime;
             TickEconomy(deltaTime);
             TickEnemyScript(deltaTime);
+            TickEnemyCannon();
             ProcessCommands();
             // ループ中に死んだユニットは Dead にしておき、最後にまとめて除く（途中で消すと添字がずれるため）
             foreach (UnitState unit in _units)
@@ -203,7 +206,7 @@ namespace MiniGame.PenguinWars.Battle
             foreach (EnemySpawn spawn in _enemySpawns)
             {
                 // 上限を超えた分は捨てる（溜めておくと、空いた瞬間に一斉に湧いて理不尽になるため）
-                if (spawn.IsBoss || CountUnits(Side.Right) < _settings.MaxUnitsPerSide) AddUnit(Side.Right, spawn.Stats);
+                if (spawn.IsBoss || CountUnits(Side.Right) < _settings.MaxUnitsPerSide) AddUnit(Side.Right, spawn.Stats).IsBoss = spawn.IsBoss;
             }
             if (bossNo != 0) _events.Add(new BattleEvent(BattleEventType.BossAppeared, Side.Right, BattleEvent.CastleId, _rightCastle.X, bossNo));
         }
@@ -231,16 +234,17 @@ namespace MiniGame.PenguinWars.Battle
             AddUnit(side, stats, x);
         }
 
-        private void AddUnit(Side side, UnitStats stats)
+        private UnitState AddUnit(Side side, UnitStats stats)
         {
-            AddUnit(side, stats, GetCastle(side).X + side.Forward() * _settings.SpawnOffset);
+            return AddUnit(side, stats, GetCastle(side).X + side.Forward() * _settings.SpawnOffset);
         }
 
-        private void AddUnit(Side side, UnitStats stats, float x)
+        private UnitState AddUnit(Side side, UnitStats stats, float x)
         {
             var unit = new UnitState(_nextUnitId++, side, stats, x);
             _units.Add(unit);
             _events.Add(new BattleEvent(BattleEventType.Spawned, side, unit.Id, x));
+            return unit;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using MiniGame.PenguinWars.Battle;
@@ -67,8 +68,8 @@ namespace MiniGame.PenguinWars
             _progress.LastPlayedId = _currentStage.Id;
             CampaignSave.Save(_progress);
 
-            // 編成画面（Phase 3）ができるまでは仮でランダム10体
-            _battleRunner.InitializeStage(_currentStage, _battleRunner.PickRandomDeckNos());
+            // 編成画面で決めた編成（未保存・未解放が混ざっていたら補完したもの）
+            _battleRunner.InitializeStage(_currentStage, DeckRules.CurrentDeck(_progress));
             BeginIntro(_deckIntroDuration);
         }
 
@@ -90,22 +91,22 @@ namespace MiniGame.PenguinWars
 
             StageDefinition next = StageDefinitions.Next(_currentStage.Id);
             Action onNext = next != null ? () => ReloadInto(next.Id) : (Action)null;
-            ShowStageResult(true, StageClearTitle, StageLabels.Stars(stars), detail, onNext);
+            ShowStageResult(true, StageClearTitle, StageLabels.Stars(stars), detail, change.NewUnlockNos, onNext);
         }
 
         private void ShowStageFailed(StageResult result)
         {
-            ShowStageResult(false, StageFailedTitle, null, $"撃破 {result.KillCount}体", null);
+            ShowStageResult(false, StageFailedTitle, null, $"撃破 {result.KillCount}体", Array.Empty<int>(), null);
         }
 
         /// <summary>BaseMiniGameManager.FinishGame と同じ状態の進め方をして、表示だけ専用のリザルトにする</summary>
-        private void ShowStageResult(bool isClear, string title, string stars, string detail, Action onNext)
+        private void ShowStageResult(bool isClear, string title, string stars, string detail, IReadOnlyList<int> unlockNos, Action onNext)
         {
             ChangeState(MiniGameState.GameOver);
             if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(isClear ? SeId.GameClear : SeId.GameOver);
             OnGameOver(isClear);
             ChangeState(MiniGameState.Result);
-            _stageResultPanel.Show(title, stars, $"{StageLabels.Title(_currentStage)}\n{detail}", onNext, RestartGame, ReloadIntoStageSelect);
+            _stageResultPanel.Show(title, stars, $"{StageLabels.Title(_currentStage)}\n{detail}", unlockNos, onNext, RestartGame, ReloadIntoStageSelect);
         }
 
         private void ReloadInto(string stageId)

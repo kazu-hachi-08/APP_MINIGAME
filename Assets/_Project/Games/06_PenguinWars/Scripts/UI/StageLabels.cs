@@ -11,6 +11,7 @@ namespace MiniGame.PenguinWars
         private const string MissingStar = "☆";
         private const string NoRecord = "--:--";
         private const float PercentScale = 100f;
+        private const string RuleSeparator = " ／ ";
 
         /// <summary>★の並び順は詳細パネルの条件3行と同じ（クリア・城HP・タイム）</summary>
         public static readonly StarFlags[] StarOrder = { StarFlags.Clear, StarFlags.Safe, StarFlags.Fast };
@@ -53,5 +54,21 @@ namespace MiniGame.PenguinWars
         public static string BestTime(float? seconds) => seconds.HasValue ? TimeText(seconds.Value) : NoRecord;
 
         public static string Title(StageDefinition stage) => $"{stage.Id}  {stage.Name}";
+
+        /// <summary>特別ルールを1行に並べる（「なだれ ／ スタート時 さかな1500 ／ 大型禁止」）。ギミックが無ければ空文字。色は遊べば分かるので出さない</summary>
+        public static string Rules(StageDefinition stage)
+        {
+            var rules = new List<string>();
+            if (stage.AvalancheInterval > 0f) rules.Add("なだれ");
+            if (stage.StartingFish > 0) rules.Add($"スタート時 さかな{stage.StartingFish}");
+            if (stage.MaxWalletLevel > 0) rules.Add($"働きペンギン Lv{stage.MaxWalletLevel}まで");
+            if (stage.EnemyCannon != null) rules.Add("敵のペンギン砲");
+            if (stage.MaxUnitCost > 0) rules.Add($"コスト{stage.MaxUnitCost}以下のみ");
+            if (stage.BannedRoles != null)
+            {
+                foreach (UnitRole role in stage.BannedRoles) rules.Add($"{UnitLabels.Role(role)}禁止");
+            }
+            return string.Join(RuleSeparator, rules);
+        }
     }
 }

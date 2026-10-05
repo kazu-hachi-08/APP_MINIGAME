@@ -53,11 +53,9 @@ namespace MiniGame.PenguinWars
         [Tooltip("役割キラー（大型・遠距離・妨害キラー）の狙いの役割へのダメージ倍率")]
         [SerializeField] private float _roleKillerMultiplier = 3f;
 
-        [Header("ランダム編成（編成画面ができるまでの仮。Phase 3 で使わなくなる）")]
-        [Tooltip("ランダム編成の人数")]
+        [Header("編成")]
+        [Tooltip("ドラフトで選ぶ人数。ステージの編成画面の枠数（DeckRules.DeckSize）と同じ値にする")]
         [SerializeField] private int _deckSize = 10;
-        [Tooltip("ランダム編成に必ず入れる壁の数（壁がいないと序盤で詰むため）")]
-        [SerializeField] private int _deckMinWalls = 2;
 
         public float FieldLength => _fieldLength;
         public int CastleHpVersus => _castleHpVersus;
@@ -71,7 +69,6 @@ namespace MiniGame.PenguinWars
         public float CannonRangeRatio => _cannonRangeRatio;
         public int CannonDamage => _cannonDamage;
         public int DeckSize => _deckSize;
-        public int DeckMinWalls => _deckMinWalls;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
         public float SlowSpeedMultiplier => _slowSpeedMultiplier;

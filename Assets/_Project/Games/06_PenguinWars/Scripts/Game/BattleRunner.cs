@@ -67,11 +67,9 @@ namespace MiniGame.PenguinWars
         {
             // 能力の当たり方は毎回変える（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
             BattleSettings settings = CreateBaseSettings(false, Environment.TickCount);
-            settings.FieldLength = stage.FieldLength;
-            settings.LeftCastleHp = stage.PlayerCastleHp;
-            settings.RightCastleHp = stage.EnemyCastleHp;
+            stage.ApplyTo(settings);
             _world = new BattleWorld(settings);
-            ApplyField(null, stage.FieldLength);
+            ApplyField(null, stage.FieldLength, ParseTint(stage));
 
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
             _world.SetDeck(Side.Left, ToSortedDeck(deckNos, statsByNo));
@@ -79,15 +77,6 @@ namespace MiniGame.PenguinWars
             // 敵は味方と同じデータから湧く
             _world.SetEnemyScript(new EnemyScriptDirector(stage.Entries, statsByNo));
             RefreshViews();
-        }
-
-        /// <summary>ステージ選択・編成画面ができるまでの仮の編成（Phase 3 で編成画面に置き換える）</summary>
-        public List<int> PickRandomDeckNos()
-        {
-            var deckNos = new List<int>();
-            var random = new System.Random(Environment.TickCount);
-            foreach (UnitStats stats in PickRandomDeck(CollectAllUnits(), random)) deckNos.Add(stats.UnitNo);
-            return deckNos;
         }
 
         /// <summary>オンラインのホスト: ドラフトで決まった編成で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
@@ -291,18 +280,29 @@ namespace MiniGame.PenguinWars
         {
             BattleSettings settings = CreateBaseSettings(versus, seed);
             if (stage != null) stage.ApplyTo(settings);
-            ApplyField(stage, settings.FieldLength);
+            ApplyField(stage, settings.FieldLength, stage != null ? stage.Tint : Color.white);
             return settings;
         }
 
         /// <summary>シーンは1つの戦場で作ってあるので、ステージの長さに合わせて右の城を動かし、色を変える</summary>
-        private void ApplyField(PenguinStageData stage, float fieldLength)
+        /// <param name="versusStage">一人用のステージ・デモは null</param>
+        private void ApplyField(PenguinStageData versusStage, float fieldLength, Color tint)
         {
-            CurrentStage = stage;
+            CurrentStage = versusStage;
             FieldLength = fieldLength;
             Vector3 position = _rightCastle.transform.localPosition;
             _rightCastle.transform.localPosition = new Vector3(fieldLength, position.y, position.z);
-            _backdrop.SetTint(stage != null ? stage.Tint : Color.white);
+            _backdrop.SetTint(tint);
+        }
+
+        /// <summary>定義表の色は文字列（Battle は Color を持てないため）。書き間違いは白にして、遊べなくはしない</summary>
+        private static Color ParseTint(StageDefinition stage)
+        {
+            if (string.IsNullOrEmpty(stage.TintHex)) return Color.white;
+            if (ColorUtility.TryParseHtmlString(stage.TintHex, out Color tint)) return tint;
+
+            Debug.LogWarning($"[BattleRunner] ステージ {stage.Id} の色 {stage.TintHex} が読めません（\"#RRGGBB\" で書く）");
+            return Color.white;
         }
 
         private BattleSettings CreateBaseSettings(bool versus, int seed)
@@ -331,11 +331,6 @@ namespace MiniGame.PenguinWars
                 RoleKillerMultiplier = _balance.RoleKillerMultiplier,
                 RandomSeed = seed,
             };
-        }
-
-        private List<UnitStats> PickRandomDeck(List<UnitStats> allUnits, System.Random random)
-        {
-            return DeckRandomizer.PickDeck(allUnits, _balance.DeckSize, _balance.DeckMinWalls, random);
         }
 
         /// <summary>

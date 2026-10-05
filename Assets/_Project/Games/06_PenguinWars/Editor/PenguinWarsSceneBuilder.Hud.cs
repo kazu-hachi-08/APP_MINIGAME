@@ -29,6 +29,17 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 MessageLabelSize = new Vector2(1400f, 300f);
         private static readonly Color MessageColor = new Color(1f, 0.92f, 0.3f);
 
+        // ボスのHPバー: お知らせ（ボス出現・なだれ注意）の下
+        private static readonly Vector2 BossBarPosition = new Vector2(0f, -215f);
+        private static readonly Vector2 BossBarSize = new Vector2(900f, 100f);
+        private const int BossNameFontSize = 40;
+        private static readonly Vector2 BossNamePosition = new Vector2(0f, 25f);
+        private static readonly Vector2 BossNameSize = new Vector2(900f, 50f);
+        private static readonly Vector2 BossGaugePosition = new Vector2(0f, -25f);
+        private static readonly Vector2 BossGaugeSize = new Vector2(800f, 32f);
+        private static readonly Color BossGaugeBackColor = new Color(0f, 0f, 0f, 0.6f);
+        private static readonly Color BossGaugeFillColor = new Color(0.9f, 0.2f, 0.2f);
+
         private const float PauseButtonSize = 100f;
         private const int PauseFontSize = 44;
         private static readonly Vector2 PauseButtonPosition = new Vector2(-30f, -20f);
@@ -71,6 +82,27 @@ namespace MiniGame.PenguinWars.Editor
             var hud = safeArea.gameObject.AddComponent<BattleHud>();
             SetRefs(hud, ("_timeLabel", timeLabel), ("_messageLabel", messageLabel), ("_levelUpLabel", levelUpLabel));
             return hud;
+        }
+
+        private static BossHpBar CreateBossHpBar(Transform safeArea, BattleRunner battleRunner, PenguinUnitCatalog catalog)
+        {
+            GameObject barObj = UIDialogBuilder.CreateUIObject("BossHpBar", safeArea);
+            RectTransform barRect = barObj.GetComponent<RectTransform>();
+            SetAnchor(barRect, TopCenterAnchor, BossBarPosition);
+            barRect.sizeDelta = BossBarSize;
+
+            // 表示を切り替えるのは子の Root（BossHpBar 自身を消すと Update が止まって二度と出なくなるため）
+            GameObject root = UIDialogBuilder.CreateUIObject("Root", barObj.transform);
+            UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
+            Text name = CreateText(root.transform, "Name", BossNameFontSize, CenterAnchor, BossNamePosition, BossNameSize, LevelUpColor);
+            Image gauge = CreateImage(root.transform, "Gauge", CenterAnchor, BossGaugePosition, BossGaugeSize, BossGaugeBackColor);
+            Image fill = CreateImage(gauge.transform, "Fill", CenterAnchor, Vector2.zero, Vector2.zero, BossGaugeFillColor);
+            UIDialogBuilder.SetStretchAll(fill.rectTransform);
+            root.SetActive(false);
+
+            var bar = barObj.AddComponent<BossHpBar>();
+            SetRefs(bar, ("_battleRunner", battleRunner), ("_catalog", catalog), ("_root", root), ("_fill", fill.rectTransform), ("_nameLabel", name));
+            return bar;
         }
 
         private static PauseButton CreatePauseButton(Transform safeArea)

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MiniGame.PenguinWars.Battle
 {
-    /// <summary>ランダム編成（編成画面ができるまでのステージ用）とドラフトの候補選び。全キャラから重複なしで抽選する</summary>
+    /// <summary>ドラフトの候補選びと出撃ボタンの並べ替え。PickDeck（ランダム編成）は Phase 3 の編成画面で使わなくなった（テストだけが使っている）</summary>
     public static class DeckRandomizer
     {
         /// <summary>

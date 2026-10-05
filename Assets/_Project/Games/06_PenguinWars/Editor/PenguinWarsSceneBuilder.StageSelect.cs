@@ -1,4 +1,5 @@
 using MiniGame.Editor;
+using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,7 +7,7 @@ namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
     /// 一人用のステージ選択・詳細・リザルト（ステージ計画 Phase 2）。マスはひな形を1つだけ作り、中身は実行時に定義表から並べる。
-    /// 対戦のステージ（PenguinStageData）は .Stages.cs で、こちらとは別物
+    /// 対戦のステージ（PenguinStageData）は .Stages.cs で、こちらとは別物。ステージ詳細は .StageDetail.cs
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -35,24 +36,12 @@ namespace MiniGame.PenguinWars.Editor
         private const int StageNodeBossFontSize = 36;
         private static readonly Color StageBossLabelColor = new Color(1f, 0.4f, 0.35f);
 
-        private static readonly Vector2 StageDetailBoxSize = new Vector2(1300f, 800f);
-        private static readonly Vector2 StageDetailTitlePosition = new Vector2(0f, 310f);
-        private static readonly Vector2 StageDetailTitleSize = new Vector2(1200f, 100f);
-        private const int StageDetailTitleFontSize = 64;
-        private static readonly Vector2 StageDetailDescriptionPosition = new Vector2(0f, 190f);
-        private static readonly Vector2 StageDetailDescriptionSize = new Vector2(1150f, 120f);
-        private const int StageDetailBodyFontSize = 38;
-        private const float StageDetailConditionTopY = 70f;
-        private const float StageDetailConditionStep = 70f;
-        private static readonly Vector2 StageDetailConditionSize = new Vector2(1000f, 60f);
-        private const int StageDetailConditionFontSize = 40;
-        private static readonly Vector2 StageDetailBestPosition = new Vector2(0f, -170f);
-        private static readonly Vector2 StageDetailBestSize = new Vector2(1000f, 60f);
-        private static readonly Vector2 StageSortieButtonSize = new Vector2(480f, 120f);
-        private static readonly Vector2 StageSortiePosition = new Vector2(230f, -300f);
-        private static readonly Vector2 StageDetailClosePosition = new Vector2(-280f, -300f);
+        // 「へんせい」は左上（ずかんの並べ替えと同じ位置）
+        private static readonly Vector2 StageDeckButtonSize = new Vector2(300f, 100f);
+        private static readonly Vector2 StageDeckButtonPosition = new Vector2(50f, -35f);
 
-        private static readonly Vector2 StageResultBoxSize = new Vector2(1300f, 940f);
+        // 右側に「なかまになった！」の列を置ける幅
+        private static readonly Vector2 StageResultBoxSize = new Vector2(1800f, 940f);
         private static readonly Vector2 StageResultTitlePosition = new Vector2(0f, 360f);
         private static readonly Vector2 StageResultTitleSize = new Vector2(1200f, 140f);
         private const int StageResultTitleFontSize = 110;
@@ -67,7 +56,21 @@ namespace MiniGame.PenguinWars.Editor
         private const float StageResultButtonY = -380f;
         private const float StageResultButtonStepX = 410f;
 
-        private static StageSelectPanel CreateStageSelectPanel(Transform canvas)
+        private const float StageResultDetailShiftWithUnlocks = -330f;
+        private const int StageResultUnlockSlots = 4;
+        private static readonly Vector2 StageResultUnlockTitlePosition = new Vector2(560f, 170f);
+        private static readonly Vector2 StageResultUnlockTitleSize = new Vector2(620f, 80f);
+        private const int StageResultUnlockTitleFontSize = 52;
+        private const float StageResultUnlockFirstX = 365f;
+        private const float StageResultUnlockStepX = 130f;
+        private const float StageResultUnlockIconY = 30f;
+        private static readonly Vector2 StageResultUnlockIconSize = new Vector2(124f, 124f);
+        private const float StageResultUnlockNameY = -70f;
+        private static readonly Vector2 StageResultUnlockNameSize = new Vector2(128f, 70f);
+        private const int StageResultUnlockNameFontSize = 24;
+        private const int StageResultUnlockNameMinFontSize = 12;
+
+        private static StageSelectPanel CreateStageSelectPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
             GameObject panelObj = UIDialogBuilder.CreateUIObject("StageSelectPanel", canvas);
             UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
@@ -77,6 +80,7 @@ namespace MiniGame.PenguinWars.Editor
             Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, StageSelectTitlePosition, StageSelectTitleSize, MessageColor);
             title.text = "ステージ";
             Button back = CreateAnchoredButton(panelObj.transform, "Btn_Back", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
+            Button deck = CreateAnchoredButton(panelObj.transform, "Btn_Deck", "へんせい", StageDeckButtonSize, ZukanTopLeftAnchor, StageDeckButtonPosition);
 
             Text chapter = CreateText(panelObj.transform, "Chapter", StageChapterFontSize, CenterAnchor, StageChapterLabelPosition, StageChapterLabelSize, Color.white);
             Button prev = CreateAnchoredButton(panelObj.transform, "Btn_PrevChapter", "◀", StageChapterButtonSize, CenterAnchor,
@@ -86,11 +90,14 @@ namespace MiniGame.PenguinWars.Editor
 
             Transform row = CreateStageRow(panelObj.transform);
             StageNode template = CreateStageNodeTemplate(row);
-            StageDetailPanel detail = CreateStageDetailPanel(panelObj.transform);
+            StageDetailPanel detail = CreateStageDetailPanel(panelObj.transform, catalog);
+            // 詳細から開くこともあるので、詳細より手前に作る
+            DeckEditPanel deckEdit = CreateDeckEditPanel(panelObj.transform, catalog);
 
             var panel = panelObj.AddComponent<StageSelectPanel>();
             SetRefs(panel, ("_nodeTemplate", template), ("_chapterLabel", chapter), ("_prevChapterButton", prev),
-                ("_nextChapterButton", next), ("_backButton", back), ("_detailPanel", detail));
+                ("_nextChapterButton", next), ("_backButton", back), ("_detailPanel", detail),
+                ("_deckButton", deck), ("_deckEditPanel", deckEdit));
             panelObj.SetActive(false);
             return panel;
         }
@@ -135,37 +142,8 @@ namespace MiniGame.PenguinWars.Editor
             return node;
         }
 
-        private static StageDetailPanel CreateStageDetailPanel(Transform parent)
-        {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("DetailPanel", parent);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = ZukanDimColor;
-            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, StageDetailBoxSize, ZukanDetailBoxColor);
-
-            Text title = CreateText(box.transform, "Title", StageDetailTitleFontSize, CenterAnchor, StageDetailTitlePosition, StageDetailTitleSize, MessageColor);
-            Text description = CreateText(box.transform, "Description", StageDetailBodyFontSize, CenterAnchor, StageDetailDescriptionPosition, StageDetailDescriptionSize, Color.white);
-            var conditions = new Text[StageLabels.StarOrder.Length];
-            for (int i = 0; i < conditions.Length; i++)
-            {
-                var position = new Vector2(0f, StageDetailConditionTopY - i * StageDetailConditionStep);
-                conditions[i] = CreateDetailText(box.transform, $"Condition{i + 1}", StageDetailConditionFontSize, position, StageDetailConditionSize, Color.white);
-            }
-            Text best = CreateText(box.transform, "Best", StageDetailConditionFontSize, CenterAnchor, StageDetailBestPosition, StageDetailBestSize, TitleSubColor);
-            Button sortie = CreateTitleButton(box.transform, "Btn_Sortie", "しゅつげき", StageSortieButtonSize, StageSortiePosition, StartButtonColor);
-            Button close = CreateTitleButton(box.transform, "Btn_Close", "閉じる", TitleSubButtonSize, StageDetailClosePosition, TitleSubButtonColor);
-
-            var panel = dimObj.AddComponent<StageDetailPanel>();
-            var so = new UnityEditor.SerializedObject(panel);
-            SerializedArray(so, "_conditionLabels", conditions);
-            so.ApplyModifiedPropertiesWithoutUndo();
-            SetRefs(panel, ("_titleLabel", title), ("_descriptionLabel", description), ("_bestLabel", best),
-                ("_sortieButton", sortie), ("_closeButton", close));
-            dimObj.SetActive(false);
-            return panel;
-        }
-
         /// <summary>操作UI・HUDより手前、ポーズ・共通ダイアログより奥に作る</summary>
-        private static StageResultPanel CreateStageResultPanel(Transform canvas)
+        private static StageResultPanel CreateStageResultPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
             GameObject dimObj = UIDialogBuilder.CreateUIObject("StageResultPanel", canvas);
             UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
@@ -185,11 +163,45 @@ namespace MiniGame.PenguinWars.Editor
             Button next = CreateTitleButton(box.transform, "Btn_Next", "つぎのステージ", StageResultButtonSize,
                 new Vector2(StageResultButtonStepX, StageResultButtonY), StartButtonColor);
 
+            (GameObject unlockGroup, Image[] unlockIcons, Text[] unlockNames) = CreateStageResultUnlocks(box.transform);
+
             var panel = dimObj.AddComponent<StageResultPanel>();
+            var so = new UnityEditor.SerializedObject(panel);
+            SerializedArray(so, "_unlockIcons", unlockIcons);
+            SerializedArray(so, "_unlockNames", unlockNames);
+            so.FindProperty("_detailShiftWithUnlocks").floatValue = StageResultDetailShiftWithUnlocks;
+            so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_titleLabel", title), ("_starsLabel", stars), ("_detailLabel", detail),
-                ("_nextButton", next), ("_retryButton", retry), ("_selectButton", select));
+                ("_nextButton", next), ("_retryButton", retry), ("_selectButton", select),
+                ("_catalog", catalog), ("_unlockGroup", unlockGroup));
             dimObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>リザルトの右側。見出しの下に絵と名前を横に並べる</summary>
+        private static (GameObject group, Image[] icons, Text[] names) CreateStageResultUnlocks(Transform box)
+        {
+            GameObject group = UIDialogBuilder.CreateUIObject("Unlocks", box);
+            UIDialogBuilder.SetStretchAll(group.GetComponent<RectTransform>());
+            Text title = CreateText(group.transform, "Title", StageResultUnlockTitleFontSize, CenterAnchor, StageResultUnlockTitlePosition, StageResultUnlockTitleSize, MessageColor);
+            title.text = "なかまになった！";
+
+            var icons = new Image[StageResultUnlockSlots];
+            var names = new Text[StageResultUnlockSlots];
+            for (int i = 0; i < StageResultUnlockSlots; i++)
+            {
+                float x = StageResultUnlockFirstX + i * StageResultUnlockStepX;
+                icons[i] = CreateImage(group.transform, $"Icon{i + 1}", CenterAnchor, new Vector2(x, StageResultUnlockIconY), StageResultUnlockIconSize, Color.white);
+                icons[i].preserveAspect = true;
+                names[i] = CreateText(group.transform, $"Name{i + 1}", StageResultUnlockNameFontSize, CenterAnchor, new Vector2(x, StageResultUnlockNameY), StageResultUnlockNameSize, Color.white);
+                // 「こおりのじょおうペンギン」も枠に収まるよう、縮めて折り返す（Overflow のままだと縮まない）
+                names[i].verticalOverflow = VerticalWrapMode.Truncate;
+                names[i].resizeTextForBestFit = true;
+                names[i].resizeTextMinSize = StageResultUnlockNameMinFontSize;
+                names[i].resizeTextMaxSize = StageResultUnlockNameFontSize;
+            }
+            group.SetActive(false);
+            return (group, icons, names);
         }
     }
 }

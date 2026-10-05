@@ -72,17 +72,18 @@ namespace MiniGame.PenguinWars.Battle
             if (hitCastle) DamageCastle(enemyCastle, AbilityResolver.CastleDamage(attacker.Stats, _settings.CastleKillerMultiplier));
         }
 
-        /// <summary>自城から戦場の CannonRangeRatio までにいる敵ユニット全員に当て、ノックバック1回分を起こす。城には当てない（仕様書 §4.4）</summary>
+        /// <summary>自城から砲の範囲（CannonReach）までにいる敵ユニット全員に当て、ノックバック1回分を起こす。城には当てない（仕様書 §4.4）</summary>
         private void FireCannon(Side side)
         {
-            float reach = _settings.FieldLength * _settings.CannonRangeRatio;
+            float reach = CannonReach(side);
             float originX = GetCastle(side).X;
+            int damage = CannonDamage(side);
             foreach (UnitState unit in _units)
             {
                 if (unit.Side == side || unit.IsDead) continue;
                 if ((unit.X - originX) * side.Forward() > reach) continue;
 
-                DamageUnit(unit, _settings.CannonDamage);
+                DamageUnit(unit, damage);
                 StartKnockback(unit);
             }
             _events.Add(new BattleEvent(BattleEventType.CannonFired, side, BattleEvent.CastleId, originX + side.Forward() * reach));

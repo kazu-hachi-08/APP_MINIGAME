@@ -25,6 +25,9 @@ namespace MiniGame.PenguinWars
             ApplyFrame();
         }
 
+        /// <summary>未解放キャラを黒いシルエットにするときに使う（白で元の色）</summary>
+        public void SetTint(Color color) => _image.color = color;
+
         private void Update()
         {
             ApplyFrame();
