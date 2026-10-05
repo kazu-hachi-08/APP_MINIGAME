@@ -21,11 +21,11 @@ namespace MiniGame.PenguinWars
         [SerializeField] private ScrollRect _scroll;
         [SerializeField] private ZukanDetailPanel _detailPanel;
         [SerializeField] private Button _closeButton;
-        [Tooltip("押すたびに 左上の数値（＝並べ替えの基準）を切り替える")]
-        [SerializeField] private Button _columnButton;
+        [Tooltip("左上に出す数値（＝並べ替えの基準）を一覧から選ぶ")]
+        [SerializeField] private Dropdown _columnDropdown;
         [SerializeField] private Button _orderButton;
-        [Tooltip("押すたびに しぼりこむ特性を切り替える")]
-        [SerializeField] private Button _traitButton;
+        [Tooltip("しぼりこむ特性を一覧から選ぶ。14個あるので、押して順に回すより一覧のほうが早い")]
+        [SerializeField] private Dropdown _traitDropdown;
         [Tooltip("隣のマスと歩くタイミングをずらすコマ数")]
         [SerializeField] private float _walkPhaseStep = 0.37f;
 
@@ -37,9 +37,30 @@ namespace MiniGame.PenguinWars
         private void Awake()
         {
             _closeButton.onClick.AddListener(Close);
-            _columnButton.onClick.AddListener(NextColumn);
             _orderButton.onClick.AddListener(ToggleOrder);
-            _traitButton.onClick.AddListener(NextTrait);
+            SetupDropdown(_columnDropdown, ColumnLabels(), SelectColumn);
+            SetupDropdown(_traitDropdown, TraitLabels(), SelectTrait);
+        }
+
+        private static void SetupDropdown(Dropdown dropdown, List<string> labels, UnityEngine.Events.UnityAction<int> onSelect)
+        {
+            dropdown.ClearOptions();
+            dropdown.AddOptions(labels);
+            dropdown.onValueChanged.AddListener(onSelect);
+        }
+
+        private static List<string> ColumnLabels()
+        {
+            var labels = new List<string>();
+            foreach (ZukanStatColumn column in ZukanListOptions.Columns) labels.Add(column.Label);
+            return labels;
+        }
+
+        private static List<string> TraitLabels()
+        {
+            var labels = new List<string>();
+            foreach (ZukanTraitFilter trait in ZukanListOptions.Traits) labels.Add(trait.Label);
+            return labels;
         }
 
         public void Show()
@@ -73,12 +94,15 @@ namespace MiniGame.PenguinWars
             _columnIndex = 0;
             _isDescending = false;
             _traitIndex = 0;
+            // 選び直しの通知は要らない（RefreshList を直接呼ぶ）ので、通知なしで表示だけ戻す
+            _columnDropdown.SetValueWithoutNotify(_columnIndex);
+            _traitDropdown.SetValueWithoutNotify(_traitIndex);
             RefreshList();
         }
 
-        private void NextColumn()
+        private void SelectColumn(int index)
         {
-            _columnIndex = (_columnIndex + 1) % ZukanListOptions.Columns.Length;
+            _columnIndex = index;
             OnListOptionChanged();
         }
 
@@ -88,9 +112,9 @@ namespace MiniGame.PenguinWars
             OnListOptionChanged();
         }
 
-        private void NextTrait()
+        private void SelectTrait(int index)
         {
-            _traitIndex = (_traitIndex + 1) % ZukanListOptions.Traits.Length;
+            _traitIndex = index;
             OnListOptionChanged();
         }
 
@@ -115,9 +139,9 @@ namespace MiniGame.PenguinWars
                 cell.gameObject.SetActive(trait.Matches(cell.Stats));
             }
 
-            SetButtonLabel(_columnButton, column.Label);
-            SetButtonLabel(_orderButton, _isDescending ? DescendingLabel : AscendingLabel);
-            SetButtonLabel(_traitButton, TraitLabelPrefix + trait.Label);
+            _orderButton.GetComponentInChildren<Text>().text = _isDescending ? DescendingLabel : AscendingLabel;
+            // 一覧の中は特性名だけにし、閉じたときの見出しにだけ「特性: 」を付けて何のボタンか分かるようにする
+            _traitDropdown.captionText.text = TraitLabelPrefix + trait.Label;
             _scroll.verticalNormalizedPosition = 1f;
         }
 
@@ -127,11 +151,6 @@ namespace MiniGame.PenguinWars
             int byValue = column.Value(a.Stats).CompareTo(column.Value(b.Stats));
             if (_isDescending) byValue = -byValue;
             return byValue != 0 ? byValue : a.Stats.UnitNo.CompareTo(b.Stats.UnitNo);
-        }
-
-        private static void SetButtonLabel(Button button, string label)
-        {
-            button.GetComponentInChildren<Text>().text = label;
         }
 
         private void Close()

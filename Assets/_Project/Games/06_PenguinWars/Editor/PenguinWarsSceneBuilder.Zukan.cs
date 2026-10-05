@@ -16,12 +16,17 @@ namespace MiniGame.PenguinWars.Editor
 
         // 並べ替えの2つは左上、特性は「もどる」の左隣。中央のタイトル文字とは重ならない幅にする
         private static readonly Vector2 ZukanTopLeftAnchor = new Vector2(0f, 1f);
-        private static readonly Vector2 ZukanColumnButtonSize = new Vector2(240f, 100f);
-        private static readonly Vector2 ZukanColumnButtonPosition = new Vector2(50f, -35f);
+        private static readonly Vector2 ZukanColumnDropdownSize = new Vector2(240f, 100f);
+        private static readonly Vector2 ZukanColumnDropdownPosition = new Vector2(50f, -35f);
         private static readonly Vector2 ZukanOrderButtonSize = new Vector2(240f, 100f);
         private static readonly Vector2 ZukanOrderButtonPosition = new Vector2(310f, -35f);
-        private static readonly Vector2 ZukanTraitButtonSize = new Vector2(380f, 100f);
-        private static readonly Vector2 ZukanTraitButtonPosition = new Vector2(-370f, -35f);
+        private static readonly Vector2 ZukanTraitDropdownSize = new Vector2(380f, 100f);
+        private static readonly Vector2 ZukanTraitDropdownPosition = new Vector2(-370f, -35f);
+        // 開いた一覧。指で押しやすい行の高さにし、特性14個のうち7個ほどが一度に見える長さにする
+        private const float ZukanDropdownItemHeight = 84f;
+        private const float ZukanDropdownListHeight = 600f;
+        private const int ZukanDropdownItemFontSize = 40;
+        private static readonly Color ZukanDropdownListColor = new Color(0.1f, 0.16f, 0.28f, 0.98f);
         // 「特性: 遠距離キラー」も1行に収めるため、縮めてよい下限
         private const int ZukanHeaderButtonMinFontSize = 24;
 
@@ -80,18 +85,19 @@ namespace MiniGame.PenguinWars.Editor
             title.text = "ずかん";
             Button close = CreateAnchoredButton(panelObj.transform, "Btn_Close", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
             // 文字は PenguinZukanPanel が開くたびに書き換えるので、ここでは仮の文字
-            Button column = CreateZukanHeaderButton(panelObj.transform, "Btn_Column", ZukanColumnButtonSize, ZukanTopLeftAnchor, ZukanColumnButtonPosition);
             Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, ZukanTopLeftAnchor, ZukanOrderButtonPosition);
-            Button trait = CreateZukanHeaderButton(panelObj.transform, "Btn_Trait", ZukanTraitButtonSize, TopRightAnchor, ZukanTraitButtonPosition);
 
             (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform);
             ZukanCell template = CreateZukanCellTemplate(content);
+            // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
+            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, ZukanTopLeftAnchor, ZukanColumnDropdownPosition);
+            Dropdown trait = CreateZukanDropdown(panelObj.transform, "Dropdown_Trait", ZukanTraitDropdownSize, TopRightAnchor, ZukanTraitDropdownPosition);
             ZukanDetailPanel detail = CreateZukanDetailPanel(panelObj.transform);
 
             var panel = panelObj.AddComponent<PenguinZukanPanel>();
             SetRefs(panel, ("_catalog", catalog), ("_cellTemplate", template), ("_scroll", scroll),
                 ("_detailPanel", detail), ("_closeButton", close),
-                ("_columnButton", column), ("_orderButton", order), ("_traitButton", trait));
+                ("_columnDropdown", column), ("_orderButton", order), ("_traitDropdown", trait));
             panelObj.SetActive(false);
             return panel;
         }
@@ -178,6 +184,55 @@ namespace MiniGame.PenguinWars.Editor
             label.resizeTextMinSize = ZukanHeaderButtonMinFontSize;
             label.resizeTextMaxSize = TitleButtonFontSize;
             return button;
+        }
+
+        /// <summary>Unity 標準のドロップダウンを、ヘッダーのボタンと同じ色・文字の大きさに揃える</summary>
+        private static Dropdown CreateZukanDropdown(Transform parent, string name, Vector2 size, Vector2 anchor, Vector2 position)
+        {
+            GameObject obj = DefaultControls.CreateDropdown(new DefaultControls.Resources());
+            obj.name = name;
+            obj.transform.SetParent(parent, false);
+            RectTransform rect = obj.GetComponent<RectTransform>();
+            SetAnchor(rect, anchor, position);
+            rect.sizeDelta = size;
+            obj.GetComponent<Image>().color = TitleSubButtonColor;
+            // 絵の素材を渡していないので矢印が白い四角になる。ほかのボタンと見た目を揃えるため消す
+            Object.DestroyImmediate(obj.transform.Find("Arrow").gameObject);
+
+            var dropdown = obj.GetComponent<Dropdown>();
+            StyleZukanDropdownCaption(dropdown.captionText);
+            StyleZukanDropdownList(dropdown);
+            return dropdown;
+        }
+
+        private static void StyleZukanDropdownCaption(Text caption)
+        {
+            UIDialogBuilder.SetStretchAll(caption.rectTransform);
+            caption.fontSize = TitleButtonFontSize;
+            caption.fontStyle = FontStyle.Bold;
+            caption.alignment = TextAnchor.MiddleCenter;
+            caption.color = Color.white;
+            caption.resizeTextForBestFit = true;
+            caption.resizeTextMinSize = ZukanHeaderButtonMinFontSize;
+            caption.resizeTextMaxSize = TitleButtonFontSize;
+        }
+
+        /// <summary>開いた一覧の行は実行時に Item を複製して作られるので、ひな形の Item の大きさ・色を変えておく</summary>
+        private static void StyleZukanDropdownList(Dropdown dropdown)
+        {
+            RectTransform template = dropdown.template;
+            template.sizeDelta = new Vector2(0f, ZukanDropdownListHeight);
+            template.GetComponent<Image>().color = ZukanDropdownListColor;
+            template.GetComponent<ScrollRect>().content.sizeDelta = new Vector2(0f, ZukanDropdownItemHeight);
+
+            var item = (RectTransform)dropdown.itemText.transform.parent;
+            item.sizeDelta = new Vector2(0f, ZukanDropdownItemHeight);
+            item.Find("Item Background").GetComponent<Image>().color = ZukanCellColor;
+            item.Find("Item Checkmark").GetComponent<Image>().color = MessageColor;
+
+            dropdown.itemText.fontSize = ZukanDropdownItemFontSize;
+            dropdown.itemText.fontStyle = FontStyle.Bold;
+            dropdown.itemText.color = Color.white;
         }
 
         private static ZukanDetailPanel CreateZukanDetailPanel(Transform parent)
