@@ -2,82 +2,139 @@ using System.Collections.Generic;
 
 namespace MiniGame.PenguinWars.Battle
 {
-    /// <summary>1章のステージ</summary>
+    /// <summary>
+    /// 1章「こおりの海岸」。戦場は短め・敵は壁とアタッカーが中心で、数で押してくる。
+    /// 解放は安いキャラから配り、次のステージで役に立つものを選ぶ（1-4 の範囲攻撃 → 1-5 の行列など）
+    /// </summary>
     public static partial class StageDefinitions
     {
-        private const int Penguin = 1;
-        private const int SnowballPenguin = 3;
-        private const int FishSwordPenguin = 12;
-        private const int SumoPenguin = 14;
-        private const int BowPenguin = 23;
-        private const int GiantPenguin = 43;
-        // 1-3 の編成制限。初期10体のうち壁・近接の安いキャラだけが残る値
-        private const int CheapUnitCost = 300;
+        private const int Chapter1Number = 1;
+        private const string Chapter1Tint = "#EAF4FF";
 
         private static IEnumerable<StageDefinition> Chapter1()
         {
-            // 仮のステージ（Phase 2 までの3つ。中身と解放キャラは Phase 6 で作り直す）。壁と安いアタッカーが湧き、城を半分削ると大型が1体出る。
-            // Phase 4 のギミックを1ステージずつ違う組み合わせで入れて、遊んで違いが分かるか確かめる（1-1 速攻 / 1-2 なだれ＋節約 / 1-3 安いキャラだけ＋敵の砲）
             yield return new StageDefinition
             {
                 Id = "1-1",
-                Chapter = 1,
+                Chapter = Chapter1Number,
                 Index = 1,
-                Name = "はじまりの氷原",
-                Description = "敵の城を落とそう。さかなを最初からたくさん持っているので、いきなり攻めこめる。",
-                EnemyCastleHp = 3000,
-                TintHex = "#E6F2FF",
-                StartingFish = 1000,
-                TargetSeconds = 120f,
-                UnlockNos = new[] { 2, 13 },
+                Name = "はじまりの海岸",
+                Description = "敵の城を落とそう。壁で受け止めて、アタッカーでたたく。",
+                FieldLength = 18f,
+                EnemyCastleHp = 1500,
+                TintHex = Chapter1Tint,
+                TargetSeconds = 60f,
+                UnlockNos = new[] { WallPenguin, BoxerPenguin },
                 Entries = new[]
                 {
-                    new EnemySpawnEntry { UnitNo = Penguin, StartTime = 3f, Interval = 6f },
-                    new EnemySpawnEntry { UnitNo = FishSwordPenguin, StartTime = 20f, Interval = 15f },
-                    new EnemySpawnEntry { UnitNo = GiantPenguin, Count = 1, TriggerCastleHpRatio = 0.5f, IsBoss = true },
+                    Stream(Penguin, 4f, 8f),
+                    Stream(SnowballPenguin, 30f, 18f),
                 },
             };
 
             yield return new StageDefinition
             {
                 Id = "1-2",
-                Chapter = 1,
+                Chapter = Chapter1Number,
                 Index = 2,
-                Name = "ゆきだまの丘",
-                Description = "まん中になだれが起きる。働きペンギンはLv4まで。弓の敵は壁で受け止めよう。",
-                EnemyCastleHp = 4000,
-                TintHex = "#FFE8CC",
-                AvalancheInterval = 30f,
-                MaxWalletLevel = 4,
-                TargetSeconds = 150f,
-                UnlockNos = new[] { 24, 41 },
+                Name = "ひなの浜辺",
+                Description = "足の速いひなが次々に来る。さかなけんの敵は壁を並べて止めよう。",
+                FieldLength = 20f,
+                EnemyCastleHp = 2000,
+                TintHex = Chapter1Tint,
+                TargetSeconds = 90f,
+                UnlockNos = new[] { CardboardPenguin, BalloonPenguin },
                 Entries = new[]
                 {
-                    new EnemySpawnEntry { UnitNo = SnowballPenguin, StartTime = 3f, Interval = 7f },
-                    new EnemySpawnEntry { UnitNo = BowPenguin, StartTime = 25f, Interval = 20f },
-                    new EnemySpawnEntry { UnitNo = GiantPenguin, Count = 1, TriggerCastleHpRatio = 0.5f, IsBoss = true },
+                    Stream(ChickPenguin, 3f, 5f, 1.2f),
+                    Stream(Penguin, 10f, 9f, 1.2f),
+                    Stream(FishSwordPenguin, 25f, 20f, 1.2f),
                 },
             };
 
             yield return new StageDefinition
             {
                 Id = "1-3",
-                Chapter = 1,
+                Chapter = Chapter1Number,
                 Index = 3,
-                Name = "すもう場",
-                Description = "安いキャラしか出せない。敵の城は砲を撃ってくるので、かたまりすぎないように。",
-                EnemyCastleHp = 5000,
-                TintHex = "#D8D0F0",
-                MaxUnitCost = CheapUnitCost,
-                EnemyCannon = new EnemyCannonSettings { ChargeTime = 30f, RangeRatio = 0.5f, Damage = 150, MinTargets = 4 },
-                TargetSeconds = 180f,
-                UnlockNos = new[] { 7, 14 },
+                Name = "ペンギンの行列",
+                Description = "城をたたくとボクサーが出てくる。ふうせんで押し返そう。",
+                FieldLength = 20f,
+                EnemyCastleHp = 2200,
+                TintHex = Chapter1Tint,
+                TargetSeconds = 130f,
+                UnlockNos = new[] { RoundPenguin, DrillPenguin },
                 Entries = new[]
                 {
-                    new EnemySpawnEntry { UnitNo = Penguin, StartTime = 2f, Interval = 5f },
-                    new EnemySpawnEntry { UnitNo = SumoPenguin, StartTime = 15f, Interval = 25f },
-                    new EnemySpawnEntry { UnitNo = FishSwordPenguin, StartTime = 0f, Interval = 10f, TriggerCastleHpRatio = 0.7f },
-                    new EnemySpawnEntry { UnitNo = GiantPenguin, Count = 1, TriggerCastleHpRatio = 0.4f, IsBoss = true, StatMultiplier = 1.2f },
+                    Stream(Penguin, 2f, 4f, 1.1f),
+                    Stream(CardboardPenguin, 8f, 6f, 1.1f),
+                    Stream(FishSwordPenguin, 30f, 20f, 1.1f),
+                    OnCastle(BoxerPenguin, 0.7f, 10f, 1.1f),
+                },
+            };
+
+            yield return new StageDefinition
+            {
+                Id = "1-4",
+                Chapter = Chapter1Number,
+                Index = 4,
+                Name = "さかな祭り",
+                Description = "さかなを最初からたくさん持っている。時間がたつほど敵が強くなるので、いきなり攻めこもう。",
+                FieldLength = 22f,
+                EnemyCastleHp = 2500,
+                TintHex = Chapter1Tint,
+                StartingFish = 1500,
+                TargetSeconds = 60f,
+                UnlockNos = new[] { SumoPenguin, SnowThrowPenguin },
+                Entries = new[]
+                {
+                    Stream(SnowballPenguin, 3f, 5f),
+                    Stream(BoxerPenguin, 40f, 10f, 1.2f),
+                    Stream(SumoPenguin, 70f, 12f, 1.3f),
+                },
+            };
+
+            yield return new StageDefinition
+            {
+                Id = "1-5",
+                Chapter = Chapter1Number,
+                Index = 5,
+                Name = "とおくから",
+                Description = "壁の行列の後ろから、ゆみペンギンが矢を撃ってくる。範囲攻撃で壁ごとまとめてたおそう。",
+                FieldLength = 22f,
+                EnemyCastleHp = 2800,
+                TintHex = Chapter1Tint,
+                TargetSeconds = 180f,
+                UnlockNos = new[] { IcePenguin, LongLegPenguin },
+                Entries = new[]
+                {
+                    Stream(Penguin, 2f, 3.5f, 1.3f),
+                    Stream(CardboardPenguin, 6f, 5f, 1.3f),
+                    Stream(BowPenguin, 20f, 15f, 1.3f),
+                    OnCastle(FishSwordPenguin, 0.6f, 8f, 1.3f),
+                },
+            };
+
+            yield return new StageDefinition
+            {
+                Id = "1-6",
+                Chapter = Chapter1Number,
+                Index = 6,
+                Name = "ボス: きょだいペンギン",
+                Description = "城をたたくと、すぐにきょだいペンギンがボクサーを連れて出てくる。壁で足止めして、アタッカーを集めてたおそう。",
+                FieldLength = 24f,
+                EnemyCastleHp = 3000,
+                TintHex = Chapter1Tint,
+                TargetSeconds = 180f,
+                UnlockNos = new[] { IcebergPenguin, WhaleRiderPenguin, FutonPenguin },
+                Entries = new[]
+                {
+                    Stream(Penguin, 2f, 4f, 2f),
+                    Stream(SnowballPenguin, 10f, 7f, 2f),
+                    Stream(BoxerPenguin, 30f, 15f, 2f),
+                    Boss(GiantPenguin, 0.9f, 3f),
+                    OnCastle(BoxerPenguin, 0.9f, 2f, 2f, 3),
+                    OnCastle(FishSwordPenguin, 0.5f, 8f, 2f),
                 },
             };
         }

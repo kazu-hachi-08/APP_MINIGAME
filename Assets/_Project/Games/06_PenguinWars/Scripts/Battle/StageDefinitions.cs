@@ -57,6 +57,8 @@ namespace MiniGame.PenguinWars.Battle
         {
             var all = new List<StageDefinition>();
             all.AddRange(Chapter1());
+            all.AddRange(Chapter2());
+            all.AddRange(Chapter3());
             return all;
         }
     }

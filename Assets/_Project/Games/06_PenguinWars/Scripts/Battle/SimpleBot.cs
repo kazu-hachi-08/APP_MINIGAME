@@ -6,6 +6,7 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>
     /// ステージ検証用に左陣営を操作する簡単なCPU（StageSimulator が使う）。
     /// 判断の順: 砲（範囲に敵がたまっていれば撃つ）→ 働きペンギン → 壁が足りなければ一番安い壁 → 壁以外で出せる中で一番高いキャラ。
+    /// SavesForLarge の bot は、出せる見込みのある大型がいれば壁以外を控えてさかなを貯める。
     /// 判断の間隔だけシードで揺らす（人間の操作の揺れの代わり。揺らさないと何回回しても同じ結果になり、勝率の意味がないため）
     /// </summary>
     public class SimpleBot
@@ -56,6 +57,7 @@ namespace MiniGame.PenguinWars.Battle
             }
 
             int slot = NeedsWall(world) ? FindCheapestWall(world) : NoSlot;
+            if (slot == NoSlot && _skill.SavesForLarge && IsSavingForLarge(world)) return;
             if (slot == NoSlot) slot = FindPriciestNonWall(world);
             if (slot != NoSlot) world.Enqueue(BattleCommand.Spawn(BotSide, slot));
         }
@@ -100,6 +102,22 @@ namespace MiniGame.PenguinWars.Battle
                 if (best == NoSlot || deck[i].Cost < deck[best].Cost) best = i;
             }
             return best;
+        }
+
+        /// <summary>
+        /// 再生産が終わった大型が、さかなの上限内なのにまだ買えない → 貯める。
+        /// 貯めないと安いキャラにさかなを使い続けて大型が一度も出ず、大型を使う人間より大幅に弱い物差しになるため
+        /// </summary>
+        private static bool IsSavingForLarge(BattleWorld world)
+        {
+            IReadOnlyList<UnitStats> deck = world.GetDeck(BotSide);
+            WalletState wallet = world.GetWallet(BotSide);
+            for (int i = 0; i < deck.Count; i++)
+            {
+                if (deck[i].Role != UnitRole.Large || !world.GetSlot(BotSide, i).IsReady || !world.IsAllowedByRules(BotSide, i)) continue;
+                if (deck[i].Cost <= wallet.Cap && !wallet.CanAfford(deck[i].Cost)) return true;
+            }
+            return false;
         }
 
         /// <summary>壁以外で今出せる一番高いキャラ（壁は NeedsWall で足す。ここで壁も選ぶと、安い壁ばかり出てさかなが残らないため）</summary>

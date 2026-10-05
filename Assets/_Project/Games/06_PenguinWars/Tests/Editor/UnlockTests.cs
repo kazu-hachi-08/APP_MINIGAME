@@ -65,7 +65,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Assert.IsFalse(CampaignUnlocks.IsUnlocked(new CampaignProgress(), UnknownNo));
         }
 
-        /// <summary>全50体がちょうど1回ずつ出てくるかは、全ステージがそろう Phase 6 で確かめる。今は重複がないことだけ</summary>
         [Test]
         public void InitialAndStageUnlocks_HaveNoDuplicates_AndExistInRoster()
         {
@@ -81,7 +80,8 @@ namespace MiniGame.PenguinWars.Battle.Tests
             foreach (int no in seen) Assert.IsTrue(roster.Contains(no), $"No.{no} が定義表に無い");
         }
 
-        [Test, Ignore("Phase 6 で全ステージがそろったら有効にする")]
+        /// <summary>全50体がステージのどこかで仲間になる（取り逃がし・二重の解放がない）</summary>
+        [Test]
         public void InitialAndStageUnlocks_CoverAllUnitsExactlyOnce()
         {
             var nos = new List<int>(CampaignUnlocks.InitialNos);
