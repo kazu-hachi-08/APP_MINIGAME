@@ -16,18 +16,21 @@ namespace MiniGame.PenguinWars
         [SerializeField] private PenguinWarsAudio _audio;
         [SerializeField] private CastleCollapse _leftCollapse;
         [SerializeField] private CastleCollapse _rightCollapse;
+        [SerializeField] private BossEntrancePresenter _bossEntrance;
 
         [Header("演出の見本（非アクティブ。複製して使い回す）")]
         [SerializeField] private SpawnSmokeEffect _smokeTemplate;
         [SerializeField] private HitSparkEffect _sparkTemplate;
         [SerializeField] private SoulRiseEffect _soulTemplate;
         [SerializeField] private CannonBeamEffect _beamTemplate;
+        [SerializeField] private ConfettiEffect _confettiTemplate;
 
         [Header("同時に出せる数。超えた分は出さない（大量の敵でもカクつかないように）")]
         [SerializeField] private int _maxSmokes = 16;
         [SerializeField] private int _maxSparks = 24;
         [SerializeField] private int _maxSouls = 16;
         [SerializeField] private int _maxBeams = 2;
+        [SerializeField] private int _maxConfetti = 48;
 
         [Header("出す位置")]
         [Tooltip("ユニットのヒット位置の高さ（足元から）")]
@@ -58,6 +61,19 @@ namespace MiniGame.PenguinWars
         [SerializeField] private int _collapseSmokeCount = 6;
         [SerializeField] private Vector2 _collapseSmokeArea = new Vector2(3f, 3f);
 
+        [Header("紙吹雪（相手の城を落としたとき）")]
+        [SerializeField] private int _confettiCount = 40;
+        [Tooltip("城を中心に、この幅・高さの範囲から弾けさせる")]
+        [SerializeField] private Vector2 _confettiArea = new Vector2(6f, 2f);
+        [SerializeField] private float _confettiHeight = 3f;
+        [SerializeField] private Vector2 _confettiSpeedX = new Vector2(-3f, 3f);
+        [SerializeField] private Vector2 _confettiSpeedY = new Vector2(3f, 7f);
+        [SerializeField] private Color[] _confettiColors =
+        {
+            new Color(1f, 0.35f, 0.35f), new Color(1f, 0.85f, 0.25f), new Color(0.35f, 0.8f, 1f),
+            new Color(0.45f, 0.9f, 0.45f), new Color(1f, 0.55f, 0.9f),
+        };
+
         // 撃破の数字・出撃音は自分の分だけ。オンラインのゲストも左右反転したイベントを受け取るので、自分は常に Left
         private readonly Side _localSide = Side.Left;
 
@@ -65,6 +81,7 @@ namespace MiniGame.PenguinWars
         private EffectPool<HitSparkEffect> _sparks;
         private EffectPool<SoulRiseEffect> _souls;
         private EffectPool<CannonBeamEffect> _beams;
+        private EffectPool<ConfettiEffect> _confetti;
 
         /// <summary>城の崩れる演出が終わった（Side は崩れた側）。リザルトはこの後に出す</summary>
         public event Action<Side> CastleCollapsed;
@@ -75,6 +92,7 @@ namespace MiniGame.PenguinWars
             _sparks = new EffectPool<HitSparkEffect>(_sparkTemplate, transform, _maxSparks);
             _souls = new EffectPool<SoulRiseEffect>(_soulTemplate, transform, _maxSouls);
             _beams = new EffectPool<CannonBeamEffect>(_beamTemplate, transform, _maxBeams);
+            _confetti = new EffectPool<ConfettiEffect>(_confettiTemplate, transform, _maxConfetti);
         }
 
         private void OnEnable()
@@ -104,8 +122,7 @@ namespace MiniGame.PenguinWars
                     PresentCannon(battleEvent);
                     break;
                 case BattleEventType.BossAppeared:
-                    _hud.ShowBossAppeared();
-                    _audio.PlayLevelUp();
+                    _bossEntrance.Play(battleEvent.X);
                     break;
                 case BattleEventType.CastleDestroyed:
                     PresentCastleDestroyed(battleEvent.Side, battleEvent.X);
@@ -180,12 +197,29 @@ namespace MiniGame.PenguinWars
         private void PresentCastleDestroyed(Side side, float castleX)
         {
             CastleCollapse collapse = side == Side.Left ? _leftCollapse : _rightCollapse;
+            _bossEntrance.Stop();
             // スクロールして別の場所を見ていても、崩れるところを見せる
             _battleCamera.LookAt(castleX);
             _battleCamera.Shake(collapse.Duration, _shakeStrength);
             SpawnCollapseSmoke(castleX);
             _audio.PlayCollapse();
+            // 崩れている間に祝う（崩れ終わるとすぐリザルトが画面を覆うため、終わってからでは見えない）
+            if (side != _localSide) Celebrate(castleX);
             collapse.Play(() => CastleCollapsed?.Invoke(side));
+        }
+
+        private void Celebrate(float castleX)
+        {
+            _audio.PlayVictory();
+            for (int i = 0; i < _confettiCount; i++)
+            {
+                var offset = new Vector3(UnityEngine.Random.Range(-0.5f, 0.5f) * _confettiArea.x,
+                    UnityEngine.Random.Range(-0.5f, 0.5f) * _confettiArea.y, 0f);
+                var velocity = new Vector2(UnityEngine.Random.Range(_confettiSpeedX.x, _confettiSpeedX.y),
+                    UnityEngine.Random.Range(_confettiSpeedY.x, _confettiSpeedY.y));
+                Color color = _confettiColors.Length > 0 ? _confettiColors[i % _confettiColors.Length] : Color.white;
+                _confetti.Get()?.Play(new Vector3(castleX, _confettiHeight, 0f) + offset, velocity, color);
+            }
         }
 
         private void SpawnCollapseSmoke(float castleX)

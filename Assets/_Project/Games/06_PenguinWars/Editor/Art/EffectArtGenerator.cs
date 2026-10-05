@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 演出のドット絵（仕様書 §9）: 出撃の煙・ヒットの火花・撃破の魂・ペンギン砲のビーム。
+    /// 演出のドット絵（仕様書 §9）: 出撃の煙・ヒットの火花・撃破の魂・ペンギン砲のビーム・紙吹雪。
     /// 小さく丸い形ばかりなので、文字パターンではなく円や十字の式で描く
     /// </summary>
     public static class EffectArtGenerator
@@ -16,11 +16,14 @@ namespace MiniGame.PenguinWars.Editor
         private const int SoulHeight = 16;
         private const int BeamWidth = 16;
         private const int BeamHeight = 8;
+        private const int ConfettiWidth = 4;
+        private const int ConfettiHeight = 3;
 
         public static readonly string SmokePath = EffectDirectory + "/Smoke.png";
         public static readonly string SparkPath = EffectDirectory + "/Spark.png";
         public static readonly string SoulPath = EffectDirectory + "/Soul.png";
         public static readonly string BeamPath = EffectDirectory + "/Beam.png";
+        public static readonly string ConfettiPath = EffectDirectory + "/Confetti.png";
 
         private static readonly Vector2 Center = new Vector2(0.5f, 0.5f);
         // ビームは城の前を原点にして横へ伸ばすので、原点を左端にする
@@ -49,6 +52,7 @@ namespace MiniGame.PenguinWars.Editor
             PenguinSpriteWriter.Save(SparkPath, BuildSpark(), SparkSize, SparkSize, ppu, Center);
             PenguinSpriteWriter.Save(SoulPath, BuildSoul(), SoulWidth, SoulHeight, ppu, Center);
             PenguinSpriteWriter.Save(BeamPath, BuildBeam(), BeamWidth, BeamHeight, ppu, LeftCenter);
+            PenguinSpriteWriter.Save(ConfettiPath, BuildConfetti(), ConfettiWidth, ConfettiHeight, ppu, Center);
         }
 
         /// <summary>3つの円を重ねたもくもく。縁を灰色で囲み、下側に影を付けて立体に見せる</summary>
@@ -114,6 +118,12 @@ namespace MiniGame.PenguinWars.Editor
         internal static Color32[] BuildBeam()
         {
             return Paint(BeamWidth, BeamHeight, (x, y) => BeamColumn[y]);
+        }
+
+        /// <summary>白い四角。色は ConfettiEffect が1枚ずつ付ける</summary>
+        internal static Color32[] BuildConfetti()
+        {
+            return Paint(ConfettiWidth, ConfettiHeight, (x, y) => SparkCore);
         }
 
         private static bool InCircle(int x, int y, float centerX, float centerY, float radius)

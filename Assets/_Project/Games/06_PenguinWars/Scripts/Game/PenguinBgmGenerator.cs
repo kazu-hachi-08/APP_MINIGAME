@@ -21,6 +21,10 @@ namespace MiniGame.PenguinWars
         private const float HatSeconds = 0.04f;
         private const float KickSeconds = 0.12f;
 
+        // ボスがいる間の曲は戦闘曲を速く・低くしたもの（ステージ計画 Phase 7）。別の曲を作らずに「山場」を伝える
+        private const float BossTempoRate = 1.2f;
+        private const int BossTransposeSemitones = -3;
+
         /// <summary>のんびりした明るい行進曲（ハ長調）</summary>
         private static readonly Score Title = new Score
         {
@@ -86,6 +90,31 @@ namespace MiniGame.PenguinWars
         public static AudioClip CreateTitle() => Create("Bgm_PenguinTitle", Title);
 
         public static AudioClip CreateBattle() => Create("Bgm_PenguinBattle", Battle);
+
+        public static AudioClip CreateBoss() => Create("Bgm_PenguinBoss", Variant(Battle, BossTempoRate, BossTransposeSemitones));
+
+        private static Score Variant(Score source, float tempoRate, int semitones)
+        {
+            return new Score
+            {
+                Bpm = source.Bpm * tempoRate,
+                Melody = Transpose(source.Melody, semitones),
+                BassRoots = Transpose(source.BassRoots, semitones),
+                DrivingBass = source.DrivingBass,
+                MelodyVolume = source.MelodyVolume,
+                BassVolume = source.BassVolume,
+                HatVolume = source.HatVolume,
+                KickVolume = source.KickVolume,
+            };
+        }
+
+        /// <summary>Rest・Hold（負の値）は音ではないのでそのまま残す</summary>
+        private static int[] Transpose(int[] notes, int semitones)
+        {
+            var shifted = new int[notes.Length];
+            for (int i = 0; i < notes.Length; i++) shifted[i] = notes[i] < 0 ? notes[i] : notes[i] + semitones;
+            return shifted;
+        }
 
         private static AudioClip Create(string name, Score score)
         {

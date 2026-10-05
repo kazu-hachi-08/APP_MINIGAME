@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using MiniGame.PenguinWars.Battle;
@@ -16,7 +15,6 @@ namespace MiniGame.PenguinWars
     {
         private const string StageClearTitle = "STAGE CLEAR!";
         private const string StageFailedTitle = "GAME OVER";
-        private const string NewRecordMark = "  NEW RECORD!";
 
         // シーンを読み直すとインスタンスの値は消えるので static に置く。
         // s_restartStageId: このステージの編成発表からすぐ始める / s_openStageSelect: ステージ選択から始める
@@ -66,6 +64,8 @@ namespace MiniGame.PenguinWars
                 _currentStage = StageDefinitions.All[0];
             }
             _progress.LastPlayedId = _currentStage.Id;
+            // リザルトの「つぎのステージ」から直接遊んだステージに、後でステージ選択を開いたとき鍵の演出を出さない
+            _progress.MarkUnlockRevealed(_currentStage.Id);
             CampaignSave.Save(_progress);
 
             // 編成画面で決めた編成（未保存・未解放が混ざっていたら補完したもの）
@@ -86,27 +86,37 @@ namespace MiniGame.PenguinWars
             StageRecordChange change = _progress.Record(_currentStage.Id, stars, result.ElapsedSeconds);
             CampaignSave.Save(_progress);
 
-            string detail = $"クリア {StageLabels.TimeText(result.ElapsedSeconds)}{(change.IsNewBest ? NewRecordMark : string.Empty)}\n撃破 {result.KillCount}体";
+            string detail = $"クリア {StageLabels.TimeText(result.ElapsedSeconds)}\n撃破 {result.KillCount}体";
             if (change.NewStars != StarFlags.None) detail += $"\n\n新しい★\n{StageLabels.NewStars(_currentStage, change.NewStars)}";
 
             StageDefinition next = StageDefinitions.Next(_currentStage.Id);
             Action onNext = next != null ? () => ReloadInto(next.Id) : (Action)null;
-            ShowStageResult(true, StageClearTitle, StageLabels.Stars(stars), detail, change.NewUnlockNos, onNext);
+            ShowStageResult(true, new StageResultContent
+            {
+                Title = StageClearTitle,
+                Stars = stars,
+                NewStars = change.NewStars,
+                Detail = detail,
+                IsNewRecord = change.IsNewBest,
+                UnlockNos = change.NewUnlockNos,
+            }, onNext);
         }
 
         private void ShowStageFailed(StageResult result)
         {
-            ShowStageResult(false, StageFailedTitle, null, $"撃破 {result.KillCount}体", Array.Empty<int>(), null);
+            ShowStageResult(false, new StageResultContent { Title = StageFailedTitle, Detail = $"撃破 {result.KillCount}体" }, null);
         }
 
         /// <summary>BaseMiniGameManager.FinishGame と同じ状態の進め方をして、表示だけ専用のリザルトにする</summary>
-        private void ShowStageResult(bool isClear, string title, string stars, string detail, IReadOnlyList<int> unlockNos, Action onNext)
+        private void ShowStageResult(bool isClear, StageResultContent content, Action onNext)
         {
             ChangeState(MiniGameState.GameOver);
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(isClear ? SeId.GameClear : SeId.GameOver);
+            // クリアは城が崩れ始めたときに勝利のジングルを鳴らしている（BattleEventPresenter）ので、ここでは重ねない
+            if (!isClear && AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.GameOver);
             OnGameOver(isClear);
             ChangeState(MiniGameState.Result);
-            _stageResultPanel.Show(title, stars, $"{StageLabels.Title(_currentStage)}\n{detail}", unlockNos, onNext, RestartGame, ReloadIntoStageSelect);
+            content.Detail = $"{StageLabels.Title(_currentStage)}\n{content.Detail}";
+            _stageResultPanel.Show(content, onNext, RestartGame, ReloadIntoStageSelect);
         }
 
         private void ReloadInto(string stageId)

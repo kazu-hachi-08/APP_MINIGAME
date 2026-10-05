@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>Canvas と HUD（時間表示・敵レベルUP表示・中央メッセージ・ポーズボタン）</summary>
+    /// <summary>Canvas と HUD（時間表示・お知らせ・中央メッセージ・ボスのHPバー・ボス登場の WARNING 帯・ポーズボタン）</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         // 横画面なのでサッカーと同じ 1920x1080 基準
@@ -39,6 +39,13 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 BossGaugeSize = new Vector2(800f, 32f);
         private static readonly Color BossGaugeBackColor = new Color(0f, 0f, 0f, 0.6f);
         private static readonly Color BossGaugeFillColor = new Color(0.9f, 0.2f, 0.2f);
+
+        // WARNING の帯: お知らせ（なだれ注意）と同じ高さ。横は画面より広くして端が切れて見えないようにする
+        private static readonly Vector2 BossWarningPosition = new Vector2(0f, -110f);
+        private static readonly Vector2 BossWarningSize = new Vector2(2600f, 120f);
+        private static readonly Color BossWarningBandColor = new Color(0.85f, 0.05f, 0.1f, 0.85f);
+        private const int BossWarningFontSize = 84;
+        private const string BossWarningText = "WARNING!      WARNING!      WARNING!";
 
         private const float PauseButtonSize = 100f;
         private const int PauseFontSize = 44;
@@ -103,6 +110,28 @@ namespace MiniGame.PenguinWars.Editor
             var bar = barObj.AddComponent<BossHpBar>();
             SetRefs(bar, ("_battleRunner", battleRunner), ("_catalog", catalog), ("_root", root), ("_fill", fill.rectTransform), ("_nameLabel", name));
             return bar;
+        }
+
+        /// <summary>ボスの HPバーより奥（帯が消えた後に HPバーが見えるように、HPバーより先に作る）</summary>
+        private static BossWarningBanner CreateBossWarningBanner(Transform safeArea)
+        {
+            GameObject bannerObj = UIDialogBuilder.CreateUIObject("BossWarning", safeArea);
+            RectTransform bannerRect = bannerObj.GetComponent<RectTransform>();
+            SetAnchor(bannerRect, TopCenterAnchor, BossWarningPosition);
+            bannerRect.sizeDelta = BossWarningSize;
+
+            // 表示を切り替えるのは子の Root（BossWarningBanner 自身を消すと Update が止まるため）
+            GameObject root = UIDialogBuilder.CreateUIObject("Root", bannerObj.transform);
+            UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
+            Image band = CreateImage(root.transform, "Band", CenterAnchor, Vector2.zero, BossWarningSize, BossWarningBandColor);
+            Text text = CreateText(root.transform, "Text", BossWarningFontSize, CenterAnchor, Vector2.zero, BossWarningSize, Color.white);
+            text.text = BossWarningText;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            root.SetActive(false);
+
+            var banner = bannerObj.AddComponent<BossWarningBanner>();
+            SetRefs(banner, ("_root", root), ("_band", band), ("_scrollText", text.rectTransform));
+            return banner;
         }
 
         private static PauseButton CreatePauseButton(Transform safeArea)

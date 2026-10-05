@@ -14,6 +14,7 @@ namespace MiniGame.PenguinWars.Editor
         // Scene は作り直すたびに上書きされるので、Inspector で手で差し込んでも消えてしまうため
         private const string TitleBgmName = "PenguinWars_TitleBgm";
         private const string BattleBgmName = "PenguinWars_BattleBgm";
+        private const string BossBgmName = "PenguinWars_BossBgm";
 
         // 戦場が透けて見える程度に暗くして、ロゴとボタンを読みやすくする
         private static readonly Color TitleBackColor = new Color(0f, 0.08f, 0.2f, 0.55f);
@@ -177,7 +178,8 @@ namespace MiniGame.PenguinWars.Editor
         private static void AssignBgmClips(PenguinWarsAudio audio)
         {
             EnsureDirectory(AudioDirectory);
-            SetRefs(audio, ("_titleBgmClip", FindAudioClip(TitleBgmName)), ("_bgmClip", FindAudioClip(BattleBgmName)));
+            SetRefs(audio, ("_titleBgmClip", FindAudioClip(TitleBgmName)), ("_bgmClip", FindAudioClip(BattleBgmName)),
+                ("_bossBgmClip", FindAudioClip(BossBgmName)));
         }
 
         private static AudioClip FindAudioClip(string fileName)

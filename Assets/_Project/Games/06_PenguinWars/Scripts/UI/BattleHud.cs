@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars
 {
-    /// <summary>画面上部の時間表示・お知らせ（ボス出現・なだれ注意）と、中央のメッセージ（START! など）</summary>
+    /// <summary>画面上部の時間表示・お知らせ（なだれ注意）と、中央のメッセージ（START! など）。ボス出現は BossWarningBanner</summary>
     public class BattleHud : MonoBehaviour
     {
         private const int SecondsPerMinute = 60;
@@ -11,9 +11,6 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Text _timeLabel;
         [SerializeField] private Text _messageLabel;
         [SerializeField] private Text _levelUpLabel;
-        [SerializeField] private float _levelUpDisplayTime = 2f;
-        [Tooltip("ボスが出たときのお知らせ（仮。Phase 7 で演出を作る）")]
-        [SerializeField] private string _bossAppearedText = "ボス出現！";
 
         private float _levelUpTimer;
 
@@ -25,14 +22,8 @@ namespace MiniGame.PenguinWars
             if (_levelUpTimer <= 0f) _levelUpLabel.gameObject.SetActive(false);
         }
 
-        /// <summary>ステージの山場が来たことを知らせる。しばらくしたら自動で消える</summary>
-        public void ShowBossAppeared()
-        {
-            ShowNotice(_bossAppearedText, _levelUpDisplayTime);
-        }
-
         /// <summary>
-        /// 上部の小さなお知らせ（ボス出現・なだれ注意）。中央のメッセージ（START!・TIME UP!）とは別の欄にして、
+        /// 上部の小さなお知らせ（なだれ注意）。中央のメッセージ（START!・TIME UP!）とは別の欄にして、
         /// 試合の区切りの表示を消してしまわないようにする
         /// </summary>
         public void ShowNotice(string text, float duration)

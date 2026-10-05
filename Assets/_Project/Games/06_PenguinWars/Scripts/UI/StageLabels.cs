@@ -55,6 +55,16 @@ namespace MiniGame.PenguinWars
 
         public static string Title(StageDefinition stage) => $"{stage.Id}  {stage.Name}";
 
+        // 章の名前（StageDefinitions.ChapterN のコメントと同じ）。章を足したらここにも足す
+        private static readonly string[] ChapterNames = { "こおりの海岸", "ゆきやまの奥", "オーロラ要塞" };
+
+        /// <summary>「第2章 ゆきやまの奥」。名前が無い章は番号だけ</summary>
+        public static string Chapter(int chapter)
+        {
+            int index = chapter - 1;
+            return index >= 0 && index < ChapterNames.Length ? $"第{chapter}章 {ChapterNames[index]}" : $"第{chapter}章";
+        }
+
         /// <summary>特別ルールを1行に並べる（「なだれ ／ スタート時 さかな1500 ／ 大型禁止」）。ギミックが無ければ空文字。色は遊べば分かるので出さない</summary>
         public static string Rules(StageDefinition stage)
         {

@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.StageSelect = 一人用のステージ選択・リザルト、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.StageSelect = 一人用のステージ選択、.StageResult = 一人用のリザルトと演出、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -56,6 +56,7 @@ namespace MiniGame.PenguinWars.Editor
             Transform canvas = CreateCanvas();
             Transform safeArea = CreateSafeArea(canvas);
             BattleHud hud = CreateHud(safeArea, canvas);
+            BossWarningBanner bossBanner = CreateBossWarningBanner(safeArea);
             CreateBossHpBar(safeArea, battleRunner, catalog);
             (UnitButtonBar buttonBar, WalletButton walletButton, CannonButton cannonButton) = CreateControls(safeArea, battleRunner, catalog);
             SetRefs(battleRunner.GetComponent<KeyboardCommandInput>(), ("_buttonBar", buttonBar), ("_walletButton", walletButton),
@@ -74,8 +75,10 @@ namespace MiniGame.PenguinWars.Editor
             PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog, battleRunner, battleCamera);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
             (BattleEventPresenter presenter, PenguinWarsAudio audio) =
-                CreateEffects(battleRunner, battleCamera, hud, leftCastle, rightCastle);
+                CreateEffects(battleRunner, battleCamera, hud, bossBanner, leftCastle, rightCastle);
             AssignBgmClips(audio);
+            // ステージ選択・リザルトは音より先に作るので、音の参照は後から入れる
+            AssignStageAudio(stageSelectPanel, stageResultPanel, audio);
 
             var gameManager = new GameObject("PenguinWarsGameManager").AddComponent<PenguinWarsGameManager>();
             var so = new SerializedObject(gameManager);

@@ -35,7 +35,7 @@
 | 4 | [phase04_gimmicks_intro.md](phase04_gimmicks_intro.md) | ステージのギミック・編成制限・敵のペンギン砲・出撃前の紹介 | ステージごとに違う遊び方ができる | 完了 |
 | 5 | [phase05_sim_tool.md](phase05_sim_tool.md) | 自動プレイでステージを検証するツール | エディタのメニューで全ステージの難しさが一覧できる | 完了 |
 | 6 | [phase06_stage_data.md](phase06_stage_data.md) | 全3章18ステージのデータ・解放の割り振り・調整 | 最初から最後までステージモードを遊び切れる | 完了 |
-| 7 | [phase07_effects.md](phase07_effects.md) | ボス登場・クリア・★獲得・解放の演出とサウンド | 手触りが整う | 未着手 |
+| 7 | [phase07_effects.md](phase07_effects.md) | ボス登場・クリア・★獲得・解放の演出とサウンド | 手触りが整う | 完了 |
 | 8 | [phase08_polish.md](phase08_polish.md) | あそびかた・仕様書反映・計画書削除 | 完成 | 未着手 |
 
 状態: 未着手 / 進行中 / 完了

@@ -20,6 +20,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _keyScrollSpeed = 15f;
         [Tooltip("揺れが弱まり始めるまでの割合。最初は強く揺らして、だんだん収める")]
         [SerializeField, Range(0f, 1f)] private float _shakeHoldRate = 0.3f;
+        [Tooltip("Peek の行き・帰りそれぞれにかける割合。残りはその場で止まって見せる")]
+        [SerializeField, Range(0.05f, 0.5f)] private float _peekMoveRate = 0.3f;
 
         private float _fieldLength;
         private bool _pressValid;
@@ -32,6 +34,10 @@ namespace MiniGame.PenguinWars
         private float _shakeStrength;
         // スクロール位置（ドラッグ・キー・端で止める計算）に揺れが混ざらないよう、足した分を覚えておいて毎フレーム外す
         private Vector3 _appliedShake;
+        private float _peekDuration;
+        private float _peekTimer;
+        private float _peekFromX;
+        private float _peekToX;
 
         /// <summary>開始時は自城（左）側を映す</summary>
         public void Initialize(float fieldLength)
@@ -47,6 +53,7 @@ namespace MiniGame.PenguinWars
             ApplySize();
             HandleKeys();
             HandlePointer();
+            UpdatePeek();
             ApplyShake();
         }
 
@@ -62,8 +69,37 @@ namespace MiniGame.PenguinWars
         public void LookAt(float x)
         {
             RemoveShake();
+            CancelPeek();
             SetX(x);
         }
+
+        /// <summary>
+        /// 指定した X へ寄って、少し見せてから元の位置へ戻る（ボス登場。ステージ計画 Phase 7）。
+        /// 操作は奪わず、途中でスクロールされたらそこで止めてプレイヤーの操作を優先する
+        /// </summary>
+        public void Peek(float x, float duration)
+        {
+            if (duration <= 0f) return;
+
+            _peekFromX = _camera.transform.position.x - _appliedShake.x;
+            _peekToX = x;
+            _peekDuration = duration;
+            _peekTimer = duration;
+        }
+
+        private void UpdatePeek()
+        {
+            if (_peekTimer <= 0f) return;
+
+            _peekTimer = Mathf.Max(0f, _peekTimer - Time.deltaTime);
+            float rate = 1f - _peekTimer / _peekDuration;
+            float weight = rate < _peekMoveRate ? rate / _peekMoveRate
+                : rate > 1f - _peekMoveRate ? (1f - rate) / _peekMoveRate
+                : 1f;
+            SetX(Mathf.Lerp(_peekFromX, _peekToX, Mathf.SmoothStep(0f, 1f, weight)));
+        }
+
+        private void CancelPeek() => _peekTimer = 0f;
 
         private void ApplyShake()
         {
@@ -97,6 +133,7 @@ namespace MiniGame.PenguinWars
             if (keyboard.rightArrowKey.isPressed) direction += 1f;
             if (direction == 0f) return;
 
+            CancelPeek();
             SetX(_camera.transform.position.x + direction * _keyScrollSpeed * Time.deltaTime);
         }
 
@@ -132,6 +169,7 @@ namespace MiniGame.PenguinWars
             if (!_isDragging && Mathf.Abs(deltaX) < DragThreshold()) return;
 
             _isDragging = true;
+            CancelPeek();
             float worldPerPixel = _visibleWidth / Screen.width;
             // 指に戦場が付いてくるように、指と逆向きにカメラを動かす
             SetX(_pressCameraX - deltaX * worldPerPixel);

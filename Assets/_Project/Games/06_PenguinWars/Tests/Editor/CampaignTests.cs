@@ -154,6 +154,54 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Assert.IsNull(new CampaignProgress().GetBestSeconds(FirstId));
         }
 
+        // ---- 鍵が外れる演出（ステージ計画 Phase 7） ----
+
+        [Test]
+        public void NeedsUnlockReveal_FirstStageAndLockedStage_AreFalse()
+        {
+            var progress = new CampaignProgress();
+
+            Assert.IsFalse(progress.NeedsUnlockReveal(FirstId));
+            Assert.IsFalse(progress.NeedsUnlockReveal(SecondId));
+        }
+
+        [Test]
+        public void NeedsUnlockReveal_NewlyPlayable_IsTrueUntilMarked()
+        {
+            var progress = new CampaignProgress();
+            progress.Record(FirstId, StarFlags.Clear, TargetSeconds);
+
+            Assert.IsTrue(progress.NeedsUnlockReveal(SecondId));
+            progress.MarkUnlockRevealed(SecondId);
+            Assert.IsFalse(progress.NeedsUnlockReveal(SecondId));
+        }
+
+        [Test]
+        public void NeedsUnlockReveal_ClearingAgain_DoesNotRevealTwice()
+        {
+            var progress = new CampaignProgress();
+            progress.Record(FirstId, StarFlags.Clear, TargetSeconds);
+            progress.MarkUnlockRevealed(SecondId);
+
+            progress.Record(FirstId, StarFlags.All, TargetSeconds);
+
+            Assert.IsFalse(progress.NeedsUnlockReveal(SecondId));
+        }
+
+        [Test]
+        public void Json_RoundTrip_KeepsRevealedStages()
+        {
+            var progress = new CampaignProgress();
+            progress.Record(FirstId, StarFlags.Clear, TargetSeconds);
+            progress.Record(SecondId, StarFlags.Clear, TargetSeconds);
+            progress.MarkUnlockRevealed(SecondId);
+
+            CampaignProgress loaded = CampaignProgress.FromJson(progress.ToJson());
+
+            Assert.IsFalse(loaded.NeedsUnlockReveal(SecondId));
+            Assert.IsTrue(loaded.NeedsUnlockReveal(ThirdId));
+        }
+
         // ---- 保存形式 ----
 
         [Test]

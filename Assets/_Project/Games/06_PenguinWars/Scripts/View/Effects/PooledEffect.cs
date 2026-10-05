@@ -12,6 +12,8 @@ namespace MiniGame.PenguinWars
 
         private float _elapsed;
 
+        protected float Duration => _duration;
+
         protected void Begin(Vector3 position)
         {
             transform.position = position;

@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace MiniGame.PenguinWars.Editor
 {
-    /// <summary>演出（煙・火花・魂・ビーム）の見本と、BattleEvent を演出と音に振り分ける BattleEventPresenter・PenguinWarsAudio</summary>
+    /// <summary>演出（煙・火花・魂・ビーム・紙吹雪）の見本と、BattleEvent を演出と音に振り分ける BattleEventPresenter・PenguinWarsAudio・ボス登場の演出</summary>
     public static partial class PenguinWarsSceneBuilder
     {
         private const string BuiltinFontName = "LegacyRuntime.ttf";
@@ -10,6 +10,8 @@ namespace MiniGame.PenguinWars.Editor
         // ユニット（5〜7）の手前、城のHPバー（10〜11）と同じくらい。数字はさらに手前
         private const int SmokeSortingOrder = 8;
         private const int BeamSortingOrder = 9;
+        // 崩れる城・ユニット・撃破の数字より手前に降らせる
+        private const int ConfettiSortingOrder = 15;
         private const int SparkSortingOrder = 12;
         private const int SoulSortingOrder = 12;
         private const int RewardShadowSortingOrder = 13;
@@ -22,21 +24,25 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Color RewardColor = new Color(1f, 0.85f, 0.2f);
 
         private static (BattleEventPresenter presenter, PenguinWarsAudio audio) CreateEffects(
-            BattleRunner battleRunner, BattleCamera battleCamera, BattleHud hud, CastleView leftCastle, CastleView rightCastle)
+            BattleRunner battleRunner, BattleCamera battleCamera, BattleHud hud, BossWarningBanner bossBanner, CastleView leftCastle, CastleView rightCastle)
         {
             var effectsObj = new GameObject("Effects");
             Transform root = effectsObj.transform;
             var audio = effectsObj.AddComponent<PenguinWarsAudio>();
             var presenter = effectsObj.AddComponent<BattleEventPresenter>();
+            var bossEntrance = effectsObj.AddComponent<BossEntrancePresenter>();
+            SetRefs(bossEntrance, ("_battleRunner", battleRunner), ("_battleCamera", battleCamera), ("_banner", bossBanner), ("_audio", audio));
 
             SetRefs(presenter, ("_battleRunner", battleRunner), ("_battleCamera", battleCamera), ("_hud", hud),
                 ("_audio", audio),
                 ("_leftCollapse", leftCastle.GetComponent<CastleCollapse>()),
                 ("_rightCollapse", rightCastle.GetComponent<CastleCollapse>()),
+                ("_bossEntrance", bossEntrance),
                 ("_smokeTemplate", CreateSpriteEffect<SpawnSmokeEffect>(root, "SmokeTemplate", EffectArtGenerator.SmokePath, SmokeSortingOrder)),
                 ("_sparkTemplate", CreateSpriteEffect<HitSparkEffect>(root, "SparkTemplate", EffectArtGenerator.SparkPath, SparkSortingOrder)),
                 ("_soulTemplate", CreateSoulTemplate(root)),
-                ("_beamTemplate", CreateSpriteEffect<CannonBeamEffect>(root, "BeamTemplate", EffectArtGenerator.BeamPath, BeamSortingOrder)));
+                ("_beamTemplate", CreateSpriteEffect<CannonBeamEffect>(root, "BeamTemplate", EffectArtGenerator.BeamPath, BeamSortingOrder)),
+                ("_confettiTemplate", CreateSpriteEffect<ConfettiEffect>(root, "ConfettiTemplate", EffectArtGenerator.ConfettiPath, ConfettiSortingOrder)));
             return (presenter, audio);
         }
 

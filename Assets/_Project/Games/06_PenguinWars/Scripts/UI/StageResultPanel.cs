@@ -7,15 +7,31 @@ using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars
 {
+    /// <summary>リザルトに出す中身。引数が多くなりすぎないよう1つにまとめる</summary>
+    public class StageResultContent
+    {
+        public string Title;
+        /// <summary>失敗のときは null（★の行を出さない）</summary>
+        public StarFlags? Stars;
+        /// <summary>今回新しく取った★（光って跳ねる）</summary>
+        public StarFlags NewStars;
+        public string Detail;
+        public bool IsNewRecord;
+        /// <summary>このクリアで仲間になったキャラ。いなければ空</summary>
+        public IReadOnlyList<int> UnlockNos = Array.Empty<int>();
+    }
+
     /// <summary>
     /// ステージのリザルト。共通の ResultDialog はボタンが「リトライ」「タイトル」の2つだけなので、
     /// 「つぎのステージ」「もういちど」「ステージ選択」を出せるペンギン大戦争専用のものを持つ（Common は変えない）。
-    /// 初クリアで仲間が増えたら右側に絵と名前を並べる（演出は Phase 7）
+    /// ★を1つずつ出し（StarRevealAnimator）、出し終えたら仲間のカード（UnlockRevealPanel）を1体ずつ出す。
+    /// カードを閉じた後も見返せるよう、右側に仲間の絵と名前を並べておく
     /// </summary>
     public class StageResultPanel : MonoBehaviour
     {
         [SerializeField] private Text _titleLabel;
-        [SerializeField] private Text _starsLabel;
+        [SerializeField] private StarRevealAnimator _stars;
+        [SerializeField] private GameObject _newRecordLabel;
         [SerializeField] private Text _detailLabel;
         [SerializeField] private Button _nextButton;
         [SerializeField] private Button _retryButton;
@@ -29,6 +45,7 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Text[] _unlockNames;
         [Tooltip("仲間を出すとき、文字を左に寄せて右側をあける量")]
         [SerializeField] private float _detailShiftWithUnlocks = -300f;
+        [SerializeField] private UnlockRevealPanel _unlockReveal;
 
         private Vector2? _detailBasePosition;
 
@@ -43,21 +60,29 @@ namespace MiniGame.PenguinWars
             _selectButton.onClick.AddListener(() => Choose(_onSelect));
         }
 
-        /// <param name="stars">失敗のときは null（★の行を出さない）</param>
-        /// <param name="unlockNos">このクリアで仲間になったキャラ。いなければ空</param>
         /// <param name="onNext">次のステージが無い・失敗のときは null（ボタンを出さない）</param>
-        public void Show(string title, string stars, string detail, IReadOnlyList<int> unlockNos, Action onNext, Action onRetry, Action onSelect)
+        public void Show(StageResultContent content, Action onNext, Action onRetry, Action onSelect)
         {
-            _titleLabel.text = title;
-            _starsLabel.gameObject.SetActive(stars != null);
-            _starsLabel.text = stars ?? string.Empty;
-            _detailLabel.text = detail;
+            _titleLabel.text = content.Title;
+            _detailLabel.text = content.Detail;
+            _newRecordLabel.SetActive(content.IsNewRecord);
             _onNext = onNext;
             _onRetry = onRetry;
             _onSelect = onSelect;
             _nextButton.gameObject.SetActive(onNext != null);
-            ShowUnlocks(unlockNos);
+            ShowUnlocks(content.UnlockNos);
+            _unlockReveal.gameObject.SetActive(false);
             gameObject.SetActive(true);
+
+            if (content.Stars.HasValue)
+            {
+                IReadOnlyList<int> unlockNos = content.UnlockNos;
+                _stars.Play(content.Stars.Value, content.NewStars, () => _unlockReveal.Show(unlockNos, null));
+            }
+            else
+            {
+                _stars.Hide();
+            }
         }
 
         private void ShowUnlocks(IReadOnlyList<int> unlockNos)

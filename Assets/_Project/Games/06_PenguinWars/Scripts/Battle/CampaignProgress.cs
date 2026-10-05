@@ -37,6 +37,7 @@ namespace MiniGame.PenguinWars.Battle
         private const string StarsKey = "stars";
         private const string BestKey = "best";
         private const string DeckKey = "deck";
+        private const string RevealedKey = "revealed";
 
         private class StageRecord
         {
@@ -46,6 +47,8 @@ namespace MiniGame.PenguinWars.Battle
         }
 
         private readonly Dictionary<string, StageRecord> _records = new Dictionary<string, StageRecord>();
+        // 鍵が外れる演出を見せた（または遊び始めた）ステージ。同じ演出を2回出さないため
+        private readonly HashSet<string> _revealedIds = new HashSet<string>();
 
         /// <summary>ステージ選択を開いたときにこのステージの章を見せる。まだ遊んでいなければ null</summary>
         public string LastPlayedId { get; set; }
@@ -66,6 +69,20 @@ namespace MiniGame.PenguinWars.Battle
             }
             return false;
         }
+
+        /// <summary>
+        /// 遊べるようになったのに、まだ鍵が外れる演出を見せていない。最初のステージは最初から遊べる（鍵が無い）ので対象外
+        /// </summary>
+        public bool NeedsUnlockReveal(string stageId)
+        {
+            IReadOnlyList<StageDefinition> all = StageDefinitions.All;
+            if (all.Count > 0 && all[0].Id == stageId) return false;
+
+            return IsPlayable(stageId) && !_revealedIds.Contains(stageId);
+        }
+
+        /// <summary>演出を見せた・リザルトの「つぎのステージ」から直接遊んだときに呼ぶ</summary>
+        public void MarkUnlockRevealed(string stageId) => _revealedIds.Add(stageId);
 
         public StarFlags GetStars(string stageId)
         {
@@ -118,6 +135,7 @@ namespace MiniGame.PenguinWars.Battle
             builder.Append(MiniJson.Quote(VersionKey)).Append(':').Append(SaveVersion);
             if (LastPlayedId != null) builder.Append(',').Append(MiniJson.Quote(LastPlayedKey)).Append(':').Append(MiniJson.Quote(LastPlayedId));
             AppendDeck(builder);
+            AppendRevealed(builder);
             builder.Append(',').Append(MiniJson.Quote(StagesKey)).Append(":{");
             bool first = true;
             foreach (KeyValuePair<string, StageRecord> pair in _records)
@@ -136,6 +154,19 @@ namespace MiniGame.PenguinWars.Battle
             {
                 if (i > 0) builder.Append(',');
                 builder.Append(LastDeckNos[i]);
+            }
+            builder.Append(']');
+        }
+
+        private void AppendRevealed(StringBuilder builder)
+        {
+            builder.Append(',').Append(MiniJson.Quote(RevealedKey)).Append(":[");
+            bool first = true;
+            foreach (string id in _revealedIds)
+            {
+                if (!first) builder.Append(',');
+                first = false;
+                builder.Append(MiniJson.Quote(id));
             }
             builder.Append(']');
         }
@@ -173,11 +204,20 @@ namespace MiniGame.PenguinWars.Battle
             return nos;
         }
 
+        private void ReadRevealed(List<object> items)
+        {
+            foreach (object item in items)
+            {
+                if (item is string id) _revealedIds.Add(id);
+            }
+        }
+
         /// <summary>型が違う項目は読み飛ばす（手で書き換えられた・古い形式のセーブでも落ちないように）</summary>
         private void Load(Dictionary<string, object> root)
         {
             if (root.TryGetValue(LastPlayedKey, out object last)) LastPlayedId = last as string;
             if (root.TryGetValue(DeckKey, out object deck) && deck is List<object> deckItems) LastDeckNos = ReadNos(deckItems);
+            if (root.TryGetValue(RevealedKey, out object revealed) && revealed is List<object> revealedItems) ReadRevealed(revealedItems);
             if (!root.TryGetValue(StagesKey, out object stagesValue) || !(stagesValue is Dictionary<string, object> stages)) return;
 
             foreach (KeyValuePair<string, object> pair in stages)

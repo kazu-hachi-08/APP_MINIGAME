@@ -37,7 +37,7 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>同時に2体いたら先に出た方（倒せば次のボスに切り替わる）</summary>
-        private static UnitState FindBoss(BattleWorld world)
+        public static UnitState FindBoss(BattleWorld world)
         {
             if (world == null) return null;
 
