@@ -79,5 +79,35 @@ namespace MiniGame.PenguinWars
         {
             return new WalletTable(_walletCaps, _walletRates, _walletLevelUpCosts);
         }
+
+        /// <summary>
+        /// 試合の設定。城HP はステージの定義表・対戦のステージで上書きする。
+        /// BattleRunner とステージ検証（StageSimulationMenu）で同じ値を使うため、詰め替えはここ1か所にする
+        /// </summary>
+        public BattleSettings CreateBattleSettings(bool versus, int seed)
+        {
+            return new BattleSettings
+            {
+                FieldLength = _fieldLength,
+                LeftCastleHp = _castleHpVersus,
+                RightCastleHp = _castleHpVersus,
+                // ステージの敵はお金を持たず定義表どおりに湧く。対戦は両者が同じルール
+                RightSpawnsFree = !versus,
+                TimeLimit = versus ? _versusTimeLimit : 0f,
+                SpawnOffset = _spawnOffset,
+                MaxUnitsPerSide = _maxUnitsPerSide,
+                WalletTable = CreateWalletTable(),
+                KillRewardRate = _killRewardRate,
+                CannonChargeTime = _cannonChargeTime,
+                CannonRangeRatio = _cannonRangeRatio,
+                CannonDamage = _cannonDamage,
+                KnockbackDistance = _knockbackDistance,
+                KnockbackDuration = _knockbackDuration,
+                SlowSpeedMultiplier = _slowSpeedMultiplier,
+                CastleKillerMultiplier = _castleKillerMultiplier,
+                RoleKillerMultiplier = _roleKillerMultiplier,
+                RandomSeed = seed,
+            };
+        }
     }
 }

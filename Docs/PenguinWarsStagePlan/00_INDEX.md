@@ -33,7 +33,7 @@
 | 2 | [phase02_progress_select.md](phase02_progress_select.md) | セーブ・ステージ選択画面・★・リザルト | 3ステージを順にクリアして★が残る | 完了 |
 | 3 | [phase03_unlock_deck.md](phase03_unlock_deck.md) | キャラ解放・編成画面・ずかんのロック表示 | クリアで仲間が増え、自分で編成できる | 完了 |
 | 4 | [phase04_gimmicks_intro.md](phase04_gimmicks_intro.md) | ステージのギミック・編成制限・敵のペンギン砲・出撃前の紹介 | ステージごとに違う遊び方ができる | 完了 |
-| 5 | [phase05_sim_tool.md](phase05_sim_tool.md) | 自動プレイでステージを検証するツール | エディタのメニューで全ステージの難しさが一覧できる | 未着手 |
+| 5 | [phase05_sim_tool.md](phase05_sim_tool.md) | 自動プレイでステージを検証するツール | エディタのメニューで全ステージの難しさが一覧できる | 完了 |
 | 6 | [phase06_stage_data.md](phase06_stage_data.md) | 全3章18ステージのデータ・解放の割り振り・調整 | 最初から最後までステージモードを遊び切れる | 未着手 |
 | 7 | [phase07_effects.md](phase07_effects.md) | ボス登場・クリア・★獲得・解放の演出とサウンド | 手触りが整う | 未着手 |
 | 8 | [phase08_polish.md](phase08_polish.md) | あそびかた・仕様書反映・計画書削除 | 完成 | 未着手 |

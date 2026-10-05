@@ -57,10 +57,10 @@ bot を一人用のCPU対戦相手に使うこと（スコープ外）。ステ�
 
 ## 完了条件
 
-* [ ] EditMode テストが通る
+* [x] EditMode テストが通る（簡易ランナーで確認。エディタの Test Runner ではまだ）
 * [ ] メニューを実行すると、仮ステージ3つの表が Console と `Temp/PenguinStageSim.md` に出る
-* [ ] 敵の数値を上げると勝率が下がる（物差しとして反応する）ことを1回確かめる
-* [ ] 全ステージ×2段階×5回が1分以内に終わる
+* [x] 敵の数値を上げると勝率が下がる（物差しとして反応する）ことを1回確かめる
+* [x] 全ステージ×2段階×5回が1分以内に終わる（.NET 上で0.6秒。エディタでの秒数は表の末尾に出る）
 
 ## ユーザー確認手順
 
@@ -70,6 +70,36 @@ bot を一人用のCPU対戦相手に使うこと（スコープ外）。ステ�
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * Battle: `BotSkill.cs`（bot の強さ） / `SimpleBot.cs`（検証用の bot） / `StageSimulator.cs`（画面なしで1回プレイ） / `SimDeckPicker.cs`（検証用の編成） / `StageSimReport.cs`（全ステージを回して Markdown の表にする）
+  * Editor: `StageSimulationMenu.cs`（`Tools > MiniGame > PenguinWars > Simulate Stages`）
+  * Tests: `SimulatorTests.cs`（7件）
+  * 変更: `PenguinWarsBalance.CreateBattleSettings(versus, seed)` を追加し、`BattleRunner.CreateBaseSettings` はそれを呼ぶだけにした（検証ツールと実機で同じ数値を使うため） / `BattleWorld.CannonReach` を `internal` に（bot が砲の判断に使う）
 * 公開API:
+  * `new StageSimulator(createBaseSettings, statsByNo).Run(stage, deckNos, skill, seed, maxSeconds)` → `StageResult`。時間切れは `Cleared == false` かつ `PlayerCastleHpRatio > 0`
+  * `StageSimulator.CreateDefault()`（`BattleSettings` の既定値＋定義表の数値。テスト用） / `StageSimulator.DefinitionStats()`（定義表から計算したキャラの数値。カタログのアセットと同じ値）
+  * `SimDeckPicker.Pick(stage)` / `Pick(availableNos, stage)` / `AvailableNos(stage)`（初期10体＋前のステージの解放キャラ）
+  * `StageSimReport.Build(simulator, stages, runsPerSkill, maxSeconds, onProgress)` → Markdown の表
+  * `BotSkill.Normal`（判断1.5秒ごと・働きLv3まで） / `BotSkill.Skilled`（0.5秒ごと・Lv5まで）
 * 計画から変えた点:
+  * bot の判断を変えた。計画どおり（「前線に壁がいなければ一番安い壁」＋「出せる中で一番高いキャラ」）だと、安い壁を出し続けてさかなが貯まらず、強いキャラが一度も出なかった。今は **生きている壁が3体未満なら一番安い壁 → それ以外は壁以外で今出せる一番高いキャラ**
+  * bot の判断間隔をシードで ±25% 揺らす（`SimpleBot(skill, seed)`）。揺らさないとシード5回がほぼ同じ結果になり、勝率の意味がなかった（戦闘の乱数は能力の発動だけなので差が出ない）
+  * 表に「ふつう／うまい」それぞれの自城HP（勝った回の平均）と「★3目安」（うまい平均秒×0.9）の列を足した。勝率には時間切れの回数を「（時間切れN）」で添える（負けとは直し方が違うため）
+  * 打ち切りは 600 秒（`StageSimulationMenu.MaxSeconds`）。表の末尾にかかった秒数を出す
+  * 表の組み立ては Editor ではなく Battle（`StageSimReport`）に置いた。Unity を開かずに同じ表を出して確かめるため
+* 確かめたこと（Unity を開かずに一時プロジェクトで `dotnet build`・簡易ランナー）:
+  * EditMode テスト 152 件通過・1 件 Ignore（Phase 4 の網羅テストのまま）。Battle・Tests・Assembly-CSharp・Editor ともビルドが通る
+  * 仮ステージ3つの表（BattleSettings 既定値で。メニューは Balance の値を使う）:
+
+    | Stage | ふつう 勝率 | ふつう 平均秒 | うまい 勝率 | うまい 平均秒 | ★3目標 | ★3目安 |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | 1-1 | 5/5 | 90 | 5/5 | 72 | 120 | 65 |
+    | 1-2 | 5/5 | 120 | 5/5 | 103 | 150 | 92 |
+    | 1-3 | 0/5（時間切れ4） | - | 0/5（時間切れ5） | - | 180 | - |
+
+  * 物差しとしての反応: 1-2 の敵の倍率を ×1 / ×1.5 / ×2 にすると、勝率は 5/5 → 3/5 → 0/5 と下がる
+  * 3ステージ×2段階×5回で約0.6秒（.NET 上）。18ステージでも数秒の見込み
 * 次フェーズへの注意:
+  * **仮ステージ 1-3 は bot では勝てない。** 原因は敵の砲（ダメージ150・範囲0.5）。コスト300以下のキャラは HP が 80〜190 なので、戦場の真ん中を越えて4体以上かたまると一撃で全滅し、敵の城まで届かない（砲を外すと うまい 5/5）。Phase 6 で作り直すときは、敵の砲のダメージを編成で出せるキャラの HP より低くするか、`MinTargets` を上げる
+  * 調整の流れ: 定義表を変える → メニューを実行 → `Temp/PenguinStageSim.md` を見る。目安は「実装メモ」の基準。★3 の目標タイムは表の「★3目安」をそのまま入れればよい
+  * bot は「人間が工夫すれば勝てる」かどうかは測れない（砲を撃つタイミングを見て攻める、などはしない）。ボスステージは うまい bot で勝てれば十分、勝てなくても手で遊んで確かめる
+  * 編成は役割の目安（壁3・アタッカー3・遠距離2・妨害/大型2）で高い順。編成制限に当たるキャラは選ばないので、10体に満たないことがある（1-3 は8体）

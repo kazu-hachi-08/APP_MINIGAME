@@ -30,7 +30,8 @@ namespace MiniGame.PenguinWars.Battle
             return enemy != null ? enemy.ChargeTime : _settings.CannonChargeTime;
         }
 
-        private float CannonReach(Side side)
+        /// <summary>自城から砲が届く距離。検証用の bot（SimpleBot）も撃つ判断に使う</summary>
+        internal float CannonReach(Side side)
         {
             EnemyCannonSettings enemy = CannonOf(side);
             return _settings.FieldLength * (enemy != null ? enemy.RangeRatio : _settings.CannonRangeRatio);

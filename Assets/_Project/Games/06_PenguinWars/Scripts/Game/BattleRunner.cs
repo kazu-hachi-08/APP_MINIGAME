@@ -308,29 +308,7 @@ namespace MiniGame.PenguinWars
         private BattleSettings CreateBaseSettings(bool versus, int seed)
         {
             // 城HP はステージの定義表・対戦のステージで上書きする（デモもその後で上書きする）
-            int castleHp = _balance.CastleHpVersus;
-            return new BattleSettings
-            {
-                FieldLength = _balance.FieldLength,
-                LeftCastleHp = castleHp,
-                RightCastleHp = castleHp,
-                // ステージの敵はお金を持たず定義表どおりに湧く。対戦は両者が同じルール
-                RightSpawnsFree = !versus,
-                TimeLimit = versus ? _balance.VersusTimeLimit : 0f,
-                SpawnOffset = _balance.SpawnOffset,
-                MaxUnitsPerSide = _balance.MaxUnitsPerSide,
-                WalletTable = _balance.CreateWalletTable(),
-                KillRewardRate = _balance.KillRewardRate,
-                CannonChargeTime = _balance.CannonChargeTime,
-                CannonRangeRatio = _balance.CannonRangeRatio,
-                CannonDamage = _balance.CannonDamage,
-                KnockbackDistance = _balance.KnockbackDistance,
-                KnockbackDuration = _balance.KnockbackDuration,
-                SlowSpeedMultiplier = _balance.SlowSpeedMultiplier,
-                CastleKillerMultiplier = _balance.CastleKillerMultiplier,
-                RoleKillerMultiplier = _balance.RoleKillerMultiplier,
-                RandomSeed = seed,
-            };
+            return _balance.CreateBattleSettings(versus, seed);
         }
 
         /// <summary>
