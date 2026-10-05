@@ -1,4 +1,3 @@
-using MiniGame.Common.Audio;
 using MiniGame.Common.Core;
 using MiniGame.Common.UI;
 using MiniGame.PenguinWars.Battle;
@@ -9,18 +8,11 @@ namespace MiniGame.PenguinWars
     /// <summary>
     /// ペンギン大戦争の進行役。タイトル → モード選択 →（対戦はドラフト →）編成発表 → START! → プレイ → 城が落ちたらリザルト（仕様書 §2）。
     /// 戦闘そのものは BattleRunner に任せ、ここは段階の切り替えだけを持つ。
-    /// このファイルは共通の流れと一人用のステージ。オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
+    /// このファイルは共通の流れ。一人用のステージ選択・結果は .Stage.cs、オンライン対戦の接続・決着は .Online.cs、ドラフト・編成確認は .Draft.cs
     /// </summary>
     public partial class PenguinWarsGameManager : BaseMiniGameManager
     {
         private const string StartMessage = "START!";
-        private const string StageClearTitle = "STAGE CLEAR!";
-        // ステージ選択画面（Phase 2）ができるまで、「ステージ」はこのステージから始める
-        private const string FirstStageId = "1-1";
-
-        // リトライでシーンを読み直したとき、ステージならモード選択を飛ばして同じステージから始める（仕様書 §2.3）。
-        // シーンを読み直すとインスタンスの値は消えるので static に置く。null ならリトライではない
-        private static string s_restartStageId;
 
         [SerializeField] private PenguinWarsBalance _balance;
         [SerializeField] private BattleCamera _battleCamera;
@@ -37,7 +29,6 @@ namespace MiniGame.PenguinWars
         private float _introTimer;
         // Intro の前半（編成発表）か後半（START!）か
         private bool _showingDeck;
-        private StageDefinition _currentStage;
 
         public PenguinWarsPhase Phase { get; private set; } = PenguinWarsPhase.Title;
 
@@ -49,10 +40,8 @@ namespace MiniGame.PenguinWars
             SubscribeOnline();
             SubscribeDraft();
 
-            string restartStageId = s_restartStageId;
-            s_restartStageId = null;
-            if (restartStageId != null) StartStage(restartStageId);
-            else ShowTitle();
+            _progress = CampaignSave.Load();
+            if (!TryResumeStageFlow()) ShowTitle();
         }
 
         protected override void OnDestroy()
@@ -67,8 +56,8 @@ namespace MiniGame.PenguinWars
         /// <summary>ステージはシーンを読み直して同じステージをすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>
         public override void RestartGame()
         {
-            s_restartStageId = IsOnline ? null : _currentStage?.Id;
-            base.RestartGame();
+            if (!IsOnline && _currentStage != null) ReloadInto(_currentStage.Id);
+            else base.RestartGame();
         }
 
         private void ShowTitle()
@@ -87,26 +76,8 @@ namespace MiniGame.PenguinWars
         private void ShowModeSelect()
         {
             Phase = PenguinWarsPhase.ModeSelect;
-            if (_modeSelectPanel == null) StartFirstStage();
-            else _modeSelectPanel.Show(StartFirstStage, StartOnline);
-        }
-
-        private void StartFirstStage()
-        {
-            StartStage(FirstStageId);
-        }
-
-        private void StartStage(string stageId)
-        {
-            _currentStage = StageDefinitions.Find(stageId);
-            if (_currentStage == null)
-            {
-                Debug.LogWarning($"[PenguinWarsGameManager] ステージ {stageId} がありません。最初のステージで始めます");
-                _currentStage = StageDefinitions.All[0];
-            }
-            // 編成画面（Phase 3）ができるまでは仮でランダム10体
-            _battleRunner.InitializeStage(_currentStage, _battleRunner.PickRandomDeckNos());
-            BeginIntro(_deckIntroDuration);
+            if (_modeSelectPanel == null) ShowStageSelect();
+            else _modeSelectPanel.Show(ShowStageSelect, StartOnline);
         }
 
         private void BeginIntro(float deckDuration)
@@ -209,23 +180,7 @@ namespace MiniGame.PenguinWars
             if (Phase == PenguinWarsPhase.Title) return;
 
             if (IsOnline) EndVersus(side, false);
-            else EndStage(side);
-        }
-
-        /// <summary>結果の文字は仮（Phase 2 でリザルト画面を作り直す）</summary>
-        private void EndStage(Side loser)
-        {
-            BattleWorld world = _battleRunner.World;
-            int kills = world.GetKillCount(Side.Left);
-            if (loser == Side.Left)
-            {
-                FinishGame(false, $"撃破 {kills}体", _currentStage.Name);
-                return;
-            }
-
-            string clearTime = BattleHud.FormatTime(Mathf.FloorToInt(world.ElapsedTime));
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.GameClear);
-            ShowCustomResult(StageClearTitle, true, $"クリア {clearTime} / 撃破 {kills}体", _currentStage.Name);
+            else EndStage();
         }
 
         /// <summary>BaseMiniGameManager.FinishGame はタイトルが VICTORY! / GAME OVER しかないので、別のタイトルを出すときは同じ手順を自前で踏む</summary>

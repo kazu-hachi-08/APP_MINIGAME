@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
+    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.StageSelect = 一人用のステージ選択・リザルト、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -66,6 +66,9 @@ namespace MiniGame.PenguinWars.Editor
             DeckRevealPanel deckRevealPanel = CreateDeckRevealPanel(canvas, catalog);
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
+            // モード選択の「ステージ」の次に出る画面なので、モード選択より手前
+            StageSelectPanel stageSelectPanel = CreateStageSelectPanel(canvas);
+            StageResultPanel stageResultPanel = CreateStageResultPanel(canvas);
             // 最初に見える画面なのでモード選択より手前
             PenguinWarsTitlePanel titlePanel = CreateTitlePanel(canvas, catalog, battleRunner, battleCamera);
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
@@ -82,6 +85,7 @@ namespace MiniGame.PenguinWars.Editor
                 ("_titlePanel", titlePanel));
             SetRefs(gameManager, ("_modeSelectPanel", online.ModeSelectPanel), ("_onlineSession", online.Session),
                 ("_onlineLink", online.Link), ("_draftPanel", draftPanel), ("_deckRevealPanel", deckRevealPanel));
+            SetRefs(gameManager, ("_stageSelectPanel", stageSelectPanel), ("_stageResultPanel", stageResultPanel));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 
             SaveScene(scene);

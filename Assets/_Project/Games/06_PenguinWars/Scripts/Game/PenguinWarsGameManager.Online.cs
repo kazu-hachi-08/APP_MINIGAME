@@ -33,7 +33,7 @@ namespace MiniGame.PenguinWars
         private const float PercentScale = 100f;
 
         [Header("オンライン対戦")]
-        [Tooltip("未設定ならモード選択を出さず最初のステージで始める")]
+        [Tooltip("未設定ならモード選択を出さずステージ選択から始める")]
         [SerializeField] private ModeSelectPanel _modeSelectPanel;
         [SerializeField] private OnlineSession _onlineSession;
         [SerializeField] private PenguinWarsOnlineLink _onlineLink;

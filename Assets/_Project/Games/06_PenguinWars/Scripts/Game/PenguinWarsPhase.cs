@@ -10,6 +10,8 @@ namespace MiniGame.PenguinWars
         Title,
         /// <summary>モード選択・オンラインの接続待ち（編成がまだ決まっていない）</summary>
         ModeSelect,
+        /// <summary>一人用のステージ選択・詳細（ステージが決まるまで）</summary>
+        StageSelect,
         Draft,
         Intro,
         Playing,

@@ -1,0 +1,151 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace MiniGame.PenguinWars.Battle
+{
+    /// <summary>Record の戻り値。リザルトに「NEW RECORD!」「新しく取った★」を出すために使う</summary>
+    public readonly struct StageRecordChange
+    {
+        public bool IsFirstClear { get; }
+        public bool IsNewBest { get; }
+        public StarFlags NewStars { get; }
+
+        public StageRecordChange(bool isFirstClear, bool isNewBest, StarFlags newStars)
+        {
+            IsFirstClear = isFirstClear;
+            IsNewBest = isNewBest;
+            NewStars = newStars;
+        }
+    }
+
+    /// <summary>
+    /// ステージモードの進み具合（クリア状況・★・ベストタイム・最後に遊んだステージ）。
+    /// ステージは番号ではなく ID で持つので、定義表を並べ替えてもセーブが壊れない。
+    /// 定義表から消えた ID もそのまま残す（戻したときに記録が復活するように）
+    /// </summary>
+    public class CampaignProgress
+    {
+        private const int SaveVersion = 1;
+        private const string VersionKey = "version";
+        private const string LastPlayedKey = "lastPlayed";
+        private const string StagesKey = "stages";
+        private const string StarsKey = "stars";
+        private const string BestKey = "best";
+
+        private class StageRecord
+        {
+            public StarFlags Stars;
+            /// <summary>クリアしたことがなければ null</summary>
+            public float? BestSeconds;
+        }
+
+        private readonly Dictionary<string, StageRecord> _records = new Dictionary<string, StageRecord>();
+
+        /// <summary>ステージ選択を開いたときにこのステージの章を見せる。まだ遊んでいなければ null</summary>
+        public string LastPlayedId { get; set; }
+
+        public bool IsCleared(string stageId) => StarRule.Has(GetStars(stageId), StarFlags.Clear);
+
+        /// <summary>最初のステージか、定義表で1つ前のステージをクリア済みなら遊べる（章の解放もこれで済む）。定義表に無い ID は遊べない</summary>
+        public bool IsPlayable(string stageId)
+        {
+            IReadOnlyList<StageDefinition> all = StageDefinitions.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].Id != stageId) continue;
+                return i == 0 || IsCleared(all[i - 1].Id);
+            }
+            return false;
+        }
+
+        public StarFlags GetStars(string stageId)
+        {
+            return _records.TryGetValue(stageId, out StageRecord record) ? record.Stars : StarFlags.None;
+        }
+
+        public float? GetBestSeconds(string stageId)
+        {
+            return _records.TryGetValue(stageId, out StageRecord record) ? record.BestSeconds : null;
+        }
+
+        /// <summary>クリアしたときだけ呼ぶ。★は過去の分と OR し、タイムは短いほうを残す</summary>
+        public StageRecordChange Record(string stageId, StarFlags stars, float seconds)
+        {
+            if (!_records.TryGetValue(stageId, out StageRecord record))
+            {
+                record = new StageRecord();
+                _records[stageId] = record;
+            }
+
+            bool isFirstClear = !StarRule.Has(record.Stars, StarFlags.Clear) && StarRule.Has(stars, StarFlags.Clear);
+            StarFlags newStars = stars & ~record.Stars;
+            bool isNewBest = !record.BestSeconds.HasValue || seconds < record.BestSeconds.Value;
+
+            record.Stars |= stars;
+            if (isNewBest) record.BestSeconds = seconds;
+            return new StageRecordChange(isFirstClear, isNewBest, newStars);
+        }
+
+        // ---- 保存形式 ----
+
+        public string ToJson()
+        {
+            var builder = new StringBuilder("{");
+            builder.Append(MiniJson.Quote(VersionKey)).Append(':').Append(SaveVersion);
+            if (LastPlayedId != null) builder.Append(',').Append(MiniJson.Quote(LastPlayedKey)).Append(':').Append(MiniJson.Quote(LastPlayedId));
+            builder.Append(',').Append(MiniJson.Quote(StagesKey)).Append(":{");
+            bool first = true;
+            foreach (KeyValuePair<string, StageRecord> pair in _records)
+            {
+                if (!first) builder.Append(',');
+                first = false;
+                AppendRecord(builder, pair.Key, pair.Value);
+            }
+            return builder.Append("}}").ToString();
+        }
+
+        private static void AppendRecord(StringBuilder builder, string stageId, StageRecord record)
+        {
+            builder.Append(MiniJson.Quote(stageId)).Append(":{");
+            builder.Append(MiniJson.Quote(StarsKey)).Append(':').Append((int)record.Stars);
+            if (record.BestSeconds.HasValue) builder.Append(',').Append(MiniJson.Quote(BestKey)).Append(':').Append(MiniJson.Number(record.BestSeconds.Value));
+            builder.Append('}');
+        }
+
+        /// <summary>空・壊れた文字列なら空の進み具合を返す（セーブが読めなくてもゲームは始められるように）</summary>
+        public static CampaignProgress FromJson(string json)
+        {
+            var progress = new CampaignProgress();
+            try
+            {
+                if (MiniJson.Parse(json) is Dictionary<string, object> root) progress.Load(root);
+            }
+            catch (FormatException)
+            {
+                return new CampaignProgress();
+            }
+            return progress;
+        }
+
+        /// <summary>型が違う項目は読み飛ばす（手で書き換えられた・古い形式のセーブでも落ちないように）</summary>
+        private void Load(Dictionary<string, object> root)
+        {
+            if (root.TryGetValue(LastPlayedKey, out object last)) LastPlayedId = last as string;
+            if (!root.TryGetValue(StagesKey, out object stagesValue) || !(stagesValue is Dictionary<string, object> stages)) return;
+
+            foreach (KeyValuePair<string, object> pair in stages)
+            {
+                if (!(pair.Value is Dictionary<string, object> fields)) continue;
+
+                var record = new StageRecord();
+                if (fields.TryGetValue(StarsKey, out object stars) && stars is double starsValue)
+                {
+                    record.Stars = (StarFlags)(int)starsValue & StarFlags.All;
+                }
+                if (fields.TryGetValue(BestKey, out object best) && best is double bestValue) record.BestSeconds = (float)bestValue;
+                _records[pair.Key] = record;
+            }
+        }
+    }
+}

@@ -68,6 +68,28 @@
 ## 引き継ぎメモ（実装後に記入）
 
 * 作ったファイル:
+  * Battle: `StageResult.cs` / `StarRule.cs`（`StarFlags` 列挙も同じファイル） / `CampaignProgress.cs`（`StageRecordChange` 構造体も同じファイル） / `MiniJson.cs`（セーブ用の小さな JSON 読み書き）
+  * Game: `CampaignSave.cs` / `PenguinWarsGameManager.Stage.cs`（ステージ選択〜結果の流れを本体から分けた）
+  * UI: `StageSelectPanel.cs` / `StageNode.cs` / `StageDetailPanel.cs` / `StageResultPanel.cs` / `StageLabels.cs`（★・条件・タイムの文字の組み立て）
+  * Editor: `PenguinWarsSceneBuilder.StageSelect.cs`
+  * Tests: `CampaignTests.cs`
+  * 変更: `StageDefinition`（`SafeHpRatio` 既定 0.5・`IsBossStage`・`StagesPerChapter = 6`） / `StageDefinitions`（`Next(id)`・`ChapterCount`・`InChapter(chapter)`） / `StageDefinitions.Chapter1`（仮の `1-2`「ゆきだまの丘」・`1-3`「すもう場」を追加） / `PenguinWarsPhase.StageSelect`
 * 公開API:
+  * `StarRule.Evaluate(stage, result)` → `StarFlags`（`Clear` / `Safe` / `Fast` のフラグ） / `StarRule.Count(flags)` / `StarRule.Has(flags, star)`
+  * `StageResult.From(world)`（`Cleared` は `world.IsFinished && Loser == Right`）
+  * `CampaignProgress`: `IsCleared` / `IsPlayable` / `GetStars` / `GetBestSeconds`（未クリアは null） / `Record(id, stars, seconds)` → `StageRecordChange`（`IsFirstClear` / `IsNewBest` / `NewStars`） / `LastPlayedId` / `ToJson()` / `FromJson()`
+  * `CampaignSave.Load()` / `CampaignSave.Save(progress)`（キー `PenguinWars.Campaign`。保存のたびに `PlayerPrefs.Save()`）
+  * `StageSelectPanel.Show(progress, onSortie(id), onBack)` / `StageResultPanel.Show(title, stars, detail, onNext, onRetry, onSelect)`（`onNext` が null ならボタンを隠す）
 * 計画から変えた点:
+  * ★は「bool 3つ」ではなく `[Flags] enum StarFlags` にした（過去最高の OR・新しく取った★の差分がビット演算で済むため）。`CountStars` は `Evaluate` + `Count` に分けた
+  * Battle は `noEngineReferences` で `JsonUtility` が使えないので、`MiniJson`（自前の小さなパーサ）で JSON を読み書きする。保存形式: `{"version":1,"lastPlayed":"1-2","stages":{"1-1":{"stars":7,"best":83.5}}}`（`stars` はフラグの数値）
+  * SceneBuilder のファイル名は `.Stage.cs` ではなく `.StageSelect.cs`（対戦用ステージの `.Stages.cs` と紛らわしいため）
+  * 共通の `ResultDialog` はボタンが2つしかないので、ステージは専用の `StageResultPanel` を使う（対戦の結果・引き分けは今までどおり共通のリザルト）
+  * 「最後に遊んだステージを開いた状態」は「最後に遊んだステージの章を開く」にした（詳細までは開かない）
+  * 最後に遊んだステージ（`LastPlayedId`）は出撃した時点で保存する
+  * ステージ選択からの「もどる」はモード選択へ。リザルトの3ボタンはどれもシーン読み直し＋ static（`s_restartStageId` / `s_openStageSelect`）
 * 次フェーズへの注意:
+  * 編成は今も `PickRandomDeckNos()`（`PenguinWarsGameManager.Stage.cs` の `StartStage`）。Phase 3 で編成画面に差し替える場所はここ
+  * 初クリアの判定は `Record` の戻り値 `IsFirstClear` で取れる（Phase 3 のキャラ解放に使う）。解放・最後の編成の保存は `CampaignProgress` の `ToJson` / `Load` に項目を足す（読めない・無い項目は読み飛ばす作りなので、古いセーブもそのまま読める）
+  * ステージ詳細の「しゅつげき」→ すぐ編成発表。Phase 3 で編成画面、Phase 4 で敵の紹介を挟むならこの `onSortie` の先
+  * Unity 側のコードは、Unity が生成した csproj から参照を写した一時プロジェクトで `dotnet build` してコンパイルが通ることを確認した（エディタでの再生確認はまだ）
