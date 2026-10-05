@@ -14,6 +14,17 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 ZukanCloseSize = new Vector2(300f, 100f);
         private static readonly Vector2 ZukanClosePosition = new Vector2(-50f, -35f);
 
+        // 並べ替えの2つは左上、特性は「もどる」の左隣。中央のタイトル文字とは重ならない幅にする
+        private static readonly Vector2 ZukanTopLeftAnchor = new Vector2(0f, 1f);
+        private static readonly Vector2 ZukanColumnButtonSize = new Vector2(240f, 100f);
+        private static readonly Vector2 ZukanColumnButtonPosition = new Vector2(50f, -35f);
+        private static readonly Vector2 ZukanOrderButtonSize = new Vector2(240f, 100f);
+        private static readonly Vector2 ZukanOrderButtonPosition = new Vector2(310f, -35f);
+        private static readonly Vector2 ZukanTraitButtonSize = new Vector2(380f, 100f);
+        private static readonly Vector2 ZukanTraitButtonPosition = new Vector2(-370f, -35f);
+        // 「特性: 遠距離キラー」も1行に収めるため、縮めてよい下限
+        private const int ZukanHeaderButtonMinFontSize = 24;
+
         // ヘッダーの下をすべてスクロール領域にする
         private const float ZukanSideMargin = 80f;
         private const float ZukanTopMargin = 170f;
@@ -32,6 +43,12 @@ namespace MiniGame.PenguinWars.Editor
         private const int ZukanCellNameFontSize = 26;
         // 「こおりのじょおうペンギン」のような長い名前も1行に収めるため、縮めてよい下限
         private const int ZukanCellNameMinFontSize = 14;
+        // 左上の数値。歩く絵に重なっても読めるよう、半透明の黒い下地に乗せる
+        private static readonly Vector2 ZukanCellValueSize = new Vector2(96f, 46f);
+        private static readonly Vector2 ZukanCellValuePosition = new Vector2(6f, -6f);
+        private static readonly Color ZukanCellValueBackColor = new Color(0f, 0f, 0f, 0.55f);
+        private const int ZukanCellValueFontSize = 34;
+        private const int ZukanCellValueMinFontSize = 18;
 
         private static readonly Color ZukanDimColor = new Color(0f, 0f, 0f, 0.7f);
         private static readonly Vector2 ZukanDetailBoxSize = new Vector2(1400f, 760f);
@@ -62,6 +79,10 @@ namespace MiniGame.PenguinWars.Editor
             Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, ZukanTitlePosition, ZukanTitleSize, MessageColor);
             title.text = "ずかん";
             Button close = CreateAnchoredButton(panelObj.transform, "Btn_Close", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
+            // 文字は PenguinZukanPanel が開くたびに書き換えるので、ここでは仮の文字
+            Button column = CreateZukanHeaderButton(panelObj.transform, "Btn_Column", ZukanColumnButtonSize, ZukanTopLeftAnchor, ZukanColumnButtonPosition);
+            Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, ZukanTopLeftAnchor, ZukanOrderButtonPosition);
+            Button trait = CreateZukanHeaderButton(panelObj.transform, "Btn_Trait", ZukanTraitButtonSize, TopRightAnchor, ZukanTraitButtonPosition);
 
             (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform);
             ZukanCell template = CreateZukanCellTemplate(content);
@@ -69,7 +90,8 @@ namespace MiniGame.PenguinWars.Editor
 
             var panel = panelObj.AddComponent<PenguinZukanPanel>();
             SetRefs(panel, ("_catalog", catalog), ("_cellTemplate", template), ("_scroll", scroll),
-                ("_detailPanel", detail), ("_closeButton", close));
+                ("_detailPanel", detail), ("_closeButton", close),
+                ("_columnButton", column), ("_orderButton", order), ("_traitButton", trait));
             panelObj.SetActive(false);
             return panel;
         }
@@ -128,11 +150,34 @@ namespace MiniGame.PenguinWars.Editor
             name.resizeTextForBestFit = true;
             name.resizeTextMinSize = ZukanCellNameMinFontSize;
             name.resizeTextMaxSize = ZukanCellNameFontSize;
+            Text value = CreateZukanCellValue(cellObj.transform);
 
             var cell = cellObj.AddComponent<ZukanCell>();
-            SetRefs(cell, ("_button", button), ("_icon", icon), ("_nameLabel", name));
+            SetRefs(cell, ("_button", button), ("_icon", icon), ("_nameLabel", name), ("_valueLabel", value));
             cellObj.SetActive(false);
             return cell;
+        }
+
+        /// <summary>絵より後に作って手前に描く。「12.5」のような小数も枠に収まるよう縮めてよくする</summary>
+        private static Text CreateZukanCellValue(Transform cell)
+        {
+            Image back = CreateImage(cell, "ValueBack", ZukanTopLeftAnchor, ZukanCellValuePosition, ZukanCellValueSize, ZukanCellValueBackColor);
+            Text value = CreateText(back.transform, "Value", ZukanCellValueFontSize, CenterAnchor, Vector2.zero, ZukanCellValueSize, Color.white);
+            value.verticalOverflow = VerticalWrapMode.Truncate;
+            value.resizeTextForBestFit = true;
+            value.resizeTextMinSize = ZukanCellValueMinFontSize;
+            value.resizeTextMaxSize = ZukanCellValueFontSize;
+            return value;
+        }
+
+        private static Button CreateZukanHeaderButton(Transform parent, string name, Vector2 size, Vector2 anchor, Vector2 position)
+        {
+            Button button = CreateAnchoredButton(parent, name, name, size, anchor, position);
+            Text label = button.GetComponentInChildren<Text>();
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = ZukanHeaderButtonMinFontSize;
+            label.resizeTextMaxSize = TitleButtonFontSize;
+            return button;
         }
 
         private static ZukanDetailPanel CreateZukanDetailPanel(Transform parent)

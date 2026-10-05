@@ -34,7 +34,11 @@
 
 * 戦場の上に半透明の幕をかけ、ロゴ「ペンギン大戦争 / PENGUIN WARS」がふわふわ揺れる。その下でランダムな5体（全50体から重複なし・開くたびに選び直す）がぴょこぴょこ跳ねる
 * ボタンは「スタート」（→ モード選択）・「ずかん」・「あそびかた」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
-* 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで No 順に並べ、各マスのペンギンは歩きコマで足踏みする
+* 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで並べ、各マスのペンギンは歩きコマで足踏みする
+  * 上の3つのボタンで並べ替え・しぼりこみ（選択肢は `ZukanListOptions`）。開くたびに「コスト・小さい順・すべて」に戻す
+    * 数値ボタン: 押すたびに コスト → 攻撃 → 体力 → 射程 → 速度 → 再生産。選んだ数値で並び、各マスの左上にその数値を出す
+    * 順番ボタン: 小さい順 ⇔ 大きい順。同じ値どうしは No 順
+    * 特性ボタン: 押すたびに すべて → 能力8種 → 範囲 → 役割5種。当てはまらないマスは隠す
   * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・単体/範囲・コスト・再生産・体力・攻撃力・射程・速度・能力を出す
   * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
 * 「あそびかた」は能力・仕組みの説明（`PenguinGuidePanel`）。タイトルの幕を閉じ、右上の説明カードと下のページ送りの間に見える**本物の戦場でデモを流す**
@@ -555,7 +559,7 @@ Assets/_Project/Games/06_PenguinWars/
 | Scripts/UI/ | UnitButton / UnitButtonBar / WalletButton / CannonButton / BattleHud | 下部の操作ボタン／時間・メッセージ・LEVEL表示 |
 | | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／役割・能力の表示名 |
 | | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
-| | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／UI の絵のコマ送り（§2.0） |
+| | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / ZukanListOptions / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／並べ替え・しぼりこみの選択肢／UI の絵のコマ送り（§2.0） |
 | | PenguinGuidePanel | あそびかたのページ送り（§2.0） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
 | Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .Title / .Zukan） | Scene生成（1ファイルが大きくならないよう partial で分割） |
