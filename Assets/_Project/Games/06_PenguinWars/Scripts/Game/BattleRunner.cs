@@ -37,6 +37,10 @@ namespace MiniGame.PenguinWars
         [SerializeField] private float _demoAvalancheWarningTime = 2f;
         [Tooltip("なだれのデモの範囲。タイトル中のカメラは左端しか映さないので、本番（中央）ではなく画面に入る所に起こす")]
         [SerializeField] private Vector2 _demoAvalancheRatio = new Vector2(0.2f, 0.4f);
+        [Tooltip("ボスのデモの戦場の長さ。タイトル中のカメラ（だいたい X=-2〜14）に敵の城が入るようにする")]
+        [SerializeField] private float _demoBossFieldLength = 14f;
+        [Tooltip("ボスのデモで、敵の城HPがこの割合を下回ったらボスが出る。最初の数発で出るよう 1 に近くする")]
+        [SerializeField] private float _demoBossCastleRatio = 0.98f;
 
         private BattleWorld _world;
         // デモ中は World を外に見せない（出撃ボタン・さかな表示がデモの中身を拾わないように）
@@ -58,6 +62,8 @@ namespace MiniGame.PenguinWars
 
         /// <summary>UI が状態（さかな・再生産など）を読むためだけに公開する。書き換えは Enqueue 経由で行う</summary>
         public BattleWorld World => _isDemo ? null : _world;
+        /// <summary>あそびかたのデモ中か。演出側が「本番の1回きり」の記録をデモで使い切らないために見る</summary>
+        public bool IsDemo => _isDemo;
 
         /// <summary>出撃・ヒット・撃破・城崩壊。演出・音・進行はこれを見て動く</summary>
         public event Action<BattleEvent> EventRaised;
@@ -93,7 +99,8 @@ namespace MiniGame.PenguinWars
         /// あそびかたのデモ: 両方とも本物の城で、能力は毎回発動する。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ
         /// </summary>
         /// <param name="avalanche">true ならなだれを短い間隔で起こす</param>
-        public void InitializeDemo(bool avalanche)
+        /// <param name="bossUnitNo">0 でなければ、短い戦場で敵の城を叩くとこのキャラがボスとして出る</param>
+        public void InitializeDemo(bool avalanche, int bossUnitNo)
         {
             BattleSettings settings = CreateSettings(true, 0, null);
             settings.LeftCastleHp = _demoCastleHp;
@@ -109,12 +116,22 @@ namespace MiniGame.PenguinWars
                 settings.AvalancheEndRatio = _demoAvalancheRatio.y;
             }
 
+            if (bossUnitNo != 0)
+            {
+                settings.FieldLength = _demoBossFieldLength;
+                ApplyField(null, settings.FieldLength, Color.white);
+            }
+
             _world = new BattleWorld(settings);
             _demoStatsByNo ??= CollectStatsByNo();
+            if (bossUnitNo != 0) _world.SetEnemyScript(new EnemyScriptDirector(new[] { CreateDemoBossEntry(bossUnitNo) }, _demoStatsByNo));
             _isDemo = true;
             IsRunning = true;
             RefreshViews();
         }
+
+        private EnemySpawnEntry CreateDemoBossEntry(int unitNo) =>
+            new EnemySpawnEntry { UnitNo = unitNo, Count = 1, TriggerCastleHpRatio = _demoBossCastleRatio, IsBoss = true };
 
         public void SpawnDemoUnit(Side side, int unitNo, float x)
         {

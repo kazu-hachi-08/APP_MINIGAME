@@ -22,7 +22,6 @@ namespace MiniGame.PenguinWars
         [SerializeField] private AudioClip _hitClip;
         [SerializeField] private AudioClip _deathClip;
         [SerializeField] private AudioClip _cannonClip;
-        [SerializeField] private AudioClip _levelUpClip;
         [SerializeField] private AudioClip _collapseClip;
         [SerializeField] private AudioClip _alarmClip;
         [SerializeField] private AudioClip _victoryClip;
@@ -62,7 +61,6 @@ namespace MiniGame.PenguinWars
             if (_hitClip == null) _hitClip = CreateSlap("Se_PenguinHit");
             if (_deathClip == null) _deathClip = CreateSweep("Se_PenguinDeath", 500f, 1300f, 0.4f);
             if (_cannonClip == null) _cannonClip = CreateRumble("Se_PenguinCannon", 0.8f, 70f, 4f);
-            if (_levelUpClip == null) _levelUpClip = CreateNotes("Se_PenguinLevelUp", new[] { 523f, 659f, 784f, 1047f }, 0.09f);
             if (_collapseClip == null) _collapseClip = CreateRumble("Se_PenguinCollapse", 1.5f, 45f, 1.8f);
             if (_alarmClip == null) _alarmClip = CreateNotes("Se_PenguinAlarm", new[] { 880f, 659f, 880f, 659f, 880f, 659f }, 0.15f);
             if (_victoryClip == null) _victoryClip = CreateNotes("Se_PenguinVictory", new[] { 523f, 659f, 784f, 1047f, 784f, 1047f, 1047f }, 0.12f);
@@ -82,8 +80,6 @@ namespace MiniGame.PenguinWars
         public void PlayDeath() => Play(_deathClip, _deathVolume, RandomPitch(), _defaultMinInterval);
 
         public void PlayCannon() => Play(_cannonClip, _cannonVolume, 1f, _defaultMinInterval);
-
-        public void PlayLevelUp() => Play(_levelUpClip, _jingleVolume, 1f, _defaultMinInterval);
 
         public void PlayCollapse() => Play(_collapseClip, _cannonVolume, 1f, _defaultMinInterval);
 

@@ -55,7 +55,8 @@ namespace MiniGame.PenguinWars
 
             if (!_hasPeeked)
             {
-                _hasPeeked = true;
+                // あそびかたのデモは毎ループ寄って見せる。ここで使い切ると、同じシーンで遊ぶ本番の1回目で寄らなくなる
+                _hasPeeked = !_battleRunner.IsDemo;
                 float direction = castleX > _battleRunner.FieldLength * 0.5f ? -1f : 1f;
                 _battleCamera.Peek(castleX + direction * _peekCastleOffset, _peekDuration);
                 yield return new WaitForSeconds(_shakeDelay);

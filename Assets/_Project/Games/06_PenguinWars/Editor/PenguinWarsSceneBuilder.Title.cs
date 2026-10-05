@@ -35,6 +35,11 @@ namespace MiniGame.PenguinWars.Editor
         private const float ParadeSpacing = 210f;
         private const float ParadeY = -10f;
 
+        // パレードとスタートボタンの間に小さく出す
+        private const int TitleStarsFontSize = 40;
+        private static readonly Vector2 TitleStarsPosition = new Vector2(0f, -122f);
+        private static readonly Vector2 TitleStarsSize = new Vector2(600f, 56f);
+
         private const int TitleButtonFontSize = 48;
         private static readonly Vector2 StartButtonSize = new Vector2(620f, 130f);
         private static readonly Vector2 StartButtonPosition = new Vector2(0f, -220f);
@@ -75,6 +80,8 @@ namespace MiniGame.PenguinWars.Editor
                 icons[i].preserveAspect = true;
             }
 
+            Text stars = CreateText(panelObj.transform, "Stars", TitleStarsFontSize, CenterAnchor, TitleStarsPosition, TitleStarsSize, MessageColor);
+
             Button start = CreateTitleButton(panelObj.transform, "Btn_Start", "スタート", StartButtonSize, StartButtonPosition, StartButtonColor);
             Button zukan = CreateTitleButton(panelObj.transform, "Btn_Zukan", "ずかん", TitleSubButtonSize, ZukanButtonPosition, TitleSubButtonColor);
             Button guide = CreateTitleButton(panelObj.transform, "Btn_Guide", "あそびかた", TitleSubButtonSize, GuideButtonPosition, TitleSubButtonColor);
@@ -92,7 +99,7 @@ namespace MiniGame.PenguinWars.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_catalog", catalog), ("_logo", logo), ("_startButton", start), ("_settingsButton", settings),
                 ("_backButton", back), ("_settingsPanel", settingsPanel), ("_zukanButton", zukan), ("_zukanPanel", zukanPanel),
-                ("_guideButton", guide), ("_guidePanel", guidePanel));
+                ("_guideButton", guide), ("_guidePanel", guidePanel), ("_starsLabel", stars));
             panelObj.SetActive(false);
             return panel;
         }

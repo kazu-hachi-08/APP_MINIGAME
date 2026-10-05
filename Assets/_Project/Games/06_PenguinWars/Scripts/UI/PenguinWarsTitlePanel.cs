@@ -16,6 +16,8 @@ namespace MiniGame.PenguinWars
         [SerializeField] private PenguinUnitCatalog _catalog;
         [SerializeField] private RectTransform _logo;
         [SerializeField] private Image[] _paradeIcons;
+        [Tooltip("ステージの★の合計（例: ★ 32 / 54）")]
+        [SerializeField] private Text _starsLabel;
         [SerializeField] private Button _startButton;
         [SerializeField] private Button _zukanButton;
         [SerializeField] private Button _guideButton;
@@ -57,6 +59,7 @@ namespace MiniGame.PenguinWars
             _onStart = onStart;
             _onBack = onBack;
             PickParade();
+            ShowStars();
             _settingsPanel.Hide();
             _zukanPanel.Hide();
             gameObject.SetActive(true);
@@ -90,6 +93,15 @@ namespace MiniGame.PenguinWars
                 _paradeIcons[i].sprite = icon;
                 _paradeIcons[i].enabled = icon != null;
             }
+        }
+
+        /// <summary>ステージをクリアしてタイトルに戻るたびに増えて見えるよう、開くたびにセーブから数え直す</summary>
+        private void ShowStars()
+        {
+            CampaignProgress progress = CampaignSave.Load();
+            int stars = 0;
+            foreach (StageDefinition stage in StageDefinitions.All) stars += StarRule.Count(progress.GetStars(stage.Id));
+            _starsLabel.text = $"★ {stars} / {StageDefinitions.All.Count * StarRule.MaxStars}";
         }
 
         private void OpenSettings()

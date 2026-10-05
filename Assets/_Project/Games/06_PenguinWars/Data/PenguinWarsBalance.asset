@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: PenguinWarsBalance
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinWarsBalance
   _fieldLength: 30
-  _castleHpEndless: 3000
   _castleHpVersus: 5000
   _spawnOffset: 1.5
   _maxUnitsPerSide: 30
@@ -40,13 +39,3 @@ MonoBehaviour:
   _slowSpeedMultiplier: 0.5
   _castleKillerMultiplier: 3
   _deckSize: 10
-  _deckMinWalls: 2
-  _enemyLevelUpInterval: 30
-  _enemyBaseSpawnInterval: 4
-  _enemySpawnIntervalMultiplier: 0.9
-  _enemyMinSpawnInterval: 0.8
-  _enemyCostLimitBase: 300
-  _enemyCostLimitPerLevel: 250
-  _enemyStatMultiplierBase: 1
-  _enemyStatMultiplierPerLevel: 0.15
-  _enemyBossLevelInterval: 5

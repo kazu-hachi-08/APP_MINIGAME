@@ -38,6 +38,8 @@ namespace MiniGame.PenguinWars
         public IReadOnlyList<GuideAction> Actions { get; }
         /// <summary>デモの戦場でなだれを起こすか</summary>
         public bool ShowsAvalanche { get; }
+        /// <summary>0 でなければ、敵の城を叩いたときにこのキャラがボスとして出る（敵の城が画面に入る短い戦場になる）</summary>
+        public int BossUnitNo { get; private set; }
 
         public GuideTopic(string title, string body, float loopSeconds, params GuideAction[] actions)
             : this(title, body, loopSeconds, false, actions)
@@ -51,6 +53,13 @@ namespace MiniGame.PenguinWars
             LoopSeconds = loopSeconds;
             ShowsAvalanche = showsAvalanche;
             Actions = actions;
+        }
+
+        /// <summary>ボスを出すページだけに付ける（1ページのためにコンストラクタの引数を増やさないため）</summary>
+        public GuideTopic WithBoss(int unitNo)
+        {
+            BossUnitNo = unitNo;
+            return this;
         }
     }
 
@@ -68,26 +77,35 @@ namespace MiniGame.PenguinWars
         private const float AvalancheLoop = 6f;
         // 大型は体力が多く、キラーでも倒し切るまで11秒ほどかかる
         private const float LargeKillerLoop = 12f;
+        // 1秒ほどでボスが出て、WARNING・カメラ寄り（約2.5秒）の後に味方を倒して歩き出すところまで
+        private const float BossLoop = 8f;
+        // ボスのデモの短い戦場（BattleRunner._demoBossFieldLength = 14）で、出してすぐ敵の城に届く位置
+        private const float NearEnemyCastleX = 10f;
 
         // 出てくるキャラの No（UnitDefinitions）
         private const int Penguin = 1;
         private const int WallPenguin = 2;
+        private const int SnowballPenguin = 3;
         private const int HelmetPenguin = 4;
         private const int AxePenguin = 11;
         private const int FishSwordPenguin = 12;
+        private const int BoxerPenguin = 13;
         private const int LongLegPenguin = 15;
         private const int DrillPenguin = 20;
         private const int BowPenguin = 23;
+        private const int SnowThrowPenguin = 24;
         private const int SniperPenguin = 29;
         private const int BoomerangPenguin = 30;
         private const int FreezePenguin = 34;
         private const int FanPenguin = 35;
         private const int StickyPenguin = 37;
+        private const int GiantPenguin = 43;
         private const int IcebergPenguin = 46;
+        private const int WhalePenguin = 47;
 
         public static readonly IReadOnlyList<GuideTopic> All = new[]
         {
-            // 遊び方の基本 → 戦い方 → 能力 → ステージの順。最初のページで「何をすれば勝ちか」が分かるようにする
+            // 遊び方の基本 → ステージモードの遊び方 → 戦い方 → 能力 → ステージの仕掛け（ボス・なだれ）の順。最初のページで「何をすれば勝ちか」が分かるようにする
             new GuideTopic("出撃と勝ち方",
                 "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
                 "相手の城を先に落とせば勝ち。",
@@ -105,6 +123,43 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 6f),
                 GuideAction.Spawn(2f, Enemy, Penguin, 8f),
                 GuideAction.Spawn(4f, Enemy, Penguin, 10f)),
+
+            new GuideTopic("ステージ",
+                "スタート →「ステージ」で、3章18ステージを順に攻める。敵の城を落とせばクリア、自分の城が落ちたら失敗。\n" +
+                "クリアすると次のステージが遊べるようになる。敵の出方はステージごとに決まっている。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 1.5f),
+                GuideAction.Spawn(1f, Ally, AxePenguin, 1.5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
+                GuideAction.Spawn(2f, Enemy, Penguin, 10f),
+                GuideAction.Spawn(4f, Enemy, SnowballPenguin, 10f)),
+
+            new GuideTopic("★（ほし）",
+                "★1 クリア ／ ★2 自分の城のHPを半分以上残してクリア ／ ★3 目標タイム以内にクリア。\n" +
+                "★は記録だけ（集めなくても先に進める）。守り切るか、速攻で落とすか、遊び方を変えて狙おう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, BoxerPenguin, 2f),
+                GuideAction.Spawn(0.5f, Ally, BoxerPenguin, 1.5f),
+                GuideAction.Spawn(1f, Ally, SnowThrowPenguin, 1f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
+                GuideAction.Spawn(1f, Enemy, Penguin, 10f)),
+
+            new GuideTopic("なかま",
+                "最初のなかまは10体。ステージを初めてクリアすると、新しいなかまが加わる（全50体）。\n" +
+                "大型のなかまは各章のボスを倒すと加わる。まだのなかまは、ずかんでは影だけ見える。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, IcebergPenguin, 2f),
+                GuideAction.Spawn(1.5f, Ally, WhalePenguin, 1.5f)),
+
+            new GuideTopic("へんせい",
+                "ステージ選択の「へんせい」で、なかまから10体を選んで出撃する。最後に決めた編成は保存される。\n" +
+                "「大型禁止」などの制限があるステージでは、当てはまるキャラが暗くなって出せない。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Ally, AxePenguin, 2f),
+                GuideAction.Spawn(0f, Ally, BowPenguin, 1f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
+                GuideAction.Spawn(1.5f, Enemy, Penguin, 10f)),
 
             new GuideTopic("壁と後ろの列",
                 "壁は安くて硬い。前に並べて時間をかせぎ、その後ろから遠距離が攻撃する。\n" +
@@ -199,8 +254,16 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Ally, WallPenguin, 4f),
                 GuideAction.Spawn(0f, Ally, BoomerangPenguin, 3f)),
 
+            new GuideTopic("ボス",
+                "敵の城を叩いてHPを減らすと、ボスが出てくるステージがある（各章の最後はボスステージ）。\n" +
+                "「WARNING!」が出たら壁を並べて守りを固めよう。ボスのHPは画面の上に出る。",
+                BossLoop,
+                GuideAction.Spawn(0f, Ally, BowPenguin, NearEnemyCastleX),
+                GuideAction.Spawn(0f, Ally, BowPenguin, NearEnemyCastleX - 0.5f),
+                GuideAction.Spawn(0f, Ally, WallPenguin, NearEnemyCastleX + 1f)).WithBoss(GiantPenguin),
+
             new GuideTopic("なだれ",
-                "ステージ「なだれの谷」だけ。60秒ごとに戦場の真ん中にいるユニット全員（敵も味方も）に150ダメージ＋後ろに飛ばす。\n" +
+                "なだれのあるステージ（オンラインは「なだれの谷」）では、決まった間隔で戦場の真ん中にいるユニット全員（敵も味方も）に150ダメージ＋後ろに飛ばす。\n" +
                 "5秒前に「なだれ注意！」が出る。真ん中に出すのを少し待とう。（デモでは短い間隔）",
                 AvalancheLoop, true,
                 GuideAction.Spawn(0f, Ally, WallPenguin, 7f),
