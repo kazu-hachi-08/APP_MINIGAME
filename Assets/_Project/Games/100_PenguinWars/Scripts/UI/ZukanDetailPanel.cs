@@ -9,12 +9,6 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public class ZukanDetailPanel : MonoBehaviour
     {
-        // 歩いて → 振りかぶって → 攻撃、を繰り返して戦場での動きを見せる
-        private static readonly PenguinFrame[] DemoSequence =
-        {
-            PenguinFrame.Walk0, PenguinFrame.Walk1, PenguinFrame.Walk0, PenguinFrame.Walk1,
-            PenguinFrame.AttackWindup, PenguinFrame.AttackWindup, PenguinFrame.AttackStrike, PenguinFrame.AttackStrike,
-        };
         private const string NumberFormat = "0.##";
 
         [SerializeField] private UnitSpriteAnimator _icon;
@@ -30,7 +24,7 @@ namespace MiniGame.PenguinWars
 
         public void Show(PenguinUnitData data)
         {
-            _icon.Play(data.GetSprites(Side.Left), DemoSequence);
+            _icon.Play(data.GetSprites(Side.Left), UnitSpriteAnimator.WalkAndAttackFrames);
             _noLabel.text = $"No.{data.No}";
             _nameLabel.text = data.DisplayName;
             _statsLabel.text = FormatStats(data.ToStats());
@@ -39,7 +33,8 @@ namespace MiniGame.PenguinWars
 
         public void Hide() => gameObject.SetActive(false);
 
-        private static string FormatStats(UnitStats stats)
+        /// <summary>じぶんペンギンの作成画面でも同じ書き方で数値を出す</summary>
+        public static string FormatStats(UnitStats stats)
         {
             return $"役割　{UnitLabels.RoleAndRange(stats)}\n"
                 + $"コスト　{stats.Cost}　　再生産　{stats.Cooldown.ToString(NumberFormat)}秒\n"

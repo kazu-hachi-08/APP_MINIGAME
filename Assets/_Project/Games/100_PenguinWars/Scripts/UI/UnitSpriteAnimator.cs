@@ -11,6 +11,12 @@ namespace MiniGame.PenguinWars
     {
         /// <summary>その場で足踏みする並び（ずかん・編成のマス、なかまになった！のカード）</summary>
         public static readonly PenguinFrame[] WalkFrames = { PenguinFrame.Walk0, PenguinFrame.Walk1 };
+        /// <summary>歩いて → 振りかぶって → 攻撃、を繰り返して戦場での動きを見せる（ずかんの詳細・じぶんペンギンのプレビュー）</summary>
+        public static readonly PenguinFrame[] WalkAndAttackFrames =
+        {
+            PenguinFrame.Walk0, PenguinFrame.Walk1, PenguinFrame.Walk0, PenguinFrame.Walk1,
+            PenguinFrame.AttackWindup, PenguinFrame.AttackWindup, PenguinFrame.AttackStrike, PenguinFrame.AttackStrike,
+        };
 
         [SerializeField] private Image _image;
         [SerializeField] private float _frameSeconds = 0.2f;

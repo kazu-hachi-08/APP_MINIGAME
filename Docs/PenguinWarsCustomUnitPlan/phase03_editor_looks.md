@@ -75,7 +75,27 @@
 
 ## 引き継ぎメモ（実装後に記入）
 
-* 作ったファイル:
+* 作ったファイル（`Assets/_Project/Games/100_PenguinWars/` 以下）:
+  * 新規: `Scripts/UI/CustomUnitPanel.cs` / `CustomLookTab.cs` / `CustomPartRow.cs` / `CustomUnitPreview.cs` / `PartLabels.cs`、`Editor/PenguinWarsSceneBuilder.Custom.cs`
+  * 変更: `PenguinWarsTitlePanel`（`_customButton` / `_customPanel`）、`Editor/PenguinWarsSceneBuilder.Title.cs`（下のボタンを5つに。幅 380→350、`じぶんペンギン` はずかんの右隣）、`UnitSpriteAnimator`（`WalkAndAttackFrames` を追加）、`ZukanDetailPanel`（並びを `WalkAndAttackFrames` に置き換え・`FormatStats` を public に）
 * 公開API:
+  * `CustomUnitPanel.Show()` / `Hide()`（開くたびに `CustomUnitSave.Load()` し直す。最初は枠1）
+  * `CustomLookTab.Bind(def)`（def を直接書き換える）・イベント `LookChanged` / `NameChanged`
+  * `CustomPartRow`: `Slot` / `Value` / `SetValue(id)` / `Randomize()` / イベント `Changed`（◀▶ のときだけ）
+  * `CustomUnitPreview.Show(def) → PenguinUnitData`（中で `Sanitize` → `CustomUnitFactory.Create(…, LeftNo)`。前のデータは `DestroyRuntime`）/ `Release()`
+  * `PartLabels.Slot(slot)` / `Part(slot, id)`（`aurora` は体色と背中の両方にあるので部位ごとに引く。知らない ID は ID のまま）
+  * `UnitSpriteAnimator.WalkAndAttackFrames`、`ZukanDetailPanel.FormatStats(stats)`
 * 計画から変えた点:
+  * `CustomLookTab` のイベントは `Changed` 1つでなく `LookChanged` / `NameChanged` の2つ（名前を1文字打つたびに絵を作り直さないため）
+  * のうりょくタブは「のうりょくは じゅんびちゅう」の文字だけの仮（`StatsTab` オブジェクト。`CustomUnitPanel._statsTabRoot`）
+  * 「ほぞん」は変更が無いと押せない（保存済みかが見て分かるように）。保存すると `Sanitize` 後の内容（空の名前 → じぶんペンギン）を画面に戻す
+  * 未保存の確認は共通の `UIManager.ShowConfirmDialog`（ほぞん / すてる）。Common は変更していない
+  * 大型の大きさ: UI の Image は PPU を見ないので、プレビューの絵の枠を `基準 230 × 拡大率` にして足元から上へ伸ばしている
+  * 名前入力はブラウザ版だけ共通の `WebNamePrompt`（window.prompt）を使う（ユーザー名入力と同じ作り）
+  * 枠ボタンの小さいアイコンは作っていない（枠の番号と色だけ）
+  * AI は Unity の生成 csproj を一時的にコピー・直して dotnet でコンパイルが通ることだけ確かめた（エラー0。新しいファイルの警告0）
 * 次フェーズへの注意:
+  * のうりょくタブは `CustomStatsTab` を `StatsTab` の下に作り、`CustomUnitPanel` から `Bind(_editing)` と変更イベントを受けるようにする。変更時は `RefreshPreview()`（数値の表示も一緒に更新される）と `MarkDirty()` を呼べばよい。役割を変えると大型かどうかで絵の大きさが変わるので、役割の変更でも `RefreshPreview()` が要る
+  * `SceneBuilder.Custom.cs` の `CreateCustomStatsTabPlaceholder` を置き換える。タブの領域は `CustomTabRootSize`（1000×640）
+  * 確認ダイアログを出している間に枠を切り替えると、その後の流れは「ほぞん → 次の枠」「すてる → 次の枠」。どちらも `LoadSlot` で編集中のコピーを作り直す
+  * Phase 2 の一時ファイル `Editor/CustomUnitDebugMenu.cs` はまだ残っている（未追跡）。確認が済んだら消す
