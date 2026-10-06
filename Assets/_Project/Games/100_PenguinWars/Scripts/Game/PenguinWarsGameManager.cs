@@ -168,8 +168,8 @@ namespace MiniGame.PenguinWars
         /// <summary>演出・音は BattleEventPresenter が受け持つので、ここは進行に関わる出来事だけ見る</summary>
         private void HandleBattleEvent(BattleEvent battleEvent)
         {
-            // タイトル中はあそびかたのデモが戦場を動かしているだけなので、試合の進行には使わない
-            if (Phase == PenguinWarsPhase.Finished || Phase == PenguinWarsPhase.Title) return;
+            // あそびかたのデモは戦場を動かしているだけなので、試合の進行には使わない
+            if (Phase == PenguinWarsPhase.Finished || _battleRunner.IsDemo) return;
 
             if (battleEvent.Type == BattleEventType.CastleDestroyed) BeginFinish();
             else if (battleEvent.Type == BattleEventType.TimeUp) BeginTimeUp(battleEvent.Side, battleEvent.Amount != 0);
@@ -185,8 +185,6 @@ namespace MiniGame.PenguinWars
 
         private void HandleCastleCollapsed(Side side)
         {
-            if (Phase == PenguinWarsPhase.Title) return;
-
             if (IsOnline) EndVersus(side, false);
             else EndStage();
         }
@@ -194,10 +192,16 @@ namespace MiniGame.PenguinWars
         /// <summary>BaseMiniGameManager.FinishGame はタイトルが VICTORY! / GAME OVER しかないので、別のタイトルを出すときは同じ手順を自前で踏む</summary>
         private void ShowCustomResult(string title, bool isVictory, string score, string detail)
         {
+            EnterResultState(isVictory);
+            if (UIManager.HasInstance) UIManager.Instance.ShowResultDialog(title, score, detail, RestartGame, ReturnToTitle);
+        }
+
+        /// <summary>BaseMiniGameManager.FinishGame と同じ順で状態を進める（表示は呼び出し側が専用のものを出す）</summary>
+        private void EnterResultState(bool isVictory)
+        {
             ChangeState(MiniGameState.GameOver);
             OnGameOver(isVictory);
             ChangeState(MiniGameState.Result);
-            if (UIManager.HasInstance) UIManager.Instance.ShowResultDialog(title, score, detail, RestartGame, ReturnToTitle);
         }
     }
 }

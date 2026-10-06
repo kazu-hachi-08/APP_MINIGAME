@@ -27,21 +27,6 @@ namespace MiniGame.PenguinWars
         [Tooltip("ゲストが前回の位置から届いた位置まで動かす秒数。ホストの送信間隔（PenguinWarsOnlineLink）と同じにする")]
         [SerializeField] private float _guestInterpolationTime = 1f / 15f;
 
-        [Header("あそびかたのデモ")]
-        [Tooltip("城キラーのデモで HP バーの減り方が見える程度に低くする。ループ（数秒）の間に落ちない値にすること")]
-        [SerializeField] private int _demoCastleHp = 1500;
-        [Tooltip("ペンギン砲のデモで、出した直後に撃てるようにする")]
-        [SerializeField] private float _demoCannonChargeTime = 0.1f;
-        [Tooltip("なだれのデモの間隔・予告（秒）。本番（60秒）では待ちきれないので短くする。ループ（GuideTopics）の間に1回起きる値にすること")]
-        [SerializeField] private float _demoAvalancheInterval = 3.5f;
-        [SerializeField] private float _demoAvalancheWarningTime = 2f;
-        [Tooltip("なだれのデモの範囲。タイトル中のカメラは左端しか映さないので、本番（中央）ではなく画面に入る所に起こす")]
-        [SerializeField] private Vector2 _demoAvalancheRatio = new Vector2(0.2f, 0.4f);
-        [Tooltip("ボスのデモの戦場の長さ。タイトル中のカメラ（だいたい X=-2〜14）に敵の城が入るようにする")]
-        [SerializeField] private float _demoBossFieldLength = 14f;
-        [Tooltip("ボスのデモで、敵の城HPがこの割合を下回ったらボスが出る。最初の数発で出るよう 1 に近くする")]
-        [SerializeField] private float _demoBossCastleRatio = 0.98f;
-
         private BattleWorld _world;
         // デモ中は World を外に見せない（出撃ボタン・さかな表示がデモの中身を拾わないように）
         private bool _isDemo;
@@ -56,7 +41,7 @@ namespace MiniGame.PenguinWars
         public bool IsGuest => _mirror != null;
         public int VersusStageCount => _versusStages != null ? _versusStages.Length : 0;
         /// <summary>今の対戦のステージ。一人用のステージ・デモは null</summary>
-        public PenguinStageData CurrentStage { get; private set; }
+        public PenguinStageData CurrentVersusStage { get; private set; }
         /// <summary>今の試合の戦場の長さ。カメラ・演出はこれで右の城の位置を知る</summary>
         public float FieldLength { get; private set; }
 
@@ -71,24 +56,24 @@ namespace MiniGame.PenguinWars
         /// <summary>一人用のステージ: 自分は deckNos の編成、右の城からは定義表どおりに敵が湧く</summary>
         public void InitializeStage(StageDefinition stage, IReadOnlyList<int> deckNos)
         {
-            // 能力の当たり方は毎回変える（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
-            BattleSettings settings = CreateBaseSettings(false, Environment.TickCount);
-            stage.ApplyTo(settings);
-            _world = new BattleWorld(settings);
-            ApplyField(null, stage.FieldLength, ParseTint(stage));
-
-            Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
-            _world.SetDeck(Side.Left, ToSortedDeck(deckNos, statsByNo));
-            WarnMissingUnits(stage, statsByNo);
+            ResetRunState();
             // 敵は味方と同じデータから湧く
-            _world.SetEnemyScript(new EnemyScriptDirector(stage.Entries, statsByNo));
+            Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
+            WarnMissingUnits(stage, statsByNo);
+            WarnMissingDeckNos(deckNos, statsByNo);
+            // 能力の当たり方は毎回変える（Battle は UnityEngine.Random を使わないので、ここでシードを決める）
+            BattleSettings settings = _balance.CreateBattleSettings(false, Environment.TickCount);
+            // 組み立ては Battle 側の StageWorldBuilder に任せる。ステージ検証と本番で編成・敵の入り方がずれないように
+            _world = StageWorldBuilder.Create(settings, stage, deckNos, statsByNo);
+            ApplyField(null, stage.FieldLength, ParseTint(stage));
             RefreshViews();
         }
 
         /// <summary>オンラインのホスト: ドラフトで決まった編成で城を攻め合う。戦闘はすべてここで計算する（仕様書 §10.2）</summary>
         public void InitializeVersusHost(IReadOnlyList<int> leftDeckNos, IReadOnlyList<int> rightDeckNos, int stageIndex)
         {
-            _world = new BattleWorld(CreateSettings(true, Environment.TickCount, GetStage(stageIndex)));
+            ResetRunState();
+            _world = new BattleWorld(CreateVersusSettings(Environment.TickCount, stageIndex));
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
             _world.SetDeck(Side.Left, ToSortedDeck(leftDeckNos, statsByNo));
             _world.SetDeck(Side.Right, ToSortedDeck(rightDeckNos, statsByNo));
@@ -96,42 +81,23 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>
-        /// あそびかたのデモ: 両方とも本物の城で、能力は毎回発動する。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ
+        /// あそびかたのデモ。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ。
+        /// デモ用の数値（城HP・なだれの間隔など）は GuideDemoDirector が customize で上書きする（デモの調整を1か所にまとめるため）
         /// </summary>
-        /// <param name="avalanche">true ならなだれを短い間隔で起こす</param>
-        /// <param name="bossUnitNo">0 でなければ、短い戦場で敵の城を叩くとこのキャラがボスとして出る</param>
-        public void InitializeDemo(bool avalanche, int bossUnitNo)
+        /// <param name="enemies">空でなければ、右の城からステージの定義表と同じ仕組みで湧かせる（ボスのデモ）</param>
+        public void InitializeDemo(Action<BattleSettings> customize, IReadOnlyList<EnemySpawnEntry> enemies)
         {
-            BattleSettings settings = CreateSettings(true, 0, null);
-            settings.LeftCastleHp = _demoCastleHp;
-            settings.RightCastleHp = _demoCastleHp;
-            settings.TimeLimit = 0f;
-            settings.CannonChargeTime = _demoCannonChargeTime;
-            settings.AlwaysProcAbilities = true;
-            if (avalanche)
-            {
-                settings.AvalancheInterval = _demoAvalancheInterval;
-                settings.AvalancheWarningTime = _demoAvalancheWarningTime;
-                settings.AvalancheStartRatio = _demoAvalancheRatio.x;
-                settings.AvalancheEndRatio = _demoAvalancheRatio.y;
-            }
-
-            if (bossUnitNo != 0)
-            {
-                settings.FieldLength = _demoBossFieldLength;
-                ApplyField(null, settings.FieldLength, Color.white);
-            }
-
+            _accumulator = 0f;
+            BattleSettings settings = _balance.CreateBattleSettings(true, 0);
+            customize?.Invoke(settings);
+            ApplyField(null, settings.FieldLength, Color.white);
             _world = new BattleWorld(settings);
             _demoStatsByNo ??= CollectStatsByNo();
-            if (bossUnitNo != 0) _world.SetEnemyScript(new EnemyScriptDirector(new[] { CreateDemoBossEntry(bossUnitNo) }, _demoStatsByNo));
+            if (enemies != null && enemies.Count > 0) _world.SetEnemyScript(new EnemyScriptDirector(enemies, _demoStatsByNo));
             _isDemo = true;
             IsRunning = true;
             RefreshViews();
         }
-
-        private EnemySpawnEntry CreateDemoBossEntry(int unitNo) =>
-            new EnemySpawnEntry { UnitNo = unitNo, Count = 1, TriggerCastleHpRatio = _demoBossCastleRatio, IsBoss = true };
 
         public void SpawnDemoUnit(Side side, int unitNo, float x)
         {
@@ -175,8 +141,9 @@ namespace MiniGame.PenguinWars
         public void InitializeGuest(IReadOnlyList<int> myDeckNos, IReadOnlyList<int> opponentDeckNos, int stageIndex,
             ICommandSink remoteSink)
         {
+            ResetRunState();
             // 反転（SideMirror）に戦場の長さを使うので、ホストと同じステージで作る
-            _world = new BattleWorld(CreateSettings(true, 0, GetStage(stageIndex)));
+            _world = new BattleWorld(CreateVersusSettings(0, stageIndex));
             Dictionary<int, UnitStats> statsByNo = CollectStatsByNo();
             _world.SetDeck(Side.Left, ToDeck(myDeckNos, statsByNo));
             _world.SetDeck(Side.Right, ToDeck(opponentDeckNos, statsByNo));
@@ -262,6 +229,13 @@ namespace MiniGame.PenguinWars
             ApplyCastle(_rightCastle, _world.GetCastle(Side.Right));
         }
 
+        /// <summary>デモの後に本番を始めるとき、デモの状態や余った時間を持ち越さないように</summary>
+        private void ResetRunState()
+        {
+            _isDemo = false;
+            _accumulator = 0f;
+        }
+
         private static void ApplyCastle(CastleView view, CastleState castle)
         {
             view.SetHp(castle.Hp, castle.MaxHp);
@@ -275,6 +249,15 @@ namespace MiniGame.PenguinWars
             }
         }
 
+        /// <summary>StageWorldBuilder は足りない No を黙って飛ばすので、気づけるようにここで知らせる</summary>
+        private static void WarnMissingDeckNos(IReadOnlyList<int> deckNos, Dictionary<int, UnitStats> statsByNo)
+        {
+            foreach (int no in deckNos)
+            {
+                if (!statsByNo.ContainsKey(no)) Debug.LogWarning($"[BattleRunner] 編成の No.{no} がカタログにありません");
+            }
+        }
+
         private void DispatchEvents()
         {
             foreach (BattleEvent battleEvent in _events)
@@ -284,7 +267,7 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>範囲外（ステージ未設定・バージョン違い）なら null を返し、Balance の戦場で遊べるようにする</summary>
-        private PenguinStageData GetStage(int stageIndex)
+        private PenguinStageData GetVersusStage(int stageIndex)
         {
             if (stageIndex >= 0 && stageIndex < VersusStageCount) return _versusStages[stageIndex];
 
@@ -292,10 +275,11 @@ namespace MiniGame.PenguinWars
             return null;
         }
 
-        /// <param name="stage">null なら Balance の戦場（デモ）</param>
-        private BattleSettings CreateSettings(bool versus, int seed, PenguinStageData stage)
+        /// <summary>ステージが見つからなければ Balance の戦場のまま作る</summary>
+        private BattleSettings CreateVersusSettings(int seed, int stageIndex)
         {
-            BattleSettings settings = CreateBaseSettings(versus, seed);
+            PenguinStageData stage = GetVersusStage(stageIndex);
+            BattleSettings settings = _balance.CreateBattleSettings(true, seed);
             if (stage != null) stage.ApplyTo(settings);
             ApplyField(stage, settings.FieldLength, stage != null ? stage.Tint : Color.white);
             return settings;
@@ -305,7 +289,7 @@ namespace MiniGame.PenguinWars
         /// <param name="versusStage">一人用のステージ・デモは null</param>
         private void ApplyField(PenguinStageData versusStage, float fieldLength, Color tint)
         {
-            CurrentStage = versusStage;
+            CurrentVersusStage = versusStage;
             FieldLength = fieldLength;
             Vector3 position = _rightCastle.transform.localPosition;
             _rightCastle.transform.localPosition = new Vector3(fieldLength, position.y, position.z);
@@ -322,14 +306,8 @@ namespace MiniGame.PenguinWars
             return Color.white;
         }
 
-        private BattleSettings CreateBaseSettings(bool versus, int seed)
-        {
-            // 城HP はステージの定義表・対戦のステージで上書きする（デモもその後で上書きする）
-            return _balance.CreateBattleSettings(versus, seed);
-        }
-
         /// <summary>
-        /// ドラフト・ステージの編成は選んだ順に並ぶので、安い順に並べ直す。
+        /// ドラフトの編成は選んだ順に並ぶので、安い順に並べ直す（ステージは StageWorldBuilder が同じように並べる）。
         /// ゲストにはこの並びのまま編成が送られるので、並べ替えはホストだけでよい
         /// </summary>
         private static List<UnitStats> ToSortedDeck(IReadOnlyList<int> unitNos, Dictionary<int, UnitStats> statsByNo)

@@ -7,10 +7,6 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>画面下の操作UI（働きペンギン・さかな表示・出撃ボタン5個・ページ切替・ペンギン砲）。仕様書 §7.1</summary>
     public static partial class PenguinWarsSceneBuilder
     {
-        private static readonly Vector2 BottomLeftAnchor = new Vector2(0f, 0f);
-        private static readonly Vector2 BottomCenterAnchor = new Vector2(0.5f, 0f);
-        private static readonly Vector2 BottomRightAnchor = new Vector2(1f, 0f);
-
         // スマホで押しやすいよう、ボタンの高さは画面高さ（1080）の約15%
         private const float ControlHeight = 162f;
         private const float ControlMarginX = 30f;
@@ -142,10 +138,7 @@ namespace MiniGame.PenguinWars.Editor
             icon.preserveAspect = true;
             Text nameLabel = CreateText(buttonObj.transform, "Name", UnitNameFontSize, BottomCenterAnchor, UnitNamePosition, UnitNameSize, Color.white);
             // 長い名前（こおりのじょおうペンギン など）でもボタンからはみ出さないよう縮めて収める
-            nameLabel.verticalOverflow = VerticalWrapMode.Truncate;
-            nameLabel.resizeTextForBestFit = true;
-            nameLabel.resizeTextMinSize = UnitNameMinFontSize;
-            nameLabel.resizeTextMaxSize = UnitNameFontSize;
+            FitText(nameLabel, UnitNameMinFontSize);
             Text costLabel = CreateText(buttonObj.transform, "Cost", UnitCostFontSize, BottomCenterAnchor, UnitCostPosition, UnitCostSize, CostColor);
             (GameObject gauge, RectTransform fill) = CreateCooldownGauge(buttonObj.transform);
             GameObject dimmer = CreateDimmer(buttonObj.transform);
@@ -176,29 +169,6 @@ namespace MiniGame.PenguinWars.Editor
             Image dimmer = CreateImage(button, "Dimmer", BottomLeftAnchor, Vector2.zero, Vector2.zero, DimmerColor);
             UIDialogBuilder.SetStretchAll(dimmer.rectTransform);
             return dimmer.gameObject;
-        }
-
-        /// <summary>押せる部分はボタン本体だけにする（上に重ねた絵がタップを奪わないように raycastTarget を切る）</summary>
-        private static Image CreateImage(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, Color color)
-        {
-            GameObject obj = UIDialogBuilder.CreateUIObject(name, parent);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            SetAnchor(rect, anchor, position);
-            rect.sizeDelta = size;
-            var image = obj.AddComponent<Image>();
-            image.color = color;
-            image.raycastTarget = false;
-            return image;
-        }
-
-        private static void SerializedArray(UnityEditor.SerializedObject so, string name, Object[] values)
-        {
-            UnityEditor.SerializedProperty array = so.FindProperty(name);
-            array.arraySize = values.Length;
-            for (int i = 0; i < values.Length; i++)
-            {
-                array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
-            }
         }
     }
 }

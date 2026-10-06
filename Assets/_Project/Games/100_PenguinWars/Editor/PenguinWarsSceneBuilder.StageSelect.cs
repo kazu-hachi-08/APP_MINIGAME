@@ -6,8 +6,8 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 一人用のステージ選択（ステージ計画 Phase 2）。マスはひな形を1つだけ作り、中身は実行時に定義表から並べる。
-    /// 対戦のステージ（PenguinStageData）は .Stages.cs で、こちらとは別物。ステージ詳細は .StageDetail.cs、リザルトは .StageResult.cs
+    /// 一人用のステージ選択（仕様書 §2.1）。マスはひな形を1つだけ作り、中身は実行時に定義表から並べる。
+    /// 対戦のステージ（PenguinStageData）は .VersusStages.cs で、こちらとは別物。ステージ詳細は .StageDetail.cs、リザルトは .StageResult.cs
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -48,15 +48,13 @@ namespace MiniGame.PenguinWars.Editor
 
         private static StageSelectPanel CreateStageSelectPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("StageSelectPanel", canvas);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // raycastTarget を残し、選択中に下の戦場・ボタンが押せないようにする
-            panelObj.AddComponent<Image>().color = ZukanBackColor;
+            GameObject panelObj = CreateFullScreenPanel(canvas, "StageSelectPanel", ZukanBackColor);
 
             Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, StageSelectTitlePosition, StageSelectTitleSize, MessageColor);
             title.text = "ステージ";
             Button back = CreateAnchoredButton(panelObj.transform, "Btn_Back", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
-            Button deck = CreateAnchoredButton(panelObj.transform, "Btn_Deck", "へんせい", StageDeckButtonSize, ZukanTopLeftAnchor, StageDeckButtonPosition);
+            Button deck = CreateAnchoredButton(panelObj.transform, "Btn_Deck", "へんせい", StageDeckButtonSize, TopLeftAnchor, StageDeckButtonPosition);
 
             Text chapter = CreateText(panelObj.transform, "Chapter", StageChapterFontSize, CenterAnchor, StageChapterLabelPosition, StageChapterLabelSize, Color.white);
             Button prev = CreateAnchoredButton(panelObj.transform, "Btn_PrevChapter", "◀", StageChapterButtonSize, CenterAnchor,

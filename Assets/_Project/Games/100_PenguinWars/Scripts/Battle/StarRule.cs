@@ -16,7 +16,7 @@ namespace MiniGame.PenguinWars.Battle
         All = Clear | Safe | Fast,
     }
 
-    /// <summary>★の判定（INDEX「決めた前提」）。ちょうど境界の値は取れた側にする（「50%以上」「目標タイム以内」）</summary>
+    /// <summary>★の判定（仕様書 §2.1）。ちょうど境界の値は取れた側にする（「50%以上」「目標タイム以内」）</summary>
     public static class StarRule
     {
         public const int MaxStars = 3;

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 一人用のステージのリザルト（ステージ計画 Phase 2）と、その演出（★を1つずつ・NEW RECORD!・なかまになった！のカード。Phase 7）
+    /// 一人用のステージのリザルトと、その演出（★を1つずつ・NEW RECORD!・なかまになった！のカード）（仕様書 §2.1・§9）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -66,10 +66,8 @@ namespace MiniGame.PenguinWars.Editor
         /// <summary>操作UI・HUDより手前、ポーズ・共通ダイアログより奥に作る</summary>
         private static StageResultPanel CreateStageResultPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("StageResultPanel", canvas);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = ZukanDimColor;
-            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, StageResultBoxSize, ZukanDetailBoxColor);
+            GameObject dimObj = CreateFullScreenPanel(canvas, "StageResultPanel", DialogDimColor);
+            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, StageResultBoxSize, DialogBoxColor);
 
             Text title = CreateText(box.transform, "Title", StageResultTitleFontSize, CenterAnchor, StageResultTitlePosition, StageResultTitleSize, MessageColor);
             StarRevealAnimator stars = CreateResultStars(box.transform);
@@ -150,10 +148,7 @@ namespace MiniGame.PenguinWars.Editor
                 icons[i].preserveAspect = true;
                 names[i] = CreateText(group.transform, $"Name{i + 1}", StageResultUnlockNameFontSize, CenterAnchor, new Vector2(x, StageResultUnlockNameY), StageResultUnlockNameSize, Color.white);
                 // 「こおりのじょおうペンギン」も枠に収まるよう、縮めて折り返す（Overflow のままだと縮まない）
-                names[i].verticalOverflow = VerticalWrapMode.Truncate;
-                names[i].resizeTextForBestFit = true;
-                names[i].resizeTextMinSize = StageResultUnlockNameMinFontSize;
-                names[i].resizeTextMaxSize = StageResultUnlockNameFontSize;
+                FitText(names[i], StageResultUnlockNameMinFontSize);
             }
             group.SetActive(false);
             return (group, icons, names);
@@ -162,9 +157,7 @@ namespace MiniGame.PenguinWars.Editor
         /// <summary>画面全体を押せるボタンにして、どこを押しても次のカードへ進める</summary>
         private static UnlockRevealPanel CreateUnlockRevealPanel(Transform parent, PenguinUnitCatalog catalog)
         {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("UnlockReveal", parent);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = ZukanDimColor;
+            GameObject dimObj = CreateFullScreenPanel(parent, "UnlockReveal", DialogDimColor);
             var button = dimObj.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
 

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -39,7 +38,7 @@ namespace MiniGame.PenguinWars
         {
             _closeButton.onClick.AddListener(Close);
             _orderButton.onClick.AddListener(ToggleOrder);
-            SetupDropdown(_columnDropdown, ColumnLabels(), SelectColumn);
+            SetupDropdown(_columnDropdown, ZukanListOptions.ColumnLabels(), SelectColumn);
             SetupDropdown(_traitDropdown, TraitLabels(), SelectTrait);
         }
 
@@ -48,13 +47,6 @@ namespace MiniGame.PenguinWars
             dropdown.ClearOptions();
             dropdown.AddOptions(labels);
             dropdown.onValueChanged.AddListener(onSelect);
-        }
-
-        private static List<string> ColumnLabels()
-        {
-            var labels = new List<string>();
-            foreach (ZukanStatColumn column in ZukanListOptions.Columns) labels.Add(column.Label);
-            return labels;
         }
 
         private static List<string> TraitLabels()
@@ -132,7 +124,7 @@ namespace MiniGame.PenguinWars
 
         private void OnListOptionChanged()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             RefreshList();
         }
 
@@ -142,7 +134,7 @@ namespace MiniGame.PenguinWars
             ZukanStatColumn column = ZukanListOptions.Columns[_columnIndex];
             ZukanTraitFilter trait = ZukanListOptions.Traits[_traitIndex];
 
-            _cells.Sort((a, b) => Compare(a, b, column));
+            _cells.Sort((a, b) => ZukanListOptions.Compare(a.Stats, b.Stats, column, _isDescending));
             for (int i = 0; i < _cells.Count; i++)
             {
                 ZukanCell cell = _cells[i];
@@ -157,23 +149,10 @@ namespace MiniGame.PenguinWars
             _scroll.verticalNormalizedPosition = 1f;
         }
 
-        /// <summary>同じ値どうしは No 順にして、押すたびに並びが入れ替わって見えないようにする</summary>
-        private int Compare(ZukanCell a, ZukanCell b, ZukanStatColumn column)
-        {
-            int byValue = column.Value(a.Stats).CompareTo(column.Value(b.Stats));
-            if (_isDescending) byValue = -byValue;
-            return byValue != 0 ? byValue : a.Stats.UnitNo.CompareTo(b.Stats.UnitNo);
-        }
-
         private void Close()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             Hide();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

@@ -1,16 +1,34 @@
 using System.Collections.Generic;
 using System.Text;
 using MiniGame.PenguinWars.Battle;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace MiniGame.PenguinWars
 {
-    /// <summary>役割・特殊能力の画面に出す名前（仕様書 §5.3・§5.5）。enum の並びと表示名を1か所で対応させる</summary>
+    /// <summary>
+    /// キャラ名・役割・特殊能力の画面に出す名前（仕様書 §5.3・§5.5）と、一覧に出す立ち姿。enum の並びと表示名を1か所で対応させる。
+    /// 名前と絵はどの画面でも「カタログに無い No（ビルドのバージョン違い）なら No だけ出す」決まりなので、ここにまとめる
+    /// </summary>
     public static class UnitLabels
     {
         private const string NoAbility = "能力なし";
         private const string AbilitySeparator = "・";
         private const string RangeArea = "範囲";
         private const string RangeSingle = "単体";
+        private const string RoleRangeSeparator = "・";
+
+        /// <param name="data">カタログに無い No なら null</param>
+        public static string Name(PenguinUnitData data, int unitNo) => data != null ? data.DisplayName : $"No.{unitNo}";
+
+        /// <summary>立ち姿を出す。data が null なら絵を消す（前のキャラの絵が残らないように）</summary>
+        /// <param name="side">自分のキャラは Left（青）、敵は Right（赤）で戦場と同じ色にする</param>
+        public static void SetIcon(Image image, PenguinUnitData data, Side side)
+        {
+            Sprite icon = data != null ? data.GetSprites(side).Icon : null;
+            image.sprite = icon;
+            image.enabled = icon != null;
+        }
 
         public static string Role(UnitRole role)
         {
@@ -26,6 +44,9 @@ namespace MiniGame.PenguinWars
         }
 
         public static string AttackRange(bool isAreaAttack) => isAreaAttack ? RangeArea : RangeSingle;
+
+        /// <summary>「アタッカー・単体」のように役割と攻撃範囲をつなげる（ドラフトのカード・ずかんの詳細）</summary>
+        public static string RoleAndRange(UnitStats stats) => $"{Role(stats.Role)}{RoleRangeSeparator}{AttackRange(stats.IsAreaAttack)}";
 
         public static string Ability(UnitAbilityType type)
         {

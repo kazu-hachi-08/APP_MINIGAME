@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -73,9 +72,7 @@ namespace MiniGame.PenguinWars
             for (int i = 0; i < _deckIcons.Length; i++)
             {
                 PenguinUnitData data = i < deck.Count ? _catalog.Get(deck[i]) : null;
-                Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
-                _deckIcons[i].sprite = icon;
-                _deckIcons[i].enabled = icon != null;
+                UnitLabels.SetIcon(_deckIcons[i], data, Side.Left);
                 _deckIcons[i].color = i < deck.Count && !DeckRules.IsAllowed(_stage, deck[i]) ? _bannedTint : Color.white;
             }
         }
@@ -91,9 +88,7 @@ namespace MiniGame.PenguinWars
 
                 PenguinUnitData data = _catalog.Get(enemyNos[i]);
                 // 戦場と同じ敵の色（赤）で見せる
-                Sprite icon = data != null ? data.GetSprites(Side.Right).Icon : null;
-                _enemyIcons[i].sprite = icon;
-                _enemyIcons[i].enabled = icon != null;
+                UnitLabels.SetIcon(_enemyIcons[i], data, Side.Right);
                 _enemyFrames[i].color = stage.IsBossUnit(enemyNos[i]) ? _bossFrameColor : _enemyFrameColor;
             }
         }
@@ -113,20 +108,15 @@ namespace MiniGame.PenguinWars
 
         private void Sortie()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             Hide();
             _onSortie?.Invoke(_stage.Id);
         }
 
         private void Close()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             Hide();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

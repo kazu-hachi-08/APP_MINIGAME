@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// 敵の城を落としたときの紙吹雪1枚（ステージ計画 Phase 7）。上へ弾けてから、くるくる回りながらひらひら落ちる。
+    /// 敵の城を落としたときの紙吹雪1枚（仕様書 §9）。上へ弾けてから、くるくる回りながらひらひら落ちる。
     /// 絵は白い小さな四角1つで、色は出すときに付ける（色ごとに絵を作らないため）
     /// </summary>
     public class ConfettiEffect : PooledEffect

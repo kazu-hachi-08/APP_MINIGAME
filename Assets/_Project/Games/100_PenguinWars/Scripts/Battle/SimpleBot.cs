@@ -72,12 +72,10 @@ namespace MiniGame.PenguinWars.Battle
         {
             if (!world.GetCannon(BotSide).IsReady) return false;
 
-            float reach = world.CannonReach(BotSide);
-            float originX = world.GetCastle(BotSide).X;
             int targets = 0;
             foreach (UnitState unit in world.Units)
             {
-                if (unit.Side != BotSide && !unit.IsDead && unit.X - originX <= reach) targets++;
+                if (unit.Side != BotSide && !unit.IsDead && world.IsInCannonReach(BotSide, unit)) targets++;
             }
             return targets >= CannonMinTargets;
         }

@@ -61,7 +61,7 @@ namespace MiniGame.PenguinWars.Battle
             _fish = fish;
         }
 
-        /// <summary>撃破報酬（Phase 4）用。上限は超えない</summary>
+        /// <summary>撃破報酬（§8.5）用。上限は超えない</summary>
         public void Add(int amount)
         {
             if (_fish < Cap) _fish = Math.Min(Cap, _fish + amount);

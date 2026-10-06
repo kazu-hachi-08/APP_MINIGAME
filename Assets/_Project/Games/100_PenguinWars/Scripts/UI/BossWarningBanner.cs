@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// ボス登場のとき画面上部に出る赤い帯（ステージ計画 Phase 7）。「WARNING!」の文字が右から左へ流れ、帯が点滅する。
+    /// ボス登場のとき画面上部に出る赤い帯（仕様書 §9）。「WARNING!」の文字が右から左へ流れ、帯が点滅する。
     /// 画面の中央を隠さないよう上部だけに出し、出撃ボタンも押せるよう当たり判定は持たない
     /// </summary>
     public class BossWarningBanner : MonoBehaviour

@@ -1,4 +1,3 @@
-using MiniGame.Editor;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// ステージ選択でマスを押すと出る詳細（ステージ計画 Phase 2〜4）。
+    /// ステージ選択でマスを押すと出る詳細（仕様書 §2.1）。
     /// 上から「名前・説明・★の条件・ベスト・出てくる敵・特別ルール・編成・ボタン」
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
@@ -53,10 +52,8 @@ namespace MiniGame.PenguinWars.Editor
 
         private static StageDetailPanel CreateStageDetailPanel(Transform parent, PenguinUnitCatalog catalog)
         {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("DetailPanel", parent);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = ZukanDimColor;
-            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, StageDetailBoxSize, ZukanDetailBoxColor);
+            GameObject dimObj = CreateFullScreenPanel(parent, "DetailPanel", DialogDimColor);
+            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, StageDetailBoxSize, DialogBoxColor);
 
             Text title = CreateText(box.transform, "Title", StageDetailTitleFontSize, CenterAnchor, StageDetailTitlePosition, StageDetailTitleSize, MessageColor);
             Text description = CreateText(box.transform, "Description", StageDetailBodyFontSize, CenterAnchor, StageDetailDescriptionPosition, StageDetailDescriptionSize, Color.white);

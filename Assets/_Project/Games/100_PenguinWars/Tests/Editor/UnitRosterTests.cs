@@ -4,12 +4,10 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>Phase 8: 50体の定義表・計算式・ランダム編成の制約</summary>
+    /// <summary>50体の定義表と計算式（§5.5）</summary>
     public class UnitRosterTests
     {
         private const int RosterSize = 50;
-        private const int DeckSize = 10;
-        private const int MinWalls = 2;
 
         private static List<UnitStats> AllStats()
         {
@@ -93,69 +91,18 @@ namespace MiniGame.PenguinWars.Battle.Tests
         }
 
         [Test]
-        public void PickDeck_HasAtLeastTwoWallsAndNoDuplicates()
+        public void SortByCost_OrdersByCostThenNo()
         {
-            List<UnitStats> pool = AllStats();
-            for (int seed = 0; seed < 200; seed++)
+            var deck = new List<UnitStats>
             {
-                List<UnitStats> deck = DeckRandomizer.PickDeck(pool, DeckSize, MinWalls, new System.Random(seed));
-
-                Assert.AreEqual(DeckSize, deck.Count, $"seed {seed}");
-                var numbers = new HashSet<int>();
-                int walls = 0;
-                foreach (UnitStats s in deck)
-                {
-                    numbers.Add(s.UnitNo);
-                    if (s.Role == UnitRole.Wall) walls++;
-                }
-                Assert.AreEqual(DeckSize, numbers.Count, $"seed {seed} で重複");
-                Assert.GreaterOrEqual(walls, MinWalls, $"seed {seed}");
-            }
-        }
-
-        [Test]
-        public void PickDeck_VariesBySeed()
-        {
-            List<UnitStats> pool = AllStats();
-            var decks = new HashSet<string>();
-            for (int seed = 0; seed < 10; seed++)
-            {
-                var numbers = new List<int>();
-                foreach (UnitStats s in DeckRandomizer.PickDeck(pool, DeckSize, MinWalls, new System.Random(seed))) numbers.Add(s.UnitNo);
-                numbers.Sort();
-                decks.Add(string.Join(",", numbers));
-            }
-            Assert.Greater(decks.Count, 1);
-        }
-
-        [Test]
-        public void PickDeck_IsSortedByCost()
-        {
-            List<UnitStats> pool = AllStats();
-            for (int seed = 0; seed < 50; seed++)
-            {
-                List<UnitStats> deck = DeckRandomizer.PickDeck(pool, DeckSize, MinWalls, new System.Random(seed));
-                for (int i = 1; i < deck.Count; i++)
-                {
-                    Assert.LessOrEqual(deck[i - 1].Cost, deck[i].Cost, $"seed {seed}");
-                }
-            }
-        }
-
-        [Test]
-        public void PickDeck_TakesAllWallsWhenFewerThanMinimum()
-        {
-            var pool = new[]
-            {
-                new UnitStats { UnitNo = 1, Role = UnitRole.Wall },
-                new UnitStats { UnitNo = 2, Role = UnitRole.Attacker },
-                new UnitStats { UnitNo = 3, Role = UnitRole.Ranged },
+                new UnitStats { UnitNo = 3, Cost = 200 },
+                new UnitStats { UnitNo = 2, Cost = 100 },
+                new UnitStats { UnitNo = 1, Cost = 200 },
             };
 
-            List<UnitStats> deck = DeckRandomizer.PickDeck(pool, 2, MinWalls, new System.Random(0));
+            DeckRandomizer.SortByCost(deck);
 
-            Assert.AreEqual(2, deck.Count);
-            Assert.IsTrue(deck.Exists(s => s.UnitNo == 1));
+            CollectionAssert.AreEqual(new[] { 2, 1, 3 }, deck.ConvertAll(s => s.UnitNo));
         }
     }
 }

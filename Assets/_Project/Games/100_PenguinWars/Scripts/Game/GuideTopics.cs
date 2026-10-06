@@ -73,13 +73,13 @@ namespace MiniGame.PenguinWars
         private const Side Ally = Side.Left;
         private const Side Enemy = Side.Right;
         private const float DefaultLoop = 10f;
-        // BattleRunner のデモのなだれ（3.5秒目）が1回起きて、押し戻されたところまで見せる
+        // デモのなだれ（GuideDemoDirector._avalancheInterval = 3.5秒目）が1回起きて、押し戻されたところまで見せる
         private const float AvalancheLoop = 6f;
         // 大型は体力が多く、キラーでも倒し切るまで11秒ほどかかる
         private const float LargeKillerLoop = 12f;
         // 1秒ほどでボスが出て、WARNING・カメラ寄り（約2.5秒）の後に味方を倒して歩き出すところまで
         private const float BossLoop = 8f;
-        // ボスのデモの短い戦場（BattleRunner._demoBossFieldLength = 14）で、出してすぐ敵の城に届く位置
+        // ボスのデモの短い戦場（GuideDemoDirector._bossFieldLength = 14）で、出してすぐ敵の城に届く位置
         private const float NearEnemyCastleX = 10f;
 
         // 出てくるキャラの No（UnitDefinitions）

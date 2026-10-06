@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars.Battle
         public float X { get; }
         public int MaxHp { get; }
         public int Hp { get; internal set; }
-        public bool IsDestroyed => Hp <= 0;
+        public float HpRatio => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
 
         public CastleState(Side side, float x, int maxHp)
         {

@@ -1,4 +1,3 @@
-using MiniGame.Editor;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +5,7 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// ステージモードの編成画面（ステージ計画 Phase 3）。上に10枠、下にずかんと同じマスの一覧。
+    /// ステージモードの編成画面（仕様書 §8.7）。上に10枠、下にずかんと同じマスの一覧。
     /// 一覧のマスはずかんのひな形をそのまま使い、中身は実行時にカタログから並べる
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
@@ -31,10 +30,8 @@ namespace MiniGame.PenguinWars.Editor
 
         private static DeckEditPanel CreateDeckEditPanel(Transform parent, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("DeckEditPanel", parent);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // raycastTarget を残し、編成中に下のステージ選択が押せないようにする
-            panelObj.AddComponent<Image>().color = ZukanBackColor;
+            GameObject panelObj = CreateFullScreenPanel(parent, "DeckEditPanel", ZukanBackColor);
 
             Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, ZukanTitlePosition, ZukanTitleSize, MessageColor);
             title.text = "へんせい";
@@ -42,12 +39,13 @@ namespace MiniGame.PenguinWars.Editor
 
             (Button[] slotButtons, Image[] slotIcons) = CreateDeckSlots(panelObj.transform);
             Text count = CreateText(panelObj.transform, "Count", DeckCountFontSize, TopCenterAnchor, DeckCountPosition, DeckCountSize, Color.white);
-            Button decide = CreateDeckDecideButton(panelObj.transform);
+            Button decide = CreateAnchoredButton(panelObj.transform, "Btn_Decide", "けってい", DeckDecideSize, TopCenterAnchor, DeckDecidePosition,
+                StartButtonColor);
 
             (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform, DeckListTopMargin, DeckListColumns);
             ZukanCell template = CreateZukanCellTemplate(content);
             // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
-            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, ZukanTopLeftAnchor, ZukanColumnDropdownPosition);
+            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, TopLeftAnchor, ZukanColumnDropdownPosition);
 
             var panel = panelObj.AddComponent<DeckEditPanel>();
             var so = new UnityEditor.SerializedObject(panel);
@@ -79,14 +77,6 @@ namespace MiniGame.PenguinWars.Editor
                 icons[i].preserveAspect = true;
             }
             return (buttons, icons);
-        }
-
-        private static Button CreateDeckDecideButton(Transform panel)
-        {
-            GameObject buttonObj = UIDialogBuilder.CreateButton(panel, "Btn_Decide", "けってい", DeckDecideSize.x, DeckDecideSize.y, StartButtonColor);
-            SetAnchor(buttonObj.GetComponent<RectTransform>(), TopCenterAnchor, DeckDecidePosition);
-            buttonObj.GetComponentInChildren<Text>().fontSize = TitleButtonFontSize;
-            return buttonObj.GetComponent<Button>();
         }
     }
 }

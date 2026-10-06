@@ -11,12 +11,11 @@ namespace MiniGame.PenguinWars.Battle
         /// </summary>
         public bool IsAllowedByRules(Side side, int slotIndex)
         {
-            IReadOnlyList<UnitStats> deck = _decks[(int)side];
-            if (deck == null || slotIndex < 0 || slotIndex >= deck.Count) return false;
+            if (!IsValidSlot(side, slotIndex)) return false;
             // 制限はステージの自分（左）だけ。敵は定義表どおりに湧かせる
             if (side != Side.Left) return true;
 
-            return DeckRules.IsAllowed(_settings.DeckMaxUnitCost, _settings.DeckBannedRoles, deck[slotIndex]);
+            return DeckRules.IsAllowed(_settings.DeckMaxUnitCost, _settings.DeckBannedRoles, _decks[(int)side][slotIndex]);
         }
 
         private EnemyCannonSettings CannonOf(Side side)
@@ -30,11 +29,17 @@ namespace MiniGame.PenguinWars.Battle
             return enemy != null ? enemy.ChargeTime : _settings.CannonChargeTime;
         }
 
-        /// <summary>自城から砲が届く距離。検証用の bot（SimpleBot）も撃つ判断に使う</summary>
+        /// <summary>自城から砲が届く距離</summary>
         internal float CannonReach(Side side)
         {
             EnemyCannonSettings enemy = CannonOf(side);
             return _settings.FieldLength * (enemy != null ? enemy.RangeRatio : _settings.CannonRangeRatio);
+        }
+
+        /// <summary>side の砲が unit に届くか（陣営・生死は見ない）。実際の発射と検証用の bot（SimpleBot）の撃つ判断で同じ範囲を使うため</summary>
+        internal bool IsInCannonReach(Side side, UnitState unit)
+        {
+            return (unit.X - GetCastle(side).X) * side.Forward() <= CannonReach(side);
         }
 
         private int CannonDamage(Side side)

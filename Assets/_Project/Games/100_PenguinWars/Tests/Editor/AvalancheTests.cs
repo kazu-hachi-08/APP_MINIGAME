@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     /// <summary>ステージ「なだれの谷」のなだれ（仕様書 §3.4）</summary>
     public class AvalancheTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 30f;
         private const float Interval = 2f;
         private const float WarningTime = 1f;
@@ -40,42 +40,19 @@ namespace MiniGame.PenguinWars.Battle.Tests
             });
         }
 
-        private static List<BattleEvent> Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
-            var events = new List<BattleEvent>();
-            world.DrainEvents(events);
-            return events;
-        }
-
-        private static int Count(List<BattleEvent> events, BattleEventType type)
-        {
-            return events.FindAll(e => e.Type == type).Count;
-        }
-
-        private static UnitState FindAt(BattleWorld world, Side side)
-        {
-            foreach (UnitState unit in world.Units)
-            {
-                if (unit.Side == side) return unit;
-            }
-            return null;
-        }
-
         [Test]
         public void 予告が先に出て間隔ごとになだれが起きる()
         {
             BattleWorld world = CreateWorld();
 
-            List<BattleEvent> beforeWarning = Run(world, Interval - WarningTime - 0.1f);
+            List<BattleEvent> beforeWarning = RunAndDrain(world, Interval - WarningTime - 0.1f);
             Assert.AreEqual(0, Count(beforeWarning, BattleEventType.AvalancheWarning));
 
-            List<BattleEvent> warned = Run(world, 0.5f);
+            List<BattleEvent> warned = RunAndDrain(world, 0.5f);
             Assert.AreEqual(1, Count(warned, BattleEventType.AvalancheWarning));
             Assert.AreEqual(0, Count(warned, BattleEventType.Avalanche));
 
-            List<BattleEvent> fired = Run(world, 1f);
+            List<BattleEvent> fired = RunAndDrain(world, 1f);
             Assert.AreEqual(1, Count(fired, BattleEventType.Avalanche));
         }
 
@@ -86,10 +63,10 @@ namespace MiniGame.PenguinWars.Battle.Tests
             world.SpawnAt(Side.Left, Dummy(), InsideX);
             world.SpawnAt(Side.Right, Dummy(), OutsideX);
 
-            Run(world, Interval + 0.1f);
+            RunAndDrain(world, Interval + 0.1f);
 
-            Assert.AreEqual(UnitHp - Damage, FindAt(world, Side.Left).Hp);
-            Assert.AreEqual(UnitHp, FindAt(world, Side.Right).Hp);
+            Assert.AreEqual(UnitHp - Damage, FindFirst(world, Side.Left).Hp);
+            Assert.AreEqual(UnitHp, FindFirst(world, Side.Right).Hp);
         }
 
         [Test]
@@ -98,9 +75,9 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld();
             world.SpawnAt(Side.Left, Dummy(Damage), InsideX);
 
-            Run(world, Interval + 0.1f);
+            RunAndDrain(world, Interval + 0.1f);
 
-            Assert.IsNull(FindAt(world, Side.Left));
+            Assert.IsNull(FindFirst(world, Side.Left));
             Assert.AreEqual(0, world.GetKillCount(Side.Right));
         }
 
@@ -109,7 +86,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             var world = new BattleWorld(new BattleSettings { FieldLength = FieldLength });
 
-            List<BattleEvent> events = Run(world, 10f);
+            List<BattleEvent> events = RunAndDrain(world, 10f);
 
             Assert.AreEqual(0, Count(events, BattleEventType.AvalancheWarning));
             Assert.AreEqual(0, Count(events, BattleEventType.Avalanche));

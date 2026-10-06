@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     /// <summary>ステージの敵の出方（EnemyScriptDirector）と、敵の城を落として勝つ流れ</summary>
     public class StageScriptTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 10f;
         private const int CastleHp = 1000;
         private const int EnemyNo = 2;
@@ -62,17 +62,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             world.SetDeck(Side.Left, new[] { left });
             world.SetEnemyScript(new EnemyScriptDirector(entries, StatsByNo(Unit(EnemyNo), Unit(BossNo, hp: 1000))));
             return world;
-        }
-
-        private static void Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
-        }
-
-        private static int CountEvents(List<BattleEvent> events, BattleEventType type)
-        {
-            return events.FindAll(e => e.Type == type).Count;
         }
 
         [Test]
@@ -160,7 +149,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             var events = new List<BattleEvent>();
             world.DrainEvents(events);
             Assert.AreEqual(3, world.CountUnits(Side.Right));
-            Assert.AreEqual(1, CountEvents(events, BattleEventType.BossAppeared));
+            Assert.AreEqual(1, Count(events, BattleEventType.BossAppeared));
             Assert.IsTrue(events.Exists(e => e.Type == BattleEventType.BossAppeared && e.Amount == BossNo));
         }
 

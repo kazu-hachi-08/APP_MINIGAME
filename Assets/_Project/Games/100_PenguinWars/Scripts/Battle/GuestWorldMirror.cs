@@ -128,7 +128,7 @@ namespace MiniGame.PenguinWars.Battle
             switch (state.Action)
             {
                 case UnitAction.Windup: return state.Stats.Windup;
-                case UnitAction.Cooldown: return Math.Max(0f, state.Stats.AttackInterval - state.Stats.Windup);
+                case UnitAction.Cooldown: return state.Stats.RecoveryTime;
                 case UnitAction.Knockback: return _world.Settings.KnockbackDuration;
                 default: return 0f;
             }

@@ -8,7 +8,7 @@ namespace MiniGame.PenguinWars.Battle
     }
 
     /// <summary>
-    /// 外からの操作。キー・ボタン・CPU・オンラインのゲストのどれから来ても同じ形で BattleWorld に渡す（Phase 10 で通信に載せるため）
+    /// 外からの操作。キー・ボタン・CPU・オンラインのゲストのどれから来ても同じ形で BattleWorld に渡す（オンラインで通信に載せるため。§10.2）
     /// </summary>
     public readonly struct BattleCommand
     {

@@ -27,7 +27,7 @@ namespace MiniGame.PenguinWars.Battle
             IsFinished = true;
             IsDraw = left == right;
             Loser = left < right ? Side.Left : Side.Right;
-            _events.Add(new BattleEvent(BattleEventType.TimeUp, Loser, BattleEvent.CastleId, 0f, IsDraw ? 1 : 0));
+            _events.Add(new BattleEvent(BattleEventType.TimeUp, Loser, BattleEvent.CastleId, 0f, IsDraw ? BattleEvent.TimeUpDrawAmount : 0));
         }
     }
 }

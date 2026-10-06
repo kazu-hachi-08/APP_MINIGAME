@@ -1,8 +1,8 @@
-# 第6弾ミニゲーム：ペンギン大戦争 仕様書
+# ミニゲーム：ペンギン大戦争 仕様書
 
 ## 1. 概要
 
-「週末2人開発 2Dミニゲームプロジェクト」の第6弾ミニゲーム。にゃんこ大戦争風の横スクロール型タワーディフェンス。ペンギンを出撃させて敵の大群を押し返し、敵の城を落とす。
+「週末2人開発 2Dミニゲームプロジェクト」の長期で作り込む大型タイトル（番号100）。にゃんこ大戦争風の横スクロール型タワーディフェンス。ペンギンを出撃させて敵の大群を押し返し、敵の城を落とす。
 
 | 項目 | 内容 |
 | --- | --- |
@@ -47,10 +47,12 @@
   * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
 * 「あそびかた」は能力・仕組みの説明（`PenguinGuidePanel`）。タイトルの幕を閉じ、右上の説明カードと下のページ送りの間に見える**本物の戦場でデモを流す**
   * トピックは 出撃と勝ち方・さかなと働きペンギン・ステージ・★（ほし）・なかま・へんせい・壁と後ろの列・城の守り方・ペンギン砲・ふっとばす・止める・遅くする・ふんばる・城キラー・大型キラー・遠距離キラー・妨害キラー・ボス・なだれ の19個。基本 → ステージモードの遊び方 → 戦い方 → 能力 → ステージの仕掛けの順に並べる（最初のページで何をすれば勝ちかが分かるように）。説明文と出撃の台本は `GuideTopics`（コード）に1か所でまとめる
-  * なだれのデモは本番（25〜60秒・中央）だと待ちきれず画面にも映らないので、短い間隔・画面に入る位置で起こす（`BattleRunner._demoAvalanche*`）
-  * ボスのデモは「敵の城を叩くとボスが出る」を見せるため、戦場を短く（`_demoBossFieldLength` = 14）して敵の城を画面に入れ、城HPが `_demoBossCastleRatio`（98%）を下回るときょだいペンギンがボスとして出る。WARNING・カメラ寄り・警報も本番と同じものが毎ループ出る（`GuideTopic.WithBoss`）
-  * デモ係（`GuideDemoDirector`）が台本どおり `BattleRunner.SpawnDemoUnit` でユニットを好きな位置に出し、10秒ごとに `InitializeDemo` で作り直してループする
-  * デモは両方とも本物の城（HP は `BattleRunner._demoCastleHp`）で、確率の能力は毎回発動する（`BattleSettings.AlwaysProcAbilities`）。デモ中は `BattleRunner.World` が null を返すので出撃ボタン・さかな表示・キー操作は反応しない
+  * なだれのデモは本番（25〜60秒・中央）だと待ちきれず画面にも映らないので、短い間隔・画面に入る位置で起こす（`GuideDemoDirector._avalanche*`）
+  * ボスのデモは「敵の城を叩くとボスが出る」を見せるため、戦場を短く（`GuideDemoDirector._bossFieldLength` = 14）して敵の城を画面に入れ、城HPが `_bossCastleRatio`（98%）を下回るときょだいペンギンがボスとして出る。WARNING・カメラ寄り・警報も本番と同じものが毎ループ出る（`GuideTopic.WithBoss`）
+  * デモ係（`GuideDemoDirector`）が台本どおり `BattleRunner.SpawnDemoUnit` でユニットを好きな位置に出し、ページごとの `LoopSeconds`（基本10秒。大型キラー12秒・ボス8秒・なだれ6秒）ごとに `InitializeDemo` で作り直してループする
+  * デモは両方とも本物の城（HP は `GuideDemoDirector._castleHp`）で、確率の能力は毎回発動する（`BattleSettings.AlwaysProcAbilities`）。デモ中は `BattleRunner.World` が null を返すので出撃ボタン・さかな表示・キー操作は反応しない
+  * デモの調整値はすべてデモ係が持ち、`BattleRunner.InitializeDemo(customize, enemies)` で設定の上書きと敵の台本（ボス）を渡す。BattleRunner はデモの中身を知らない
+  * デモ中に城が落ちても、崩れる演出・勝利のジングル・紙吹雪は出さない（`BattleEventPresenter` が `BattleRunner.IsDemo` で無視する。本番用の「1回きり」の状態をデモで壊さないため）
   * 説明文の数値は手書き。能力の確率・倍率を変えたら `GuideTopics` の文も直す
 * 「設定」は BGM ON/OFF・BGM音量・SE音量（`PenguinWarsSettingsPanel`）。値は共通の `AudioManager` が `PlayerPrefs` に保存するので、ポーズ画面のスライダーや次回の起動とも同じ値になる
 * BGM ON/OFF は BGM だけを止める（SE は鳴る）。OFF 中は BGM 音量のスライダーを触れない
@@ -470,7 +472,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 | `TintHex` | null（白） | 山と地面の色 `"#RRGGBB"`（Battle は `Color` を持てないので文字列。読めなければ白＋警告） |
 | ギミックの項目 | なし | §8.4 |
 
-ステージの数値は `StageDefinition.ApplyTo(settings)` で `BattleSettings` に写す。`BattleRunner.InitializeStage` と検証ツールは同じ手順（Balance から設定を作る → `ApplyTo` → `new BattleWorld` → `SetEnemyScript`）で作るので、同じ結果になる。
+ステージの数値は `StageDefinition.ApplyTo(settings)` で `BattleSettings` に写す。`BattleRunner.InitializeStage` と検証ツールはどちらも `StageWorldBuilder.Create`（`ApplyTo` → `new BattleWorld` → 編成をコスト順に → `SetEnemyScript`）で World を作るので、同じ結果になる。
 
 **全ステージ（数値の正は定義表）**
 
@@ -513,7 +515,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 * 敵は味方と同じ `PenguinUnitData` を使い、さかな・再生産を気にせず湧く（`BattleSettings.RightSpawnsFree`）
 * 場の上限30体を超えた湧きは捨てる（溜めない）。ただしボスの行は上限を無視して必ず出す（捨てると山場が来ないため）
 * `EnemyScriptDirector` は `BattleWorld` を持たず、敵の城HPの割合だけを受け取る（テストで単体で動かすため）
-* 難しさは倍率より「出てくる敵の顔ぶれ」で上げている（敵はお金を使わず湧くので、高い敵を高い倍率で出すとこちらの収入を大きく上回って誰も勝てないため）。倍率の実際: 1章 1.0〜1.3（ボスの取り巻き 2.0）/ 2章 1.0〜1.6 / 3章 0.6〜1.05
+* 難しさは倍率より「出てくる敵の顔ぶれ」で上げている（敵はお金を使わず湧くので、高い敵を高い倍率で出すとこちらの収入を大きく上回って誰も勝てないため）。倍率の実際: 1章 1.0〜1.3（ボスの取り巻き 2.0）/ 2章 1.0〜1.6 / 3章 0.45〜1.05（大型の追加は低め）。ボスの行は 1.2〜3
 
 ### 8.3 ボス
 
@@ -570,7 +572,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 * 一覧を押すと空いている枠へ入る（もう一度押すと外す）、枠を押すと外す
 * 10体そろうまで「けってい」できない。「けってい」で保存、「もどる」は変更を捨てる（途中の9体編成が保存されて、次の出撃で勝手に補完されるのを避けるため）
 * 出撃に使う編成は `DeckRules.CurrentDeck(progress)`: 保存した編成から未解放・重複・定義表に無い No を外し、解放済みからコストの低い順に補って10体にする（`FillDefault`）。まだ決めていなければ初期10体そのまま
-* 編成の人数は `DeckRules.DeckSize`（10）。`PenguinWarsBalance.DeckSize` はドラフト用（同じ値にしておく）
+* 編成の人数は `DeckRules.DeckSize`（10）。ドラフトのラウンド数もこの値を使う
 
 ### 8.8 セーブ（`CampaignProgress` / `CampaignSave`）
 
@@ -724,7 +726,8 @@ PenguinWarsGameManager.Stage … 勝敗 → StageResult → StarRule（★）→
 Assets/_Project/Games/100_PenguinWars/
  ├ Scenes/PenguinWarsScene.unity   PenguinWarsSceneBuilder で生成（手で編集しない）
  ├ Data/                           PenguinWarsBalance.asset・PenguinUnitCatalog.asset
- │  └ Units/                       Unit_001〜050.asset（Rebuild PenguinWars で生成）
+ │  ├ Units/                       Unit_001〜050.asset（Rebuild PenguinWars で生成）
+ │  └ Stages/                      対戦のステージ Stage_01〜03.asset（§3.4。無ければ Rebuild で生成）
  ├ Audio/                          BGM素材（PenguinWars_TitleBgm / PenguinWars_BattleBgm / PenguinWars_BossBgm。§9）
  ├ Sprites/                        生成したドット絵（Units / 戦場 / Effects。1単位＝16px）
  ├ Scripts/
@@ -750,23 +753,25 @@ Assets/_Project/Games/100_PenguinWars/
 | | EnemySpawnEntry / EnemyScriptDirector | 敵の出方1行／定義どおりに敵を出す・ボスの判定（§8.2） |
 | | EnemyCannonSettings / EnemyCannonAi | 敵の砲の数値／撃つ判断（§8.4） |
 | | StageResult / StarRule | 試合の結果／★の判定（§2.1） |
-| | CampaignProgress / CampaignUnlocks / DeckRules / MiniJson | 進み具合とセーブの中身／初期10体・解放の判定／編成のきまり・補完・編成制限／セーブ用の小さな JSON（§8.6〜8.8） |
+| | CampaignProgress（.Save）/ StageRecordChange / CampaignUnlocks / DeckRules / MiniJson | 進み具合と JSON の読み書き／記録の結果（初クリア・ベスト・新しい★・解放）／初期10体・解放の判定／編成のきまり・補完・編成制限／セーブ用の小さな JSON（§8.6〜8.8） |
 | | SimpleBot / BotSkill / StageSimulator / SimDeckPicker / StageSimReport | 検証ツールの bot・強さ／画面なしで1回プレイ／検証用の編成／全ステージの表（§8.9） |
-| | DeckRandomizer | コスト順の並べ替え（`SortByCost`）。ランダム編成の `PickDeck` はテストだけが使う |
+| | DeckRandomizer | ドラフト候補の抽選（`Pick`）とコスト順の並べ替え（`SortByCost`。比較は `DeckRules.CompareByCost`） |
+| | StageWorldBuilder | ステージの World を作る（実機と検証ツールで同じ作り方にするため。§8.1） |
 | | DraftSession | ドラフトのラウンド・抽選・選択・時間切れ |
 | | UnitDefinitions / UnitDefinition / StatTweak / UnitStatFormula / UnitRole | 50体の定義表・個別倍率・計算式・役割（§5.5） |
 | | BattleSnapshot / BattleEventCodec / GuestWorldMirror / SideMirror | 状態・イベントの送受信形式／ゲストの表示用 World への書き込みと反転 |
 | | Side | 陣営と前方向 |
 | Scripts/Data/ | PenguinWarsBalance | 調整用の数値（§4・§8 など） |
 | | PenguinUnitData / PenguinUnitCatalog / PenguinAbilityEntry / PenguinLook | キャラ1体のデータ／一覧／能力（Inspector 用）／見た目パーツ |
-| Scripts/Data/ | PenguinStageData | 対戦のステージ（§3.4） |
+| | PenguinStageData | 対戦のステージ（§3.4） |
 | Scripts/Game/ | PenguinWarsGameManager（.Stage / .Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／ステージ選択〜★・保存〜リザルト／オンラインの流れ／ドラフトと編成確認 |
-| | BattleRunner | World を固定ステップで動かし、View に状態を流す。ステージ・ホスト・ゲスト・あそびかたのデモの初期化 |
+| | BattleRunner | World を固定ステップで動かし、View に状態を流す。ステージ・ホスト・ゲスト・あそびかたのデモの初期化（対戦のステージは `CurrentVersusStage`） |
 | | CampaignSave | `CampaignProgress` と `PlayerPrefs` の読み書き（§8.8） |
+| | PenguinWarsPhase | ゲーム固有の段階（§2.4） |
 | | KeyboardCommandInput / ICommandSink | PC のキー操作／ゲストのコマンド送り先 |
-| | GuideTopics / GuideDemoDirector | あそびかたの説明文とデモの台本／台本どおりに出撃させてループ（§2.0） |
+| | GuideTopics / GuideDemoDirector | あそびかたの説明文とデモの台本／台本どおりに出撃させてループ・デモの調整値（§2.0） |
 | | PenguinWarsAudio / PenguinBgmGenerator | 生成SE・タイトル／プレイ／ボスBGM／仮BGMの生成 |
-| Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView | ユニットの絵・コマ選び／使い回し／コマの組／HPバー |
+| Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView / PlaceholderSprite | ユニットの絵・コマ選び／使い回し／コマの組／HPバー／HPバー用の単色の四角（実行時に生成） |
 | | CastleView / CastleCollapse / BattleCamera / FieldBackdrop | 城／崩れる演出／スクロール・揺れ・ボスを覗く（`Peek`）／山と地面の色 |
 | | BattleEventPresenter / BossEntrancePresenter / Effects/ | イベント → 演出・音／ボス登場の流れとボスBGM／煙・火花・魂・ビーム・紙吹雪（使い回しのプール） |
 | Scripts/UI/ | UnitButton / UnitButtonBar / WalletButton / CannonButton / BattleHud | 下部の操作ボタン／時間・メッセージ・お知らせ（なだれ注意） |
@@ -774,16 +779,17 @@ Assets/_Project/Games/100_PenguinWars/
 | | StageSelectPanel / StageNode / StageDetailPanel / StageResultPanel / StageLabels | ステージ選択／マス1つ（鍵・ふわふわ）／詳細／リザルト／★・条件・タイム・特別ルール・章の名前の文字（§2.1） |
 | | StarRevealAnimator / UiWobble / UnlockRevealPanel | ★を1つずつ出す／NEW RECORD! を揺らす／なかまになった！のカード |
 | | DeckEditPanel | 編成画面（§8.7） |
-| | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／役割・能力の表示名 |
+| | DeckIntroPanel / DeckRevealPanel / DraftPanel / DraftCard / UnitLabels | 編成発表／編成確認／ドラフト画面／カード／キャラ名・立ち姿アイコン・役割・能力の表示名 |
+| | PenguinUiSound | ボタンを押したときの音（各パネル共通） |
 | | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
-| | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / ZukanListOptions / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／並べ替え・しぼりこみの選択肢／UI の絵のコマ送り（§2.0） |
+| | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / ZukanListOptions / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／並べ替え・しぼりこみの選択肢と比較（編成画面と共通）／UI の絵のコマ送り・歩きコマの並び（§2.0） |
 | | PenguinGuidePanel | あそびかたのページ送り（§2.0） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
-| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .Stages / .Title / .Zukan / .Guide / .StageSelect / .StageDetail / .StageResult / .Deck） | Scene生成（1ファイルが大きくならないよう partial で分割。`.Stages` は対戦のステージ、`.StageSelect` 以下は一人用） |
+| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .VersusStages / .Title / .Zukan / .Guide / .StageSelect / .StageDetail / .StageResult / .Deck / .UiHelpers） | Scene生成（1ファイルが大きくならないよう partial で分割。`.VersusStages` は対戦のステージ、`.StageSelect` 以下は一人用、`.UiHelpers` は文字・画像・ボタン・全画面パネルを作る共通ヘルパー） |
 | | StageSimulationMenu | 検証ツールのメニュー（§8.9） |
 | | PenguinUnitAssetGenerator / UnitLooks | 50体のアセット生成（毎回上書き）／見た目の表 |
 | Editor/Art/ | PenguinArtGenerator / PenguinFrameComposer / PenguinBodyPatterns / PenguinPartPatterns / PenguinPalette / FieldArtGenerator / EffectArtGenerator / PenguinSpriteWriter | ドット絵の生成。体・パーツは文字列（1文字＝1ピクセル）で持ち、コマごとにずらして重ねる |
-| Tests/Editor/ | BattleWorldTests / EconomyTests / CannonRewardTests / AbilityTests / AvalancheTests / UnitRosterTests / OnlineSyncTests / DraftTests / SideTests | 戦闘・お金・砲と撃破報酬・能力・なだれ・50体の数値・同期・ドラフト・陣営 |
+| Tests/Editor/ | BattleWorldTests / EconomyTests / CannonRewardTests / AbilityTests / AvalancheTests / UnitRosterTests / OnlineSyncTests / DraftTests / SideTests | 戦闘・お金・砲と撃破報酬・能力・なだれ・50体の数値・同期・ドラフト・陣営（共通の進め方・数え方は `BattleTestUtil`） |
 | | StageScriptTests / StageDefinitionTests / GimmickTests / CampaignTests / UnlockTests / DeckRulesTests / SimulatorTests | 敵の出方とボス・定義表の正しさ・ギミック・★とセーブ・解放（50体の網羅）・編成のきまり・検証ツール（決定的・1-1 はふつうで勝てる） |
 
 ### 11.3 生成メニューとアセットの扱い

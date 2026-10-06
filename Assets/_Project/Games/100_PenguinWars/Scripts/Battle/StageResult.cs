@@ -21,9 +21,8 @@ namespace MiniGame.PenguinWars.Battle
         public static StageResult From(BattleWorld world)
         {
             CastleState castle = world.GetCastle(Side.Left);
-            float hpRatio = castle.MaxHp > 0 ? (float)castle.Hp / castle.MaxHp : 0f;
             bool cleared = world.IsFinished && world.Loser == Side.Right;
-            return new StageResult(cleared, world.ElapsedTime, hpRatio, world.GetKillCount(Side.Left));
+            return new StageResult(cleared, world.ElapsedTime, castle.HpRatio, world.GetKillCount(Side.Left));
         }
     }
 }

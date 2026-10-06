@@ -1,11 +1,11 @@
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     public class EconomyTests
     {
-        private const float StepTime = 1f / 30f;
         private const int Cost = 100;
         private const float Cooldown = 2f;
 
@@ -26,12 +26,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             world.SetDeck(Side.Left, new[] { stats });
             world.SetDeck(Side.Right, new[] { stats });
             return world;
-        }
-
-        private static void Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
         }
 
         [Test]

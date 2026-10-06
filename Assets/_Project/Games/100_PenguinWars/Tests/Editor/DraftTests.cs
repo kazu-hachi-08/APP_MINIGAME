@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>ドラフト（Phase 11・仕様書 §6）</summary>
+    /// <summary>ドラフト（仕様書 §6）</summary>
     public class DraftTests
     {
         private const int PoolSize = 50;

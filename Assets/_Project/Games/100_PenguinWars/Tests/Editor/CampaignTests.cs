@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>ステージの解放・★の判定と保存（ステージ計画 Phase 2）</summary>
+    /// <summary>ステージの解放・★の判定と保存（§2.1）</summary>
     public class CampaignTests
     {
         private const string FirstId = "1-1";
@@ -154,7 +154,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Assert.IsNull(new CampaignProgress().GetBestSeconds(FirstId));
         }
 
-        // ---- 鍵が外れる演出（ステージ計画 Phase 7） ----
+        // ---- 鍵が外れる演出（§9） ----
 
         [Test]
         public void NeedsUnlockReveal_FirstStageAndLockedStage_AreFalse()

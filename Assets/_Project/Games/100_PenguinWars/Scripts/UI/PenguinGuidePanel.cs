@@ -1,5 +1,4 @@
 using System;
-using MiniGame.Common.Audio;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -42,7 +41,7 @@ namespace MiniGame.PenguinWars
 
         private void Turn(int step)
         {
-            PlayClick();
+            PenguinUiSound.Click();
             int count = GuideTopics.All.Count;
             // 端で止めずに一周させる（最後まで見たらそのまま最初に戻れるように）
             _page = (_page + step + count) % count;
@@ -60,15 +59,10 @@ namespace MiniGame.PenguinWars
 
         private void Close()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             _director.Stop();
             gameObject.SetActive(false);
             _onClosed?.Invoke();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

@@ -15,7 +15,7 @@ namespace MiniGame.PenguinWars.Editor
     /// <summary>
     /// PenguinWarsScene を自動生成するエディタユーティリティ。
     /// Scene をコードから作ることで、2人開発での Scene コンフリクトを避ける。
-    /// 1ファイルが巨大にならないよう partial で分割している（.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.StageSelect = 一人用のステージ選択、.StageResult = 一人用のリザルトと演出、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた、.Stages = 対戦のステージ）
+    /// 1ファイルが巨大にならないよう partial で分割している（.UiHelpers = UI 生成の共通ヘルパー、.Field = 戦場、.Battle = ユニット・戦闘、.Hud = 上部UI、.Controls = 下部の操作UI、.Intro = 編成発表、.Draft = ドラフト・編成確認、.Effects = 演出・音、.Online = オンライン対戦・モード選択、.VersusStages = 対戦のステージ、.StageSelect = 一人用のステージ選択、.StageDetail = ステージ詳細、.Deck = 編成画面、.StageResult = 一人用のリザルトと演出、.Title = タイトル・音の設定、.Zukan = ずかん、.Guide = あそびかた）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -23,7 +23,8 @@ namespace MiniGame.PenguinWars.Editor
         private const string SceneDirectory = RootDirectory + "/Scenes";
         private const string ScenePath = SceneDirectory + "/PenguinWarsScene.unity";
         private const string DataDirectory = RootDirectory + "/Data";
-        private const string BalancePath = DataDirectory + "/PenguinWarsBalance.asset";
+        // ステージのシミュレーション（StageSimulationMenu）も同じアセットを読むので internal にする
+        internal const string BalancePath = DataDirectory + "/PenguinWarsBalance.asset";
 
         private const string GameTitle = "Penguin Wars";
         private const string LogPrefix = "[PenguinWarsSceneBuilder]";
@@ -158,10 +159,22 @@ namespace MiniGame.PenguinWars.Editor
             var so = new SerializedObject(target);
             foreach ((string name, Object value) in refs)
             {
-                so.FindProperty(name).objectReferenceValue = value;
+                SerializedProperty property = FindPropertyOrLog(so, name);
+                if (property != null) property.objectReferenceValue = value;
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// フィールドは名前の文字列でつなぐので、改名や打ち間違いで見つからないことがある。
+        /// 例外で生成全体を止めず、どの型のどの名前が切れたかをログに出して残りは作り続ける
+        /// </summary>
+        private static SerializedProperty FindPropertyOrLog(SerializedObject so, string name)
+        {
+            SerializedProperty property = so.FindProperty(name);
+            if (property == null) Debug.LogError($"{LogPrefix} {so.targetObject.GetType().Name} に {name} がありません");
+            return property;
         }
 
         private static T CreateChild<T>(string name, Transform parent) where T : Component

@@ -38,4 +38,3 @@ MonoBehaviour:
   _knockbackDuration: 0.5
   _slowSpeedMultiplier: 0.5
   _castleKillerMultiplier: 3
-  _deckSize: 10

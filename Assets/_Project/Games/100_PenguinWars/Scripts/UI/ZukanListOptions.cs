@@ -40,7 +40,7 @@ namespace MiniGame.PenguinWars
     }
 
     /// <summary>
-    /// ずかんの切り替えボタンが順に回す選択肢（仕様書 §2.0）。先頭が開いたときの状態になる
+    /// ずかん・編成画面のドロップダウンに並べる選択肢と、並べ替えの決まり（仕様書 §2.0）。先頭が開いたときの状態になる
     /// </summary>
     public static class ZukanListOptions
     {
@@ -59,7 +59,22 @@ namespace MiniGame.PenguinWars
 
         public static readonly ZukanTraitFilter[] Traits = BuildTraits();
 
-        /// <summary>enum から作るので、能力や役割を足せばボタンの選択肢にも自動で並ぶ</summary>
+        public static List<string> ColumnLabels()
+        {
+            var labels = new List<string>();
+            foreach (ZukanStatColumn column in Columns) labels.Add(column.Label);
+            return labels;
+        }
+
+        /// <summary>column の値で並べ、同じ値どうしは No 順にする（押すたびに並びが入れ替わって見えないように）</summary>
+        public static int Compare(UnitStats a, UnitStats b, ZukanStatColumn column, bool descending)
+        {
+            int byValue = column.Value(a).CompareTo(column.Value(b));
+            if (descending) byValue = -byValue;
+            return byValue != 0 ? byValue : a.UnitNo.CompareTo(b.UnitNo);
+        }
+
+        /// <summary>enum から作るので、能力や役割を足せばドロップダウンの選択肢にも自動で並ぶ</summary>
         private static ZukanTraitFilter[] BuildTraits()
         {
             var traits = new List<ZukanTraitFilter> { new ZukanTraitFilter("すべて", _ => true) };

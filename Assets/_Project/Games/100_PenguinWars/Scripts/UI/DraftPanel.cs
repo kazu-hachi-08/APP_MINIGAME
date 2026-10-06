@@ -88,9 +88,7 @@ namespace MiniGame.PenguinWars
             for (int i = 0; i < _pickedIcons.Length; i++)
             {
                 PenguinUnitData data = i < picks.Count ? _catalog.Get(picks[i]) : null;
-                Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
-                _pickedIcons[i].sprite = icon;
-                _pickedIcons[i].enabled = icon != null;
+                UnitLabels.SetIcon(_pickedIcons[i], data, Side.Left);
             }
         }
 

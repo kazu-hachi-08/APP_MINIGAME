@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>キャラ解放（ステージ計画 Phase 3）</summary>
+    /// <summary>キャラ解放（§8.6）</summary>
     public class UnlockTests
     {
         private const int InitialCount = 10;

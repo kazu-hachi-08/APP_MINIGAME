@@ -15,7 +15,6 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 ZukanClosePosition = new Vector2(-50f, -35f);
 
         // 並べ替えの2つは左上、特性は「もどる」の左隣。中央のタイトル文字とは重ならない幅にする
-        private static readonly Vector2 ZukanTopLeftAnchor = new Vector2(0f, 1f);
         private static readonly Vector2 ZukanColumnDropdownSize = new Vector2(240f, 100f);
         private static readonly Vector2 ZukanColumnDropdownPosition = new Vector2(50f, -35f);
         private static readonly Vector2 ZukanOrderButtonSize = new Vector2(240f, 100f);
@@ -56,9 +55,7 @@ namespace MiniGame.PenguinWars.Editor
         private const int ZukanCellValueMinFontSize = 18;
         private static readonly Color ZukanCellDimColor = new Color(0f, 0f, 0f, 0.6f);
 
-        private static readonly Color ZukanDimColor = new Color(0f, 0f, 0f, 0.7f);
         private static readonly Vector2 ZukanDetailBoxSize = new Vector2(1400f, 760f);
-        private static readonly Color ZukanDetailBoxColor = new Color(0.12f, 0.14f, 0.18f);
         private static readonly Vector2 ZukanStagePosition = new Vector2(-370f, 40f);
         private static readonly Vector2 ZukanStageSize = new Vector2(520f, 520f);
         private static readonly Color ZukanStageColor = new Color(1f, 1f, 1f, 0.08f);
@@ -77,21 +74,19 @@ namespace MiniGame.PenguinWars.Editor
 
         private static PenguinZukanPanel CreateZukanPanel(Transform parent, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("ZukanPanel", parent);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // raycastTarget を残し、ずかん中に下のタイトルのボタンが押せないようにする
-            panelObj.AddComponent<Image>().color = ZukanBackColor;
+            GameObject panelObj = CreateFullScreenPanel(parent, "ZukanPanel", ZukanBackColor);
 
             Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, ZukanTitlePosition, ZukanTitleSize, MessageColor);
             title.text = "ずかん";
             Button close = CreateAnchoredButton(panelObj.transform, "Btn_Close", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
             // 文字は PenguinZukanPanel が開くたびに書き換えるので、ここでは仮の文字
-            Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, ZukanTopLeftAnchor, ZukanOrderButtonPosition);
+            Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, TopLeftAnchor, ZukanOrderButtonPosition);
 
             (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform, ZukanTopMargin, ZukanColumns);
             ZukanCell template = CreateZukanCellTemplate(content);
             // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
-            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, ZukanTopLeftAnchor, ZukanColumnDropdownPosition);
+            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, TopLeftAnchor, ZukanColumnDropdownPosition);
             Dropdown trait = CreateZukanDropdown(panelObj.transform, "Dropdown_Trait", ZukanTraitDropdownSize, TopRightAnchor, ZukanTraitDropdownPosition);
             ZukanDetailPanel detail = CreateZukanDetailPanel(panelObj.transform);
 
@@ -153,10 +148,7 @@ namespace MiniGame.PenguinWars.Editor
 
             UnitSpriteAnimator icon = CreateAnimatedIcon(cellObj.transform, TopCenterAnchor, ZukanCellIconPosition, ZukanCellIconSize);
             Text name = CreateText(cellObj.transform, "Name", ZukanCellNameFontSize, BottomCenterAnchor, ZukanCellNamePosition, ZukanCellNameSize, Color.white);
-            name.verticalOverflow = VerticalWrapMode.Truncate;
-            name.resizeTextForBestFit = true;
-            name.resizeTextMinSize = ZukanCellNameMinFontSize;
-            name.resizeTextMaxSize = ZukanCellNameFontSize;
+            FitText(name, ZukanCellNameMinFontSize);
             Text value = CreateZukanCellValue(cellObj.transform);
             // 編成画面で「もう枠に入れた」キャラを暗くする幕。ずかんでは使わない
             Image dimmer = CreateImage(cellObj.transform, "Dimmer", CenterAnchor, Vector2.zero, ZukanCellSize, ZukanCellDimColor);
@@ -171,22 +163,17 @@ namespace MiniGame.PenguinWars.Editor
         /// <summary>絵より後に作って手前に描く。「12.5」のような小数も枠に収まるよう縮めてよくする</summary>
         private static Text CreateZukanCellValue(Transform cell)
         {
-            Image back = CreateImage(cell, "ValueBack", ZukanTopLeftAnchor, ZukanCellValuePosition, ZukanCellValueSize, ZukanCellValueBackColor);
+            Image back = CreateImage(cell, "ValueBack", TopLeftAnchor, ZukanCellValuePosition, ZukanCellValueSize, ZukanCellValueBackColor);
             Text value = CreateText(back.transform, "Value", ZukanCellValueFontSize, CenterAnchor, Vector2.zero, ZukanCellValueSize, Color.white);
-            value.verticalOverflow = VerticalWrapMode.Truncate;
-            value.resizeTextForBestFit = true;
-            value.resizeTextMinSize = ZukanCellValueMinFontSize;
-            value.resizeTextMaxSize = ZukanCellValueFontSize;
+            FitText(value, ZukanCellValueMinFontSize);
             return value;
         }
 
         private static Button CreateZukanHeaderButton(Transform parent, string name, Vector2 size, Vector2 anchor, Vector2 position)
         {
             Button button = CreateAnchoredButton(parent, name, name, size, anchor, position);
-            Text label = button.GetComponentInChildren<Text>();
-            label.resizeTextForBestFit = true;
-            label.resizeTextMinSize = ZukanHeaderButtonMinFontSize;
-            label.resizeTextMaxSize = TitleButtonFontSize;
+            // ボタンの文字は元から Truncate なので、FitText で縮めても見た目は変わらない
+            FitText(button.GetComponentInChildren<Text>(), ZukanHeaderButtonMinFontSize);
             return button;
         }
 
@@ -216,9 +203,7 @@ namespace MiniGame.PenguinWars.Editor
             caption.fontStyle = FontStyle.Bold;
             caption.alignment = TextAnchor.MiddleCenter;
             caption.color = Color.white;
-            caption.resizeTextForBestFit = true;
-            caption.resizeTextMinSize = ZukanHeaderButtonMinFontSize;
-            caption.resizeTextMaxSize = TitleButtonFontSize;
+            FitText(caption, ZukanHeaderButtonMinFontSize);
         }
 
         /// <summary>開いた一覧の行は実行時に Item を複製して作られるので、ひな形の Item の大きさ・色を変えておく</summary>
@@ -241,11 +226,9 @@ namespace MiniGame.PenguinWars.Editor
 
         private static ZukanDetailPanel CreateZukanDetailPanel(Transform parent)
         {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("DetailPanel", parent);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = ZukanDimColor;
+            GameObject dimObj = CreateFullScreenPanel(parent, "DetailPanel", DialogDimColor);
 
-            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, ZukanDetailBoxSize, ZukanDetailBoxColor);
+            Image box = CreateImage(dimObj.transform, "Box", CenterAnchor, Vector2.zero, ZukanDetailBoxSize, DialogBoxColor);
             Image stage = CreateImage(box.transform, "Stage", CenterAnchor, ZukanStagePosition, ZukanStageSize, ZukanStageColor);
             UnitSpriteAnimator icon = CreateAnimatedIcon(stage.transform, CenterAnchor, Vector2.zero, ZukanDetailIconSize);
 
@@ -260,31 +243,6 @@ namespace MiniGame.PenguinWars.Editor
             SetRefs(panel, ("_icon", icon), ("_noLabel", no), ("_nameLabel", name), ("_statsLabel", stats), ("_closeButton", close));
             dimObj.SetActive(false);
             return panel;
-        }
-
-        private static UnitSpriteAnimator CreateAnimatedIcon(Transform parent, Vector2 anchor, Vector2 position, Vector2 size)
-        {
-            Image image = CreateImage(parent, "Icon", anchor, position, size, Color.white);
-            // 大型ほど絵が大きいので、枠に合わせて縮めて縦横比だけ保つ
-            image.preserveAspect = true;
-            var animator = image.gameObject.AddComponent<UnitSpriteAnimator>();
-            SetRefs(animator, ("_image", image));
-            return animator;
-        }
-
-        private static Text CreateDetailText(Transform parent, string name, int fontSize, Vector2 position, Vector2 size, Color color)
-        {
-            Text text = CreateText(parent, name, fontSize, CenterAnchor, position, size, color);
-            text.alignment = TextAnchor.MiddleLeft;
-            return text;
-        }
-
-        private static Button CreateAnchoredButton(Transform parent, string name, string label, Vector2 size, Vector2 anchor, Vector2 position)
-        {
-            GameObject buttonObj = UIDialogBuilder.CreateButton(parent, name, label, size.x, size.y, TitleSubButtonColor);
-            SetAnchor(buttonObj.GetComponent<RectTransform>(), anchor, position);
-            buttonObj.GetComponentInChildren<Text>().fontSize = TitleButtonFontSize;
-            return buttonObj.GetComponent<Button>();
         }
     }
 }

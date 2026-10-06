@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
-    /// 「役割 × コスト」から数値を出す計算式（実装計画 Phase 8）。
+    /// 「役割 × コスト」から数値を出す計算式（仕様書 §5.5）。
     /// 50体を1体ずつ手で決めるとコストと強さがずれていくので、「コスト1あたりの体力・火力」を役割ごとに揃え、個性は StatTweak で足す
     /// </summary>
     public static class UnitStatFormula

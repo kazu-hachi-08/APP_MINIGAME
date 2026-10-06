@@ -79,7 +79,7 @@ namespace MiniGame.PenguinWars
 
         private void Close()
         {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
+            PenguinUiSound.Click();
             Hide();
         }
     }

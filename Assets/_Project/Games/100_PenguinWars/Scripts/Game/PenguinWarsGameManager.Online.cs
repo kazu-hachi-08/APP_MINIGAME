@@ -146,8 +146,7 @@ namespace MiniGame.PenguinWars
         /// <summary>切り上げにして、少しでも残っていれば 0% と出さない（落ちた城と見分けがつくように）</summary>
         private static string FormatCastleHp(CastleState castle)
         {
-            float ratio = castle.MaxHp > 0 ? (float)castle.Hp / castle.MaxHp : 0f;
-            return $"{Mathf.CeilToInt(ratio * PercentScale)}%";
+            return $"{Mathf.CeilToInt(castle.HpRatio * PercentScale)}%";
         }
 
         /// <summary>

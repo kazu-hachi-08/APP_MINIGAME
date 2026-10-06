@@ -21,7 +21,7 @@ namespace MiniGame.PenguinWars
         private const float HatSeconds = 0.04f;
         private const float KickSeconds = 0.12f;
 
-        // ボスがいる間の曲は戦闘曲を速く・低くしたもの（ステージ計画 Phase 7）。別の曲を作らずに「山場」を伝える
+        // ボスがいる間の曲は戦闘曲を速く・低くしたもの。別の曲を作らずに「山場」を伝える
         private const float BossTempoRate = 1.2f;
         private const int BossTransposeSemitones = -3;
 

@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>編成のきまり・補完・保存（ステージ計画 Phase 3）</summary>
+    /// <summary>編成のきまり・補完・保存（§8.7）</summary>
     public class DeckRulesTests
     {
         private const int UnknownNo = 9999;

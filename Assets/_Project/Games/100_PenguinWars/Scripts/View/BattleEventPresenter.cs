@@ -6,7 +6,8 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// BattleEvent を演出と音に振り分ける唯一の入口（仕様書 §9）。
-    /// オンライン（Phase 10）ではゲストも届いたイベントを Present に流すので、BattleWorld の中身には頼らず、イベントの値だけで演出する
+    /// オンライン（§10.3）のゲストはホストから届いたイベントが BattleRunner.EventRaised で流れてくるので、
+    /// BattleWorld の中身には頼らず、イベントの値だけで演出する
     /// </summary>
     public class BattleEventPresenter : MonoBehaviour
     {
@@ -105,7 +106,7 @@ namespace MiniGame.PenguinWars
             _battleRunner.EventRaised -= Present;
         }
 
-        public void Present(BattleEvent battleEvent)
+        private void Present(BattleEvent battleEvent)
         {
             switch (battleEvent.Type)
             {
@@ -196,6 +197,9 @@ namespace MiniGame.PenguinWars
 
         private void PresentCastleDestroyed(Side side, float castleX)
         {
+            // デモで城が落ちても崩さない。城の絵を隠す・ボス演出を止めるなどが、同じシーンの本番の試合に残ってしまうため
+            if (_battleRunner.IsDemo) return;
+
             CastleCollapse collapse = side == Side.Left ? _leftCollapse : _rightCollapse;
             _bossEntrance.Stop();
             // スクロールして別の場所を見ていても、崩れるところを見せる

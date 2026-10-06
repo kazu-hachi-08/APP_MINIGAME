@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     public class BattleWorldTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 10f;
         private const int CastleHp = 1000;
 
@@ -32,19 +32,14 @@ namespace MiniGame.PenguinWars.Battle.Tests
             return world;
         }
 
+        /// <summary>
+        /// 共通の Run（四捨五入）ではなく切り捨てで進める。このファイルの秒数は切り捨て前提で決めてあり、
+        /// 1ステップの差で境界のテストが変わらないように元の進め方を残す
+        /// </summary>
         private static void Run(BattleWorld world, float seconds)
         {
             int steps = (int)(seconds / StepTime);
             for (int i = 0; i < steps; i++) world.Step(StepTime);
-        }
-
-        private static UnitState FindFirst(BattleWorld world, Side side)
-        {
-            foreach (UnitState unit in world.Units)
-            {
-                if (unit.Side == side) return unit;
-            }
-            return null;
         }
 
         [Test]

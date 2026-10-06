@@ -23,6 +23,9 @@ namespace MiniGame.PenguinWars.Battle
         public int KnockbackCount { get; set; } = 1;
         public IReadOnlyList<UnitAbility> Abilities { get; set; } = Array.Empty<UnitAbility>();
 
+        /// <summary>攻撃が当たってから次の行動までの硬直（Cooldown）の長さ。発生待ち（Windup）の分を攻撃間隔から引く</summary>
+        public float RecoveryTime => Math.Max(0f, AttackInterval - Windup);
+
         public bool HasAbility(UnitAbilityType type)
         {
             return TryGetAbility(type, out _);
@@ -43,7 +46,7 @@ namespace MiniGame.PenguinWars.Battle
 
         /// <summary>
         /// 体力・攻撃に倍率をかけたコピー（ステージの敵の倍率。EnemySpawnEntry.StatMultiplier）。
-        /// コストはそのまま残す（撃破報酬は倍率なしのため。§8.2）。能力リストは書き換えないので共有してよい
+        /// コストはそのまま残す（撃破報酬は倍率なしのため。§8.5）。能力リストは書き換えないので共有してよい
         /// </summary>
         public UnitStats Scaled(float multiplier)
         {

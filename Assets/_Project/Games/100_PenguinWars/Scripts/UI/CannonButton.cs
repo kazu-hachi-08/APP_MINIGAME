@@ -6,7 +6,6 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// 右下のペンギン砲ボタン（仕様書 §4.4・§7.1）。チャージゲージを描き、満タンでボタンの色を変えて知らせる。
-    /// 光る演出は Phase 7 で差し替える
     /// </summary>
     public class CannonButton : MonoBehaviour
     {

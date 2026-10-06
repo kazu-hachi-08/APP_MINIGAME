@@ -1,4 +1,3 @@
-using MiniGame.Editor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,7 +9,6 @@ namespace MiniGame.PenguinWars.Editor
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
-        private static readonly Vector2 GuideTopLeftAnchor = new Vector2(0f, 1f);
         private static readonly Color GuideCardColor = new Color(0f, 0.08f, 0.2f, 0.85f);
         // 左の城と頭上の HP バー（城キラーのデモで見せる）に被らないよう、カードは右上に寄せる
         private static readonly Vector2 GuideCardPosition = new Vector2(-30f, -30f);
@@ -33,10 +31,8 @@ namespace MiniGame.PenguinWars.Editor
 
         private static PenguinGuidePanel CreateGuidePanel(Transform canvas, BattleRunner battleRunner, BattleCamera battleCamera)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("GuidePanel", canvas);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // 透明でも raycastTarget を残し、デモ中に戦場のドラッグや下の出撃ボタンが効かないようにする
-            panelObj.AddComponent<Image>().color = Color.clear;
+            GameObject panelObj = CreateFullScreenPanel(canvas, "GuidePanel", Color.clear);
 
             (Text title, Text body) = CreateGuideCard(panelObj.transform);
             Transform bar = CreateGuideBar(panelObj.transform);
@@ -62,9 +58,9 @@ namespace MiniGame.PenguinWars.Editor
         {
             Image card = CreateImage(panel, "Card", TopRightAnchor, GuideCardPosition, GuideCardSize, GuideCardColor);
 
-            Text title = CreateText(card.transform, "Title", GuideTitleFontSize, GuideTopLeftAnchor, GuideTitlePosition, GuideTitleSize, MessageColor);
+            Text title = CreateText(card.transform, "Title", GuideTitleFontSize, TopLeftAnchor, GuideTitlePosition, GuideTitleSize, MessageColor);
             title.alignment = TextAnchor.MiddleLeft;
-            Text body = CreateText(card.transform, "Body", GuideBodyFontSize, GuideTopLeftAnchor, GuideBodyPosition, GuideBodySize, Color.white);
+            Text body = CreateText(card.transform, "Body", GuideBodyFontSize, TopLeftAnchor, GuideBodyPosition, GuideBodySize, Color.white);
             body.alignment = TextAnchor.UpperLeft;
             return (title, body);
         }

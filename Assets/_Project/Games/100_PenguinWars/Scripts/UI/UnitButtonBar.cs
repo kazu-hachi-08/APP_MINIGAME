@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// 出撃ボタン 5個×2ページ（仕様書 §7.1）。毎フレーム BattleWorld を読んで表示するだけで、お金を直接いじらない
-    /// （Phase 10 でゲスト画面にも同じ UI を使うため）
+    /// （オンラインのゲスト画面でも同じ UI を使うため）
     /// </summary>
     public class UnitButtonBar : MonoBehaviour
     {
@@ -76,7 +76,7 @@ namespace MiniGame.PenguinWars
 
                 UnitStats stats = deck[slot];
                 PenguinUnitData data = _catalog.Get(stats.UnitNo);
-                string displayName = data != null ? data.DisplayName : $"No.{stats.UnitNo}";
+                string displayName = UnitLabels.Name(data, stats.UnitNo);
                 Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
                 _buttons[i].SetUnit(icon, displayName, stats.Cost);
             }

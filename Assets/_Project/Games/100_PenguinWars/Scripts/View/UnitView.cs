@@ -94,7 +94,7 @@ namespace MiniGame.PenguinWars
         /// <summary>攻撃後の硬直は ActionTimer が残り時間なので、全体の長さから引いて「攻撃からの経過」に直す</summary>
         private bool IsShowingStrike(UnitState state)
         {
-            float cooldownLength = Mathf.Max(0f, state.Stats.AttackInterval - state.Stats.Windup);
+            float cooldownLength = state.Stats.RecoveryTime;
             return cooldownLength - state.ActionTimer < _strikeHoldSeconds;
         }
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,7 +10,7 @@ namespace MiniGame.PenguinWars
     /// <summary>
     /// ステージ選択。1章ずつ横一列にマスを並べ、左右のボタンで章を切り替える。
     /// マスはひな形から実行時に作る（ステージを足しても Scene を作り直さずに済むように。ずかんと同じ方式）。
-    /// 新しく遊べるようになったステージは開いたときに鍵が外れる演出を出し、それが次の章なら章を送って題字を出す（ステージ計画 Phase 7）
+    /// 新しく遊べるようになったステージは開いたときに鍵が外れる演出を出し、それが次の章なら章を送って題字を出す（仕様書 §9）
     /// </summary>
     public class StageSelectPanel : MonoBehaviour
     {
@@ -154,7 +153,7 @@ namespace MiniGame.PenguinWars
         {
             if (_isScrolling) return;
 
-            PlayClick();
+            PenguinUiSound.Click();
             _chapter = Mathf.Clamp(_chapter + delta, FirstChapter, StageDefinitions.ChapterCount);
             Refresh();
         }
@@ -196,13 +195,13 @@ namespace MiniGame.PenguinWars
 
         private void OpenDetail(StageDefinition stage)
         {
-            PlayClick();
+            PenguinUiSound.Click();
             _detailPanel.Show(stage, _progress, Sortie, OpenDeckEdit);
         }
 
         private void OpenDeckEdit()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             _deckEditPanel.Show(_progress, OnDeckEditClosed);
         }
 
@@ -220,14 +219,9 @@ namespace MiniGame.PenguinWars
 
         private void Back()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             Hide();
             _onBack?.Invoke();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

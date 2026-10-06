@@ -28,14 +28,12 @@ namespace MiniGame.PenguinWars
         public void Show(int unitNo, PenguinUnitData data)
         {
             // 自分が使うキャラなので、出撃ボタンと同じ左陣営（青）の絵を見せる
-            Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
-            _icon.sprite = icon;
-            _icon.enabled = icon != null;
-            _nameLabel.text = data != null ? data.DisplayName : $"No.{unitNo}";
+            UnitLabels.SetIcon(_icon, data, Side.Left);
+            _nameLabel.text = UnitLabels.Name(data, unitNo);
 
             UnitStats stats = data != null ? data.ToStats() : null;
             _costLabel.text = stats != null ? stats.Cost.ToString() : string.Empty;
-            _roleLabel.text = stats != null ? $"{UnitLabels.Role(stats.Role)}・{UnitLabels.AttackRange(stats.IsAreaAttack)}" : string.Empty;
+            _roleLabel.text = stats != null ? UnitLabels.RoleAndRange(stats) : string.Empty;
             _abilityLabel.text = stats != null ? UnitLabels.Abilities(stats.Abilities) : string.Empty;
             SetState(true, false);
         }

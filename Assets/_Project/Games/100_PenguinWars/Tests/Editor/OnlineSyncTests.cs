@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>オンライン対戦（Phase 10）: 時間切れの判定と、ゲストへ送る状態・イベントの書き出し→読み込み</summary>
+    /// <summary>オンライン対戦（§10.2）: 時間切れの判定と、ゲストへ送る状態・イベントの書き出し→読み込み</summary>
     public class OnlineSyncTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 10f;
         private const int CastleHp = 1000;
         // X は 0.01 単位、HP割合は 1/255 単位に詰めて送るので、その分だけずれてよい
@@ -41,13 +41,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             int steps = (int)(seconds / StepTime) + 1;
             for (int i = 0; i < steps && !world.IsFinished; i++) world.Step(StepTime);
-        }
-
-        private static List<BattleEvent> Drain(BattleWorld world)
-        {
-            var events = new List<BattleEvent>();
-            world.DrainEvents(events);
-            return events;
         }
 
         // ---- 時間切れ ----

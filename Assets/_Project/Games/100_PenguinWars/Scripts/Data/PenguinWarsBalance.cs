@@ -4,8 +4,7 @@ using UnityEngine;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// 遊びながら調整する数値をまとめる（仕様書 §3）。コードを触らずにインスペクタで変えられるようにするため。
-    /// 項目はフェーズごとに足していく。
+    /// 遊びながら調整する数値をまとめる（仕様書 §4）。コードを触らずにインスペクタで変えられるようにするため。
     /// </summary>
     [CreateAssetMenu(fileName = "PenguinWarsBalance", menuName = "MiniGame/PenguinWars/Balance")]
     public class PenguinWarsBalance : ScriptableObject
@@ -53,12 +52,7 @@ namespace MiniGame.PenguinWars
         [Tooltip("役割キラー（大型・遠距離・妨害キラー）の狙いの役割へのダメージ倍率")]
         [SerializeField] private float _roleKillerMultiplier = 3f;
 
-        [Header("編成")]
-        [Tooltip("ドラフトで選ぶ人数。ステージの編成画面の枠数（DeckRules.DeckSize）と同じ値にする")]
-        [SerializeField] private int _deckSize = 10;
-
         public float FieldLength => _fieldLength;
-        public int CastleHpVersus => _castleHpVersus;
         public float VersusTimeLimit => _versusTimeLimit;
         public int DraftOfferCount => _draftOfferCount;
         public float DraftPickTime => _draftPickTime;
@@ -68,7 +62,6 @@ namespace MiniGame.PenguinWars
         public float CannonChargeTime => _cannonChargeTime;
         public float CannonRangeRatio => _cannonRangeRatio;
         public int CannonDamage => _cannonDamage;
-        public int DeckSize => _deckSize;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
         public float SlowSpeedMultiplier => _slowSpeedMultiplier;

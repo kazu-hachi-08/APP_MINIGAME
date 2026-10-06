@@ -12,6 +12,9 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public class BattleCamera : MonoBehaviour
     {
+        // EventSystem が無いとき（テスト用の単体シーンなど）のドラッグ開始の距離。EventSystem の既定値と同じにする
+        private const float FallbackDragThresholdPixels = 10f;
+
         [SerializeField] private Camera _camera;
         [Tooltip("画面に映る横幅（ワールド単位）。戦場の約半分")]
         [SerializeField] private float _visibleWidth = 16f;
@@ -43,6 +46,10 @@ namespace MiniGame.PenguinWars
         public void Initialize(float fieldLength)
         {
             _fieldLength = fieldLength;
+            // デモ・前の試合の揺れやボスの寄りが残っていると、開始位置からずれて動き出すため
+            CancelPeek();
+            RemoveShake();
+            _shakeTimer = 0f;
             ApplySize();
             SetX(float.MinValue);
         }
@@ -74,7 +81,7 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>
-        /// 指定した X へ寄って、少し見せてから元の位置へ戻る（ボス登場。ステージ計画 Phase 7）。
+        /// 指定した X へ寄って、少し見せてから元の位置へ戻る（ボス登場。仕様書 §9）。
         /// 操作は奪わず、途中でスクロールされたらそこで止めてプレイヤーの操作を優先する
         /// </summary>
         public void Peek(float x, float duration)
@@ -195,7 +202,7 @@ namespace MiniGame.PenguinWars
 
         private static float DragThreshold()
         {
-            return EventSystem.current != null ? EventSystem.current.pixelDragThreshold : 10f;
+            return EventSystem.current != null ? EventSystem.current.pixelDragThreshold : FallbackDragThresholdPixels;
         }
 
         /// <summary>

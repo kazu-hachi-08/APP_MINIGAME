@@ -66,7 +66,7 @@ namespace MiniGame.PenguinWars.Editor
 
         private static DraftPanel CreateDraftPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = CreateFullScreenPanel(canvas, "DraftPanel");
+            GameObject panelObj = CreateFullScreenPanel(canvas, "DraftPanel", IntroBackColor);
 
             Text round = CreateText(panelObj.transform, "Round", DraftRoundFontSize, TopCenterAnchor, DraftRoundPosition, DraftRoundSize, MessageColor);
             Text time = CreateText(panelObj.transform, "Time", DraftTimeFontSize, TopCenterAnchor, DraftTimePosition, DraftTimeSize, Color.white);
@@ -111,10 +111,7 @@ namespace MiniGame.PenguinWars.Editor
             icon.preserveAspect = true;
             Text nameLabel = CreateText(cardObj.transform, "Name", DraftCardNameFontSize, TopCenterAnchor, DraftCardNamePosition, DraftCardNameSize, Color.white);
             // 長い名前（こおりのじょおうペンギン など）でもカードからはみ出さないよう縮めて収める
-            nameLabel.verticalOverflow = VerticalWrapMode.Truncate;
-            nameLabel.resizeTextForBestFit = true;
-            nameLabel.resizeTextMinSize = DraftCardNameMinFontSize;
-            nameLabel.resizeTextMaxSize = DraftCardNameFontSize;
+            FitText(nameLabel, DraftCardNameMinFontSize);
             Text cost = CreateText(cardObj.transform, "Cost", DraftCardInfoFontSize, TopCenterAnchor, DraftCardCostPosition, DraftCardInfoSize, CostColor);
             Text role = CreateText(cardObj.transform, "Role", DraftCardInfoFontSize, TopCenterAnchor, DraftCardRolePosition, DraftCardInfoSize, Color.white);
             Text ability = CreateText(cardObj.transform, "Ability", DraftCardInfoFontSize, TopCenterAnchor, DraftCardAbilityPosition, DraftCardInfoSize, DraftAbilityColor);
@@ -137,7 +134,7 @@ namespace MiniGame.PenguinWars.Editor
 
         private static DeckRevealPanel CreateDeckRevealPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = CreateFullScreenPanel(canvas, "DeckRevealPanel");
+            GameObject panelObj = CreateFullScreenPanel(canvas, "DeckRevealPanel", IntroBackColor);
             CreateText(panelObj.transform, "Title", IntroTitleFontSize, TopCenterAnchor, IntroTitlePosition, IntroTitleSize, MessageColor).text = "編成確認";
 
             Text myName = CreateText(panelObj.transform, "MyName", RevealSeatFontSize, CenterAnchor, new Vector2(0f, RevealMyLabelY), RevealSeatSize, RevealMyColor);
@@ -171,21 +168,9 @@ namespace MiniGame.PenguinWars.Editor
                 names[i] = CreateText(panel, $"{prefix}Name{i + 1}", RevealNameFontSize, CenterAnchor, new Vector2(x, y + RevealIconToNameY),
                     RevealNameSize, Color.white);
                 // 10体並べると1枠が狭いので、長い名前は縮めて収める
-                names[i].verticalOverflow = VerticalWrapMode.Truncate;
-                names[i].resizeTextForBestFit = true;
-                names[i].resizeTextMinSize = RevealNameMinFontSize;
-                names[i].resizeTextMaxSize = RevealNameFontSize;
+                FitText(names[i], RevealNameMinFontSize);
             }
             return (icons, names);
-        }
-
-        /// <summary>背景は raycastTarget を残し、表示中に下の出撃ボタンや戦場のドラッグが効かないようにする</summary>
-        private static GameObject CreateFullScreenPanel(Transform canvas, string name)
-        {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject(name, canvas);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
-            panelObj.AddComponent<Image>().color = IntroBackColor;
-            return panelObj;
         }
     }
 }

@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     /// <summary>ステージのギミック（開始さかな・働きペンギン上限・編成制限・敵の砲・なだれ・ボス）。どれも StageDefinition.ApplyTo を通して確かめる</summary>
     public class GimmickTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 30f;
         private const int UnitHp = 1000;
         private const int CannonDamage = 50;
@@ -41,20 +41,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             };
         }
 
-        private static List<BattleEvent> Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
-            var events = new List<BattleEvent>();
-            world.DrainEvents(events);
-            return events;
-        }
-
-        private static int Count(List<BattleEvent> events, BattleEventType type)
-        {
-            return events.FindAll(e => e.Type == type).Count;
-        }
-
         private static void PlaceLeft(BattleWorld world, params float[] xs)
         {
             foreach (float x in xs) world.SpawnAt(Side.Left, Dummy(), x);
@@ -66,7 +52,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
         public void 開始さかなは上限を超えても減らずに持てる()
         {
             BattleWorld world = CreateWorld(new StageDefinition { StartingFish = 1500 });
-            Run(world, 1f);
+            RunAndDrain(world, 1f);
 
             WalletState wallet = world.GetWallet(Side.Left);
             Assert.Greater(1500, wallet.Cap, "上限（Lv1）より多い開始さかなで確かめる");
@@ -101,14 +87,14 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             BattleWorld world = CreateWorld(new StageDefinition { StartingFish = 5000, MaxUnitCost = 300 });
             world.SetDeck(Side.Left, new[] { Dummy(1, 300), Dummy(2, 450) });
-            Run(world, StepTime);
+            RunAndDrain(world, StepTime);
 
             Assert.IsTrue(world.CanSpawn(Side.Left, 0));
             Assert.IsFalse(world.CanSpawn(Side.Left, 1));
             Assert.IsFalse(world.IsAllowedByRules(Side.Left, 1));
 
             world.Enqueue(BattleCommand.Spawn(Side.Left, 1));
-            Run(world, StepTime);
+            RunAndDrain(world, StepTime);
             Assert.AreEqual(0, world.CountUnits(Side.Left));
         }
 
@@ -117,7 +103,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
         {
             BattleWorld world = CreateWorld(new StageDefinition { StartingFish = 5000, BannedRoles = new[] { UnitRole.Large } });
             world.SetDeck(Side.Left, new[] { Dummy(1, 100, UnitRole.Wall), Dummy(43, 100, UnitRole.Large) });
-            Run(world, StepTime);
+            RunAndDrain(world, StepTime);
 
             Assert.IsTrue(world.CanSpawn(Side.Left, 0));
             Assert.IsFalse(world.CanSpawn(Side.Left, 1));
@@ -151,7 +137,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(CannonStage());
             PlaceLeft(world, InRangeX, InRangeX, InRangeX, DangerX);
 
-            List<BattleEvent> events = Run(world, 0.5f);
+            List<BattleEvent> events = RunAndDrain(world, 0.5f);
 
             Assert.AreEqual(0, Count(events, BattleEventType.CannonFired));
         }
@@ -162,7 +148,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(CannonStage());
             PlaceLeft(world, InRangeX, InRangeX, InRangeX, OutOfRangeX);
 
-            List<BattleEvent> events = Run(world, 1.1f);
+            List<BattleEvent> events = RunAndDrain(world, 1.1f);
 
             Assert.AreEqual(1, Count(events, BattleEventType.CannonFired));
             foreach (UnitState unit in world.Units)
@@ -178,7 +164,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(CannonStage());
             PlaceLeft(world, InRangeX, InRangeX, OutOfRangeX);
 
-            List<BattleEvent> events = Run(world, 2f);
+            List<BattleEvent> events = RunAndDrain(world, 2f);
 
             Assert.AreEqual(0, Count(events, BattleEventType.CannonFired));
         }
@@ -189,7 +175,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(CannonStage());
             PlaceLeft(world, DangerX);
 
-            List<BattleEvent> events = Run(world, 1.1f);
+            List<BattleEvent> events = RunAndDrain(world, 1.1f);
 
             Assert.AreEqual(1, Count(events, BattleEventType.CannonFired));
         }
@@ -200,7 +186,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(new StageDefinition { FieldLength = FieldLength });
             PlaceLeft(world, DangerX, InRangeX, InRangeX, InRangeX);
 
-            List<BattleEvent> events = Run(world, 3f);
+            List<BattleEvent> events = RunAndDrain(world, 3f);
 
             Assert.AreEqual(0, Count(events, BattleEventType.CannonFired));
         }
@@ -213,7 +199,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             BattleWorld world = CreateWorld(new StageDefinition { FieldLength = FieldLength, AvalancheInterval = 2f });
             world.SpawnAt(Side.Left, Dummy(), FieldLength * 0.5f);
 
-            List<BattleEvent> events = Run(world, 2.1f);
+            List<BattleEvent> events = RunAndDrain(world, 2.1f);
 
             Assert.AreEqual(1, Count(events, BattleEventType.Avalanche));
             Assert.Less(world.Units[0].Hp, UnitHp);
@@ -234,7 +220,7 @@ namespace MiniGame.PenguinWars.Battle.Tests
             var statsByNo = new Dictionary<int, UnitStats> { { 1, Dummy(1) }, { 43, Dummy(43, 2500, UnitRole.Large) } };
             world.SetEnemyScript(new EnemyScriptDirector(stage.Entries, statsByNo));
 
-            Run(world, StepTime);
+            RunAndDrain(world, StepTime);
 
             Assert.AreEqual(2, world.Units.Count);
             foreach (UnitState unit in world.Units) Assert.AreEqual(unit.UnitNo == 43, unit.IsBoss);

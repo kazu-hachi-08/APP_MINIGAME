@@ -33,7 +33,7 @@ namespace MiniGame.PenguinWars
 
             _shownUnitId = boss.Id;
             PenguinUnitData data = _catalog.Get(boss.UnitNo);
-            _nameLabel.text = BossPrefix + (data != null ? data.DisplayName : $"No.{boss.UnitNo}");
+            _nameLabel.text = BossPrefix + UnitLabels.Name(data, boss.UnitNo);
         }
 
         /// <summary>同時に2体いたら先に出た方（倒せば次のボスに切り替わる）</summary>

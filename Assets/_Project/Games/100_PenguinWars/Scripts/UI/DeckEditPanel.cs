@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -51,10 +50,8 @@ namespace MiniGame.PenguinWars
 
         private void SetupColumnDropdown()
         {
-            var labels = new List<string>();
-            foreach (ZukanStatColumn column in ZukanListOptions.Columns) labels.Add(column.Label);
             _columnDropdown.ClearOptions();
-            _columnDropdown.AddOptions(labels);
+            _columnDropdown.AddOptions(ZukanListOptions.ColumnLabels());
             _columnDropdown.onValueChanged.AddListener(SelectColumn);
         }
 
@@ -95,7 +92,7 @@ namespace MiniGame.PenguinWars
         private void SelectColumn(int index)
         {
             _columnIndex = index;
-            PlayClick();
+            PenguinUiSound.Click();
             RefreshList();
         }
 
@@ -103,11 +100,7 @@ namespace MiniGame.PenguinWars
         private void RefreshList()
         {
             ZukanStatColumn column = ZukanListOptions.Columns[_columnIndex];
-            _cells.Sort((a, b) =>
-            {
-                int byValue = column.Value(a.Stats).CompareTo(column.Value(b.Stats));
-                return byValue != 0 ? byValue : a.Stats.UnitNo.CompareTo(b.Stats.UnitNo);
-            });
+            _cells.Sort((a, b) => ZukanListOptions.Compare(a.Stats, b.Stats, column, false));
             for (int i = 0; i < _cells.Count; i++)
             {
                 ZukanCell cell = _cells[i];
@@ -124,7 +117,7 @@ namespace MiniGame.PenguinWars
             else if (_deck.Count < DeckRules.DeckSize) _deck.Add(unitNo);
             else return;
 
-            PlayClick();
+            PenguinUiSound.Click();
             SortDeck();
             Refresh();
         }
@@ -133,7 +126,7 @@ namespace MiniGame.PenguinWars
         {
             if (slot >= _deck.Count) return;
 
-            PlayClick();
+            PenguinUiSound.Click();
             _deck.RemoveAt(slot);
             Refresh();
         }
@@ -150,21 +143,14 @@ namespace MiniGame.PenguinWars
         {
             for (int i = 0; i < _slotIcons.Length; i++)
             {
-                Sprite icon = i < _deck.Count ? FindIcon(_deck[i]) : null;
-                _slotIcons[i].sprite = icon;
-                _slotIcons[i].enabled = icon != null;
+                PenguinUnitData data = i < _deck.Count ? _catalog.Get(_deck[i]) : null;
+                // 自分の編成なので、出撃ボタンと同じ左陣営（青）の立ち姿
+                UnitLabels.SetIcon(_slotIcons[i], data, Side.Left);
             }
             foreach (ZukanCell cell in _cells) cell.SetDimmed(_deck.Contains(cell.Stats.UnitNo));
 
             _countLabel.text = string.Format(CountFormat, _deck.Count, DeckRules.DeckSize);
             _decideButton.interactable = DeckRules.IsValid(_deck, _unlockedNos);
-        }
-
-        private Sprite FindIcon(int unitNo)
-        {
-            PenguinUnitData data = _catalog.Get(unitNo);
-            // 自分の編成なので、出撃ボタンと同じ左陣営（青）の立ち姿
-            return data != null ? data.GetSprites(Side.Left).Icon : null;
         }
 
         private void Decide()
@@ -178,14 +164,9 @@ namespace MiniGame.PenguinWars
 
         private void Close()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             Hide();
             _onClosed?.Invoke();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

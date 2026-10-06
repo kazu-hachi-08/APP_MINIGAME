@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -81,6 +80,8 @@ namespace MiniGame.PenguinWars
         private void PickParade()
         {
             var units = new List<PenguinUnitData>(_catalog.Units);
+            // カタログの空き枠を選ぶと絵の無いペンギンが混ざるので除く
+            units.RemoveAll(u => u == null);
             for (int i = 0; i < _paradeIcons.Length; i++)
             {
                 Sprite icon = null;
@@ -106,34 +107,29 @@ namespace MiniGame.PenguinWars
 
         private void OpenSettings()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             _settingsPanel.Show();
         }
 
         private void OpenZukan()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             _zukanPanel.Show();
         }
 
         /// <summary>デモの戦場が幕で暗くならないよう、タイトルごと隠してから開き、閉じたら戻す</summary>
         private void OpenGuide()
         {
-            PlayClick();
+            PenguinUiSound.Click();
             gameObject.SetActive(false);
             _guidePanel.Show(() => gameObject.SetActive(true));
         }
 
         private void Close(Action next)
         {
-            PlayClick();
+            PenguinUiSound.Click();
             gameObject.SetActive(false);
             next?.Invoke();
-        }
-
-        private static void PlayClick()
-        {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
         }
     }
 }

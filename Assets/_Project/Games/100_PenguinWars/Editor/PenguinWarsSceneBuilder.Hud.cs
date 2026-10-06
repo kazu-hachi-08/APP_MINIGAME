@@ -12,18 +12,15 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 ReferenceResolution = new Vector2(1920, 1080);
         private const float CanvasMatchWidthOrHeight = 0.5f;
 
-        private static readonly Vector2 TopCenterAnchor = new Vector2(0.5f, 1f);
-        private static readonly Vector2 TopRightAnchor = new Vector2(1f, 1f);
-        private static readonly Vector2 CenterAnchor = new Vector2(0.5f, 0.5f);
-
         private const int TimeFontSize = 56;
         private static readonly Vector2 TimeLabelSize = new Vector2(600f, 90f);
         private static readonly Vector2 TimeLabelPosition = new Vector2(0f, -20f);
 
-        private const int LevelUpFontSize = 64;
-        private static readonly Vector2 LevelUpLabelSize = new Vector2(600f, 90f);
-        private static readonly Vector2 LevelUpLabelPosition = new Vector2(0f, -115f);
-        private static readonly Color LevelUpColor = new Color(1f, 0.45f, 0.35f);
+        private const int NoticeFontSize = 64;
+        private static readonly Vector2 NoticeLabelSize = new Vector2(600f, 90f);
+        private static readonly Vector2 NoticeLabelPosition = new Vector2(0f, -115f);
+        // お知らせ（なだれ注意）とボスの名前に使う、目を引く赤
+        private static readonly Color AlertColor = new Color(1f, 0.45f, 0.35f);
 
         private const int MessageFontSize = 180;
         private static readonly Vector2 MessageLabelSize = new Vector2(1400f, 300f);
@@ -52,10 +49,6 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 PauseButtonPosition = new Vector2(-30f, -20f);
         private static readonly Color HudButtonColor = new Color(0.15f, 0.17f, 0.22f, 0.85f);
 
-        // 雪の白い地面や空の上でも文字が読めるように縁取る
-        private static readonly Vector2 TextOutline = new Vector2(3f, -3f);
-        private static readonly Color TextOutlineColor = new Color(0f, 0f, 0f, 0.8f);
-
         private static Transform CreateCanvas()
         {
             var canvasObj = new GameObject("Canvas");
@@ -82,12 +75,12 @@ namespace MiniGame.PenguinWars.Editor
         private static BattleHud CreateHud(Transform safeArea, Transform canvas)
         {
             Text timeLabel = CreateText(safeArea, "TimeLabel", TimeFontSize, TopCenterAnchor, TimeLabelPosition, TimeLabelSize, Color.white);
-            Text levelUpLabel = CreateText(safeArea, "LevelUpLabel", LevelUpFontSize, TopCenterAnchor, LevelUpLabelPosition, LevelUpLabelSize, LevelUpColor);
-            levelUpLabel.gameObject.SetActive(false);
+            Text noticeLabel = CreateText(safeArea, "NoticeLabel", NoticeFontSize, TopCenterAnchor, NoticeLabelPosition, NoticeLabelSize, AlertColor);
+            noticeLabel.gameObject.SetActive(false);
             Text messageLabel = CreateText(canvas, "MessageLabel", MessageFontSize, CenterAnchor, Vector2.zero, MessageLabelSize, MessageColor);
 
             var hud = safeArea.gameObject.AddComponent<BattleHud>();
-            SetRefs(hud, ("_timeLabel", timeLabel), ("_messageLabel", messageLabel), ("_levelUpLabel", levelUpLabel));
+            SetRefs(hud, ("_timeLabel", timeLabel), ("_messageLabel", messageLabel), ("_noticeLabel", noticeLabel));
             return hud;
         }
 
@@ -101,7 +94,7 @@ namespace MiniGame.PenguinWars.Editor
             // 表示を切り替えるのは子の Root（BossHpBar 自身を消すと Update が止まって二度と出なくなるため）
             GameObject root = UIDialogBuilder.CreateUIObject("Root", barObj.transform);
             UIDialogBuilder.SetStretchAll(root.GetComponent<RectTransform>());
-            Text name = CreateText(root.transform, "Name", BossNameFontSize, CenterAnchor, BossNamePosition, BossNameSize, LevelUpColor);
+            Text name = CreateText(root.transform, "Name", BossNameFontSize, CenterAnchor, BossNamePosition, BossNameSize, AlertColor);
             Image gauge = CreateImage(root.transform, "Gauge", CenterAnchor, BossGaugePosition, BossGaugeSize, BossGaugeBackColor);
             Image fill = CreateImage(gauge.transform, "Fill", CenterAnchor, Vector2.zero, Vector2.zero, BossGaugeFillColor);
             UIDialogBuilder.SetStretchAll(fill.rectTransform);
@@ -140,39 +133,6 @@ namespace MiniGame.PenguinWars.Editor
             SetAnchor(buttonObj.GetComponent<RectTransform>(), TopRightAnchor, PauseButtonPosition);
             buttonObj.GetComponentInChildren<Text>().fontSize = PauseFontSize;
             return buttonObj.AddComponent<PauseButton>();
-        }
-
-        private static Text CreateText(Transform parent, string name, int fontSize,
-            Vector2 anchor, Vector2 anchoredPosition, Vector2 size, Color color)
-        {
-            var obj = UIDialogBuilder.CreateUIObject(name, parent);
-            RectTransform rect = obj.GetComponent<RectTransform>();
-            SetAnchor(rect, anchor, anchoredPosition);
-            rect.sizeDelta = size;
-
-            var text = obj.AddComponent<Text>();
-            text.fontSize = fontSize;
-            text.fontStyle = FontStyle.Bold;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = color;
-            // 既定の Truncate だと、1行の高さが枠を超えた瞬間にその行ごと描画されなくなるため
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            // 文字の上でもドラッグで戦場をスクロールできるようにする
-            text.raycastTarget = false;
-
-            var outline = obj.AddComponent<Outline>();
-            outline.effectDistance = TextOutline;
-            outline.effectColor = TextOutlineColor;
-            return text;
-        }
-
-        /// <summary>アンカー・ピボットを同じ点に揃えて、その点からの位置で置く</summary>
-        private static void SetAnchor(RectTransform rect, Vector2 anchor, Vector2 anchoredPosition)
-        {
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = anchor;
-            rect.anchoredPosition = anchoredPosition;
         }
     }
 }

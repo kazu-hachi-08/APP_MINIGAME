@@ -10,9 +10,10 @@ namespace MiniGame.PenguinWars.Battle
     /// </summary>
     public static class StageSimReport
     {
-        /// <summary>★3 の目安 = うまい bot の平均秒 × この値（少し工夫が要るくらい。計画書 Phase 5）</summary>
+        /// <summary>★3 の目安 = うまい bot の平均秒 × この値（少し工夫が要るくらい。仕様書 §8.9）</summary>
         private const float TargetSecondsHint = 0.9f;
 
+        // 表の見出し（Build の1行目）は「ふつう・うまい」の2列で固定なので、ここは必ずこの2つ・この順にする
         private static readonly BotSkill[] Skills = { BotSkill.Normal, BotSkill.Skilled };
 
         /// <param name="onProgress">（今の行の説明, 0〜1）。エディタの進捗バー用。null でよい</param>

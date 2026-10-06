@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
     /// <summary>撃破報酬・ペンギン砲・ランダム編成</summary>
     public class CannonRewardTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 10f;
         private const float CannonChargeTime = 1f;
 
@@ -33,12 +33,6 @@ namespace MiniGame.PenguinWars.Battle.Tests
             world.SetDeck(Side.Left, new[] { Unit(1, 50) });
             world.SetDeck(Side.Right, rightDeck);
             return world;
-        }
-
-        private static void Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
         }
 
         [Test]

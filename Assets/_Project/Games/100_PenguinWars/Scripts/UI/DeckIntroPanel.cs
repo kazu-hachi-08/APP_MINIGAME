@@ -45,10 +45,8 @@ namespace MiniGame.PenguinWars
         {
             PenguinUnitData data = _catalog.Get(unitNo);
             // 自分の編成なので、出撃ボタンと同じ左陣営（青）の立ち姿を見せる
-            Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
-            _icons[index].sprite = icon;
-            _icons[index].enabled = icon != null;
-            _names[index].text = data != null ? data.DisplayName : $"No.{unitNo}";
+            UnitLabels.SetIcon(_icons[index], data, Side.Left);
+            _names[index].text = UnitLabels.Name(data, unitNo);
             _icons[index].color = allowed ? Color.white : _bannedTint;
             _names[index].color = allowed ? Color.white : _bannedNameColor;
         }

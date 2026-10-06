@@ -5,7 +5,7 @@ namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
     /// 画面なしでステージを1回自動プレイする（SimpleBot が左陣営を操作）。
-    /// 18ステージを手で遊ばずに難しさの並びを確かめるため。BattleRunner.InitializeStage と同じ順で World を作るので、ギミック込みで再現できる
+    /// 18ステージを手で遊ばずに難しさの並びを確かめるため。World は BattleRunner と同じ StageWorldBuilder で作るので、ギミック込みで再現できる
     /// </summary>
     public class StageSimulator
     {
@@ -57,27 +57,8 @@ namespace MiniGame.PenguinWars.Battle
         private BattleWorld CreateWorld(StageDefinition stage, IReadOnlyList<int> deckNos, int seed)
         {
             BattleSettings settings = _createBaseSettings();
-            // ステージの敵はお金を持たず定義表どおりに湧く・時間切れなし（BattleRunner のステージと同じ）
-            settings.RightSpawnsFree = true;
-            settings.TimeLimit = 0f;
             settings.RandomSeed = seed;
-            stage.ApplyTo(settings);
-
-            var world = new BattleWorld(settings);
-            world.SetDeck(Side.Left, ToSortedDeck(deckNos));
-            world.SetEnemyScript(new EnemyScriptDirector(stage.Entries, _statsByNo));
-            return world;
-        }
-
-        private List<UnitStats> ToSortedDeck(IReadOnlyList<int> deckNos)
-        {
-            var deck = new List<UnitStats>();
-            foreach (int no in deckNos)
-            {
-                if (_statsByNo.TryGetValue(no, out UnitStats stats)) deck.Add(stats);
-            }
-            DeckRandomizer.SortByCost(deck);
-            return deck;
+            return StageWorldBuilder.Create(settings, stage, deckNos, _statsByNo);
         }
     }
 }

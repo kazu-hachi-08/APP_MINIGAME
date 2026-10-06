@@ -5,7 +5,7 @@ namespace MiniGame.PenguinWars.Battle
     /// <summary>ステージモードの編成のきまり（ちょうど10体・重複なし・全員解放済み）と、足りないときの補完</summary>
     public static class DeckRules
     {
-        /// <summary>出撃ボタン・編成画面の枠の数（PenguinWarsBalance.DeckSize と同じ値）</summary>
+        /// <summary>出撃ボタン・編成画面の枠の数。ステージの編成とオンラインのドラフトの両方がこの値を使う</summary>
         public const int DeckSize = 10;
 
         public static bool IsValid(IReadOnlyList<int> deckNos, IReadOnlyCollection<int> unlockedNos)
@@ -48,11 +48,6 @@ namespace MiniGame.PenguinWars.Battle
         }
 
         /// <summary>ステージの編成制限（コスト上限・禁止の役割）に当たらないか。当たるキャラは編成に入れたままでよく、そのステージだけ出せない</summary>
-        public static bool IsAllowed(StageDefinition stage, UnitStats stats)
-        {
-            return IsAllowed(stage.MaxUnitCost, stage.BannedRoles, stats.Cost, stats.Role);
-        }
-
         public static bool IsAllowed(int maxUnitCost, IReadOnlyList<UnitRole> bannedRoles, UnitStats stats)
         {
             return IsAllowed(maxUnitCost, bannedRoles, stats.Cost, stats.Role);
@@ -99,12 +94,18 @@ namespace MiniGame.PenguinWars.Battle
             {
                 if (costByNo.ContainsKey(no)) sorted.Add(no);
             }
-            sorted.Sort((a, b) =>
-            {
-                int byCost = costByNo[a].CompareTo(costByNo[b]);
-                return byCost != 0 ? byCost : a.CompareTo(b);
-            });
+            sorted.Sort((a, b) => CompareByCost(costByNo[a], a, costByNo[b], b));
             return sorted;
+        }
+
+        /// <summary>
+        /// コストの低い順、同じコストは No 順。出撃ボタン・編成画面・検証用の編成で並びを揃えるため1か所にまとめる。
+        /// 高い順にしたいときはコストに負号を付けて渡す（No は常に小さい順にして、並びを毎回同じにする）
+        /// </summary>
+        public static int CompareByCost(int costA, int noA, int costB, int noB)
+        {
+            int byCost = costA.CompareTo(costB);
+            return byCost != 0 ? byCost : noA.CompareTo(noB);
         }
     }
 }

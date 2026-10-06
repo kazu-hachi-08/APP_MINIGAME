@@ -55,7 +55,7 @@ namespace MiniGame.PenguinWars.Battle
 
             PerformAttack(unit);
             unit.Action = UnitAction.Cooldown;
-            unit.ActionTimer = Math.Max(0f, unit.Stats.AttackInterval - unit.Stats.Windup);
+            unit.ActionTimer = unit.Stats.RecoveryTime;
         }
 
         /// <summary>発生の瞬間に射程内にいる相手だけに当てる。発生前に相手が消えたら空振り（本家と同じ）</summary>
@@ -75,18 +75,16 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>自城から砲の範囲（CannonReach）までにいる敵ユニット全員に当て、ノックバック1回分を起こす。城には当てない（仕様書 §4.4）</summary>
         private void FireCannon(Side side)
         {
-            float reach = CannonReach(side);
-            float originX = GetCastle(side).X;
             int damage = CannonDamage(side);
             foreach (UnitState unit in _units)
             {
-                if (unit.Side == side || unit.IsDead) continue;
-                if ((unit.X - originX) * side.Forward() > reach) continue;
+                if (unit.Side == side || unit.IsDead || !IsInCannonReach(side, unit)) continue;
 
                 DamageUnit(unit, damage);
                 StartKnockback(unit);
             }
-            _events.Add(new BattleEvent(BattleEventType.CannonFired, side, BattleEvent.CastleId, originX + side.Forward() * reach));
+            float reachX = GetCastle(side).X + side.Forward() * CannonReach(side);
+            _events.Add(new BattleEvent(BattleEventType.CannonFired, side, BattleEvent.CastleId, reachX));
         }
 
         /// <param name="rewardKill">false なら撃破報酬・撃破数を誰にも入れない（なだれで倒れた分を相手の得にしないため）</param>
@@ -106,7 +104,7 @@ namespace MiniGame.PenguinWars.Battle
             _events.Add(new BattleEvent(BattleEventType.Died, target.Side, target.Id, target.X, reward));
         }
 
-        /// <summary>倒した側に撃破数とさかなを入れる。報酬は元のコストから計算する（敵レベルの倍率はかけない。§8.2）</summary>
+        /// <summary>倒した側に撃破数とさかなを入れる。報酬は元のコストから計算する（敵レベルの倍率はかけない。§8.5）</summary>
         private int RewardKill(UnitState target)
         {
             Side killer = target.Side.Opponent();

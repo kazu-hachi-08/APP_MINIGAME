@@ -79,11 +79,7 @@ namespace MiniGame.PenguinWars.Battle
             {
                 if (available.Contains(unit.No) && DeckRules.IsAllowed(stage, unit.No)) candidates.Add(unit);
             }
-            candidates.Sort((a, b) =>
-            {
-                int byCost = b.Cost.CompareTo(a.Cost);
-                return byCost != 0 ? byCost : a.No.CompareTo(b.No);
-            });
+            candidates.Sort((a, b) => DeckRules.CompareByCost(-a.Cost, a.No, -b.Cost, b.No));
             return candidates;
         }
 

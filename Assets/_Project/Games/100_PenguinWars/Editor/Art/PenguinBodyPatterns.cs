@@ -58,7 +58,7 @@ namespace MiniGame.PenguinWars.Editor
     }
 
     /// <summary>
-    /// 体の形のドットパターン（仕様書 §7.2「体の形」）。ID 文字列で引くので、Phase 9 で形を足すときはここに1項目足すだけでよい。
+    /// 体の形のドットパターン（仕様書 §7.2「体の形」）。ID 文字列で引くので、形を足すときはここに1項目足すだけでよい。
     /// 文字の意味は PenguinPalette を参照
     /// </summary>
     public static class PenguinBodyPatterns

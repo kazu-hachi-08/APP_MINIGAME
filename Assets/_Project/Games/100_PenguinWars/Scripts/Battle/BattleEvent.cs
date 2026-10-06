@@ -29,13 +29,15 @@ namespace MiniGame.PenguinWars.Battle
     {
         /// <summary>城が対象のときの UnitId</summary>
         public const int CastleId = -1;
+        /// <summary>TimeUp の Amount: 引き分け（引き分けでなければ 0）</summary>
+        public const int TimeUpDrawAmount = 1;
 
         public BattleEventType Type { get; }
         /// <summary>出来事が起きた側（Hit・Died・CastleDestroyed は「やられた側」）</summary>
         public Side Side { get; }
         public int UnitId { get; }
         public float X { get; }
-        /// <summary>Hit はダメージ、Died は倒した側に入った撃破報酬（Phase 7 で獲得さかなを表示するため）、BossAppeared はキャラNo、StatusApplied は UnitStatusType</summary>
+        /// <summary>Hit はダメージ、Died は倒した側に入った撃破報酬（撃破時に獲得さかなを出すため。§9）、BossAppeared はキャラNo、StatusApplied は UnitStatusType</summary>
         public int Amount { get; }
 
         public BattleEvent(BattleEventType type, Side side, int unitId, float x, int amount = 0)

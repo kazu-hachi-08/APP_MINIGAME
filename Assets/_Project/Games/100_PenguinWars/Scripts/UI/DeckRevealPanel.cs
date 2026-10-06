@@ -48,10 +48,8 @@ namespace MiniGame.PenguinWars
                 if (!hasUnit) continue;
 
                 PenguinUnitData data = _catalog.Get(deck[i].UnitNo);
-                Sprite icon = data != null ? data.GetSprites(side).Icon : null;
-                icons[i].sprite = icon;
-                icons[i].enabled = icon != null;
-                names[i].text = data != null ? data.DisplayName : $"No.{deck[i].UnitNo}";
+                UnitLabels.SetIcon(icons[i], data, side);
+                names[i].text = UnitLabels.Name(data, deck[i].UnitNo);
             }
         }
     }

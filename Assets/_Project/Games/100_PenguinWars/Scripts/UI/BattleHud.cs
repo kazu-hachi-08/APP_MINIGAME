@@ -10,16 +10,16 @@ namespace MiniGame.PenguinWars
 
         [SerializeField] private Text _timeLabel;
         [SerializeField] private Text _messageLabel;
-        [SerializeField] private Text _levelUpLabel;
+        [SerializeField] private Text _noticeLabel;
 
-        private float _levelUpTimer;
+        private float _noticeTimer;
 
         private void Update()
         {
-            if (_levelUpTimer <= 0f) return;
+            if (_noticeTimer <= 0f) return;
 
-            _levelUpTimer -= Time.deltaTime;
-            if (_levelUpTimer <= 0f) _levelUpLabel.gameObject.SetActive(false);
+            _noticeTimer -= Time.deltaTime;
+            if (_noticeTimer <= 0f) _noticeLabel.gameObject.SetActive(false);
         }
 
         /// <summary>
@@ -28,15 +28,15 @@ namespace MiniGame.PenguinWars
         /// </summary>
         public void ShowNotice(string text, float duration)
         {
-            _levelUpLabel.text = text;
-            _levelUpLabel.gameObject.SetActive(true);
-            _levelUpTimer = duration;
+            _noticeLabel.text = text;
+            _noticeLabel.gameObject.SetActive(true);
+            _noticeTimer = duration;
         }
 
         public void HideNotice()
         {
-            _levelUpTimer = 0f;
-            _levelUpLabel.gameObject.SetActive(false);
+            _noticeTimer = 0f;
+            _noticeLabel.gameObject.SetActive(false);
         }
 
         public void SetElapsed(float seconds)
@@ -44,7 +44,7 @@ namespace MiniGame.PenguinWars
             _timeLabel.text = $"経過 {FormatTime(Mathf.FloorToInt(seconds))}";
         }
 
-        /// <summary>オンライン対戦（Phase 10）の残り時間用</summary>
+        /// <summary>オンライン対戦（§2.2）の残り時間用</summary>
         public void SetRemaining(float seconds)
         {
             // 切り捨てだと 0:00 と出たまま1秒近く試合が続くので、0:00 になった瞬間に TIME UP になるよう切り上げる

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using NUnit.Framework;
+using static MiniGame.PenguinWars.Battle.Tests.BattleTestUtil;
 
 namespace MiniGame.PenguinWars.Battle.Tests
 {
-    /// <summary>Phase 5: ノックバック・特殊能力</summary>
+    /// <summary>ノックバック・特殊能力（§5.3・§5.4）</summary>
     public class AbilityTests
     {
-        private const float StepTime = 1f / 30f;
         private const float FieldLength = 30f;
         // 城から離して湧かせ、ノックバックが城の位置で止まって距離が測れなくなるのを防ぐ
         private const float SpawnOffset = 5f;
@@ -57,26 +57,9 @@ namespace MiniGame.PenguinWars.Battle.Tests
             return world;
         }
 
-        private static void Run(BattleWorld world, float seconds)
-        {
-            int steps = (int)System.Math.Round(seconds / StepTime);
-            for (int i = 0; i < steps; i++) world.Step(StepTime);
-        }
-
-        private static UnitState FindFirst(BattleWorld world, Side side)
-        {
-            foreach (UnitState unit in world.Units)
-            {
-                if (unit.Side == side) return unit;
-            }
-            return null;
-        }
-
         private static List<BattleEvent> DrainEvents(BattleWorld world, BattleEventType type)
         {
-            var events = new List<BattleEvent>();
-            world.DrainEvents(events);
-            return events.FindAll(e => e.Type == type);
+            return Drain(world).FindAll(e => e.Type == type);
         }
 
         private static int CountEvents(BattleWorld world, BattleEventType type)

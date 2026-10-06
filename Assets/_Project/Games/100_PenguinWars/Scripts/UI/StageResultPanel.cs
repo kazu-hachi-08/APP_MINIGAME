@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
-using MiniGame.Common.Audio;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -105,15 +104,13 @@ namespace MiniGame.PenguinWars
         private void ShowUnit(int index, int unitNo)
         {
             PenguinUnitData data = _catalog.Get(unitNo);
-            Sprite icon = data != null ? data.GetSprites(Side.Left).Icon : null;
-            _unlockIcons[index].sprite = icon;
-            _unlockIcons[index].enabled = icon != null;
-            _unlockNames[index].text = data != null ? data.DisplayName : $"No.{unitNo}";
+            UnitLabels.SetIcon(_unlockIcons[index], data, Side.Left);
+            _unlockNames[index].text = UnitLabels.Name(data, unitNo);
         }
 
         private void Choose(Action action)
         {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
+            PenguinUiSound.Click();
             gameObject.SetActive(false);
             action?.Invoke();
         }

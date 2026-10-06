@@ -34,11 +34,6 @@ namespace MiniGame.PenguinWars
         public string Back => _back;
         public int Scale => Mathf.Clamp(_scale, 1, MaxScale);
 
-        /// <summary>何も指定していない（基本ペンギンのまま）か。生成メニューが見た目を書き込んでよいかの判定に使う</summary>
-        public bool IsDefault => Body == DefaultBody && BodyColor == DefaultBodyColor &&
-                                 string.IsNullOrEmpty(_head) && string.IsNullOrEmpty(_hand) &&
-                                 string.IsNullOrEmpty(_back) && Scale == 1;
-
         public PenguinLook()
         {
         }

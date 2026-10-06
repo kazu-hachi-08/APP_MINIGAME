@@ -11,7 +11,6 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public class ZukanCell : MonoBehaviour
     {
-        private static readonly PenguinFrame[] WalkSequence = { PenguinFrame.Walk0, PenguinFrame.Walk1 };
         private const string LockedName = "？？？";
 
         [SerializeField] private Button _button;
@@ -32,8 +31,10 @@ namespace MiniGame.PenguinWars
             Stats = data.ToStats();
             _displayName = data.DisplayName;
             // 自分が使うキャラなので、出撃ボタンと同じ左陣営（青）の絵を見せる
-            _icon.Play(data.GetSprites(Side.Left), WalkSequence, phaseSteps);
+            _icon.Play(data.GetSprites(Side.Left), UnitSpriteAnimator.WalkFrames, phaseSteps);
             _nameLabel.text = _displayName;
+            // Show を呼び直しても、押したときの処理が重ならないようにする
+            _button.onClick.RemoveAllListeners();
             _button.onClick.AddListener(() => onClick(data));
             SetDimmed(false);
             gameObject.SetActive(true);

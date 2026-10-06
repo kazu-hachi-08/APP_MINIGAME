@@ -47,7 +47,6 @@ namespace MiniGame.PenguinWars.Battle
         public IReadOnlyList<UnitRole> BannedRoles { get; set; } = Array.Empty<UnitRole>();
 
         public bool IsBossStage => Index == StagesPerChapter;
-        public bool HasDeckRestriction => MaxUnitCost > 0 || (BannedRoles != null && BannedRoles.Count > 0);
 
         /// <summary>Balance から作った設定のうち、ステージで変わる分だけ上書きする（PenguinStageData.ApplyTo と同じ考え方）</summary>
         public void ApplyTo(BattleSettings settings)

@@ -7,13 +7,11 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// リザルトの上に「なかまになった！」のカードを1体ずつ出す（ステージ計画 Phase 7）。ペンギンは歩きコマで足踏みし、画面を押すと次のカードへ。
+    /// リザルトの上に「なかまになった！」のカードを1体ずつ出す（仕様書 §9）。ペンギンは歩きコマで足踏みし、画面を押すと次のカードへ。
     /// 全員出し終えたら閉じて、下のリザルト（右側に仲間の一覧がある）に戻る
     /// </summary>
     public class UnlockRevealPanel : MonoBehaviour
     {
-        private static readonly PenguinFrame[] StepFrames = { PenguinFrame.Walk0, PenguinFrame.Walk1 };
-
         [SerializeField] private PenguinUnitCatalog _catalog;
         [SerializeField] private PenguinWarsAudio _audio;
         [Tooltip("画面全体のボタン。どこを押しても次へ進める")]
@@ -58,8 +56,9 @@ namespace MiniGame.PenguinWars
         {
             int unitNo = _unitNos[_index];
             PenguinUnitData data = _catalog.Get(unitNo);
-            if (data != null) _icon.Play(data.GetSprites(Side.Left), StepFrames);
-            _nameLabel.text = data != null ? data.DisplayName : $"No.{unitNo}";
+            if (data != null) _icon.Play(data.GetSprites(Side.Left), UnitSpriteAnimator.WalkFrames);
+            else _icon.Clear();
+            _nameLabel.text = UnitLabels.Name(data, unitNo);
             _countLabel.text = $"{_index + 1}/{_unitNos.Count}";
             _shownTime = Time.unscaledTime;
             _card.localScale = Vector3.one * _popStartScale;

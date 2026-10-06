@@ -8,12 +8,11 @@ using Debug = UnityEngine.Debug;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// 全ステージを bot で自動プレイし、勝率・秒数・自城HP を表にする（ステージ計画 Phase 5）。
-    /// Phase 6 で数値を変えるたびに手で遊ばず、難しさの並びを確かめるため
+    /// 全ステージを bot で自動プレイし、勝率・秒数・自城HP を表にする（仕様書 §8.9）。
+    /// ステージの数値を変えるたびに手で遊ばず、難しさの並びを確かめるため
     /// </summary>
     public static class StageSimulationMenu
     {
-        private const string BalancePath = "Assets/_Project/Games/100_PenguinWars/Data/PenguinWarsBalance.asset";
         // Temp はプロジェクト直下の Git に入らないフォルダ。表は調整中に見返すだけなので残さない
         private const string OutputPath = "Temp/PenguinStageSim.md";
         private const int RunsPerSkill = 5;
@@ -24,10 +23,10 @@ namespace MiniGame.PenguinWars.Editor
         [MenuItem("Tools/MiniGame/PenguinWars/Simulate Stages")]
         public static void SimulateStages()
         {
-            var balance = AssetDatabase.LoadAssetAtPath<PenguinWarsBalance>(BalancePath);
+            var balance = AssetDatabase.LoadAssetAtPath<PenguinWarsBalance>(PenguinWarsSceneBuilder.BalancePath);
             if (balance == null)
             {
-                Debug.LogWarning($"{LogPrefix} {BalancePath} がありません。Tools > MiniGame > Rebuild PenguinWars を実行してください");
+                Debug.LogWarning($"{LogPrefix} {PenguinWarsSceneBuilder.BalancePath} がありません。Tools > MiniGame > Rebuild PenguinWars を実行してください");
                 return;
             }
 

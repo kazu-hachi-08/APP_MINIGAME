@@ -44,7 +44,7 @@ namespace MiniGame.PenguinWars
         private void BeginDraftAsHost()
         {
             var random = new System.Random(Environment.TickCount);
-            _draft = new DraftSession(_battleRunner.CollectAllUnitNos(), _balance.DeckSize, _balance.DraftOfferCount,
+            _draft = new DraftSession(_battleRunner.CollectAllUnitNos(), DeckRules.DeckSize, _balance.DraftOfferCount,
                 _balance.DraftPickTime, random);
             Phase = PenguinWarsPhase.Draft;
             ShowDraftRoundAsHost();
@@ -53,7 +53,7 @@ namespace MiniGame.PenguinWars
         /// <summary>ホストの候補は自分の画面へ、ゲストの候補はゲストへ送る（相手の候補・選択はお互い見せない）</summary>
         private void ShowDraftRoundAsHost()
         {
-            _draftPanel.ShowRound(_draft.Round, _draft.TotalRounds, _draft.GetOffer(Side.Left), _draft.GetPicks(Side.Left),
+            _draftPanel.ShowRound(_draft.Round, DeckRules.DeckSize, _draft.GetOffer(Side.Left), _draft.GetPicks(Side.Left),
                 _balance.DraftPickTime);
             _onlineLink.SendDraftRound(_draft.Round, _draft.GetOffer(Side.Right), _draft.GetPicks(Side.Right));
         }
@@ -98,7 +98,7 @@ namespace MiniGame.PenguinWars
 
             Phase = PenguinWarsPhase.Draft;
             _guestDraftRound = round;
-            _draftPanel.ShowRound(round, _balance.DeckSize, offer, picks, _balance.DraftPickTime);
+            _draftPanel.ShowRound(round, DeckRules.DeckSize, offer, picks, _balance.DraftPickTime);
         }
 
         // ---- 両方 ----
@@ -115,7 +115,7 @@ namespace MiniGame.PenguinWars
         private void ShowDeckReveal()
         {
             BattleWorld world = _battleRunner.World;
-            PenguinStageData stage = _battleRunner.CurrentStage;
+            PenguinStageData stage = _battleRunner.CurrentVersusStage;
             _deckRevealPanel.Show(world.GetDeck(Side.Left), world.GetDeck(Side.Right),
                 SeatNames.Get(MySeat), SeatNames.Get(OpponentSeat), stage != null ? stage.DisplayName : string.Empty);
         }

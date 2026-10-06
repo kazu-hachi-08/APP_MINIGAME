@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars
 {
     /// <summary>
-    /// リザルトの★を左から1つずつポンと出す（ステージ計画 Phase 7）。今回新しく取った★は光りながら跳ね続ける。
+    /// リザルトの★を左から1つずつポンと出す（仕様書 §9）。今回新しく取った★は光りながら跳ね続ける。
     /// リザルトは時間を止めた後に出ることがあるので、すべて unscaled の時間で動かす
     /// </summary>
     public class StarRevealAnimator : MonoBehaviour

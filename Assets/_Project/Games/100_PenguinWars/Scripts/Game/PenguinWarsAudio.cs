@@ -7,7 +7,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// ペンギン大戦争のSE（出撃ポンッ・ヒットペチッ・撃破・ペンギン砲・レベルUP・城崩れ、
-    /// ステージモードの警報・勝利・★・仲間・鍵）とBGMをプログラムで生成して鳴らす（仕様書 §9・ステージ計画 Phase 7）。
+    /// ステージモードの警報・勝利・★・仲間・鍵）とBGMをプログラムで生成して鳴らす（仕様書 §9）。
     /// 他のゲームの *Audio と同じく、正式な素材が用意できたらクリップ欄に差し込めばそのまま置き換わる
     /// </summary>
     public class PenguinWarsAudio : MonoBehaviour
@@ -41,7 +41,8 @@ namespace MiniGame.PenguinWars
         [Tooltip("一番よく鳴る音なので小さめにする")]
         [Range(0f, 1f)] [SerializeField] private float _hitVolume = 0.25f;
         [Range(0f, 1f)] [SerializeField] private float _deathVolume = 0.35f;
-        [Range(0f, 1f)] [SerializeField] private float _cannonVolume = 0.7f;
+        [Tooltip("ペンギン砲・城崩れ・なだれの地響き（同じ低い音なので1つの音量で揃える）")]
+        [Range(0f, 1f)] [SerializeField] private float _rumbleVolume = 0.7f;
         [Range(0f, 1f)] [SerializeField] private float _jingleVolume = 0.5f;
         [Range(0f, 1f)] [SerializeField] private float _bgmVolume = 0.6f;
         [SerializeField] private float _bgmFadeSeconds = 0.5f;
@@ -79,9 +80,9 @@ namespace MiniGame.PenguinWars
 
         public void PlayDeath() => Play(_deathClip, _deathVolume, RandomPitch(), _defaultMinInterval);
 
-        public void PlayCannon() => Play(_cannonClip, _cannonVolume, 1f, _defaultMinInterval);
+        public void PlayCannon() => Play(_cannonClip, _rumbleVolume, 1f, _defaultMinInterval);
 
-        public void PlayCollapse() => Play(_collapseClip, _cannonVolume, 1f, _defaultMinInterval);
+        public void PlayCollapse() => Play(_collapseClip, _rumbleVolume, 1f, _defaultMinInterval);
 
         public void PlayAlarm() => Play(_alarmClip, _jingleVolume, 1f, _defaultMinInterval);
 

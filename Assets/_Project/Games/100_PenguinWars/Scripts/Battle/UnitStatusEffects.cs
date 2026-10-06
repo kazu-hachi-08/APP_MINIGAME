@@ -15,6 +15,9 @@ namespace MiniGame.PenguinWars.Battle
     /// </summary>
     public class UnitStatusEffects
     {
+        /// <summary>ゲストで「かかっている」ことを表す仮の残り秒。ゲストは Tick しないので 0 より大きければ値は何でもよい</summary>
+        private const float GuestPlaceholderTime = 1f;
+
         public float FreezeTime { get; private set; }
         public float SlowTime { get; private set; }
 
@@ -33,8 +36,8 @@ namespace MiniGame.PenguinWars.Battle
         /// </summary>
         internal void Restore(bool isFrozen, bool isSlowed)
         {
-            FreezeTime = isFrozen ? 1f : 0f;
-            SlowTime = isSlowed ? 1f : 0f;
+            FreezeTime = isFrozen ? GuestPlaceholderTime : 0f;
+            SlowTime = isSlowed ? GuestPlaceholderTime : 0f;
         }
 
         public void Tick(float deltaTime)

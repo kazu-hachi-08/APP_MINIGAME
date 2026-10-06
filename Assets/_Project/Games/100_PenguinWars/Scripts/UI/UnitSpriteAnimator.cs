@@ -9,6 +9,9 @@ namespace MiniGame.PenguinWars
     /// </summary>
     public class UnitSpriteAnimator : MonoBehaviour
     {
+        /// <summary>その場で足踏みする並び（ずかん・編成のマス、なかまになった！のカード）</summary>
+        public static readonly PenguinFrame[] WalkFrames = { PenguinFrame.Walk0, PenguinFrame.Walk1 };
+
         [SerializeField] private Image _image;
         [SerializeField] private float _frameSeconds = 0.2f;
 
@@ -23,6 +26,14 @@ namespace MiniGame.PenguinWars
             _sequence = sequence;
             _phaseSteps = phaseSteps;
             ApplyFrame();
+        }
+
+        /// <summary>絵の無いキャラ（カタログに無い No）を出すとき、前のキャラの絵が残らないよう消す</summary>
+        public void Clear()
+        {
+            _sprites = null;
+            _image.sprite = null;
+            _image.enabled = false;
         }
 
         /// <summary>未解放キャラを黒いシルエットにするときに使う（白で元の色）</summary>

@@ -1,4 +1,3 @@
-using MiniGame.Common.Audio;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 using UnityEngine.UI;
@@ -42,7 +41,7 @@ namespace MiniGame.PenguinWars
 
         private static string FormatStats(UnitStats stats)
         {
-            return $"役割　{UnitLabels.Role(stats.Role)}・{UnitLabels.AttackRange(stats.IsAreaAttack)}\n"
+            return $"役割　{UnitLabels.RoleAndRange(stats)}\n"
                 + $"コスト　{stats.Cost}　　再生産　{stats.Cooldown.ToString(NumberFormat)}秒\n"
                 + $"体力　{stats.MaxHp}　　攻撃力　{stats.Attack}\n"
                 + $"射程　{stats.Range.ToString(NumberFormat)}　　速度　{stats.MoveSpeed.ToString(NumberFormat)}\n"
@@ -51,7 +50,7 @@ namespace MiniGame.PenguinWars
 
         private void Close()
         {
-            if (AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.ButtonClick);
+            PenguinUiSound.Click();
             Hide();
         }
     }

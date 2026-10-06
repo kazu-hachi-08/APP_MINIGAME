@@ -58,18 +58,14 @@ namespace MiniGame.PenguinWars.Editor
         private const float SettingsTitleHeight = 90f;
         private const int SettingsTitleFontSize = 60;
         private const float SettingsButtonHeight = 110f;
-        private static readonly Color SettingsDimColor = new Color(0f, 0f, 0f, 0.7f);
-        private static readonly Color SettingsPanelColor = new Color(0.12f, 0.14f, 0.18f);
         private static readonly Color SettingsCloseColor = new Color(0.18f, 0.55f, 0.9f);
 
         /// <summary>モード選択より手前に作り、最初に見える画面にする</summary>
         private static PenguinWarsTitlePanel CreateTitlePanel(Transform canvas, PenguinUnitCatalog catalog,
             BattleRunner battleRunner, BattleCamera battleCamera)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("TitlePanel", canvas);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // 背景は raycastTarget を残し、タイトル中に戦場のドラッグや下のボタンが効かないようにする
-            panelObj.AddComponent<Image>().color = TitleBackColor;
+            GameObject panelObj = CreateFullScreenPanel(canvas, "TitlePanel", TitleBackColor);
 
             RectTransform logo = CreateTitleLogo(panelObj.transform);
             var icons = new Image[ParadeCount];
@@ -116,27 +112,17 @@ namespace MiniGame.PenguinWars.Editor
             return logo.rectTransform;
         }
 
-        private static Button CreateTitleButton(Transform parent, string name, string label, Vector2 size, Vector2 position, Color color)
-        {
-            GameObject buttonObj = UIDialogBuilder.CreateButton(parent, name, label, size.x, size.y, color);
-            SetAnchor(buttonObj.GetComponent<RectTransform>(), CenterAnchor, position);
-            buttonObj.GetComponentInChildren<Text>().fontSize = TitleButtonFontSize;
-            return buttonObj.GetComponent<Button>();
-        }
-
         /// <summary>ポーズ画面と同じく項目を上から積むだけにして、座標計算をしなくて済むようにする</summary>
         private static PenguinWarsSettingsPanel CreateSettingsPanel(Transform parent)
         {
-            GameObject dimObj = UIDialogBuilder.CreateUIObject("SettingsPanel", parent);
-            UIDialogBuilder.SetStretchAll(dimObj.GetComponent<RectTransform>());
-            dimObj.AddComponent<Image>().color = SettingsDimColor;
+            GameObject dimObj = CreateFullScreenPanel(parent, "SettingsPanel", DialogDimColor);
 
             GameObject boxObj = UIDialogBuilder.CreateUIObject("Box", dimObj.transform);
             RectTransform boxRect = boxObj.GetComponent<RectTransform>();
             SetAnchor(boxRect, CenterAnchor, Vector2.zero);
             boxRect.pivot = new Vector2(0.5f, 0.5f);
             boxRect.sizeDelta = new Vector2(SettingsPanelWidth, 0f);
-            boxObj.AddComponent<Image>().color = SettingsPanelColor;
+            boxObj.AddComponent<Image>().color = DialogBoxColor;
             AddVerticalLayout(boxObj);
 
             GameObject titleObj = UIDialogBuilder.CreateUIObject("Title", boxObj.transform);

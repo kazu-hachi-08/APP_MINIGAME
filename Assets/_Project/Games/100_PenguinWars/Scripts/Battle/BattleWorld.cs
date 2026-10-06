@@ -5,7 +5,7 @@ namespace MiniGame.PenguinWars.Battle
 {
     /// <summary>
     /// 戦闘のすべて（ユニット・城・お金・砲）を持つ純C#の世界。MonoBehaviour は Enqueue で操作を渡し、Step で進め、状態とイベントを読むだけにする。
-    /// オンラインではホストだけがこれを動かす（INDEX「全体設計」）。
+    /// オンラインではホストだけがこれを動かす（仕様書 §10.2）。
     /// このファイルは準備・状態の読み出し・操作の処理。ユニットの行動とダメージは BattleWorld.Combat.cs、対戦の時間切れは BattleWorld.Versus.cs、なだれは BattleWorld.Avalanche.cs、
     /// ステージのギミック（敵の砲・編成制限）は BattleWorld.Gimmicks.cs
     /// </summary>
@@ -106,13 +106,19 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>今出撃できるか。ボタンを暗くする判定と実際の出撃で同じ条件を使うため、ここ1か所にまとめる</summary>
         public bool CanSpawn(Side side, int slotIndex)
         {
-            IReadOnlyList<UnitStats> deck = _decks[(int)side];
-            if (deck == null || slotIndex < 0 || slotIndex >= deck.Count) return false;
+            if (!IsValidSlot(side, slotIndex)) return false;
             if (CountUnits(side) >= _settings.MaxUnitsPerSide) return false;
             if (!IsAllowedByRules(side, slotIndex)) return false;
             if (IsSpawnFree(side)) return true;
 
-            return GetSlot(side, slotIndex).IsReady && GetWallet(side).CanAfford(deck[slotIndex].Cost);
+            return GetSlot(side, slotIndex).IsReady && GetWallet(side).CanAfford(_decks[(int)side][slotIndex].Cost);
+        }
+
+        /// <summary>編成が設定済みで、slotIndex がその範囲内か（UI や通信から来た番号をそのまま信用しないため）</summary>
+        private bool IsValidSlot(Side side, int slotIndex)
+        {
+            IReadOnlyList<UnitStats> deck = _decks[(int)side];
+            return deck != null && slotIndex >= 0 && slotIndex < deck.Count;
         }
 
         public int CountUnits(Side side)
@@ -201,8 +207,7 @@ namespace MiniGame.PenguinWars.Battle
         {
             if (_enemyScript == null) return;
 
-            float castleHpRatio = _rightCastle.MaxHp > 0 ? (float)_rightCastle.Hp / _rightCastle.MaxHp : 0f;
-            int bossNo = _enemyScript.Tick(deltaTime, castleHpRatio, _enemySpawns);
+            int bossNo = _enemyScript.Tick(deltaTime, _rightCastle.HpRatio, _enemySpawns);
             foreach (EnemySpawn spawn in _enemySpawns)
             {
                 // 上限を超えた分は捨てる（溜めておくと、空いた瞬間に一斉に湧いて理不尽になるため）

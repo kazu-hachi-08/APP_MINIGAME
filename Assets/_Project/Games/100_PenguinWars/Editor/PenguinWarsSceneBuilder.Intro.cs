@@ -32,10 +32,8 @@ namespace MiniGame.PenguinWars.Editor
 
         private static DeckIntroPanel CreateDeckIntroPanel(Transform canvas, PenguinUnitCatalog catalog)
         {
-            GameObject panelObj = UIDialogBuilder.CreateUIObject("DeckIntroPanel", canvas);
-            UIDialogBuilder.SetStretchAll(panelObj.GetComponent<RectTransform>());
             // 背景は raycastTarget を残し、発表中に下の出撃ボタンが押せないようにする
-            panelObj.AddComponent<Image>().color = IntroBackColor;
+            GameObject panelObj = CreateFullScreenPanel(canvas, "DeckIntroPanel", IntroBackColor);
 
             // 中身（ステージ名・特別ルール）は DeckIntroPanel が出すたびに書く
             Text title = CreateText(panelObj.transform, "Title", IntroTitleFontSize, TopCenterAnchor, IntroTitlePosition, IntroTitleSize, MessageColor);
@@ -75,10 +73,7 @@ namespace MiniGame.PenguinWars.Editor
             icon.preserveAspect = true;
             Text name = CreateText(cellObj.transform, "Name", IntroNameFontSize, CenterAnchor, IntroNamePosition, IntroNameSize, Color.white);
             // 長い名前でも枠に収める（出撃ボタンと同じ理由）
-            name.verticalOverflow = VerticalWrapMode.Truncate;
-            name.resizeTextForBestFit = true;
-            name.resizeTextMinSize = IntroNameMinFontSize;
-            name.resizeTextMaxSize = IntroNameFontSize;
+            FitText(name, IntroNameMinFontSize);
             return (icon, name);
         }
     }

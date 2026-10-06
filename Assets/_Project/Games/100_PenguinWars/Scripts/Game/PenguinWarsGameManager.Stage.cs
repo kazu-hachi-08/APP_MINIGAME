@@ -1,6 +1,5 @@
 using System;
 using MiniGame.Common.Audio;
-using MiniGame.Common.Core;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 
@@ -110,11 +109,9 @@ namespace MiniGame.PenguinWars
         /// <summary>BaseMiniGameManager.FinishGame と同じ状態の進め方をして、表示だけ専用のリザルトにする</summary>
         private void ShowStageResult(bool isClear, StageResultContent content, Action onNext)
         {
-            ChangeState(MiniGameState.GameOver);
             // クリアは城が崩れ始めたときに勝利のジングルを鳴らしている（BattleEventPresenter）ので、ここでは重ねない
             if (!isClear && AudioManager.HasInstance) AudioManager.Instance.PlaySe(SeId.GameOver);
-            OnGameOver(isClear);
-            ChangeState(MiniGameState.Result);
+            EnterResultState(isClear);
             content.Detail = $"{StageLabels.Title(_currentStage)}\n{content.Detail}";
             _stageResultPanel.Show(content, onNext, RestartGame, ReloadIntoStageSelect);
         }
