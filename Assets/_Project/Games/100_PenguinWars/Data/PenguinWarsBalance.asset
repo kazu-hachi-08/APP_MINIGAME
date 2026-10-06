@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fcc6266e5e06ec4ba8db384d2385301, type: 3}
+  m_Name: PenguinWarsBalance
+  m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinWarsBalance
+  _fieldLength: 30
+  _castleHpVersus: 5000
+  _spawnOffset: 1.5
+  _maxUnitsPerSide: 30
+  _versusTimeLimit: 300
+  _draftOfferCount: 3
+  _draftPickTime: 15
+  _walletCaps: 58020000e80300007805000008070000980800008c0a0000800c0000a00f0000i
+  _walletRates:
+  - 30
+  - 40
+  - 50
+  - 60
+  - 70
+  - 80
+  - 90
+  - 100
+  _walletLevelUpCosts: 50000000a0000000f00000004001000090010000e001000030020000i
+  _killRewardRate: 0.5
+  _cannonChargeTime: 40
+  _cannonRangeRatio: 0.6
+  _cannonDamage: 100
+  _knockbackDistance: 1.5
+  _knockbackDuration: 0.5
+  _slowSpeedMultiplier: 0.5
+  _castleKillerMultiplier: 3

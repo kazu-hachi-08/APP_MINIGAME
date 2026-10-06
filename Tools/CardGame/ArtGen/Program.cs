@@ -6,8 +6,8 @@ using Newtonsoft.Json.Linq;
 // カードイラストを Gemini の画像生成 API で一括生成する開発ツール。
 //   dotnet run --project Tools/CardGame/ArtGen --[--style real|hs] [--provider gemini|pollinations|local] [--only K001,K002] [--limit N] [--force] [--dry-run] [--model NAME] [--out DIR] [--seed-offset N]
 //   素材の変換(机の背景・カード枠)は Assets.cs を参照
-// - 入力: Docs/50_CardGame/art/card-art-prompts.csv(`dotnet run --project Core/CardGame.Cli -- art` で生成)
-// - 出力: Assets/_Project/Games/50_CardGame/Resources/CardArt/<ID>.jpg(既にあるものはスキップ。--force で上書き)
+// - 入力: Docs/200_CardGame/art/card-art-prompts.csv(`dotnet run --project Core/CardGame.Cli -- art` で生成)
+// - 出力: Assets/_Project/Games/200_CardGame/Resources/CardArt/<ID>.jpg(既にあるものはスキップ。--force で上書き)
 // - API キーは環境変数 GEMINI_API_KEY から読む(リポジトリには置かない)
 
 var args_ = Environment.GetCommandLineArgs().Skip(1).ToList();
@@ -21,8 +21,8 @@ if (args_.Count > 0 && (args_[0] == "table" || args_[0] == "frame" || args_[0] =
     using var assetHttp = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
     return await AssetTools.RunAsync(args_, repoRoot, assetHttp);
 }
-var csvPath = Path.Combine(repoRoot, "Docs", "50_CardGame", "art", "card-art-prompts.csv");
-var outDir = Opt("--out") ?? Path.Combine(repoRoot, "Assets", "_Project", "Games", "50_CardGame", "Resources", "CardArt"); // --out で別フォルダに(見本出し用)
+var csvPath = Path.Combine(repoRoot, "Docs", "200_CardGame", "art", "card-art-prompts.csv");
+var outDir = Opt("--out") ?? Path.Combine(repoRoot, "Assets", "_Project", "Games", "200_CardGame", "Resources", "CardArt"); // --out で別フォルダに(見本出し用)
 Directory.CreateDirectory(outDir);
 
 var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");

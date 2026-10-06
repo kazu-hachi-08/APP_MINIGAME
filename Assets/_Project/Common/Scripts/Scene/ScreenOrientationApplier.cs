@@ -81,9 +81,31 @@ namespace MiniGame.Common.Scene
             Screen.autorotateToLandscapeRight = true;
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
-            Screen.orientation = ScreenOrientation.AutoRotation;
+
+            // AutoRotationだけだと縦持ちのまま入った端末がセンサー検知まで縦に残るため、
+            // まず横に固定して強制的に回転させる
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            EnableLandscapeAutoRotationNextFrame();
+
             WebScreen.SetLandscape();
             StandaloneScreen.SetLandscape();
+        }
+
+        /// <summary>
+        /// 同じフレームで orientation を上書きすると固定指定が反映されないことがあるため、
+        /// 1フレーム待ってから左右どちらの横持ちにも追従させる
+        /// </summary>
+        private static async void EnableLandscapeAutoRotationNextFrame()
+        {
+            await Awaitable.NextFrameAsync();
+
+            // 待っている間に縦画面のシーンへ切り替わっていたら、その指定を上書きしない
+            if (Screen.autorotateToPortrait)
+            {
+                return;
+            }
+
+            Screen.orientation = ScreenOrientation.AutoRotation;
         }
     }
 }

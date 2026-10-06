@@ -13,7 +13,7 @@ use open qw(:std :encoding(UTF-8));
 my %c;
 # --names: カード名に出る文字だけ(カード名用の書体。かな・英数も足す)
 if (grep { $_ eq "--names" } @ARGV) {
-    for my $f (glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/cards/*.json")) {
+    for my $f (glob("Assets/_Project/Games/200_CardGame/Core/Data/Resources/cards/*.json")) {
         open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
         local $/; my $t = <$fh>;
         while ($t =~ /"name":\s*"([^"]*)"/g) { $c{$_} = 1 for split //, $1 }
@@ -25,7 +25,7 @@ if (grep { $_ eq "--names" } @ARGV) {
     printf STDERR "カード名の文字数 %d\n", scalar @all;
     exit 0;
 }
-my @cs = (glob("Assets/_Project/Games/50_CardGame/Scripts/*/*.cs"), glob("Assets/_Project/Games/50_CardGame/Core/*/*.cs"));
+my @cs = (glob("Assets/_Project/Games/200_CardGame/Scripts/*/*.cs"), glob("Assets/_Project/Games/200_CardGame/Core/*/*.cs"));
 for my $f (@cs) {
     open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
     while (my $line = <$fh>) {
@@ -33,7 +33,7 @@ for my $f (@cs) {
         while ($line =~ /"((?:[^"\\]|\\.)*)"/g) { $c{$_} = 1 for split //, $1 }
     }
 }
-for my $f (glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/cards/*.json"), glob("Assets/_Project/Games/50_CardGame/Core/Data/Resources/decks/*.json")) {
+for my $f (glob("Assets/_Project/Games/200_CardGame/Core/Data/Resources/cards/*.json"), glob("Assets/_Project/Games/200_CardGame/Core/Data/Resources/decks/*.json")) {
     open my $fh, "<:encoding(UTF-8)", $f or die "$f: $!";
     local $/; my $t = <$fh>;
     $c{$_} = 1 for split //, $t;
