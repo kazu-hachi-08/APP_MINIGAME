@@ -1,8 +1,8 @@
 # カードゲーム 素材生成ツール
 
-カードゲーム(`Assets/_Project/Games/50_CardGame/`)の画像・音・フォントを作るツール。移植元プロジェクトから持ってきたもの。
+カードゲーム(`Assets/_Project/Games/200_CardGame/`)の画像・音・フォントを作るツール。移植元プロジェクトから持ってきたもの。
 
-> 入出力のパスは本リポジトリの構成に合わせてある(素材は `Assets/_Project/Games/50_CardGame/Resources/`、設定 JSON は `Tools/CardGame/ArtGen/`)。
+> 入出力のパスは本リポジトリの構成に合わせてある(素材は `Assets/_Project/Games/200_CardGame/Resources/`、設定 JSON は `Tools/CardGame/ArtGen/`)。
 > コマンドはリポジトリのルートで実行する。ルート判定は `CLAUDE.md` の有無で行っている(`FindRepoRoot`)。
 
 ## 画像生成(ArtGen / ローカル ComfyUI)
@@ -15,7 +15,7 @@
   モデルは `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\models\checkpoints\` に置く
 - カード生成: `dotnet run --project Tools/CardGame/ArtGen -- --provider local --only K010 --force`
   - 既定はハースストーン風。SDXL 832×1216 → 512×1024 JPEG
-  - 入力のプロンプトは `Docs/50_CardGame/art/card-art-prompts.csv`
+  - 入力のプロンプトは `Docs/200_CardGame/art/card-art-prompts.csv`
   - 題材は `ArtGen/subjects.json`(人物を描かせたくない題材は `no character` を含める)。検品で選び直したシードは `ArtGen/seed-overrides.json`
   - 生成後は必ず全枚を拡大して検品する(剣が 2 本・鞘が剣になる・題材と違う人物が出る、が起きやすい)
 - 生成中は GPU を占有する。Unity のビルドと同時に回さない

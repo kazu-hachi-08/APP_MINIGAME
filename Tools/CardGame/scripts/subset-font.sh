@@ -10,7 +10,7 @@
 # カードや画面の文言に新しい漢字を足したら、これを実行し直す(足りない字は表示されない)。
 set -euo pipefail
 cd "$(dirname "$0")/../../.."   # リポジトリのルート(font-chars.pl もルート基準のパスで探す)
-FONTS=Assets/_Project/Games/50_CardGame/Resources/Fonts
+FONTS=Assets/_Project/Games/200_CardGame/Resources/Fonts
 OUT=$FONTS/NotoSerifJP-Bold.ttf
 TMP=$(mktemp -d)
 perl Tools/CardGame/scripts/font-chars.pl "$TMP/chars.txt"

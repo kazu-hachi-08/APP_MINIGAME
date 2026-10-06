@@ -1,6 +1,6 @@
 # ペンギン大戦争 実装計画（INDEX）
 
-仕様書 `Docs/06_PENGUIN_WARS_SPEC.md` を実装するための **一時的な** 計画書。全フェーズ完了後にフォルダごと削除する（Phase 12）。
+仕様書 `Docs/100_PENGUIN_WARS_SPEC.md` を実装するための **一時的な** 計画書。全フェーズ完了後にフォルダごと削除する（Phase 12）。
 
 ---
 
@@ -65,7 +65,7 @@ View（UnitView / CastleView / HUD / 音・演出）
 ### フォルダ
 
 ```text
-Assets/_Project/Games/06_PenguinWars/
+Assets/_Project/Games/100_PenguinWars/
 ├ Scenes/PenguinWarsScene.unity          … SceneBuilderで生成（手で編集しない）
 ├ Data/                                   … ScriptableObjectアセット
 ├ Scripts/

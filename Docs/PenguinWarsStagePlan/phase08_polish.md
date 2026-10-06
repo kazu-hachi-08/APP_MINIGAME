@@ -7,7 +7,7 @@
 ## 読むもの
 
 * 全フェーズの引き継ぎメモ（このフェーズだけは全部読む。仕様書に反映するため）
-* 仕様書 `Docs/06_PENGUIN_WARS_SPEC.md` 全体
+* 仕様書 `Docs/100_PENGUIN_WARS_SPEC.md` 全体
 * 既存コード: `GuideTopics.cs` / `GuideDemoDirector.cs` / `PenguinWarsTitlePanel.cs`
 
 ## 作るもの
