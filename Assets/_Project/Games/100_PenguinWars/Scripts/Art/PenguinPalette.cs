@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 
-namespace MiniGame.PenguinWars.Editor
+namespace MiniGame.PenguinWars.Art
 {
     /// <summary>
     /// ドットパターンの1文字 → 色。敵味方の違いは「体の暗い部分(k)とチーム色(t/u)」の差し替えだけにする（仕様書 §7.2）。
@@ -65,6 +65,9 @@ namespace MiniGame.PenguinWars.Editor
             ["gray"] = new Color32(125, 125, 135, 255),
             ["aurora"] = new Color32(150, 90, 215, 255),
         };
+
+        /// <summary>じぶんペンギンの作成画面で選べる体色の一覧</summary>
+        public static IEnumerable<string> BodyColorIds => BodyColors.Keys;
 
         public static bool HasBodyColor(string id)
         {

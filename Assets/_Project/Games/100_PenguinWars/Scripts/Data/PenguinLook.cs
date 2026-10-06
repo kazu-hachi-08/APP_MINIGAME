@@ -5,7 +5,7 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// 見た目のパーツ指定（仕様書 §7.2）。50体を手描きせず「基本ペンギン＋パーツ」で作るため、キャラごとに持つのは ID 文字列だけ。
-    /// パーツの中身は Editor/Art の PenguinBodyPatterns / PenguinPartPatterns にある
+    /// パーツの中身は Scripts/Art の PenguinBodyPatterns / PenguinPartPatterns にある
     /// </summary>
     [Serializable]
     public class PenguinLook

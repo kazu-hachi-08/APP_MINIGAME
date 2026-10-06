@@ -1,3 +1,4 @@
+using MiniGame.PenguinWars.Art;
 using MiniGame.PenguinWars.Battle;
 using UnityEditor;
 using UnityEngine;
@@ -78,19 +79,10 @@ namespace MiniGame.PenguinWars.Editor
                 frames.GetArrayElementAtIndex(i).objectReferenceValue =
                     PenguinSpriteWriter.Save(path, pixels, size, size, pixelsPerUnit, FootPivot);
 
-                if (frame == PenguinFrame.Walk0) headRow = TopOpaqueRow(pixels, size);
+                if (frame == PenguinFrame.Walk0) headRow = PenguinFrameComposer.TopOpaqueRow(pixels);
             }
 
             spriteSet.FindPropertyRelative("_headHeight").floatValue = (headRow + 1) / pixelsPerUnit;
-        }
-
-        private static int TopOpaqueRow(Color32[] pixels, int size)
-        {
-            for (int i = pixels.Length - 1; i >= 0; i--)
-            {
-                if (pixels[i].a > 0) return i / size;
-            }
-            return 0;
         }
     }
 }

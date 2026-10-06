@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using MiniGame.PenguinWars.Battle;
 using UnityEngine;
 
-namespace MiniGame.PenguinWars.Editor
+namespace MiniGame.PenguinWars.Art
 {
     /// <summary>
     /// 基本体＋パーツを重ね描きして1コマ分のピクセルを作る。1キャラを丸ごと描かずに済むよう、コマごとの違いは「ずらし」だけで表す
@@ -47,6 +47,19 @@ namespace MiniGame.PenguinWars.Editor
                 case PenguinFrame.Knockback: return RotateBackward(Draw(look, side, Walk0Pose));
                 default: return Draw(look, side, Walk0Pose);
             }
+        }
+
+        /// <summary>
+        /// 一番上の不透明なドットの行（足元 = 0）。HPバーを頭の上に置くための高さを、
+        /// PNG を書くエディタ生成と実行時生成で同じ測り方にするためここに置く
+        /// </summary>
+        public static int TopOpaqueRow(Color32[] pixels)
+        {
+            for (int i = pixels.Length - 1; i >= 0; i--)
+            {
+                if (pixels[i].a > 0) return i / CanvasSize;
+            }
+            return 0;
         }
 
         private static Color32[] Draw(PenguinLook look, Side side, Pose pose)

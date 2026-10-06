@@ -36,10 +36,43 @@ namespace MiniGame.PenguinWars
         [SerializeField] private UnitSpriteSet _leftSprites = new UnitSpriteSet();
         [SerializeField] private UnitSpriteSet _rightSprites = new UnitSpriteSet();
 
+        // 実行時に作ったものだけ true。アセットの絵を Destroy してしまわないように見分ける
+        [System.NonSerialized] private bool _isRuntime;
+
         public int No => _no;
         public string DisplayName => _displayName;
         public UnitRole Role => _role;
         public PenguinLook Look => _look;
+
+        public bool IsRuntime => _isRuntime;
+
+        /// <summary>
+        /// じぶんペンギン用に実行時にデータを作る。アセットと同じ型にしておけば、catalog.Get(no) を使う UI・View を書き換えずに済む
+        /// </summary>
+        public static PenguinUnitData CreateRuntime(UnitStats stats, string name, PenguinLook look,
+            UnitSpriteSet left, UnitSpriteSet right)
+        {
+            var data = CreateInstance<PenguinUnitData>();
+            data.name = $"Runtime_{stats.UnitNo}";
+            data._isRuntime = true;
+            data._no = stats.UnitNo;
+            data._displayName = name;
+            data._look = look;
+            data._leftSprites = left;
+            data._rightSprites = right;
+            data.CopyStats(stats);
+            return data;
+        }
+
+        /// <summary>実行時に作ったデータを絵ごと捨てる。アセットには何もしない</summary>
+        public void DestroyRuntime()
+        {
+            if (!_isRuntime) return;
+
+            RuntimeUnitSprites.Destroy(_leftSprites);
+            RuntimeUnitSprites.Destroy(_rightSprites);
+            Destroy(this);
+        }
 
         public UnitSpriteSet GetSprites(Side side)
         {
@@ -65,6 +98,23 @@ namespace MiniGame.PenguinWars
                 KnockbackCount = _knockbackCount,
                 Abilities = ToAbilities(),
             };
+        }
+
+        private void CopyStats(UnitStats stats)
+        {
+            _role = stats.Role;
+            _cost = stats.Cost;
+            _cooldown = stats.Cooldown;
+            _maxHp = stats.MaxHp;
+            _attack = stats.Attack;
+            _range = stats.Range;
+            _attackInterval = stats.AttackInterval;
+            _windup = stats.Windup;
+            _moveSpeed = stats.MoveSpeed;
+            _isAreaAttack = stats.IsAreaAttack;
+            _knockbackCount = stats.KnockbackCount;
+            _abilities = new PenguinAbilityEntry[stats.Abilities.Count];
+            for (int i = 0; i < _abilities.Length; i++) _abilities[i] = new PenguinAbilityEntry(stats.Abilities[i]);
         }
 
         private UnitAbility[] ToAbilities()

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace MiniGame.PenguinWars.Editor
+namespace MiniGame.PenguinWars.Art
 {
     /// <summary>
     /// 体の形1種類分。右向きで描き、最後の1行は足（歩きのコマで動かすため本体と分けて扱う）。

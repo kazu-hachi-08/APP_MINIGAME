@@ -64,7 +64,25 @@
 
 ## 引き継ぎメモ（実装後に記入）
 
-* 作ったファイル:
+* 作ったファイル（`Assets/_Project/Games/100_PenguinWars/` 以下）:
+  * 移動（`git mv`・`.meta` ごと・GUID そのまま）: `Editor/Art/` → `Scripts/Art/` に `PenguinFrameComposer` / `PenguinBodyPatterns` / `PenguinPalette` / `PenguinPartPatterns`（partial 5本）。namespace は `MiniGame.PenguinWars.Art`。`Scripts/Art.meta`（フォルダ）は Unity を開いたときに作られる
+  * 新規: `Scripts/Art/PenguinPartCatalog.cs`（`PenguinPartSlot` enum も同じファイル） / `Scripts/View/RuntimeUnitSprites.cs` / `Scripts/Game/CustomUnitFactory.cs`
+  * 変更: `UnitSpriteSet`（コンストラクタ追加） / `PenguinUnitData`（`CreateRuntime` ほか） / `PenguinUnitCatalog`（実行時登録） / `PenguinAbilityEntry`（`UnitAbility` から作るコンストラクタ） / `Editor/Art/PenguinArtGenerator`（using と頭の高さの測り方を合成側へ） / `PenguinLook`（コメントのパスだけ）
+  * **一時ファイル**: `Editor/CustomUnitDebugMenu.cs`（確認用。確認が終わったら消す）
 * 公開API:
+  * `PenguinFrameComposer.TopOpaqueRow(pixels)`（頭の高さの測り方。エディタ生成と実行時生成で共通）
+  * `PenguinPalette.BodyColorIds`
+  * `PenguinPartCatalog`: `Ids(slot)`（頭・手・背中は先頭に「なし」= 空文字） / `IsKnown(slot, id)` / `IsOptional(slot)` / `Sanitize(slot, id)`（知らない ID → 体は basic・体色は standard・ほかは空）
+  * `RuntimeUnitSprites.Build(look, side) → UnitSpriteSet` / `Destroy(UnitSpriteSet)`
+  * `PenguinUnitData.CreateRuntime(stats, name, look, left, right)` / `IsRuntime` / `DestroyRuntime()`（実行時に作ったものだけ絵ごと捨てる。アセットには何もしない）
+  * `PenguinUnitCatalog.RegisterRuntime(data)`（同じ No なら古い方を `DestroyRuntime` して差し替え） / `ClearRuntime()` / `Get(no)` は実行時登録を先に見る。`Units` には含めない
+  * `CustomUnitFactory.Create(def, no)`（def は Sanitize 済みを渡す） / `ToLook(def)`（ID の掃除＋大型だけ拡大率2）
 * 計画から変えた点:
+  * `CreateRuntime` は数値を `PenguinUnitData` のシリアライズ用フィールドへ写す（能力は `PenguinAbilityEntry` に詰め替え）。`ToStats()` は既存キャラと同じ道を通る
+  * 知らない ID の掃除は `PenguinPartCatalog.Sanitize` に置いた（Factory はそれを呼ぶだけ）
+  * EditMode テストは作らなかった（テスト asmdef は Battle しか参照していないため）。AI は Unity の生成 csproj を一時的に直して dotnet でコンパイルが通ることだけ確かめた（エラー0・警告0）
 * 次フェーズへの注意:
+  * 作成画面のプレビューは `CustomUnitFactory.Create(def, 何かのNo)` → `catalog.RegisterRuntime` を◀▶のたびに呼べばよい（古いのは自動で捨てられる）。登録せずに使うなら、使い終わったら `data.DestroyRuntime()` を呼ぶ
+  * `BattleRunner` は数値を `catalog.Units` から集める（`CollectStatsByNo`）ので、実行時登録したキャラはまだ戦闘に出せない。Phase 5 で `ToSortedDeck` などに実行時登録分を足す必要がある（デバッグメニューはリフレクションで一時的に差し込んでいる）
+  * `Destroy` は再生中のみ動く（エディタの非再生中に Factory を使うなら `DestroyImmediate` が要る）
+  * 実行時登録は ScriptableObject の `[NonSerialized]` 辞書なので、ドメインリロードなしの再生設定だと前回の登録が残り得る。対戦の初期化で `ClearRuntime` を呼ぶ

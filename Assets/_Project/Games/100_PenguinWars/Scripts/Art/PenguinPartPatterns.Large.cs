@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace MiniGame.PenguinWars.Editor
+namespace MiniGame.PenguinWars.Art
 {
     /// <summary>
     /// 体より大きいパーツ（かまくら・氷山・オーロラ・乗り物）。行数が多く Backs の辞書が読みにくくなるので、メソッドに分けてここに置く。
