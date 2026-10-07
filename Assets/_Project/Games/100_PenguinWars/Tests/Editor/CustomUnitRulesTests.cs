@@ -317,5 +317,39 @@ namespace MiniGame.PenguinWars.Battle.Tests
             Assert.AreEqual(2f, CustomUnitRules.ToAbility(UnitAbilityType.Freeze, UnitRole.Wall).Duration);
             Assert.AreEqual(3f, CustomUnitRules.ToAbility(UnitAbilityType.Slow, UnitRole.Wall).Duration);
         }
+
+        // ---- 画面の「コスト N から」 ----
+
+        [TestCase(UnitRole.Wall, 2, 90)]
+        [TestCase(UnitRole.Wall, 3, 120)]
+        [TestCase(UnitRole.Attacker, 1, 200)]
+        [TestCase(UnitRole.Attacker, 2, 350)]
+        [TestCase(UnitRole.Attacker, 3, 500)]
+        [TestCase(UnitRole.Ranged, 3, 950)]
+        public void MinCostForTier_IsFirstCostOfTier(UnitRole role, int tier, int expected)
+        {
+            int cost = CustomUnitRules.MinCostForTier(role, tier);
+            Assert.AreEqual(expected, cost);
+            Assert.AreEqual(tier, CustomUnitRules.Tier(role, cost));
+        }
+
+        [Test]
+        public void UnlockTiers_MatchUnlockChecks()
+        {
+            foreach (CustomStat stat in CustomStatLevels.AllStats)
+            {
+                int tier = CustomUnitRules.StatUnlockTier(stat);
+                Assert.IsTrue(CustomUnitRules.IsStatUnlocked(tier, stat), stat.ToString());
+                Assert.IsFalse(tier > CustomUnitRules.MinTier && CustomUnitRules.IsStatUnlocked(tier - 1, stat), stat.ToString());
+            }
+            Assert.IsTrue(CustomUnitRules.CanUseArea(CustomUnitRules.AreaUnlockTier));
+            Assert.IsFalse(CustomUnitRules.CanUseArea(CustomUnitRules.AreaUnlockTier - 1));
+            for (int i = 0; i < CustomUnitRules.MaxAbilitySlots; i++)
+            {
+                int tier = CustomUnitRules.AbilitySlotUnlockTier(i);
+                Assert.Greater(CustomUnitRules.AbilitySlots(tier), i);
+                Assert.IsFalse(tier > CustomUnitRules.MinTier && CustomUnitRules.AbilitySlots(tier - 1) > i);
+            }
+        }
     }
 }

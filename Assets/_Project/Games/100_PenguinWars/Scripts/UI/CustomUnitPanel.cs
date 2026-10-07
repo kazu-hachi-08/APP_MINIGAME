@@ -22,9 +22,9 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Button _lookTabButton;
         [SerializeField] private Button _statsTabButton;
         [SerializeField] private GameObject _lookTabRoot;
-        [Tooltip("のうりょくタブ（中身は Phase 4）")]
         [SerializeField] private GameObject _statsTabRoot;
         [SerializeField] private CustomLookTab _lookTab;
+        [SerializeField] private CustomStatsTab _statsTab;
         [SerializeField] private CustomUnitPreview _preview;
         [SerializeField] private Text _statsLabel;
         [SerializeField] private Button _saveButton;
@@ -37,6 +37,8 @@ namespace MiniGame.PenguinWars
         private CustomUnitDefinition _editing;
         private int _slot;
         private bool _isDirty;
+        // 絵の大きさは役割（大型かどうか）で変わるので、役割が変わったときだけプレビューを作り直す
+        private UnitRole _previewRole;
 
         private void Awake()
         {
@@ -51,6 +53,7 @@ namespace MiniGame.PenguinWars
             _backButton.onClick.AddListener(() => ConfirmIfDirty(Close));
             _lookTab.LookChanged += OnLookChanged;
             _lookTab.NameChanged += MarkDirty;
+            _statsTab.Changed += OnStatsChanged;
         }
 
         public void Show()
@@ -81,6 +84,7 @@ namespace MiniGame.PenguinWars
             _slot = slot;
             _editing = _presets.Slots[slot].Clone();
             _lookTab.Bind(_editing);
+            _statsTab.Bind(_editing);
             RefreshPreview();
             SetDirty(false);
             for (int i = 0; i < _slotButtons.Length; i++) _slotButtons[i].image.color = i == slot ? _selectedColor : _normalColor;
@@ -101,11 +105,27 @@ namespace MiniGame.PenguinWars
             MarkDirty();
         }
 
-        /// <summary>数値はきまりに合わせて直した定義から出す（保存したら実際にこの数値になる）</summary>
+        /// <summary>強さが変わっても見た目は変わらないので、絵は役割が変わったときだけ作り直す（Texture2D を毎回作らないように）</summary>
+        private void OnStatsChanged()
+        {
+            if (_editing.Role != _previewRole) RefreshPreview();
+            else RefreshStatsLabel();
+            MarkDirty();
+        }
+
         private void RefreshPreview()
         {
-            PenguinUnitData data = _preview.Show(_editing);
-            _statsLabel.text = ZukanDetailPanel.FormatStats(data.ToStats());
+            _preview.Show(_editing);
+            _previewRole = _editing.Role;
+            RefreshStatsLabel();
+        }
+
+        /// <summary>数値はきまりに合わせて直した定義から出す（保存したら実際にこの数値になる）</summary>
+        private void RefreshStatsLabel()
+        {
+            CustomUnitDefinition sanitized = CustomUnitRules.Sanitize(_editing);
+            UnitStats stats = UnitStatFormula.Calculate(CustomUnitRules.ToUnitDefinition(sanitized, CustomUnitRules.LeftNo));
+            _statsLabel.text = ZukanDetailPanel.FormatStats(stats);
         }
 
         private void MarkDirty() => SetDirty(true);

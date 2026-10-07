@@ -60,18 +60,49 @@ namespace MiniGame.PenguinWars.Battle
 
         public static bool CanUseArea(int tier) => tier >= AreaTier;
 
-        public static bool IsStatUnlocked(int tier, CustomStat stat)
+        public static bool IsStatUnlocked(int tier, CustomStat stat) => tier >= StatUnlockTier(stat);
+
+        /// <summary>その数値を触れるようになる段階</summary>
+        public static int StatUnlockTier(CustomStat stat)
         {
             switch (stat)
             {
                 case CustomStat.Speed:
                 case CustomStat.Cooldown:
-                    return tier >= SpeedCooldownTier;
+                    return SpeedCooldownTier;
                 case CustomStat.Range:
-                    return tier >= RangeTier;
+                    return RangeTier;
                 default:
-                    return true;
+                    return MinTier;
             }
+        }
+
+        public static int AreaUnlockTier => AreaTier;
+
+        public static int MaxAbilitySlots => AbilitySlots(MaxTier);
+
+        /// <summary>能力の index 番目（0から）の枠が使えるようになる段階。どの段階でも使えなければ MaxTier より大きい値</summary>
+        public static int AbilitySlotUnlockTier(int slotIndex)
+        {
+            for (int tier = MinTier; tier <= MaxTier; tier++)
+            {
+                if (AbilitySlots(tier) > slotIndex) return tier;
+            }
+            return MaxTier + 1;
+        }
+
+        /// <summary>
+        /// 役割の中で段階 tier になる一番安いコスト。画面の「コスト N から」に出す
+        /// （段階の境目を画面に書くと、きまりを変えたときに画面も直す必要が出るため、ここで求める）
+        /// </summary>
+        public static int MinCostForTier(UnitRole role, int tier)
+        {
+            UnitStatFormula.CostRange(role, out int min, out int max);
+            for (int cost = min; cost <= max; cost += CostStep(role))
+            {
+                if (Tier(role, cost) >= tier) return cost;
+            }
+            return max;
         }
 
         /// <summary>下げたレベルはマイナスとして数える（「体力を下げて速度に回す」ができるように）</summary>

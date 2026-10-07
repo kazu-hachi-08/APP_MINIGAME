@@ -31,7 +31,7 @@
 * 役割を変えたら、コストは新しい役割の帯の **同じ位置（t）** に寄せ、`Sanitize` を通す（段階がなるべく変わらないように）
 * コストのスライダーは刻み（壁10・ほか50）で止まる。動かすたびに `Sanitize` → 画面を作り直す
 * 段階が下がってレベルや能力が外れたら、画面上部に1行「コストが下がったので ○○ をもどしました」を2秒出す（黙って消えると驚くため）
-* `[-]` は -2 まで、`[+]` は +3 まで・ポイントが残っている間だけ押せる。ゲージはマイナスを別の色で表す
+* `[-]` は -2 まで、`[+]` は +2 まで（Phase 1 で +3 → +2 に決定）・ポイントが残っている間だけ押せる。ゲージはマイナスを別の色で表す
 * 🔒 の行は「コスト N から」と、解放されるコストを出す（何を上げれば触れるか分かるように）
 * 右端は「式のままの値 → 強化後の値」。ずかんと同じ単位・桁で出す
 * 能力のドロップダウンは8種＋「なし」。同じ能力は2つ目の枠で選べない
@@ -71,7 +71,25 @@
 
 ## 引き継ぎメモ（実装後に記入）
 
-* 作ったファイル:
+* 作ったファイル（`Assets/_Project/Games/100_PenguinWars/` 以下）:
+  * 新規: `Scripts/UI/CustomStatsTab.cs` / `CustomStatRow.cs`、`Editor/PenguinWarsSceneBuilder.CustomStats.cs`（`Custom.cs` が300行に近いので分けた）
+  * 変更: `CustomUnitPanel`（`_statsTab` を追加・役割が変わったときだけプレビューを作り直す）、`SceneBuilder.Custom.cs`（仮の `CreateCustomStatsTabPlaceholder` を消して `CreateCustomStatsTab` に置き換え）、`CustomUnitRules`（下記の問い合わせ用 API）、`Tests/Editor/CustomUnitRulesTests.cs`（7件追加）
 * 公開API:
+  * `CustomStatsTab.Bind(def)`（def の強さの項目を直接書き換える。名前・見た目は触らない）・イベント `Changed`
+  * `CustomStatRow`: `Stat` / `Show(level, multiplier, canDown, canUp, baseValue, value)` / `ShowLocked(unlockCost, value)` / イベント `StepRequested(stat, ±1)` / `StatName(stat)`（数値の日本語名）
+  * `CustomUnitRules`: `StatUnlockTier(stat)` / `AreaUnlockTier` / `MaxAbilitySlots` / `AbilitySlotUnlockTier(index)` / `MinCostForTier(role, tier)`（画面の「コスト N から」用。`IsStatUnlocked` は `StatUnlockTier` を使う形に変えた）
 * 計画から変えた点:
+  * 役割・能力はドロップダウンでなく **◀▶ で回す**（みためタブと同じ操作。コードで Dropdown を組むより簡単で、スマホでも押しやすい）。能力は「なし → 8種 → なし」と回り、ほかの枠で選んでいる能力は飛ばす
+  * 能力の2枠目は、1枠目が「なし」の間は押せない（空いた枠は前に詰めるため）
+  * コストはスライダーの両側に `[-]` `[+]` も置いた（大型は40刻みあるので、スライダーだけだと1刻みずつ動かしにくい）。スライダーは共通の音量スライダーだと上にラベル行が付いて高さが足りないので、`SceneBuilder.CustomStats.cs` で細いものを作った（Common は変更していない）
+  * 「コスト 200 ━●━ 600」の帯の両端の数字は出していない（スライダーの位置と右の値で足りるため）
+  * 🔒 の絵文字は Unity の既定フォントで出ない恐れがあるので、文字だけ「コスト N から」にした（色を薄くして区別）
+  * `[+]` の上限は計画の +3 でなく `CustomUnitRules.MaxLevel`（+2。Phase 1 で決定）
+  * 数値の行の並びは 体力・攻撃・速度・再生産・射程（解放される順）
+  * 外れたものの知らせは「コストが下がったので 速度・能力 をもどしました」のように1行。役割を変えて段階が下がったときも同じ文で出る
+  * 右端の値は、強化レベルが0の行は「今の値」だけ、0以外は「レベル0の値 → 今の値」。倍率は実際の倍率（再生産 +1 は ×0.9）
 * 次フェーズへの注意:
+  * のうりょくタブは `Bind` のときに inactive のことがある（Awake が後から走る）。ボタンの登録は Awake なので、表示前に押されることはなく問題ない
+  * 役割を変えるとスライダーの上限が変わり、Slider がその場で値を丸めて `onValueChanged` を出すので、`CustomStatsTab` は描き直し中のコールバックを無視している（`_isRefreshing`）。スライダーを触るコードを足すときは注意
+  * AI は Unity の生成 csproj を一時的にコピー・直して dotnet でコンパイルが通ること（エラー0。新しいファイルの警告は `[SerializeField]` の CS0649 のみ）と、Battle のテスト 227件が通ることを確かめた。画面の見た目・操作はユーザーの確認待ち
+  * Phase 2 の一時ファイル `Editor/CustomUnitDebugMenu.cs` はまだ残っている（未追跡）

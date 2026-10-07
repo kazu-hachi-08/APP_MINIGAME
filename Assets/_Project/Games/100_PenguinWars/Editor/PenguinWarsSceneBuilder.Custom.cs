@@ -9,7 +9,7 @@ namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
     /// タイトルから開く「じぶんペンギン」の作成画面。左に大きいプレビューと数値、右にタブ。
-    /// タブの中身は親オブジェクトを分けておき、のうりょくタブ（Phase 4）を足すときにみためタブと触る場所が重ならないようにする
+    /// タブの中身は親オブジェクトを分け、のうりょくタブは .CustomStats.cs に置く（みためタブと触る場所が重ならないように）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
@@ -83,7 +83,7 @@ namespace MiniGame.PenguinWars.Editor
             Button lookTabButton = CreateAnchoredButton(panelObj.transform, "Btn_TabLook", "みため", CustomTabButtonSize, CenterAnchor, CustomLookTabButtonPosition);
             Button statsTabButton = CreateAnchoredButton(panelObj.transform, "Btn_TabStats", "のうりょく", CustomTabButtonSize, CenterAnchor, CustomStatsTabButtonPosition);
             CustomLookTab lookTab = CreateCustomLookTab(panelObj.transform);
-            GameObject statsTabRoot = CreateCustomStatsTabPlaceholder(panelObj.transform);
+            CustomStatsTab statsTab = CreateCustomStatsTab(panelObj.transform);
 
             Button back = CreateAnchoredButton(panelObj.transform, "Btn_Back", "もどる", CustomFooterButtonSize, BottomLeftAnchor, CustomBackPosition);
             Button save = CreateAnchoredButton(panelObj.transform, "Btn_Save", "ほぞん", CustomFooterButtonSize, BottomRightAnchor, CustomSavePosition, SettingsCloseColor);
@@ -93,7 +93,8 @@ namespace MiniGame.PenguinWars.Editor
             SerializedArray(so, "_slotButtons", slots);
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_lookTabButton", lookTabButton), ("_statsTabButton", statsTabButton),
-                ("_lookTabRoot", lookTab.gameObject), ("_statsTabRoot", statsTabRoot), ("_lookTab", lookTab),
+                ("_lookTabRoot", lookTab.gameObject), ("_statsTabRoot", statsTab.gameObject), ("_lookTab", lookTab),
+                ("_statsTab", statsTab),
                 ("_preview", preview), ("_statsLabel", stats), ("_saveButton", save), ("_backButton", back));
             panelObj.SetActive(false);
             return panel;
@@ -167,16 +168,6 @@ namespace MiniGame.PenguinWars.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(tab, ("_nameInput", nameInput), ("_webNameCover", webCover), ("_randomButton", random));
             return tab;
-        }
-
-        /// <summary>中身は Phase 4 で作る。それまでは何も選べないことだけ伝える</summary>
-        private static GameObject CreateCustomStatsTabPlaceholder(Transform panel)
-        {
-            RectTransform root = CreateCustomTabRoot(panel, "StatsTab");
-            Text text = CreateText(root, "Placeholder", CustomRowFontSize, CenterAnchor, Vector2.zero, CustomTabRootSize, Color.white);
-            text.text = "のうりょくは じゅんびちゅう";
-            root.gameObject.SetActive(false);
-            return root.gameObject;
         }
 
         private static CustomPartRow CreateCustomPartRow(Transform root, PenguinPartSlot slot, float y)
