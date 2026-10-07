@@ -108,7 +108,8 @@ namespace MiniGame.PenguinWars
             // 遊び方の基本 → ステージモードの遊び方 → 戦い方 → 能力 → ステージの仕掛け（ボス・なだれ）の順。最初のページで「何をすれば勝ちか」が分かるようにする
             new GuideTopic("出撃と勝ち方",
                 "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
-                "相手の城を先に落とせば勝ち。",
+                "相手の城を先に落とせば勝ち。\n" +
+                "オンライン対戦では、10体目に自分で作った「じぶんペンギン」が入る。",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Ally, FishSwordPenguin, 1.5f),
                 GuideAction.Spawn(1f, Ally, Penguin, 1.5f),
