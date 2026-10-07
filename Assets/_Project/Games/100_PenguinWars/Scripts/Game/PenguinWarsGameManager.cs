@@ -62,6 +62,18 @@ namespace MiniGame.PenguinWars
             else base.RestartGame();
         }
 
+        /// <summary>ポーズ・リザルトの「タイトルへ」はミニゲーム集ではなくペンギン大戦争のタイトルへ戻す（static の行き先なしで読み直すと ShowTitle から始まる）</summary>
+        public override void ReturnToTitle()
+        {
+            base.RestartGame();
+        }
+
+        /// <summary>ペンギン大戦争のタイトル画面の「戻る」だけはミニゲーム集のタイトルへ</summary>
+        private void ReturnToCollectionTitle()
+        {
+            base.ReturnToTitle();
+        }
+
         private void ShowTitle()
         {
             if (_titlePanel == null)
@@ -72,7 +84,7 @@ namespace MiniGame.PenguinWars
 
             Phase = PenguinWarsPhase.Title;
             _audio.PlayTitleBgm();
-            _titlePanel.Show(ShowModeSelect, ReturnToTitle);
+            _titlePanel.Show(ShowModeSelect, ReturnToCollectionTitle);
         }
 
         private void ShowModeSelect()
