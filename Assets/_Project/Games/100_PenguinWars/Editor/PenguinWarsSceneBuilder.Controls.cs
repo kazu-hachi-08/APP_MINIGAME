@@ -37,7 +37,12 @@ namespace MiniGame.PenguinWars.Editor
 
         private const float CannonButtonWidth = 260f;
         private const int CannonFontSize = 36;
-        private static readonly Color CannonChargeColor = new Color(0.4f, 0.85f, 1f, 0.45f);
+        private const float CannonGaugeHeight = 18f;
+        private static readonly Color CannonGaugeBackColor = new Color(0f, 0f, 0f, 0.6f);
+        private static readonly Color CannonGaugeFillColor = new Color(0.35f, 0.9f, 1f);
+        // 背景がオレンジに光っても白文字が読めるように縁取る
+        private static readonly Color CannonLabelOutlineColor = new Color(0f, 0f, 0f, 0.85f);
+        private static readonly Vector2 CannonLabelOutlineDistance = new Vector2(3f, -3f);
 
         private static readonly Color ControlButtonColor = new Color(0.18f, 0.26f, 0.4f, 0.92f);
         private static readonly Color CostColor = new Color(1f, 0.88f, 0.3f);
@@ -55,24 +60,39 @@ namespace MiniGame.PenguinWars.Editor
             return (bar, wallet, cannon);
         }
 
-        /// <summary>右下。チャージは文字の後ろで左から伸びる帯で見せる</summary>
+        /// <summary>右下。チャージはボタン下端のゲージで見せる</summary>
         private static CannonButton CreateCannonButton(Transform safeArea, BattleRunner battleRunner)
         {
             GameObject buttonObj = UIDialogBuilder.CreateButton(safeArea, "Btn_Cannon", "ペンギン砲",
                 CannonButtonWidth, ControlHeight, ControlButtonColor);
             SetAnchor(buttonObj.GetComponent<RectTransform>(), BottomRightAnchor, new Vector2(-ControlMarginX, ControlMarginY));
-            buttonObj.GetComponentInChildren<Text>().fontSize = CannonFontSize;
+            Text label = buttonObj.GetComponentInChildren<Text>();
+            label.fontSize = CannonFontSize;
+            Outline outline = label.gameObject.AddComponent<Outline>();
+            outline.effectColor = CannonLabelOutlineColor;
+            outline.effectDistance = CannonLabelOutlineDistance;
 
-            Image charge = CreateImage(buttonObj.transform, "Charge", BottomLeftAnchor, Vector2.zero, Vector2.zero, CannonChargeColor);
-            UIDialogBuilder.SetStretchAll(charge.rectTransform);
-            charge.rectTransform.anchorMax = new Vector2(0f, 1f);
-            // 文字より奥に描く
-            charge.transform.SetAsFirstSibling();
+            RectTransform chargeFill = CreateCannonGauge(buttonObj.transform);
 
             var cannon = buttonObj.AddComponent<CannonButton>();
             SetRefs(cannon, ("_battleRunner", battleRunner), ("_button", buttonObj.GetComponent<Button>()),
-                ("_background", buttonObj.GetComponent<Image>()), ("_chargeFill", charge.rectTransform));
+                ("_background", buttonObj.GetComponent<Image>()), ("_label", label), ("_chargeFill", chargeFill));
             return cannon;
+        }
+
+        /// <summary>ボタン下端の太いバー。中の Fill の右端アンカーを CannonButton が動かす</summary>
+        private static RectTransform CreateCannonGauge(Transform button)
+        {
+            Image back = CreateImage(button, "ChargeGauge", BottomLeftAnchor, Vector2.zero, Vector2.zero, CannonGaugeBackColor);
+            RectTransform backRect = back.rectTransform;
+            backRect.anchorMin = Vector2.zero;
+            backRect.anchorMax = new Vector2(1f, 0f);
+            backRect.sizeDelta = new Vector2(0f, CannonGaugeHeight);
+
+            Image fill = CreateImage(back.transform, "Fill", BottomLeftAnchor, Vector2.zero, Vector2.zero, CannonGaugeFillColor);
+            UIDialogBuilder.SetStretchAll(fill.rectTransform);
+            fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            return fill.rectTransform;
         }
 
         private static WalletButton CreateWalletButton(Transform safeArea, BattleRunner battleRunner)
