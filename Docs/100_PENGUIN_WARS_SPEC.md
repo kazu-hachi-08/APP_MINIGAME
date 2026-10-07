@@ -10,7 +10,7 @@
 | 視点 | 横から見た視点（Side View）・横画面固定 |
 | グラフィック | 2Dピクセルアート（コードで生成するペンギン） |
 | プレイ人数 | 1人（ステージ 3章18ステージ。§2.1・§8）/ 2人（オンライン1対1の城攻め。§10） |
-| 味方キャラ | 全50体（ペンギンのバリエーション。§5）。ステージでは最初10体から、クリアで仲間が増える（§8.6） |
+| 味方キャラ | 全50体（ペンギンのバリエーション。§5）。ステージでは最初10体から、クリアで仲間が増える（§8.6）。オンライン対戦ではほかに自分で作る「じぶんペンギン」が1体入る（§14） |
 | 編成 | 10体（5体×2ページ） |
 | 対象プラットフォーム | Android / iPhone（PCはマウス＋キーボードで確認用・ブラウザ版） |
 | エンジン / 言語 | Unity / C# |
@@ -22,9 +22,10 @@
 | モード | 編成の決め方 | 相手 | ゴール |
 | --- | --- | --- | --- |
 | ステージ（1人） | 解放済みのキャラから自分で10体（編成画面。§8.7） | 定義表どおりに湧く敵ペンギンと敵の城（§8） | 敵の城を落とす。★3つ（クリア・自城HP・タイム）を集める |
-| オンライン対戦 | ドラフト（3体から1体選ぶ×10回） | 相手プレイヤー | 相手の城を先に落とす（最大5分） |
+| オンライン対戦 | ドラフト（3体から1体選ぶ×9回）＋じぶんペンギン（3枠から1体。§14） | 相手プレイヤー | 相手の城を先に落とす（最大5分） |
 
 * オンライン対戦はステージの進み具合（解放）に関係なく、全50体からドラフトする（友達同士で進み具合の差を出さないため）
+* じぶんペンギンはオンライン対戦だけで使う。ステージ・ずかん・あそびかたのデモには出さない（ステージの難しさの調整を崩さないため）
 
 ---
 
@@ -36,17 +37,20 @@
 
 * 戦場の上に半透明の幕をかけ、ロゴ「ペンギン大戦争 / PENGUIN WARS」がふわふわ揺れる。その下でランダムな5体（全50体から重複なし・開くたびに選び直す）がぴょこぴょこ跳ねる
 * パレードの下にステージの★の合計を小さく出す（`★ 32 / 54`。開くたびにセーブから数え直す）
-* ボタンは「スタート」（→ モード選択）・「ずかん」・「あそびかた」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
+* ボタンは「スタート」（→ モード選択）・「ずかん」・「じぶんペンギン」（→ 作成画面。§14.4）・「あそびかた」・「設定」・「メニューに戻る」（→ 共通のタイトル画面）
 * 「ずかん」は全キャラの紹介（`PenguinZukanPanel`）。8列のマスを縦スクロールで並べ、各マスのペンギンは歩きコマで足踏みする
-  * 上の数値・特性の一覧（Dropdown）と順番ボタンで並べ替え・しぼりこみ（選択肢は `ZukanListOptions`）。開くたびに「コスト・小さい順・すべて」に戻す
+  * 上の数値・役割・能力の一覧（Dropdown）と順番ボタンで並べ替え・しぼりこみ（選択肢は `ZukanListOptions`）。開くたびに「コスト・小さい順・役割すべて・能力すべて」に戻す
     * 数値の一覧: コスト・攻撃・体力・射程・速度・再生産 から選ぶ。選んだ数値で並び、各マスの左上にその数値を出す
     * 順番ボタン: 小さい順 ⇔ 大きい順。同じ値どうしは No 順
-    * 特性の一覧: すべて・能力8種・範囲・役割5種 から選ぶ（押して順に回すと14回かかるので一覧にする）。当てはまらないマスは隠す
+    * 役割の一覧: すべて・役割5種 から選ぶ。見出しは「役割: 壁」のように出す
+    * 能力の一覧: すべて・範囲攻撃・能力8種 から選ぶ（範囲攻撃は能力ではないが「できること」なので能力側に置く。半分以上のキャラが持つので、スクロールしなくても見える先頭にする）。見出しは「能力: 止める」のように出す
+    * 役割と能力は別々に選べ、両方に当てはまるマスだけ出す（「遠距離で範囲攻撃」のように組み合わせて探せるように）。当てはまらないマスは隠す
   * ステージでまだ仲間になっていないキャラは、黒いシルエット＋名前「？？？」（左上の数値も「？？？」）にして、詳細を開けない（何が仲間になるかの楽しみを残すため）。並べ替えは本当の値で並ぶ。開くたびにセーブを読み直す
-  * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・単体/範囲・コスト・再生産・体力・攻撃力・射程・速度・能力を出す
+  * マスを押すと詳細（`ZukanDetailPanel`）。大きい絵が「歩く → 振りかぶる → 攻撃」を繰り返し、役割・コスト・再生産・体力・攻撃力・射程・速度・能力を出す。範囲攻撃は役割の行ではなく能力の行の頭に「範囲攻撃・」と出す（役割の行に置くと「範囲」という役割があるように見えるため）
   * 中身はすべて `PenguinUnitCatalog` から実行時に読む（ずかん専用のデータは持たない）。定義表を変えて `Rebuild PenguinWars` すればそのまま反映される
-* 「あそびかた」は能力・仕組みの説明（`PenguinGuidePanel`）。タイトルの幕を閉じ、右上の説明カードと下のページ送りの間に見える**本物の戦場でデモを流す**
-  * トピックは 出撃と勝ち方・さかなと働きペンギン・ステージ・★（ほし）・なかま・へんせい・壁と後ろの列・城の守り方・ペンギン砲・ふっとばす・止める・遅くする・ふんばる・城キラー・大型キラー・遠距離キラー・妨害キラー・ボス・なだれ の19個。基本 → ステージモードの遊び方 → 戦い方 → 能力 → ステージの仕掛けの順に並べる（最初のページで何をすれば勝ちかが分かるように）。説明文と出撃の台本は `GuideTopics`（コード）に1か所でまとめる
+* 「あそびかた」は役割・能力・仕組みの説明（`PenguinGuidePanel`）。タイトルの幕を閉じ、右上の説明カードと下のページ送りの間に見える**本物の戦場でデモを流す**
+  * トピックは 出撃と勝ち方・さかなと働きペンギン・ステージ・★（ほし）・なかま・へんせい・城の守り方・ペンギン砲・【役割】壁／アタッカー／遠距離／妨害／大型・【能力】範囲攻撃／ふっとばす／止める／遅くする／城キラー／ふんばる／大型キラー／遠距離キラー／妨害キラー・ボス・なだれ の24個。基本 → ステージモードの遊び方 → 戦い方 → 役割 → 能力 → ステージの仕掛けの順に並べる（最初のページで何をすれば勝ちかが分かるように）
+  * 役割・能力のページはタイトルの頭に「【役割】」「【能力】」を付けて見分けられるようにし、並びは enum（`UnitRole` / `UnitAbilityType`）の順でずかんのしぼりこみとそろえる（能力は範囲攻撃を先頭に置く）。説明文と出撃の台本は `GuideTopics`（コード）に1か所でまとめる
   * なだれのデモは本番（25〜60秒・中央）だと待ちきれず画面にも映らないので、短い間隔・画面に入る位置で起こす（`GuideDemoDirector._avalanche*`）
   * ボスのデモは「敵の城を叩くとボスが出る」を見せるため、戦場を短く（`GuideDemoDirector._bossFieldLength` = 14）して敵の城を画面に入れ、城HPが `_bossCastleRatio`（98%）を下回るときょだいペンギンがボスとして出る。WARNING・カメラ寄り・警報も本番と同じものが毎ループ出る（`GuideTopic.WithBoss`）
   * デモ係（`GuideDemoDirector`）が台本どおり `BattleRunner.SpawnDemoUnit` でユニットを好きな位置に出し、ページごとの `LoopSeconds`（基本10秒。大型キラー12秒・ボス8秒・なだれ6秒）ごとに `InitializeDemo` で作り直してループする
@@ -121,11 +125,13 @@ START!（1.0秒）
 ```text
 モード選択 → 部屋を作る / コードで参加 → 接続
   ↓
-ドラフト（§6。10ラウンド）
+ドラフト（§6。9ラウンド）
+  ↓
+じぶんペンギン選択（3枠から1つ・15秒。時間切れは前回選んだ枠。§14.5）
   ↓
 ステージ抽選（ホストが3つから1つ。§3.4）
   ↓
-編成確認（上に自分・下に相手の10体ずつ・ステージ名・3.0秒）
+編成確認（上に自分・下に相手の10体ずつ・ステージ名・3.0秒。じぶんペンギンのマスには「じぶん」の印）
   ↓
 START!（1.0秒）
   ↓
@@ -376,19 +382,23 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 ## 6. ドラフト（オンラインのみ）
 
 ```text
-ラウンド1〜10:
+ラウンド1〜9:
   各プレイヤーに、全50体からランダムな3体を提示（自分が既に取ったキャラは出ない）
   両者が同時に1体を選ぶ（制限時間15秒。過ぎたら3体からランダム）
   両者が選び終わったら、待ち時間なしで次のラウンドへ
+↓
+じぶんペンギン選択（10体目。§14.5）
 ```
+
+* ラウンド数は編成10体からじぶんペンギンの1枠（`CustomUnitRules.SlotsInDeck`）を引いた9。下の「取ったキャラ」一覧の10個目は「じぶん」の仮マス
 
 * 提示はプレイヤーごとに別々。相手と同じキャラを取っても構わない（被りあり）
 * 候補は「自分が取ったキャラを除く全キャラ」から純ランダム。ランダム編成のような「壁を最低2体」の制約は付けない
 * 抽選・時間計測はホストだけが行い、ゲストに提示内容を送る（乱数のずれを防ぐため）。ゲストの残り秒表示は、届いたラウンド開始を基準に自分で減らす
 * 相手が何を取ったかはドラフト中は見えない。終了後の「編成確認」でお互いの10体を公開する
-* 取った10体は、ドラフト終了後にステージの編成と同じくコストの低い順に並べ直して編成にする（同コストは No 順。ホストが並べてゲストへ送る）
+* 取った9体＋じぶんペンギンは、ステージの編成と同じくコストの低い順に並べ直して編成にする（同コストは No 順。ホストが並べてゲストへ送る）
 * 候補はステージの進み具合（解放）に関係なく全50体から出す（友達同士で進み具合の差を出さないため。§8.6）
-* 画面: 中央に3枚のカード（見た目・名前・コスト・役割・範囲/単体・能力）、上にラウンド数と残り秒、下に取ったキャラの一覧。選んだ後は「相手を待っています...」
+* 画面: 中央に3枚のカード（見た目・名前・コスト・役割・能力。範囲攻撃は能力の頭に出す）、上にラウンド数と残り秒、下に取ったキャラの一覧。選んだ後は「相手を待っています...」
 * 選ぶのはクリック / タップのみ（キーボードでの選択はない）
 * 提示数（3）・制限時間（15秒）は `PenguinWarsBalance`
 
@@ -410,7 +420,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 ```
 
 * キャラボタンは5個×2ページ。`[切替 1/2]` でページ切り替え（`⇄` は既定フォントに無い可能性があるため文字にした）
-* ボタンには立ち姿のアイコン・名前・コスト・再生産ゲージ。出せないときは暗くする
+* ボタンには立ち姿のアイコン・名前・コスト・再生産ゲージ。出せないときは暗くする。じぶんペンギンのボタンは紫（`UnitButton._customColor`。どれが自分で作った子か分かるように）
 * 城のHPバーは城の上。時間はステージが「経過」、対戦が「残り」
 * ボスがいる間は画面上部にボスのHPバー（見出しは「ボス きょだいペンギン」。`BossHpBar`）。2体いたら先に出た方、倒せば次のボスに切り替わる
 * 編成制限（§8.4）に当たるキャラのボタンは暗く、押しても出せない
@@ -418,7 +428,10 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 
 ### 7.2 ペンギンの見た目
 
-ドット絵はコードで生成する（他のゲームと同じ方式。`Editor/Art/`）。50体を手描きせず、**基本ペンギン＋パーツの組み合わせ**で作る。1キャラに付けられるのは頭・手・背中が1つずつ。
+ドット絵はコードで生成する（他のゲームと同じ方式）。50体を手描きせず、**基本ペンギン＋パーツの組み合わせ**で作る。1キャラに付けられるのは頭・手・背中が1つずつ。
+
+* 合成（`PenguinFrameComposer` / `PenguinBodyPatterns` / `PenguinPartPatterns` / `PenguinPalette`）は実行時にも使うので `Scripts/Art/`（namespace `MiniGame.PenguinWars.Art`）に置く。PNG に書き出す `PenguinArtGenerator` / `PenguinSpriteWriter` は `Editor/Art/`
+* 50体は `Rebuild PenguinWars` で PNG にする。じぶんペンギンはパーツの組み合わせが多すぎて PNG にできないので、作成画面と対戦開始時に `RuntimeUnitSprites.Build` で `Texture2D` に直接描く（同じ合成・同じ PPU・足元中央のピボット）
 
 | パーツ | ID |
 | --- | --- |
@@ -641,8 +654,8 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 ```text
 モード選択
  ├ ステージ → ステージ選択 → 詳細 → 編成発表 → プレイ（§2.1）
- ├ 部屋を作る → 参加コード表示 → 相手の参加待ち → ドラフト → 編成確認 → 対戦（ホスト・左・青）
- └ コードで参加 → 接続 → ドラフト → 編成確認 → 対戦（ゲスト・右・赤）
+ ├ 部屋を作る → 参加コード表示 → 相手の参加待ち → ドラフト → じぶんペンギン選択 → 編成確認 → 対戦（ホスト・左・青）
+ └ コードで参加 → 接続 → ドラフト → じぶんペンギン選択 → 編成確認 → 対戦（ゲスト・右・赤）
 ```
 
 ### 10.2 同期の考え方
@@ -662,9 +675,10 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 | メッセージ | 向き | 配信 | 中身 |
 | --- | --- | --- | --- |
 | `pw.ready` | ゲスト → ホスト | 再送あり | なし。ゲストがハンドラ登録を終えた合図 |
-| `pw.draft` | ホスト → ゲスト | 再送あり | ラウンド（0始まり）/ ゲストの候補 / ゲストがここまでに取ったキャラ（時間切れでホストが決めた分も出すため毎回全部） |
+| `pw.draft` | ホスト → ゲスト | 再送あり | ラウンド（0始まり）/ ゲストの候補 / ゲストがここまでに取ったキャラ（時間切れでホストが決めた分も出すため毎回全部）。ラウンド 9（候補なし）はじぶんペンギン選択を始める合図 |
 | `pw.pick` | ゲスト → ホスト | 再送あり | ラウンド / 候補の何番目か。ラウンドが今と違えば捨てる |
-| `pw.deck` | ホスト → ゲスト | 再送あり | ホスト左の編成No / ホスト右の編成No / ステージ番号（§3.4）。ドラフト完了の合図を兼ねる |
+| `pw.custom` | ゲスト → ホスト | 再送あり | ゲストが選んだじぶんペンギンの JSON（§14.6） |
+| `pw.deck` | ホスト → ゲスト | 再送あり | ホスト左の編成No / ホスト右の編成No / ステージ番号（§3.4）/ ホストのじぶんペンギン JSON / ゲストのじぶんペンギン JSON（ホストが直した後のもの）。ドラフト完了の合図を兼ねる |
 | `pw.snap` | ホスト → ゲスト | 再送なし（古いものは捨てる）約15回/秒 | 全ユニットの ID・キャラNo・陣営・X座標・HP割合・状態、両者のさかな・財布Lv・城HP・砲チャージ・再生産残り、残り時間 |
 | `pw.evt` | ホスト → ゲスト | 再送あり | 1フレーム分の `BattleEvent`（出撃・ヒット・撃破・砲発射・試合終了など。演出用） |
 | `pw.cmd` | ゲスト → ホスト | 再送あり | コマンド種類 / 枠番号。陣営はホストが右に付け直す（取りこぼすと操作が効かないため再送あり） |
@@ -683,7 +697,7 @@ Data/Units/Unit_001〜050.asset（PenguinUnitData）＋ Data/PenguinUnitCatalog.
 
 ### 10.4 その他のルール
 
-* 相手が切断したら（ドラフト中も含む）「相手が切断しました」を表示してリザルト（勝ち扱い）へ
+* 相手が切断したら（ドラフト中・じぶんペンギン選択中も含む）「相手が切断しました」を表示してリザルト（勝ち扱い）へ
 
 ---
 
@@ -731,13 +745,14 @@ Assets/_Project/Games/100_PenguinWars/
  ├ Audio/                          BGM素材（PenguinWars_TitleBgm / PenguinWars_BattleBgm / PenguinWars_BossBgm。§9）
  ├ Sprites/                        生成したドット絵（Units / 戦場 / Effects。1単位＝16px）
  ├ Scripts/
+ │  ├ Art/                         ドット絵の合成（エディタの PNG 生成と実行時のじぶんペンギンで共通。§7.2）
  │  ├ Battle/                      純C#の戦闘ロジック（MiniGame.PenguinWars.Battle.asmdef）
  │  ├ Data/                        ScriptableObject・見た目指定
  │  ├ Game/                        進行・Runner・入力・音
  │  ├ View/                        ユニット・城・カメラ・演出（Effects/）
  │  ├ UI/                          ボタン・HUD・パネル
  │  └ Online/                      通信
- ├ Editor/                         SceneBuilder（partial）・データ生成・Art/（ドット絵生成）
+ ├ Editor/                         SceneBuilder（partial）・データ生成・Art/（PNG の書き出し）
  └ Tests/Editor/                   Battle の EditModeテスト
 ```
 
@@ -761,10 +776,13 @@ Assets/_Project/Games/100_PenguinWars/
 | | UnitDefinitions / UnitDefinition / StatTweak / UnitStatFormula / UnitRole | 50体の定義表・個別倍率・計算式・役割（§5.5） |
 | | BattleSnapshot / BattleEventCodec / GuestWorldMirror / SideMirror | 状態・イベントの送受信形式／ゲストの表示用 World への書き込みと反転 |
 | | Side | 陣営と前方向 |
+| | CustomUnitDefinition / CustomStatLevels / CustomUnitRules / CustomUnitPresets | じぶんペンギン1体の定義と JSON／強化レベル5つ／段階・ポイント・`Sanitize`・`ToUnitDefinition`／3枠とお手本（§14） |
+| Scripts/Art/ | PenguinFrameComposer / PenguinBodyPatterns / PenguinPartPatterns / PenguinPalette / PenguinPartCatalog | ドット絵の合成。体・パーツは文字列（1文字＝1ピクセル）で持ち、コマごとにずらして重ねる／部位ごとの選べる ID（作成画面の◀▶と知らない ID の掃除） |
 | Scripts/Data/ | PenguinWarsBalance | 調整用の数値（§4・§8 など） |
-| | PenguinUnitData / PenguinUnitCatalog / PenguinAbilityEntry / PenguinLook | キャラ1体のデータ／一覧／能力（Inspector 用）／見た目パーツ |
+| | PenguinUnitData / PenguinUnitCatalog / PenguinAbilityEntry / PenguinLook | キャラ1体のデータ（実行時に作る `CreateRuntime` も）／一覧（実行時登録 `RegisterRuntime` / `ClearRuntime`。§14.6）／能力（Inspector 用）／見た目パーツ |
 | | PenguinStageData | 対戦のステージ（§3.4） |
-| Scripts/Game/ | PenguinWarsGameManager（.Stage / .Online / .Draft） | `PenguinWarsPhase` の進行・リザルト／ステージ選択〜★・保存〜リザルト／オンラインの流れ／ドラフトと編成確認 |
+| Scripts/Game/ | PenguinWarsGameManager（.Stage / .Online / .Draft / .CustomPick） | `PenguinWarsPhase` の進行・リザルト／ステージ選択〜★・保存〜リザルト／オンラインの流れ／ドラフトと編成確認／じぶんペンギン選択 |
+| | CustomUnitSave / CustomUnitFactory | じぶんペンギンの3枠と `PlayerPrefs` の読み書き／定義 → 絵つきの `PenguinUnitData`（§14） |
 | | BattleRunner | World を固定ステップで動かし、View に状態を流す。ステージ・ホスト・ゲスト・あそびかたのデモの初期化（対戦のステージは `CurrentVersusStage`） |
 | | CampaignSave | `CampaignProgress` と `PlayerPrefs` の読み書き（§8.8） |
 | | PenguinWarsPhase | ゲーム固有の段階（§2.4） |
@@ -772,6 +790,7 @@ Assets/_Project/Games/100_PenguinWars/
 | | GuideTopics / GuideDemoDirector | あそびかたの説明文とデモの台本／台本どおりに出撃させてループ・デモの調整値（§2.0） |
 | | PenguinWarsAudio / PenguinBgmGenerator | 生成SE・タイトル／プレイ／ボスBGM／仮BGMの生成 |
 | Scripts/View/ | UnitView / UnitViewPool / UnitSpriteSet / HpBarView / PlaceholderSprite | ユニットの絵・コマ選び／使い回し／コマの組／HPバー／HPバー用の単色の四角（実行時に生成） |
+| | RuntimeUnitSprites | 見た目 → 5コマの `UnitSpriteSet` を実行時に作る・捨てる（§7.2） |
 | | CastleView / CastleCollapse / BattleCamera / FieldBackdrop | 城／崩れる演出／スクロール・揺れ・ボスを覗く（`Peek`）／山と地面の色 |
 | | BattleEventPresenter / BossEntrancePresenter / Effects/ | イベント → 演出・音／ボス登場の流れとボスBGM／煙・火花・魂・ビーム・紙吹雪（使い回しのプール） |
 | Scripts/UI/ | UnitButton / UnitButtonBar / WalletButton / CannonButton / BattleHud | 下部の操作ボタン／時間・メッセージ・お知らせ（なだれ注意） |
@@ -784,13 +803,16 @@ Assets/_Project/Games/100_PenguinWars/
 | | PenguinWarsTitlePanel / PenguinWarsSettingsPanel | タイトル画面／音の設定（§2.0） |
 | | PenguinZukanPanel / ZukanCell / ZukanDetailPanel / ZukanListOptions / UnitSpriteAnimator | ずかんの一覧／1マス／詳細／並べ替え・しぼりこみの選択肢と比較（編成画面と共通）／UI の絵のコマ送り・歩きコマの並び（§2.0） |
 | | PenguinGuidePanel | あそびかたのページ送り（§2.0） |
+| | CustomUnitPanel / CustomLookTab / CustomPartRow / CustomUnitPreview / CustomStatsTab / CustomStatRow / PartLabels | じぶんペンギンの作成画面／みためタブ／パーツ1行の◀▶／大きいプレビュー／のうりょくタブ／数値1行の[-][+]／パーツ・部位の表示名（§14.4） |
+| | CustomPickPanel | ドラフト後に3枠から1体を選ぶ（§14.5） |
 | Scripts/Online/ | PenguinWarsOnlineLink / GuestBattleView | メッセージの送受信／ゲストの表示 |
-| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .VersusStages / .Title / .Zukan / .Guide / .StageSelect / .StageDetail / .StageResult / .Deck / .UiHelpers） | Scene生成（1ファイルが大きくならないよう partial で分割。`.VersusStages` は対戦のステージ、`.StageSelect` 以下は一人用、`.UiHelpers` は文字・画像・ボタン・全画面パネルを作る共通ヘルパー） |
+| Editor/ | PenguinWarsSceneBuilder（.Field / .Battle / .Hud / .Controls / .Intro / .Effects / .Online / .Draft / .CustomPick / .VersusStages / .Title / .Zukan / .Guide / .Custom / .CustomStats / .StageSelect / .StageDetail / .StageResult / .Deck / .UiHelpers） | Scene生成（1ファイルが大きくならないよう partial で分割。`.VersusStages` は対戦のステージ、`.Custom` / `.CustomStats` はじぶんペンギンの作成画面、`.StageSelect` 以下は一人用、`.UiHelpers` は文字・画像・ボタン・全画面パネルを作る共通ヘルパー） |
 | | StageSimulationMenu | 検証ツールのメニュー（§8.9） |
 | | PenguinUnitAssetGenerator / UnitLooks | 50体のアセット生成（毎回上書き）／見た目の表 |
-| Editor/Art/ | PenguinArtGenerator / PenguinFrameComposer / PenguinBodyPatterns / PenguinPartPatterns / PenguinPalette / FieldArtGenerator / EffectArtGenerator / PenguinSpriteWriter | ドット絵の生成。体・パーツは文字列（1文字＝1ピクセル）で持ち、コマごとにずらして重ねる |
+| Editor/Art/ | PenguinArtGenerator / FieldArtGenerator / EffectArtGenerator / PenguinSpriteWriter | ドット絵を PNG に書き出す（ペンギンの合成は `Scripts/Art/` を呼ぶ） |
 | Tests/Editor/ | BattleWorldTests / EconomyTests / CannonRewardTests / AbilityTests / AvalancheTests / UnitRosterTests / OnlineSyncTests / DraftTests / SideTests | 戦闘・お金・砲と撃破報酬・能力・なだれ・50体の数値・同期・ドラフト・陣営（共通の進め方・数え方は `BattleTestUtil`） |
 | | StageScriptTests / StageDefinitionTests / GimmickTests / CampaignTests / UnlockTests / DeckRulesTests / SimulatorTests | 敵の出方とボス・定義表の正しさ・ギミック・★とセーブ・解放（50体の網羅）・編成のきまり・検証ツール（決定的・1-1 はふつうで勝てる） |
+| | CustomUnitRulesTests / CustomUnitPresetsTests | じぶんペンギンの段階・`Sanitize`・数値計算・バランスの目安／3枠の JSON の読み書きとお手本（§14） |
 
 ### 11.3 生成メニューとアセットの扱い
 
@@ -823,6 +845,8 @@ Assets/_Project/Games/100_PenguinWars/
 * bot（検証ツール）は★2（自城HP）を測れない（ほぼ全ステージで100%になる）。★2 の難しさは手で遊んで確かめる
 * 1-5・2-4・2-5・3-6 は bot の「うまい」でも3〜7分かかる。長すぎると感じたら、敵の城HPより先に敵の湧き間隔を広げるほうが効く
 * あそびかたのボスのデモは、ループごとに WARNING・警報が鳴る
+* ホストとゲストのビルドが違うと `pw.deck` の読み取りがずれる（じぶんペンギンの JSON が付いたため）。友達同士で同じビルドにそろえる
+* 相手のじぶんペンギンは保存しない（その試合だけ）。1つの編成に入れられるじぶんペンギンは1体だけ
 
 ---
 
@@ -832,3 +856,97 @@ Assets/_Project/Games/100_PenguinWars/
 * 一人用の難易度選択（今はステージの並びそのものが難易度）
 * 属性（浮いてる敵など）と、それに対する「打たれ強い」「めっぽう強い」
 * 本家の「波動」「遠方攻撃」「生き残る」などの追加能力
+
+---
+
+## 14. じぶんペンギン（オンライン対戦の10体目）
+
+プレイヤーが見た目と強さを決めて作るキャラ。オンライン対戦のドラフト9回の後に、作っておいた3枠から1体を選んで10体目に入れる。
+
+### 14.1 中身（`CustomUnitDefinition`）
+
+| 項目 | 内容 |
+| --- | --- |
+| `Name` | 名前。最大8文字（編成確認・出撃ボタンで切れないように）。空なら「じぶんペンギン」 |
+| `Role` | 役割5種（§5.5）。役割で基準値（体力/コスト・火力/コスト・攻撃間隔・発生・ノックバック回数）が決まる |
+| `Cost` | 役割のコスト帯の中（壁 50〜150 は10刻み、ほかは50刻み） |
+| `Levels` | 強化レベル（体力・攻撃・射程・速度・再生産の5つ。各 -2〜+2） |
+| `IsAreaAttack` | 範囲攻撃にするか（段階3のみ） |
+| `Abilities` | 能力（8種から、能力枠の数まで・重複なし） |
+| `Body` / `BodyColor` / `Head` / `Hand` / `Back` | 見た目のパーツID（§7.2 の既存パーツ。頭・手・背中は空 = なし） |
+
+* 見た目は強さに影響しない。拡大率は大型だけ自動で2
+* 最終の数値は既存50体と同じ `UnitStatFormula.Calculate` に通す（`CustomUnitRules.ToUnitDefinition` → `UnitDefinition`。強化レベルは `StatTweak` の倍率になる）。能力1つにつき体力・火力 ×0.9、範囲攻撃は火力 ×0.75 も既存のまま効く
+* 攻撃間隔・発生・ノックバック回数は役割ごとに固定。能力の確率・時間は既存キャラと同じ（ふっとばすは妨害 50%・ほか 30%）
+
+### 14.2 コストの段階（触れる数値はコストで決まる）
+
+段階は「役割のコスト帯の中でどの位置か（t = 0〜1）」で決める（役割ごとに帯の幅が違うため）。
+
+| 段階 | 帯の位置 t | 強化ポイント | 触れる数値 | 能力枠 | 範囲攻撃 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 0 〜 1/3 未満 | 2 | 体力・攻撃 | 0 | × |
+| 2 | 1/3 〜 2/3 未満 | 3 | ＋速度・再生産 | 1 | × |
+| 3 | 2/3 〜 1 | 4 | ＋射程 | 2 | ○ |
+
+* 強化レベル1つで、その数値が 10% 良くなる（再生産は 10% 短くなる）。-1 で 10% 悪くなる
+* レベルを上げると強化ポイントを1使い、下げると1戻る（「体力を下げて速度に回す」ができる）。合計はポイント以内。触れない数値は 0 に固定
+* レベルの上限を +2 にしているのは、+3 だと「ほかを -2 にして体力+3・攻撃+3」で体力×火力が素の値の 1.69倍になったため（+2 なら最大 1.44倍。既存キャラの個別倍率の最大と同じくらい）
+* バランスの目安（`CustomUnitRulesTests`）: 各役割で体力と攻撃に全部振った組み合わせの 体力×火力 が、同じ役割・コストの素の値（レベル0・能力なし・単体）の 1.5倍以内
+* きまりの数値はすべて純C#の `CustomUnitRules` の定数（`PenguinWarsBalance` には置かない。ホストとゲストで同じ値でないと検証結果がずれ、アセットは端末ごとに違い得るため）
+
+**直し方（`CustomUnitRules.Sanitize`）**: コストを帯の中・刻みに丸める → 触れない数値のレベルを 0 → 枠を超えた能力を後ろから外す → 段階3でなければ範囲を切る → それでもポイントを超えていたら全レベルを 0。名前は前後の空白を削り、8文字で切る。作成画面・セーブの読み込み・ホストがゲストの定義を受け取ったときの全部で同じ関数を使う。
+
+### 14.3 プリセット（3枠）とセーブ
+
+最初から3枠ともお手本が入っている（空の枠を作らない。初めてでも対戦で選べるように）。
+
+| 枠 | 名前 | 役割・コスト | 強さ | 見た目 |
+| --- | --- | --- | --- | --- |
+| 1 | じぶんナイト | アタッカー 400（段階2） | 体力+1・攻撃+1・速度+1 / ふっとばす | basic・standard・helmet・sword_shield・cape_blue |
+| 2 | じぶんアーチャー | 遠距離 800（段階2） | 攻撃+2・再生産+1 / 遠距離キラー | tall・ice・hood・bow・なし |
+| 3 | じぶんまじん | 大型 3000（段階3） | 体力+2・攻撃+1・射程+1・範囲 / ふんばる | round・aurora・crown・staff・aurora |
+
+* セーブは `PlayerPrefs` のキー `PenguinWars.CustomUnits` に JSON 1本（ステージのセーブとは別キー。`CustomUnitSave`）
+
+```json
+{"version":1,"lastPick":0,"slots":[
+  {"name":"じぶんナイト","role":1,"cost":400,"levels":[1,1,0,1,0],"area":false,"abilities":[0],
+   "body":"basic","bodyColor":"standard","head":"helmet","hand":"sword_shield","back":"cape_blue"}, …3枠]}
+```
+
+* `levels` は 体力・攻撃・射程・速度・再生産 の順。`role` / `abilities` は enum の番号。`lastPick` は対戦で前回選んだ枠
+* 読み込むときに各枠を `Sanitize` する（後のビルドできまりを変えても古いセーブがそのまま使える）。壊れた JSON・足りない枠はお手本で埋める
+
+### 14.4 作成画面（`CustomUnitPanel`）
+
+タイトルの「じぶんペンギン」から開く。上に枠1〜3、左に大きいプレビュー（歩く → 振りかぶる → 攻撃を繰り返す）と数値、右にタブ。
+
+* 「みため」タブ（`CustomLookTab`）: 名前と、体の形・体色・頭・手・背中を◀▶で回す。「おまかせ」で全部ランダム。ブラウザ版の名前入力は共通の `WebNamePrompt`
+* 「のうりょく」タブ（`CustomStatsTab`）: 役割（◀▶）・コスト（スライダーと[-][+]）・強化レベル5行（[-][+]。触れない行は「コスト N から」と薄く出す）・範囲攻撃・能力2枠（◀▶。2枠目は1枠目が空の間は押せない）
+  * コストや役割を変えて段階が下がったら、外れたものを「コストが下がったので 速度・能力 をもどしました」のように1行で知らせる
+  * 右端の値はレベル0なら今の値、それ以外は「レベル0の値 → 今の値」
+* 「ほぞん」は変更があるときだけ押せる。保存すると直した結果（空の名前 → じぶんペンギン など）を画面に戻す。保存せずに枠を変える・もどるときは確認（ほぞん / すてる）
+* 表示する数値は `Sanitize` 後の定義から出す（保存したら実際にこの数値になる）
+
+### 14.5 対戦での選択（`CustomPickPanel`）
+
+* ドラフト9回の後、3枚のカード（足踏みする絵・名前・役割・コスト・体力と攻撃・能力）から1つ選ぶ。制限時間はドラフトと同じ 15秒（`DraftPickTime`）
+* 時間切れは前回選んだ枠（`lastPick`）を各端末が自分で選ぶ。選んだ枠は `lastPick` として保存
+* ホストは「自分の選択」と「ゲストの `pw.custom`」がそろうか、15秒＋猶予 3秒（`GameManager._customPickGrace`）が過ぎたら先へ進む。ゲストの定義が届かなければお手本1（じぶんナイト）を使う
+
+### 14.6 対戦への組み込み
+
+```text
+CustomUnitDefinition
+   │  CustomUnitRules.Sanitize / ToUnitDefinition(no) → UnitStatFormula.Calculate → UnitStats
+   │  見た目ID → PenguinLook → RuntimeUnitSprites.Build（5コマ×2陣営）
+   ▼
+CustomUnitFactory.Create → PenguinUnitData（実行時に作る）→ PenguinUnitCatalog.RegisterRuntime
+   → 出撃ボタン・ユニットの絵・編成確認は catalog.Get(no) のまま動く
+```
+
+* キャラ No はホストのじぶんペンギンが `91`、ゲストのが `92`（`CustomUnitRules.LeftNo / RightNo`。スナップショットはキャラNoを byte で送るので 255 以下にし、既存の 1〜50 と離す）。ゲストの画面は左右反転するが No は入れ替えない
+* ホストはゲストの定義を必ず `Sanitize` してから使い、直した結果を `pw.deck` でゲストへ送り返す（古いビルド・壊れたデータで片方だけ強くなるのを防ぐ）。ゲストは送られてきた値を直さずにそのまま使う（ホストと数値がずれないように）
+* 実行時の登録はシリアライズしない辞書に持ち、`Units`（50体の一覧）には入れない（ずかん・ドラフトの候補に混ざらないように）。試合の初期化の頭で `ClearRuntime` する（エディタで再生を繰り返したときの残りを消すため）。作った `Texture2D` / `Sprite` もそこで捨てる
+* 撃破報酬・ペンギン砲・能力などは `UnitStats` を見るだけなので、既存キャラと区別しない

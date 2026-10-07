@@ -43,12 +43,15 @@ namespace MiniGame.PenguinWars.Editor
         private const int TitleButtonFontSize = 48;
         private static readonly Vector2 StartButtonSize = new Vector2(620f, 130f);
         private static readonly Vector2 StartButtonPosition = new Vector2(0f, -220f);
-        private static readonly Vector2 TitleSubButtonSize = new Vector2(380f, 100f);
-        // 4つを 1920 幅に収める（ボタン幅 380 + 隙間 30）
-        private static readonly Vector2 ZukanButtonPosition = new Vector2(-615f, -380f);
-        private static readonly Vector2 GuideButtonPosition = new Vector2(-205f, -380f);
-        private static readonly Vector2 SettingsButtonPosition = new Vector2(205f, -380f);
-        private static readonly Vector2 BackButtonPosition = new Vector2(615f, -380f);
+        private static readonly Vector2 TitleSubButtonSize = new Vector2(350f, 100f);
+        // 5つを 1920 幅に収める（ボタン幅 350 + 隙間 15）
+        private static readonly Vector2 ZukanButtonPosition = new Vector2(-730f, -380f);
+        private static readonly Vector2 CustomButtonPosition = new Vector2(-365f, -380f);
+        private static readonly Vector2 GuideButtonPosition = new Vector2(0f, -380f);
+        private static readonly Vector2 SettingsButtonPosition = new Vector2(365f, -380f);
+        private static readonly Vector2 BackButtonPosition = new Vector2(730f, -380f);
+        // 「じぶんペンギン」「メニューに戻る」が 350 幅で折り返さないよう、縮めてよい下限
+        private const int TitleSubButtonMinFontSize = 32;
         private static readonly Color StartButtonColor = new Color(0.95f, 0.55f, 0.15f);
         private static readonly Color TitleSubButtonColor = new Color(0.18f, 0.26f, 0.4f, 0.95f);
 
@@ -80,11 +83,15 @@ namespace MiniGame.PenguinWars.Editor
 
             Button start = CreateTitleButton(panelObj.transform, "Btn_Start", "スタート", StartButtonSize, StartButtonPosition, StartButtonColor);
             Button zukan = CreateTitleButton(panelObj.transform, "Btn_Zukan", "ずかん", TitleSubButtonSize, ZukanButtonPosition, TitleSubButtonColor);
+            Button custom = CreateTitleButton(panelObj.transform, "Btn_Custom", "じぶんペンギン", TitleSubButtonSize, CustomButtonPosition, TitleSubButtonColor);
             Button guide = CreateTitleButton(panelObj.transform, "Btn_Guide", "あそびかた", TitleSubButtonSize, GuideButtonPosition, TitleSubButtonColor);
             Button settings = CreateTitleButton(panelObj.transform, "Btn_Settings", "設定", TitleSubButtonSize, SettingsButtonPosition, TitleSubButtonColor);
             Button back = CreateTitleButton(panelObj.transform, "Btn_Back", "メニューに戻る", TitleSubButtonSize, BackButtonPosition, TitleSubButtonColor);
-            // ずかん・設定はタイトルの上に重ねたいので、タイトルの子の一番最後に作る
+            FitText(custom.GetComponentInChildren<Text>(), TitleSubButtonMinFontSize);
+            FitText(back.GetComponentInChildren<Text>(), TitleSubButtonMinFontSize);
+            // ずかん・じぶんペンギン・設定はタイトルの上に重ねたいので、タイトルの子の一番最後に作る
             PenguinZukanPanel zukanPanel = CreateZukanPanel(panelObj.transform, catalog);
+            CustomUnitPanel customPanel = CreateCustomUnitPanel(panelObj.transform);
             PenguinWarsSettingsPanel settingsPanel = CreateSettingsPanel(panelObj.transform);
             // あそびかたはタイトルの幕を閉じて戦場を見せるので、タイトルの子にせず Canvas 直下（タイトルの次）に作る
             PenguinGuidePanel guidePanel = CreateGuidePanel(canvas, battleRunner, battleCamera);
@@ -95,7 +102,8 @@ namespace MiniGame.PenguinWars.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
             SetRefs(panel, ("_catalog", catalog), ("_logo", logo), ("_startButton", start), ("_settingsButton", settings),
                 ("_backButton", back), ("_settingsPanel", settingsPanel), ("_zukanButton", zukan), ("_zukanPanel", zukanPanel),
-                ("_guideButton", guide), ("_guidePanel", guidePanel), ("_starsLabel", stars));
+                ("_guideButton", guide), ("_guidePanel", guidePanel), ("_starsLabel", stars),
+                ("_customButton", custom), ("_customPanel", customPanel));
             panelObj.SetActive(false);
             return panel;
         }

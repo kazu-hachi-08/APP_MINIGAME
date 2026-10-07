@@ -10,7 +10,8 @@ namespace MiniGame.PenguinWars
 {
     /// <summary>
     /// オンライン対戦（仕様書 §2.2・§10）の接続後の流れと決着。
-    /// ホスト: ゲストの準備完了 → ドラフト（.Draft.cs）→ 編成を送る → 編成確認。ゲスト: ドラフト → 編成が届く → 編成確認。
+    /// ホスト: ゲストの準備完了 → ドラフト（.Draft.cs）→ じぶんペンギン選択（.CustomPick.cs）→ 編成を送る → 編成確認。
+    /// ゲスト: ドラフト → じぶんペンギン選択 → 編成が届く → 編成確認。
     /// 決着（城崩壊・時間切れ）はホストの BattleWorld で決まり、ゲストにもイベントとして届くので、両者とも同じ HandleBattleEvent で終わる
     /// </summary>
     public partial class PenguinWarsGameManager
@@ -87,12 +88,16 @@ namespace MiniGame.PenguinWars
         /// ゲストのみ。ドラフトが終わってホストから届いた編成を受け取り、自分（ホストの右）を左に入れ替えて持つ。
         /// 最終ラウンドの候補より先に届いても困らないよう、ドラフト前（ModeSelect）でも受け付ける
         /// </summary>
-        private void HandleDecksReceived(int[] hostLeftDeck, int[] hostRightDeck, int stageIndex)
+        private void HandleDecksReceived(int[] hostLeftDeck, int[] hostRightDeck, int stageIndex, string hostCustomJson,
+            string guestCustomJson)
         {
             if (_mode != MatchMode.Guest) return;
             if (Phase != PenguinWarsPhase.ModeSelect && Phase != PenguinWarsPhase.Draft) return;
 
-            _draftPanel.Hide();
+            _isCustomPicking = false;
+            HideDraftPanels();
+            // 編成にじぶんペンギンの No が入っているので、World を作る前にカタログへ登録しておく
+            RegisterCustomUnitsAsGuest(hostCustomJson, guestCustomJson);
             _battleRunner.InitializeGuest(hostRightDeck, hostLeftDeck, stageIndex, _onlineLink);
             BeginIntro(_versusDeckIntroDuration);
         }

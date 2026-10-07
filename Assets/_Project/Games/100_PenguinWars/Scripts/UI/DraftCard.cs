@@ -33,8 +33,8 @@ namespace MiniGame.PenguinWars
 
             UnitStats stats = data != null ? data.ToStats() : null;
             _costLabel.text = stats != null ? stats.Cost.ToString() : string.Empty;
-            _roleLabel.text = stats != null ? UnitLabels.RoleAndRange(stats) : string.Empty;
-            _abilityLabel.text = stats != null ? UnitLabels.Abilities(stats.Abilities) : string.Empty;
+            _roleLabel.text = stats != null ? UnitLabels.Role(stats.Role) : string.Empty;
+            _abilityLabel.text = stats != null ? UnitLabels.AbilitiesWithArea(stats) : string.Empty;
             SetState(true, false);
         }
 

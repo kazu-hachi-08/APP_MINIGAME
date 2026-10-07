@@ -23,14 +23,14 @@ namespace MiniGame.PenguinWars
         public string Format(UnitStats stats) => _value(stats).ToString(_format);
     }
 
-    /// <summary>ずかんの特性しぼりこみ1つ分</summary>
-    public class ZukanTraitFilter
+    /// <summary>ずかんのしぼりこみ1つ分（役割・能力のドロップダウンの1項目）</summary>
+    public class ZukanFilter
     {
         private readonly Func<UnitStats, bool> _matches;
 
         public string Label { get; }
 
-        public ZukanTraitFilter(string label, Func<UnitStats, bool> matches)
+        public ZukanFilter(string label, Func<UnitStats, bool> matches)
         {
             Label = label;
             _matches = matches;
@@ -46,6 +46,7 @@ namespace MiniGame.PenguinWars
     {
         private const string IntegerFormat = "0";
         private const string DecimalFormat = "0.##";
+        private const string AllLabel = "すべて";
 
         public static readonly ZukanStatColumn[] Columns =
         {
@@ -57,12 +58,20 @@ namespace MiniGame.PenguinWars
             new ZukanStatColumn("再生産", s => s.Cooldown, DecimalFormat),
         };
 
-        public static readonly ZukanTraitFilter[] Traits = BuildTraits();
+        public static readonly ZukanFilter[] Roles = BuildRoles();
+        public static readonly ZukanFilter[] Abilities = BuildAbilities();
 
         public static List<string> ColumnLabels()
         {
             var labels = new List<string>();
             foreach (ZukanStatColumn column in Columns) labels.Add(column.Label);
+            return labels;
+        }
+
+        public static List<string> FilterLabels(ZukanFilter[] filters)
+        {
+            var labels = new List<string>();
+            foreach (ZukanFilter filter in filters) labels.Add(filter.Label);
             return labels;
         }
 
@@ -74,20 +83,29 @@ namespace MiniGame.PenguinWars
             return byValue != 0 ? byValue : a.UnitNo.CompareTo(b.UnitNo);
         }
 
-        /// <summary>enum から作るので、能力や役割を足せばドロップダウンの選択肢にも自動で並ぶ</summary>
-        private static ZukanTraitFilter[] BuildTraits()
+        /// <summary>enum から作るので、役割を足せばドロップダウンの選択肢にも自動で並ぶ</summary>
+        private static ZukanFilter[] BuildRoles()
         {
-            var traits = new List<ZukanTraitFilter> { new ZukanTraitFilter("すべて", _ => true) };
-            foreach (UnitAbilityType type in Enum.GetValues(typeof(UnitAbilityType)))
-            {
-                traits.Add(new ZukanTraitFilter(UnitLabels.Ability(type), s => s.HasAbility(type)));
-            }
-            traits.Add(new ZukanTraitFilter(UnitLabels.AttackRange(true), s => s.IsAreaAttack));
+            var filters = new List<ZukanFilter> { new ZukanFilter(AllLabel, _ => true) };
             foreach (UnitRole role in Enum.GetValues(typeof(UnitRole)))
             {
-                traits.Add(new ZukanTraitFilter(UnitLabels.Role(role), s => s.Role == role));
+                filters.Add(new ZukanFilter(UnitLabels.Role(role), s => s.Role == role));
             }
-            return traits.ToArray();
+            return filters.ToArray();
+        }
+
+        /// <summary>enum から作るので、能力を足せばドロップダウンの選択肢にも自動で並ぶ</summary>
+        private static ZukanFilter[] BuildAbilities()
+        {
+            var filters = new List<ZukanFilter> { new ZukanFilter(AllLabel, _ => true) };
+            // 範囲攻撃は能力ではないが「敵をまとめて叩ける」というできることなので、役割ではなく能力側に置く。
+            // 半分以上のキャラが持つので、一覧をスクロールしなくても見える先頭にする
+            filters.Add(new ZukanFilter(UnitLabels.AreaAttack, s => s.IsAreaAttack));
+            foreach (UnitAbilityType type in Enum.GetValues(typeof(UnitAbilityType)))
+            {
+                filters.Add(new ZukanFilter(UnitLabels.Ability(type), s => s.HasAbility(type)));
+            }
+            return filters.ToArray();
         }
     }
 }

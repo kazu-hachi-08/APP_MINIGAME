@@ -19,11 +19,13 @@ namespace MiniGame.PenguinWars
         [SerializeField] private Text _starsLabel;
         [SerializeField] private Button _startButton;
         [SerializeField] private Button _zukanButton;
+        [SerializeField] private Button _customButton;
         [SerializeField] private Button _guideButton;
         [SerializeField] private Button _settingsButton;
         [SerializeField] private Button _backButton;
         [SerializeField] private PenguinWarsSettingsPanel _settingsPanel;
         [SerializeField] private PenguinZukanPanel _zukanPanel;
+        [SerializeField] private CustomUnitPanel _customPanel;
         [Tooltip("タイトルの子ではなく Canvas 直下に置く。タイトルの幕を閉じて戦場を見せるため")]
         [SerializeField] private PenguinGuidePanel _guidePanel;
 
@@ -46,6 +48,7 @@ namespace MiniGame.PenguinWars
             _backButton.onClick.AddListener(() => Close(_onBack));
             _settingsButton.onClick.AddListener(OpenSettings);
             _zukanButton.onClick.AddListener(OpenZukan);
+            _customButton.onClick.AddListener(OpenCustom);
             _guideButton.onClick.AddListener(OpenGuide);
 
             _logoBasePosition = _logo.anchoredPosition;
@@ -61,6 +64,7 @@ namespace MiniGame.PenguinWars
             ShowStars();
             _settingsPanel.Hide();
             _zukanPanel.Hide();
+            _customPanel.Hide();
             gameObject.SetActive(true);
         }
 
@@ -115,6 +119,12 @@ namespace MiniGame.PenguinWars
         {
             PenguinUiSound.Click();
             _zukanPanel.Show();
+        }
+
+        private void OpenCustom()
+        {
+            PenguinUiSound.Click();
+            _customPanel.Show();
         }
 
         /// <summary>デモの戦場が幕で暗くならないよう、タイトルごと隠してから開き、閉じたら戻す</summary>

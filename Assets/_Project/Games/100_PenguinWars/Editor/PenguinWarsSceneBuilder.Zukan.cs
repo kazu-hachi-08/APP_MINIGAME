@@ -14,19 +14,21 @@ namespace MiniGame.PenguinWars.Editor
         private static readonly Vector2 ZukanCloseSize = new Vector2(300f, 100f);
         private static readonly Vector2 ZukanClosePosition = new Vector2(-50f, -35f);
 
-        // 並べ替えの2つは左上、特性は「もどる」の左隣。中央のタイトル文字とは重ならない幅にする
-        private static readonly Vector2 ZukanColumnDropdownSize = new Vector2(240f, 100f);
+        // 並べ替えの2つと役割は左上、能力は「もどる」の左隣。中央のタイトル文字とは重ならない幅にする
+        private static readonly Vector2 ZukanColumnDropdownSize = new Vector2(220f, 100f);
         private static readonly Vector2 ZukanColumnDropdownPosition = new Vector2(50f, -35f);
-        private static readonly Vector2 ZukanOrderButtonSize = new Vector2(240f, 100f);
-        private static readonly Vector2 ZukanOrderButtonPosition = new Vector2(310f, -35f);
-        private static readonly Vector2 ZukanTraitDropdownSize = new Vector2(380f, 100f);
-        private static readonly Vector2 ZukanTraitDropdownPosition = new Vector2(-370f, -35f);
-        // 開いた一覧。指で押しやすい行の高さにし、特性14個のうち7個ほどが一度に見える長さにする
+        private static readonly Vector2 ZukanOrderButtonSize = new Vector2(220f, 100f);
+        private static readonly Vector2 ZukanOrderButtonPosition = new Vector2(285f, -35f);
+        private static readonly Vector2 ZukanRoleDropdownSize = new Vector2(280f, 100f);
+        private static readonly Vector2 ZukanRoleDropdownPosition = new Vector2(520f, -35f);
+        private static readonly Vector2 ZukanAbilityDropdownSize = new Vector2(380f, 100f);
+        private static readonly Vector2 ZukanAbilityDropdownPosition = new Vector2(-370f, -35f);
+        // 開いた一覧。指で押しやすい行の高さにし、能力10個のうち7個ほどが一度に見える長さにする
         private const float ZukanDropdownItemHeight = 84f;
         private const float ZukanDropdownListHeight = 600f;
         private const int ZukanDropdownItemFontSize = 40;
         private static readonly Color ZukanDropdownListColor = new Color(0.1f, 0.16f, 0.28f, 0.98f);
-        // 「特性: 遠距離キラー」も1行に収めるため、縮めてよい下限
+        // 「能力: 遠距離キラー」も1行に収めるため、縮めてよい下限
         private const int ZukanHeaderButtonMinFontSize = 24;
 
         // ヘッダーの下をすべてスクロール領域にする
@@ -87,13 +89,15 @@ namespace MiniGame.PenguinWars.Editor
             ZukanCell template = CreateZukanCellTemplate(content);
             // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
             Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, TopLeftAnchor, ZukanColumnDropdownPosition);
-            Dropdown trait = CreateZukanDropdown(panelObj.transform, "Dropdown_Trait", ZukanTraitDropdownSize, TopRightAnchor, ZukanTraitDropdownPosition);
+            Dropdown role = CreateZukanDropdown(panelObj.transform, "Dropdown_Role", ZukanRoleDropdownSize, TopLeftAnchor, ZukanRoleDropdownPosition);
+            Dropdown ability = CreateZukanDropdown(panelObj.transform, "Dropdown_Ability", ZukanAbilityDropdownSize, TopRightAnchor, ZukanAbilityDropdownPosition);
             ZukanDetailPanel detail = CreateZukanDetailPanel(panelObj.transform);
 
             var panel = panelObj.AddComponent<PenguinZukanPanel>();
             SetRefs(panel, ("_catalog", catalog), ("_cellTemplate", template), ("_scroll", scroll),
                 ("_detailPanel", detail), ("_closeButton", close),
-                ("_columnDropdown", column), ("_orderButton", order), ("_traitDropdown", trait));
+                ("_columnDropdown", column), ("_orderButton", order),
+                ("_roleDropdown", role), ("_abilityDropdown", ability));
             panelObj.SetActive(false);
             return panel;
         }

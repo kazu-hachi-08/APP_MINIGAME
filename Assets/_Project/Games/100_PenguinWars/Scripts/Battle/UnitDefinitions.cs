@@ -11,24 +11,25 @@ namespace MiniGame.PenguinWars.Battle
         private const bool Single = false;
         private const bool Area = true;
 
-        // 能力の確率・秒数。役割ごとに強さの目安を揃える（妨害は本業なので高め、アタッカー・大型はおまけ程度）
-        private const float SideKnockChance = 0.3f;
-        private const float MainKnockChance = 0.5f;
-        private const float FreezeChance = 0.4f;
-        private const float FreezeSeconds = 2f;
-        private const float SideFreezeChance = 0.25f;
-        private const float SlowChance = 0.5f;
-        private const float SlowSeconds = 3f;
+        // 能力の確率・秒数。役割ごとに強さの目安を揃える（妨害は本業なので高め、アタッカー・大型はおまけ程度）。
+        // じぶんペンギン（CustomUnitRules）も同じ値を使うので internal にする
+        internal const float SideKnockChance = 0.3f;
+        internal const float MainKnockChance = 0.5f;
+        internal const float FreezeChance = 0.4f;
+        internal const float FreezeSeconds = 2f;
+        internal const float SideFreezeChance = 0.25f;
+        internal const float SlowChance = 0.5f;
+        internal const float SlowSeconds = 3f;
 
-        private static UnitAbility Knock(float chance) => new UnitAbility(UnitAbilityType.Knockback, chance);
-        private static UnitAbility Freeze(float chance) => new UnitAbility(UnitAbilityType.Freeze, chance, FreezeSeconds);
-        private static UnitAbility Slow() => new UnitAbility(UnitAbilityType.Slow, SlowChance, SlowSeconds);
-        private static UnitAbility CastleKiller() => new UnitAbility(UnitAbilityType.CastleKiller);
-        private static UnitAbility Steadfast() => new UnitAbility(UnitAbilityType.Steadfast);
+        internal static UnitAbility Knock(float chance) => new UnitAbility(UnitAbilityType.Knockback, chance);
+        internal static UnitAbility Freeze(float chance) => new UnitAbility(UnitAbilityType.Freeze, chance, FreezeSeconds);
+        internal static UnitAbility Slow() => new UnitAbility(UnitAbilityType.Slow, SlowChance, SlowSeconds);
+        internal static UnitAbility CastleKiller() => new UnitAbility(UnitAbilityType.CastleKiller);
+        internal static UnitAbility Steadfast() => new UnitAbility(UnitAbilityType.Steadfast);
         // 役割キラー: 大型は前に出てくるので単体攻撃でも殴れるが、遠距離・妨害は壁の後ろにいるので範囲攻撃のキャラに持たせる（それでも壁が残っている間は届きにくい）
-        private static UnitAbility LargeKiller() => new UnitAbility(UnitAbilityType.LargeKiller);
-        private static UnitAbility RangedKiller() => new UnitAbility(UnitAbilityType.RangedKiller);
-        private static UnitAbility DisruptorKiller() => new UnitAbility(UnitAbilityType.DisruptorKiller);
+        internal static UnitAbility LargeKiller() => new UnitAbility(UnitAbilityType.LargeKiller);
+        internal static UnitAbility RangedKiller() => new UnitAbility(UnitAbilityType.RangedKiller);
+        internal static UnitAbility DisruptorKiller() => new UnitAbility(UnitAbilityType.DisruptorKiller);
 
         private static UnitDefinition Wall(int no, string name, int cost, bool area, params UnitAbility[] abilities) =>
             new UnitDefinition(no, name, UnitRole.Wall, cost, area, abilities);

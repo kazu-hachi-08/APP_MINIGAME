@@ -81,6 +81,18 @@ namespace MiniGame.PenguinWars
         }
 
         /// <summary>
+        /// 対戦のじぶんペンギンを両者分カタログに登録する。試合の初期化（InitializeVersusHost / InitializeGuest）より前に呼ぶ。
+        /// No はホストのが LeftNo・ゲストのが RightNo で、ゲストの端末でも入れ替えない（スナップショットの No をそのまま引けるように）
+        /// </summary>
+        public void RegisterVersusCustomUnits(CustomUnitDefinition hostUnit, CustomUnitDefinition guestUnit)
+        {
+            // エディタで再生を繰り返したときなどに、前回の登録が残らないように
+            _catalog.ClearRuntime();
+            _catalog.RegisterRuntime(CustomUnitFactory.Create(hostUnit, CustomUnitRules.LeftNo));
+            _catalog.RegisterRuntime(CustomUnitFactory.Create(guestUnit, CustomUnitRules.RightNo));
+        }
+
+        /// <summary>
         /// あそびかたのデモ。呼ぶたびに作り直すので、トピックの切り替え・ループの頭で呼ぶ。
         /// デモ用の数値（城HP・なだれの間隔など）は GuideDemoDirector が customize で上書きする（デモの調整を1か所にまとめるため）
         /// </summary>
@@ -332,6 +344,11 @@ namespace MiniGame.PenguinWars
         {
             var statsByNo = new Dictionary<int, UnitStats>();
             foreach (UnitStats stats in CollectAllUnits()) statsByNo[stats.UnitNo] = stats;
+            // じぶんペンギンはドラフトの候補（CollectAllUnits）には入れず、編成・ゲストの表示で No から引けるようにだけする
+            foreach (PenguinUnitData data in _catalog.RuntimeUnits)
+            {
+                if (data != null) statsByNo[data.No] = data.ToStats();
+            }
             return statsByNo;
         }
 

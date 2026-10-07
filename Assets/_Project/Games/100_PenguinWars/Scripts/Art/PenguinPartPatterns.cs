@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace MiniGame.PenguinWars.Editor
+namespace MiniGame.PenguinWars.Art
 {
     /// <summary>パーツをどこに付けるか。Ground は乗り物用で、体ではなく足元の中央に付ける</summary>
     public enum PartAttach

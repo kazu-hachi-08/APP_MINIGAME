@@ -16,6 +16,18 @@ namespace MiniGame.PenguinWars
         [Tooltip("効果の秒数。止める・遅くするで使う")]
         [SerializeField] private float _duration;
 
+        public PenguinAbilityEntry()
+        {
+        }
+
+        /// <summary>実行時に作るキャラ（じぶんペンギン）用</summary>
+        public PenguinAbilityEntry(UnitAbility ability)
+        {
+            _type = ability.Type;
+            _chance = ability.Chance;
+            _duration = ability.Duration;
+        }
+
         public UnitAbility ToAbility()
         {
             return new UnitAbility(_type, _chance, _duration);

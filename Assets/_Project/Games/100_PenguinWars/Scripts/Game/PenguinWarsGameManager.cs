@@ -39,6 +39,7 @@ namespace MiniGame.PenguinWars
             _presenter.CastleCollapsed += HandleCastleCollapsed;
             SubscribeOnline();
             SubscribeDraft();
+            SubscribeCustomPick();
 
             _progress = CampaignSave.Load();
             if (!TryResumeStageFlow()) ShowTitle();
@@ -51,6 +52,7 @@ namespace MiniGame.PenguinWars
             if (_presenter != null) _presenter.CastleCollapsed -= HandleCastleCollapsed;
             UnsubscribeOnline();
             UnsubscribeDraft();
+            UnsubscribeCustomPick();
         }
 
         /// <summary>ステージはシーンを読み直して同じステージをすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>
@@ -58,6 +60,18 @@ namespace MiniGame.PenguinWars
         {
             if (!IsOnline && _currentStage != null) ReloadInto(_currentStage.Id);
             else base.RestartGame();
+        }
+
+        /// <summary>ポーズ・リザルトの「タイトルへ」はミニゲーム集ではなくペンギン大戦争のタイトルへ戻す（static の行き先なしで読み直すと ShowTitle から始まる）</summary>
+        public override void ReturnToTitle()
+        {
+            base.RestartGame();
+        }
+
+        /// <summary>ペンギン大戦争のタイトル画面の「戻る」だけはミニゲーム集のタイトルへ</summary>
+        private void ReturnToCollectionTitle()
+        {
+            base.ReturnToTitle();
         }
 
         private void ShowTitle()
@@ -70,7 +84,7 @@ namespace MiniGame.PenguinWars
 
             Phase = PenguinWarsPhase.Title;
             _audio.PlayTitleBgm();
-            _titlePanel.Show(ShowModeSelect, ReturnToTitle);
+            _titlePanel.Show(ShowModeSelect, ReturnToCollectionTitle);
         }
 
         private void ShowModeSelect()

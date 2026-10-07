@@ -76,6 +76,14 @@ namespace MiniGame.PenguinWars.Battle
             return cost >= profile.CostMin && cost <= profile.CostMax;
         }
 
+        /// <summary>役割のコスト帯の下限・上限。じぶんペンギンのコストの段階（CustomUnitRules）も同じ帯で決める</summary>
+        public static void CostRange(UnitRole role, out int min, out int max)
+        {
+            RoleProfile profile = Profiles[role];
+            min = profile.CostMin;
+            max = profile.CostMax;
+        }
+
         public static UnitStats Calculate(UnitDefinition def)
         {
             RoleProfile profile = Profiles[def.Role];

@@ -66,6 +66,7 @@ namespace MiniGame.PenguinWars.Editor
             // 操作UIの上に被せて、発表中は押せないようにする
             DeckIntroPanel deckIntroPanel = CreateDeckIntroPanel(canvas, catalog);
             DraftPanel draftPanel = CreateDraftPanel(canvas, catalog);
+            CustomPickPanel customPickPanel = CreateCustomPickPanel(canvas);
             DeckRevealPanel deckRevealPanel = CreateDeckRevealPanel(canvas, catalog);
             // 編成発表より手前・ダイアログ（ポーズ・リザルト）より奥
             OnlineParts online = CreateOnline(canvas, battleRunner);
@@ -89,7 +90,8 @@ namespace MiniGame.PenguinWars.Editor
                 ("_battleRunner", battleRunner), ("_deckIntroPanel", deckIntroPanel), ("_presenter", presenter), ("_audio", audio),
                 ("_titlePanel", titlePanel));
             SetRefs(gameManager, ("_modeSelectPanel", online.ModeSelectPanel), ("_onlineSession", online.Session),
-                ("_onlineLink", online.Link), ("_draftPanel", draftPanel), ("_deckRevealPanel", deckRevealPanel));
+                ("_onlineLink", online.Link), ("_draftPanel", draftPanel), ("_deckRevealPanel", deckRevealPanel),
+                ("_customPickPanel", customPickPanel));
             SetRefs(gameManager, ("_stageSelectPanel", stageSelectPanel), ("_stageResultPanel", stageResultPanel));
             SetRefs(pauseButton, ("_gameManager", gameManager));
 

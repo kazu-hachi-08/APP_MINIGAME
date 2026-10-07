@@ -26,6 +26,17 @@ namespace MiniGame.PenguinWars
         [Tooltip("足元から頭のてっぺんまでの高さ（ワールド単位）。HPバーを頭の上に置くため、生成時に絵から測っておく")]
         [SerializeField] private float _headHeight;
 
+        public UnitSpriteSet()
+        {
+        }
+
+        /// <summary>実行時に作った絵を入れる（じぶんペンギン。RuntimeUnitSprites）</summary>
+        public UnitSpriteSet(Sprite[] frames, float headHeight)
+        {
+            _frames = frames;
+            _headHeight = headHeight;
+        }
+
         public float HeadHeight => _headHeight;
         /// <summary>ボタン・編成発表のアイコン。立ち姿の1コマ目を使う</summary>
         public Sprite Icon => Get(PenguinFrame.Walk0);
