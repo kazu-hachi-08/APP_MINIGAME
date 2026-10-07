@@ -96,6 +96,7 @@ namespace MiniGame.PenguinWars
         private const int LongLegPenguin = 15;
         private const int DrillPenguin = 20;
         private const int BowPenguin = 23;
+        private const int MukimukiPenguin = 22;
         private const int SnowThrowPenguin = 24;
         private const int SniperPenguin = 29;
         private const int BoomerangPenguin = 30;
@@ -109,7 +110,7 @@ namespace MiniGame.PenguinWars
         public static readonly IReadOnlyList<GuideTopic> All = new[]
         {
             // 遊び方の基本 → ステージモードの遊び方 → 戦い方 → 役割 → 能力 → ステージの仕掛け（ボス・なだれ）の順。最初のページで「何をすれば勝ちか」が分かるようにする。
-            // 役割・能力は enum（UnitRole / UnitAbilityType）と同じ順にし、ずかんのしぼりこみの並びとそろえる
+            // 役割・能力は enum（UnitRole / UnitAbilityType）と同じ順にし、ずかんのしぼりこみの並びとそろえる（能力は範囲攻撃を先頭に置く）
             new GuideTopic("出撃と勝ち方",
                 "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
                 "相手の城を先に落とせば勝ち。\n" +
@@ -227,6 +228,16 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 7f),
                 GuideAction.Spawn(0.5f, Enemy, Penguin, 8f),
                 GuideAction.Spawn(1f, Enemy, AxePenguin, 9f)),
+
+            // 範囲攻撃は並んだ敵にまとめて当たるのが見どころなので、敵を固めて置く
+            new GuideTopic(AbilityPrefix + UnitLabels.AreaAttack,
+                "射程の中にいる敵全員（城も）にまとめて当たる。そのぶん1体あたりの火力は少し低い。\n" +
+                "単体攻撃は一番手前の1体だけ。壁の行列や固まった敵には範囲攻撃が強い。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, MukimukiPenguin, 2f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 7f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 7.5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 8f)),
 
             new GuideTopic(AbilityPrefix + "ふっとばす",
                 "攻撃が当たると、確率で相手を後ろに飛ばす（妨害は50%・ほかは30%）。\n" +

@@ -36,11 +36,11 @@ namespace MiniGame.PenguinWars
         /// <summary>じぶんペンギンの作成画面でも同じ書き方で数値を出す</summary>
         public static string FormatStats(UnitStats stats)
         {
-            return $"役割　{UnitLabels.RoleAndRange(stats)}\n"
+            return $"役割　{UnitLabels.Role(stats.Role)}\n"
                 + $"コスト　{stats.Cost}　　再生産　{stats.Cooldown.ToString(NumberFormat)}秒\n"
                 + $"体力　{stats.MaxHp}　　攻撃力　{stats.Attack}\n"
                 + $"射程　{stats.Range.ToString(NumberFormat)}　　速度　{stats.MoveSpeed.ToString(NumberFormat)}\n"
-                + $"能力　{UnitLabels.Abilities(stats.Abilities)}";
+                + $"能力　{UnitLabels.AbilitiesWithArea(stats)}";
         }
 
         private void Close()

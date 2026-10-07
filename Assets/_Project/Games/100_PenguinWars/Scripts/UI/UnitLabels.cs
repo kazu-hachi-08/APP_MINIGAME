@@ -14,9 +14,7 @@ namespace MiniGame.PenguinWars
     {
         private const string NoAbility = "能力なし";
         private const string AbilitySeparator = "・";
-        private const string RangeArea = "範囲";
-        private const string RangeSingle = "単体";
-        private const string RoleRangeSeparator = "・";
+        public const string AreaAttack = "範囲攻撃";
 
         /// <param name="data">カタログに無い No なら null</param>
         public static string Name(PenguinUnitData data, int unitNo) => data != null ? data.DisplayName : $"No.{unitNo}";
@@ -42,11 +40,6 @@ namespace MiniGame.PenguinWars
                 default: return role.ToString();
             }
         }
-
-        public static string AttackRange(bool isAreaAttack) => isAreaAttack ? RangeArea : RangeSingle;
-
-        /// <summary>「アタッカー・単体」のように役割と攻撃範囲をつなげる（ドラフトのカード・ずかんの詳細）</summary>
-        public static string RoleAndRange(UnitStats stats) => $"{Role(stats.Role)}{RoleRangeSeparator}{AttackRange(stats.IsAreaAttack)}";
 
         public static string Ability(UnitAbilityType type)
         {
@@ -76,6 +69,17 @@ namespace MiniGame.PenguinWars
                 builder.Append(Ability(ability.Type));
             }
             return builder.ToString();
+        }
+
+        /// <summary>
+        /// 能力の頭に「範囲攻撃」を付ける（ドラフトのカード・ずかんの詳細）。範囲攻撃は能力ではないが「まとめて叩ける」というできることなので、
+        /// ずかんのしぼりこみと同じく能力の側に並べる（役割の側に置くと「範囲」という役割があるように見えるため）
+        /// </summary>
+        public static string AbilitiesWithArea(UnitStats stats)
+        {
+            if (!stats.IsAreaAttack) return Abilities(stats.Abilities);
+            if (stats.Abilities.Count == 0) return AreaAttack;
+            return AreaAttack + AbilitySeparator + Abilities(stats.Abilities);
         }
     }
 }

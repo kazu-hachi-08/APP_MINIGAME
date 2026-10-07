@@ -98,12 +98,13 @@ namespace MiniGame.PenguinWars
         private static ZukanFilter[] BuildAbilities()
         {
             var filters = new List<ZukanFilter> { new ZukanFilter(AllLabel, _ => true) };
+            // 範囲攻撃は能力ではないが「敵をまとめて叩ける」というできることなので、役割ではなく能力側に置く。
+            // 半分以上のキャラが持つので、一覧をスクロールしなくても見える先頭にする
+            filters.Add(new ZukanFilter(UnitLabels.AreaAttack, s => s.IsAreaAttack));
             foreach (UnitAbilityType type in Enum.GetValues(typeof(UnitAbilityType)))
             {
                 filters.Add(new ZukanFilter(UnitLabels.Ability(type), s => s.HasAbility(type)));
             }
-            // 範囲攻撃は能力ではないが「敵をまとめて叩ける」というできることなので、役割ではなく能力側に置く
-            filters.Add(new ZukanFilter(UnitLabels.AttackRange(true), s => s.IsAreaAttack));
             return filters.ToArray();
         }
     }
