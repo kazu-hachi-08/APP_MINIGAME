@@ -1,3 +1,4 @@
+using MiniGame.Common.UI;
 using MiniGame.Editor;
 using MiniGame.PenguinWars.Art;
 using MiniGame.PenguinWars.Battle;
@@ -8,38 +9,40 @@ using UnityEngine.UI;
 namespace MiniGame.PenguinWars.Editor
 {
     /// <summary>
-    /// タイトルから開く「じぶんペンギン」の作成画面。左に大きいプレビューと数値、右にタブ。
+    /// タイトルから開く「じぶんペンギン」の作成画面。左の列に 題名・枠・プレビュー・数値、右の列に タブ、下の段に もどる・ほぞん。
+    /// 中身はすべて SafeArea の中の固定サイズの台紙（CustomContentSize）に並べ、狭い画面では台紙ごと縮める（FitContentScaler）。
+    /// 画面の端を基準に置くと、横長スマホで高さが足りずボタンが重なったり、内カメ（ノッチ）に掛かったりするため。
     /// タブの中身は親オブジェクトを分け、のうりょくタブは .CustomStats.cs に置く（みためタブと触る場所が重ならないように）
     /// </summary>
     public static partial class PenguinWarsSceneBuilder
     {
-        private const int CustomTitleFontSize = 72;
-        private static readonly Vector2 CustomTitlePosition = new Vector2(50f, -35f);
-        private static readonly Vector2 CustomTitleSize = new Vector2(520f, 100f);
-        private const int CustomHintFontSize = 32;
-        private static readonly Vector2 CustomHintPosition = new Vector2(-50f, -35f);
-        private static readonly Vector2 CustomHintSize = new Vector2(560f, 100f);
+        // 台紙の大きさ。1920x1080 の画面では周りに余白が残り、縮めるのは SafeArea がこれより狭いときだけ
+        private static readonly Vector2 CustomContentSize = new Vector2(1800f, 960f);
 
-        private static readonly Vector2 CustomSlotButtonSize = new Vector2(150f, 100f);
-        private const float CustomSlotSpacing = 170f;
-        private const float CustomSlotY = -35f;
+        // 左の列（x -900〜-180）
+        private const int CustomTitleFontSize = 64;
+        private static readonly Vector2 CustomTitleSize = new Vector2(720f, 90f);
+
+        private static readonly Vector2 CustomSlotButtonSize = new Vector2(200f, 90f);
+        private const float CustomSlotSpacing = 230f;
+        private static readonly Vector2 CustomSlotCenter = new Vector2(-540f, 330f);
         private const int CustomSlotFontSize = 56;
 
-        // 左半分: プレビューの台と数値。大型（拡大率2）でも台に収まる大きさにする
-        private static readonly Vector2 CustomStagePosition = new Vector2(-520f, 130f);
-        private static readonly Vector2 CustomStageSize = new Vector2(520f, 520f);
+        // プレビューの台と数値。大型（拡大率2）でも台に収まる大きさにする（190 x 2 = 380 < 420）
+        private static readonly Vector2 CustomStagePosition = new Vector2(-540f, 60f);
+        private static readonly Vector2 CustomStageSize = new Vector2(420f, 420f);
         private static readonly Vector2 CustomPreviewFootPosition = new Vector2(0f, 20f);
-        private const float CustomPreviewBaseSize = 230f;
-        private static readonly Vector2 CustomStatsPosition = new Vector2(-520f, -250f);
-        private static readonly Vector2 CustomStatsSize = new Vector2(760f, 220f);
+        private const float CustomPreviewBaseSize = 190f;
+        private static readonly Vector2 CustomStatsPosition = new Vector2(-540f, -270f);
+        private static readonly Vector2 CustomStatsSize = new Vector2(720f, 210f);
         private const int CustomStatsFontSize = 30;
         private const float CustomStatsLineSpacing = 1.1f;
 
-        // 右半分: タブのボタンと中身
-        private static readonly Vector2 CustomTabButtonSize = new Vector2(340f, 90f);
-        private static readonly Vector2 CustomLookTabButtonPosition = new Vector2(195f, 330f);
-        private static readonly Vector2 CustomStatsTabButtonPosition = new Vector2(555f, 330f);
-        private static readonly Vector2 CustomTabRootPosition = new Vector2(375f, -60f);
+        // 右の列（x -120〜880）: タブのボタンと中身
+        private static readonly Vector2 CustomTabButtonSize = new Vector2(320f, 90f);
+        private static readonly Vector2 CustomLookTabButtonPosition = new Vector2(215f, 435f);
+        private static readonly Vector2 CustomStatsTabButtonPosition = new Vector2(545f, 435f);
+        private static readonly Vector2 CustomTabRootPosition = new Vector2(380f, 50f);
         private static readonly Vector2 CustomTabRootSize = new Vector2(1000f, 640f);
 
         // タブの中の行（名前・5部位・おまかせ）。スマホで押しやすいよう ◀▶ は大きめ
@@ -58,9 +61,10 @@ namespace MiniGame.PenguinWars.Editor
         private const float CustomInputTextPadding = 16f;
         private static readonly Color CustomInputPlaceholderColor = new Color(0.5f, 0.5f, 0.5f);
 
-        private static readonly Vector2 CustomFooterButtonSize = new Vector2(300f, 100f);
-        private static readonly Vector2 CustomBackPosition = new Vector2(50f, 35f);
-        private static readonly Vector2 CustomSavePosition = new Vector2(-50f, 35f);
+        // 下の段（y -390〜-480）: もどる・ひとこと・ほぞん。数値（下端 -375）・タブの中身（下端 -270）と重ならない高さ
+        private static readonly Vector2 CustomFooterButtonSize = new Vector2(280f, 90f);
+        private const int CustomHintFontSize = 32;
+        private static readonly Vector2 CustomHintSize = new Vector2(1000f, 90f);
 
         private static readonly PenguinPartSlot[] CustomRowSlots =
         {
@@ -71,22 +75,23 @@ namespace MiniGame.PenguinWars.Editor
         {
             // raycastTarget を残し、作成画面の下のタイトルのボタンが押せないようにする
             GameObject panelObj = CreateFullScreenPanel(parent, "CustomUnitPanel", ZukanBackColor);
-            CreateCustomHeader(panelObj.transform);
-            Button[] slots = CreateCustomSlotButtons(panelObj.transform);
+            Transform content = CreateCustomContent(panelObj.transform);
+            CreateCustomHeader(content);
+            Button[] slots = CreateCustomSlotButtons(content);
 
-            Image stage = CreateImage(panelObj.transform, "Stage", CenterAnchor, CustomStagePosition, CustomStageSize, ZukanStageColor);
+            Image stage = CreateImage(content, "Stage", CenterAnchor, CustomStagePosition, CustomStageSize, ZukanStageColor);
             CustomUnitPreview preview = CreateCustomPreview(stage.transform);
-            Text stats = CreateDetailText(panelObj.transform, "Stats", CustomStatsFontSize, CustomStatsPosition, CustomStatsSize, Color.white);
+            Text stats = CreateDetailText(content, "Stats", CustomStatsFontSize, CustomStatsPosition, CustomStatsSize, Color.white);
             stats.alignment = TextAnchor.UpperLeft;
             stats.lineSpacing = CustomStatsLineSpacing;
 
-            Button lookTabButton = CreateAnchoredButton(panelObj.transform, "Btn_TabLook", "みため", CustomTabButtonSize, CenterAnchor, CustomLookTabButtonPosition);
-            Button statsTabButton = CreateAnchoredButton(panelObj.transform, "Btn_TabStats", "のうりょく", CustomTabButtonSize, CenterAnchor, CustomStatsTabButtonPosition);
-            CustomLookTab lookTab = CreateCustomLookTab(panelObj.transform);
-            CustomStatsTab statsTab = CreateCustomStatsTab(panelObj.transform);
+            Button lookTabButton = CreateAnchoredButton(content, "Btn_TabLook", "みため", CustomTabButtonSize, CenterAnchor, CustomLookTabButtonPosition);
+            Button statsTabButton = CreateAnchoredButton(content, "Btn_TabStats", "のうりょく", CustomTabButtonSize, CenterAnchor, CustomStatsTabButtonPosition);
+            CustomLookTab lookTab = CreateCustomLookTab(content);
+            CustomStatsTab statsTab = CreateCustomStatsTab(content);
 
-            Button back = CreateAnchoredButton(panelObj.transform, "Btn_Back", "もどる", CustomFooterButtonSize, BottomLeftAnchor, CustomBackPosition);
-            Button save = CreateAnchoredButton(panelObj.transform, "Btn_Save", "ほぞん", CustomFooterButtonSize, BottomRightAnchor, CustomSavePosition, SettingsCloseColor);
+            Button back = CreateAnchoredButton(content, "Btn_Back", "もどる", CustomFooterButtonSize, BottomLeftAnchor, Vector2.zero);
+            Button save = CreateAnchoredButton(content, "Btn_Save", "ほぞん", CustomFooterButtonSize, BottomRightAnchor, Vector2.zero, SettingsCloseColor);
 
             var panel = panelObj.AddComponent<CustomUnitPanel>();
             var so = new SerializedObject(panel);
@@ -100,25 +105,41 @@ namespace MiniGame.PenguinWars.Editor
             return panel;
         }
 
-        private static void CreateCustomHeader(Transform panel)
+        /// <summary>背景は画面全体に敷いたまま、操作するものはノッチ・ホームバーを避けた台紙の上に置く</summary>
+        private static Transform CreateCustomContent(Transform panel)
         {
-            Text title = CreateText(panel, "Title", CustomTitleFontSize, TopLeftAnchor, CustomTitlePosition, CustomTitleSize, MessageColor);
+            GameObject safeArea = UIDialogBuilder.CreateUIObject("SafeArea", panel);
+            UIDialogBuilder.SetStretchAll(safeArea.GetComponent<RectTransform>());
+            safeArea.AddComponent<SafeAreaFitter>();
+
+            GameObject contentObj = UIDialogBuilder.CreateUIObject("Content", safeArea.transform);
+            RectTransform content = contentObj.GetComponent<RectTransform>();
+            SetAnchor(content, CenterAnchor, Vector2.zero);
+            content.sizeDelta = CustomContentSize;
+
+            var scaler = safeArea.AddComponent<FitContentScaler>();
+            SetRefs(scaler, ("_content", content));
+            return content;
+        }
+
+        private static void CreateCustomHeader(Transform content)
+        {
+            Text title = CreateText(content, "Title", CustomTitleFontSize, TopLeftAnchor, Vector2.zero, CustomTitleSize, MessageColor);
             title.text = "じぶんペンギン";
             title.alignment = TextAnchor.MiddleLeft;
 
-            Text hint = CreateText(panel, "Hint", CustomHintFontSize, TopRightAnchor, CustomHintPosition, CustomHintSize, TitleSubColor);
+            Text hint = CreateText(content, "Hint", CustomHintFontSize, BottomCenterAnchor, Vector2.zero, CustomHintSize, TitleSubColor);
             hint.text = "★対戦の前に3つから選べます";
-            hint.alignment = TextAnchor.MiddleRight;
         }
 
-        private static Button[] CreateCustomSlotButtons(Transform panel)
+        private static Button[] CreateCustomSlotButtons(Transform content)
         {
             var buttons = new Button[CustomUnitPresets.SlotCount];
             for (int i = 0; i < buttons.Length; i++)
             {
-                float x = (i - (buttons.Length - 1) * 0.5f) * CustomSlotSpacing;
-                buttons[i] = CreateAnchoredButton(panel, $"Btn_Slot{i + 1}", (i + 1).ToString(), CustomSlotButtonSize,
-                    TopCenterAnchor, new Vector2(x, CustomSlotY));
+                float x = CustomSlotCenter.x + (i - (buttons.Length - 1) * 0.5f) * CustomSlotSpacing;
+                buttons[i] = CreateAnchoredButton(content, $"Btn_Slot{i + 1}", (i + 1).ToString(), CustomSlotButtonSize,
+                    CenterAnchor, new Vector2(x, CustomSlotCenter.y));
                 buttons[i].GetComponentInChildren<Text>().fontSize = CustomSlotFontSize;
             }
             return buttons;
