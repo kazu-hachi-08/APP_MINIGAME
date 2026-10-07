@@ -12,6 +12,8 @@ namespace MiniGame.PenguinWars.Battle
         /// <summary>対戦でのキャラ No。スナップショットは No を byte で送るので 255 以下にし、既存の 1〜50 と離す</summary>
         public const int LeftNo = 91;
         public const int RightNo = 92;
+        /// <summary>対戦の編成10体のうち、じぶんペンギンに使う枠の数（ドラフトはその分だけ少なくなる）</summary>
+        public const int SlotsInDeck = 1;
 
         public const string DefaultName = "じぶんペンギン";
         /// <summary>編成確認・出撃ボタンで名前が切れない長さ</summary>
@@ -37,6 +39,8 @@ namespace MiniGame.PenguinWars.Battle
         private const int AreaTier = 3;
         private const int SpeedCooldownTier = 2;
         private const int RangeTier = 3;
+
+        public static bool IsCustomNo(int no) => no == LeftNo || no == RightNo;
 
         public static int CostStep(UnitRole role) => role == UnitRole.Wall ? WallCostStep : DefaultCostStep;
 

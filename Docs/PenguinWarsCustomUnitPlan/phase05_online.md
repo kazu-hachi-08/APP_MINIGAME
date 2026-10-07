@@ -81,7 +81,23 @@
 
 ## 引き継ぎメモ（実装後に記入）
 
-* 作ったファイル:
+* 作ったファイル（`Assets/_Project/Games/100_PenguinWars/` 以下）:
+  * 新規: `Scripts/UI/CustomPickPanel.cs`、`Scripts/Game/PenguinWarsGameManager.CustomPick.cs`（選択の進行。`Draft.cs` が膨らまないよう分けた）、`Editor/PenguinWarsSceneBuilder.CustomPick.cs`
+  * 変更: `CustomUnitRules`（`SlotsInDeck` / `IsCustomNo`）、`PenguinUnitCatalog`（`RuntimeUnits`）、`BattleRunner`（`RegisterVersusCustomUnits`・`CollectStatsByNo` に実行時登録分）、`PenguinWarsOnlineLink`（`pw.custom`・`pw.deck` 拡張）、`PenguinWarsGameManager`（.cs / .Draft.cs / .Online.cs）、`DeckRevealPanel`（「じぶん」の印）、`SceneBuilder.cs` / `.Draft.cs`
 * 公開API:
+  * `CustomUnitRules.SlotsInDeck`（=1） / `IsCustomNo(no)`
+  * `PenguinUnitCatalog.RuntimeUnits`
+  * `BattleRunner.RegisterVersusCustomUnits(hostUnit, guestUnit)`（`ClearRuntime` → ホストのを LeftNo・ゲストのを RightNo で登録。試合の初期化より前に呼ぶ）
+  * `PenguinWarsOnlineLink.SubmitCustomUnit(json)` / イベント `CustomUnitReceived(json)`、`SendDecks(..., stageIndex, hostCustomJson, guestCustomJson)` / `DecksReceived` も JSON 2つ付き
+  * `CustomPickPanel.Show(pickTime)` / `Hide()` / イベント `Picked(CustomUnitDefinition)`（時間切れは `LastPickedSlot` を自動で選ぶ。選ぶと `LastPickedSlot` を保存）
 * 計画から変えた点:
+  * ゲストへの「選択を始めて」の合図は新しいメッセージを作らず、`pw.draft` の **最終ラウンドの次のラウンド（round = 9・候補なし）** にした。ゲストは `round >= DraftRounds` なら選択画面を出す
+  * 時間切れの自動選択は各端末の `CustomPickPanel` が行う（ゲストも自分で決めて送る）。ホストは `DraftPickTime + _customPickGrace`（GameManager の `[SerializeField]`、3秒）で打ち切り、ゲストの分が無ければお手本1、自分の分が無ければ前回の枠
+  * `DraftPanel` のコードは変えていない。10個目の「じぶん」の仮マスは SceneBuilder が最後の枠に文字で置いた
+  * カードの「数値の要約」は「体力 N　攻撃 N」の1行だけ（コスト・役割/範囲・能力は DraftCard の既存の行）。絵は DraftCard の Icon に `UnitSpriteAnimator` を足して足踏みさせた
+  * pw.deck のバッファは `DeckBufferSize + CustomUnitBufferSize(1024) × 2`
+  * AI は Unity の生成 csproj を一時的にコピー・直して dotnet でコンパイルが通ること（エラー0。新しい・変えたファイルの警告は `[SerializeField]` の CS0649 のみ）と、Battle のテスト 227件が通ることを確かめた。2台での対戦はユーザーの確認待ち
 * 次フェーズへの注意:
+  * **Rebuild PenguinWars が必要**（`CustomPickPanel` と編成確認の「じぶん」の印、GameManager の `_customPickPanel` の参照）
+  * ホストとゲストのビルドが違うと pw.deck の読み取りがずれる（JSON 2つ分が増えたため）。両方を新しいビルドにそろえて確認する
+  * Phase 2 の一時ファイル `Editor/CustomUnitDebugMenu.cs` はまだ残っている（未追跡）。Phase 6 で消す

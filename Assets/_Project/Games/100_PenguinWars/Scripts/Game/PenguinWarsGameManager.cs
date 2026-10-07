@@ -39,6 +39,7 @@ namespace MiniGame.PenguinWars
             _presenter.CastleCollapsed += HandleCastleCollapsed;
             SubscribeOnline();
             SubscribeDraft();
+            SubscribeCustomPick();
 
             _progress = CampaignSave.Load();
             if (!TryResumeStageFlow()) ShowTitle();
@@ -51,6 +52,7 @@ namespace MiniGame.PenguinWars
             if (_presenter != null) _presenter.CastleCollapsed -= HandleCastleCollapsed;
             UnsubscribeOnline();
             UnsubscribeDraft();
+            UnsubscribeCustomPick();
         }
 
         /// <summary>ステージはシーンを読み直して同じステージをすぐ始める。対戦はモード選択からやり直す（相手を選び直せるように）</summary>

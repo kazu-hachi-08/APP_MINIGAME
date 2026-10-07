@@ -12,8 +12,8 @@ namespace MiniGame.PenguinWars
     /// ペンギン大戦争のオンライン対戦で試合中のやり取りを送受信する（仕様書 §10.2）。
     /// ホストだけが BattleWorld を計算し、ゲストは操作を送って届いた状態を表示するだけにする（サッカーと同じ）。
     ///
-    /// ゲスト → ホスト：準備完了、ドラフトの選択、操作（出撃・働きペンギン・ペンギン砲）
-    /// ホスト → ゲスト：ドラフトの候補、編成とステージ（= ドラフト完了）、試合の状態（約15回/秒）、イベント（出撃・ヒット・撃破・砲・城崩壊・時間切れ）
+    /// ゲスト → ホスト：準備完了、ドラフトの選択、じぶんペンギンの選択、操作（出撃・働きペンギン・ペンギン砲）
+    /// ホスト → ゲスト：ドラフトの候補、編成とステージと両者のじぶんペンギン（= ドラフト完了）、試合の状態（約15回/秒）、イベント（出撃・ヒット・撃破・砲・城崩壊・時間切れ）
     ///
     /// NetworkObject は使わず名前付きメッセージだけで送る（Prefab 登録などの準備を不要にするため）。
     /// 中身のバイト列は Battle 側（BattleSnapshot / BattleEventCodec）が作るので、ここは運ぶだけ
@@ -27,11 +27,14 @@ namespace MiniGame.PenguinWars
         private const string CommandMessage = "pw.cmd";
         private const string DraftRoundMessage = "pw.draft";
         private const string DraftPickMessage = "pw.pick";
+        private const string CustomUnitMessage = "pw.custom";
 
         // バイト列の前に付く長さ（int）の分
         private const int LengthHeaderSize = sizeof(int);
         private const int SmallBufferSize = 64;
         private const int DeckBufferSize = 256;
+        // じぶんペンギン1体の JSON（数百文字）。文字列は1文字2バイトで書かれるので余裕を持たせる
+        private const int CustomUnitBufferSize = 1024;
 
         /// <summary>状態は最新だけ届けばよいので再送せず、古いものが後から届いたら捨てる</summary>
         private const NetworkDelivery StreamDelivery = NetworkDelivery.UnreliableSequenced;
@@ -49,10 +52,15 @@ namespace MiniGame.PenguinWars
         public event Action GuestReady;
         /// <summary>ホスト: ゲストがドラフトで選んだ（ラウンド, 候補の何番目か）</summary>
         public event Action<int, int> DraftPickReceived;
+        /// <summary>ホスト: ゲストが選んだじぶんペンギンの JSON（ホストが Sanitize してから使う）</summary>
+        public event Action<string> CustomUnitReceived;
         /// <summary>ゲスト: ドラフトの新しいラウンド（ラウンド, 自分の候補, 自分がここまでに取ったキャラ）</summary>
         public event Action<int, int[], int[]> DraftRoundReceived;
-        /// <summary>ゲスト: ホストが決めた編成（ホスト基準の Left, Right の順）とステージ番号</summary>
-        public event Action<int[], int[], int> DecksReceived;
+        /// <summary>
+        /// ゲスト: ホストが決めた編成（ホスト基準の Left, Right の順）とステージ番号、
+        /// ホスト・ゲストのじぶんペンギンの JSON（ホストが Sanitize した後のもの）
+        /// </summary>
+        public event Action<int[], int[], int, string, string> DecksReceived;
         /// <summary>ゲスト: BattleSnapshot のバイト列</summary>
         public event Action<byte[]> SnapshotReceived;
         /// <summary>ゲスト: BattleEventCodec のバイト列</summary>
@@ -77,6 +85,7 @@ namespace MiniGame.PenguinWars
                 messaging.RegisterNamedMessageHandler(ReadyMessage, ReceiveReady);
                 messaging.RegisterNamedMessageHandler(CommandMessage, ReceiveCommand);
                 messaging.RegisterNamedMessageHandler(DraftPickMessage, ReceiveDraftPick);
+                messaging.RegisterNamedMessageHandler(CustomUnitMessage, ReceiveCustomUnit);
                 _battleRunner.EventRaised += CollectEvent;
             }
             else
@@ -115,6 +124,7 @@ namespace MiniGame.PenguinWars
             messaging.UnregisterNamedMessageHandler(CommandMessage);
             messaging.UnregisterNamedMessageHandler(DraftRoundMessage);
             messaging.UnregisterNamedMessageHandler(DraftPickMessage);
+            messaging.UnregisterNamedMessageHandler(CustomUnitMessage);
         }
 
         /// <summary>BattleRunner の Update で溜まったイベントを、同じフレームのうちにまとめて送る</summary>
@@ -138,13 +148,19 @@ namespace MiniGame.PenguinWars
 
         // ---- 送信：ホスト → ゲスト ----
 
-        /// <summary>編成（キャラNo の並び）とステージ番号。ゲストは同じカタログ・ステージ一覧から数値と絵を引く</summary>
-        public void SendDecks(IReadOnlyList<UnitStats> leftDeck, IReadOnlyList<UnitStats> rightDeck, int stageIndex)
+        /// <summary>
+        /// 編成（キャラNo の並び）とステージ番号。ゲストは同じカタログ・ステージ一覧から数値と絵を引く。
+        /// じぶんペンギンはカタログに無いので、定義の JSON も一緒に送ってゲストが同じものを作る
+        /// </summary>
+        public void SendDecks(IReadOnlyList<UnitStats> leftDeck, IReadOnlyList<UnitStats> rightDeck, int stageIndex,
+            string hostCustomJson, string guestCustomJson)
         {
-            using var writer = new FastBufferWriter(DeckBufferSize, Allocator.Temp);
+            using var writer = new FastBufferWriter(DeckBufferSize + CustomUnitBufferSize * 2, Allocator.Temp);
             writer.WriteValueSafe(ToUnitNos(leftDeck));
             writer.WriteValueSafe(ToUnitNos(rightDeck));
             writer.WriteValueSafe(stageIndex);
+            writer.WriteValueSafe(hostCustomJson);
+            writer.WriteValueSafe(guestCustomJson);
             Send(DeckMessage, writer, ReliableDelivery);
         }
 
@@ -204,6 +220,14 @@ namespace MiniGame.PenguinWars
             Send(DraftPickMessage, writer, ReliableDelivery);
         }
 
+        /// <summary>選んだじぶんペンギンの定義そのもの。ホストは自分の 3 枠を知らないので枠番号ではなく中身を送る</summary>
+        public void SubmitCustomUnit(string json)
+        {
+            using var writer = new FastBufferWriter(CustomUnitBufferSize, Allocator.Temp);
+            writer.WriteValueSafe(json);
+            Send(CustomUnitMessage, writer, ReliableDelivery);
+        }
+
         private void SendReady()
         {
             using var writer = new FastBufferWriter(SmallBufferSize, Allocator.Temp);
@@ -257,6 +281,12 @@ namespace MiniGame.PenguinWars
             DraftPickReceived?.Invoke(round, offerIndex);
         }
 
+        private void ReceiveCustomUnit(ulong senderId, FastBufferReader reader)
+        {
+            reader.ReadValueSafe(out string json);
+            CustomUnitReceived?.Invoke(json);
+        }
+
         // ---- 受信：ゲスト ----
 
         private void ReceiveDeck(ulong senderId, FastBufferReader reader)
@@ -264,7 +294,9 @@ namespace MiniGame.PenguinWars
             reader.ReadValueSafe(out int[] leftDeck);
             reader.ReadValueSafe(out int[] rightDeck);
             reader.ReadValueSafe(out int stageIndex);
-            DecksReceived?.Invoke(leftDeck, rightDeck, stageIndex);
+            reader.ReadValueSafe(out string hostCustomJson);
+            reader.ReadValueSafe(out string guestCustomJson);
+            DecksReceived?.Invoke(leftDeck, rightDeck, stageIndex, hostCustomJson, guestCustomJson);
         }
 
         private void ReceiveDraftRound(ulong senderId, FastBufferReader reader)

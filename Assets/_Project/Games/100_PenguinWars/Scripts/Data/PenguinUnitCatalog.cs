@@ -16,6 +16,10 @@ namespace MiniGame.PenguinWars
         /// <summary>アセットの全キャラ。実行時登録は含めない（ずかん・ドラフトの候補に混ざらないように）</summary>
         public IReadOnlyList<PenguinUnitData> Units => _units;
 
+        /// <summary>実行時に登録したキャラ（対戦のじぶんペンギン）。戦闘の数値を集めるときに Units と合わせて使う</summary>
+        public IEnumerable<PenguinUnitData> RuntimeUnits =>
+            _runtimeUnits != null ? _runtimeUnits.Values : (IEnumerable<PenguinUnitData>)Array.Empty<PenguinUnitData>();
+
         /// <summary>同じ No が登録済みなら古い方を捨てて差し替える（作成画面のプレビューで作り直すため）</summary>
         public void RegisterRuntime(PenguinUnitData data)
         {
