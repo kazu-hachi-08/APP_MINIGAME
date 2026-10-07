@@ -48,7 +48,7 @@ namespace MiniGame.PenguinWars.Editor
         }
 
         /// <summary>
-        /// 長い名前（こおりのじょおうペンギン など）や「特性: 遠距離キラー」でも枠からはみ出さないよう、今の大きさから minSize まで縮めて収める。
+        /// 長い名前（こおりのじょおうペンギン など）や「能力: 遠距離キラー」でも枠からはみ出さないよう、今の大きさから minSize まで縮めて収める。
         /// Overflow のままだと縮まないので Truncate に戻す
         /// </summary>
         private static void FitText(Text text, int minSize)

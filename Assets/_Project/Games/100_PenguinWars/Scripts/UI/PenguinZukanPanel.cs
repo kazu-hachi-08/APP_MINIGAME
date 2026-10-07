@@ -13,7 +13,8 @@ namespace MiniGame.PenguinWars
     {
         private const string AscendingLabel = "小さい順";
         private const string DescendingLabel = "大きい順";
-        private const string TraitLabelPrefix = "特性: ";
+        private const string RoleLabelPrefix = "役割: ";
+        private const string AbilityLabelPrefix = "能力: ";
 
         [SerializeField] private PenguinUnitCatalog _catalog;
         [Tooltip("非表示のひな形。キャラの数だけ複製する")]
@@ -24,22 +25,26 @@ namespace MiniGame.PenguinWars
         [Tooltip("左上に出す数値（＝並べ替えの基準）を一覧から選ぶ")]
         [SerializeField] private Dropdown _columnDropdown;
         [SerializeField] private Button _orderButton;
-        [Tooltip("しぼりこむ特性を一覧から選ぶ。14個あるので、押して順に回すより一覧のほうが早い")]
-        [SerializeField] private Dropdown _traitDropdown;
+        [Tooltip("しぼりこむ役割を一覧から選ぶ。能力とは別に選べるようにし、「遠距離で範囲」のような組み合わせで探せるようにする")]
+        [SerializeField] private Dropdown _roleDropdown;
+        [Tooltip("しぼりこむ能力を一覧から選ぶ。10個あるので、押して順に回すより一覧のほうが早い")]
+        [SerializeField] private Dropdown _abilityDropdown;
         [Tooltip("隣のマスと歩くタイミングをずらすコマ数")]
         [SerializeField] private float _walkPhaseStep = 0.37f;
 
         private readonly List<ZukanCell> _cells = new List<ZukanCell>();
         private int _columnIndex;
         private bool _isDescending;
-        private int _traitIndex;
+        private int _roleIndex;
+        private int _abilityIndex;
 
         private void Awake()
         {
             _closeButton.onClick.AddListener(Close);
             _orderButton.onClick.AddListener(ToggleOrder);
             SetupDropdown(_columnDropdown, ZukanListOptions.ColumnLabels(), SelectColumn);
-            SetupDropdown(_traitDropdown, TraitLabels(), SelectTrait);
+            SetupDropdown(_roleDropdown, ZukanListOptions.FilterLabels(ZukanListOptions.Roles), SelectRole);
+            SetupDropdown(_abilityDropdown, ZukanListOptions.FilterLabels(ZukanListOptions.Abilities), SelectAbility);
         }
 
         private static void SetupDropdown(Dropdown dropdown, List<string> labels, UnityEngine.Events.UnityAction<int> onSelect)
@@ -47,13 +52,6 @@ namespace MiniGame.PenguinWars
             dropdown.ClearOptions();
             dropdown.AddOptions(labels);
             dropdown.onValueChanged.AddListener(onSelect);
-        }
-
-        private static List<string> TraitLabels()
-        {
-            var labels = new List<string>();
-            foreach (ZukanTraitFilter trait in ZukanListOptions.Traits) labels.Add(trait.Label);
-            return labels;
         }
 
         public void Show()
@@ -92,15 +90,17 @@ namespace MiniGame.PenguinWars
             foreach (ZukanCell cell in _cells) cell.SetLocked(!CampaignUnlocks.IsUnlocked(progress, cell.Stats.UnitNo));
         }
 
-        /// <summary>開くたびに「コスト・小さい順・すべて」に戻す（前回の絞り込みが残っていると、キャラが減ったように見えるため）</summary>
+        /// <summary>開くたびに「コスト・小さい順・役割すべて・能力すべて」に戻す（前回の絞り込みが残っていると、キャラが減ったように見えるため）</summary>
         private void ResetListState()
         {
             _columnIndex = 0;
             _isDescending = false;
-            _traitIndex = 0;
+            _roleIndex = 0;
+            _abilityIndex = 0;
             // 選び直しの通知は要らない（RefreshList を直接呼ぶ）ので、通知なしで表示だけ戻す
             _columnDropdown.SetValueWithoutNotify(_columnIndex);
-            _traitDropdown.SetValueWithoutNotify(_traitIndex);
+            _roleDropdown.SetValueWithoutNotify(_roleIndex);
+            _abilityDropdown.SetValueWithoutNotify(_abilityIndex);
             RefreshList();
         }
 
@@ -116,9 +116,15 @@ namespace MiniGame.PenguinWars
             OnListOptionChanged();
         }
 
-        private void SelectTrait(int index)
+        private void SelectRole(int index)
         {
-            _traitIndex = index;
+            _roleIndex = index;
+            OnListOptionChanged();
+        }
+
+        private void SelectAbility(int index)
+        {
+            _abilityIndex = index;
             OnListOptionChanged();
         }
 
@@ -132,7 +138,8 @@ namespace MiniGame.PenguinWars
         private void RefreshList()
         {
             ZukanStatColumn column = ZukanListOptions.Columns[_columnIndex];
-            ZukanTraitFilter trait = ZukanListOptions.Traits[_traitIndex];
+            ZukanFilter role = ZukanListOptions.Roles[_roleIndex];
+            ZukanFilter ability = ZukanListOptions.Abilities[_abilityIndex];
 
             _cells.Sort((a, b) => ZukanListOptions.Compare(a.Stats, b.Stats, column, _isDescending));
             for (int i = 0; i < _cells.Count; i++)
@@ -140,12 +147,13 @@ namespace MiniGame.PenguinWars
                 ZukanCell cell = _cells[i];
                 cell.transform.SetSiblingIndex(i);
                 cell.ShowValue(column.Format(cell.Stats));
-                cell.gameObject.SetActive(trait.Matches(cell.Stats));
+                cell.gameObject.SetActive(role.Matches(cell.Stats) && ability.Matches(cell.Stats));
             }
 
             _orderButton.GetComponentInChildren<Text>().text = _isDescending ? DescendingLabel : AscendingLabel;
-            // 一覧の中は特性名だけにし、閉じたときの見出しにだけ「特性: 」を付けて何のボタンか分かるようにする
-            _traitDropdown.captionText.text = TraitLabelPrefix + trait.Label;
+            // 一覧の中は名前だけにし、閉じたときの見出しにだけ「役割: 」「能力: 」を付けてどちらのしぼりこみか分かるようにする
+            _roleDropdown.captionText.text = RoleLabelPrefix + role.Label;
+            _abilityDropdown.captionText.text = AbilityLabelPrefix + ability.Label;
             _scroll.verticalNormalizedPosition = 1f;
         }
 

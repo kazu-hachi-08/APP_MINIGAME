@@ -81,6 +81,9 @@ namespace MiniGame.PenguinWars
         private const float BossLoop = 8f;
         // ボスのデモの短い戦場（GuideDemoDirector._bossFieldLength = 14）で、出してすぐ敵の城に届く位置
         private const float NearEnemyCastleX = 10f;
+        // 役割の説明か能力の説明かをタイトルで見分けられるようにする（同じ「大型」「遠距離」が両方に出てくるため）
+        private const string RolePrefix = "【役割】";
+        private const string AbilityPrefix = "【能力】";
 
         // 出てくるキャラの No（UnitDefinitions）
         private const int Penguin = 1;
@@ -105,7 +108,8 @@ namespace MiniGame.PenguinWars
 
         public static readonly IReadOnlyList<GuideTopic> All = new[]
         {
-            // 遊び方の基本 → ステージモードの遊び方 → 戦い方 → 能力 → ステージの仕掛け（ボス・なだれ）の順。最初のページで「何をすれば勝ちか」が分かるようにする
+            // 遊び方の基本 → ステージモードの遊び方 → 戦い方 → 役割 → 能力 → ステージの仕掛け（ボス・なだれ）の順。最初のページで「何をすれば勝ちか」が分かるようにする。
+            // 役割・能力は enum（UnitRole / UnitAbilityType）と同じ順にし、ずかんのしぼりこみの並びとそろえる
             new GuideTopic("出撃と勝ち方",
                 "下のボタンを押すと、さかなを払ってペンギンが出撃する。ペンギンは前に歩いて敵を殴る。\n" +
                 "相手の城を先に落とせば勝ち。\n" +
@@ -162,15 +166,6 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 9f),
                 GuideAction.Spawn(1.5f, Enemy, Penguin, 10f)),
 
-            new GuideTopic("壁と後ろの列",
-                "壁は安くて硬い。前に並べて時間をかせぎ、その後ろから遠距離が攻撃する。\n" +
-                "単体攻撃は一番手前の敵しか狙えないので、壁の後ろには届かない。",
-                DefaultLoop,
-                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
-                GuideAction.Spawn(0f, Ally, BowPenguin, 1f),
-                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
-                GuideAction.Spawn(1.5f, Enemy, Penguin, 10f)),
-
             new GuideTopic("城の守り方",
                 "単体攻撃の敵は、城よりも目の前のユニットを先に殴る。城に張り付かれたら壁を出そう。\n" +
                 "範囲攻撃（せんしゃなど）は城もまとめて殴るので、ペンギン砲で押し返す。",
@@ -188,21 +183,66 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Enemy, Penguin, 8f),
                 GuideAction.Cannon(3.5f, Ally)),
 
-            new GuideTopic("ふっとばす",
+            new GuideTopic(RolePrefix + "壁",
+                "安くて体力が多いが、攻撃は弱い。再生産が早いので、前に何体も並べて敵の足を止める。\n" +
+                "まずは壁を出して、さかなをためる時間をかせごう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(1f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Enemy, AxePenguin, 8f)),
+
+            new GuideTopic(RolePrefix + "アタッカー",
+                "近くで殴る主力。攻撃が高く、足も少し速い。そのぶん打たれ弱い。\n" +
+                "壁が敵を止めている間に出して、まとめて倒そう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(1f, Ally, FishSwordPenguin, 1.5f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 8f),
+                GuideAction.Spawn(1.5f, Enemy, Penguin, 9.5f)),
+
+            // 壁の後ろから撃つのが遠距離の使い方そのものなので、デモは壁と並べて見せる
+            new GuideTopic(RolePrefix + "遠距離",
+                "射程が長く、後ろから撃つ。体力が少ないので、壁の後ろに置く。\n" +
+                "単体攻撃は一番手前の敵しか狙えないので、壁の後ろにいれば狙われにくい。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Ally, BowPenguin, 1f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 9f),
+                GuideAction.Spawn(1.5f, Enemy, Penguin, 10f)),
+
+            new GuideTopic(RolePrefix + "妨害",
+                "攻撃は弱いが、ふっとばす・止める・遅くするの能力で敵の足を止める。\n" +
+                "強い敵が来たら、壁の後ろから出して押し返そう。（デモでは毎回発動）",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, WallPenguin, 3f),
+                GuideAction.Spawn(0f, Ally, FreezePenguin, 1.5f),
+                GuideAction.Spawn(0f, Enemy, AxePenguin, 8f),
+                GuideAction.Spawn(1f, Enemy, FishSwordPenguin, 9f)),
+
+            new GuideTopic(RolePrefix + "大型",
+                "とても高く、再生産も長いが、体力も攻撃もけたちがい。1体で戦場をひっくり返す。\n" +
+                "大型キラーには弱いので、相手が持っていないときが出しどき。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Ally, IcebergPenguin, 2f),
+                GuideAction.Spawn(0f, Enemy, Penguin, 7f),
+                GuideAction.Spawn(0.5f, Enemy, Penguin, 8f),
+                GuideAction.Spawn(1f, Enemy, AxePenguin, 9f)),
+
+            new GuideTopic(AbilityPrefix + "ふっとばす",
                 "攻撃が当たると、確率で相手を後ろに飛ばす（妨害は50%・ほかは30%）。\n" +
                 "飛ばされている間は動けない。（デモでは毎回発動）",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Enemy, FanPenguin, 8f),
                 GuideAction.Spawn(0f, Ally, Penguin, 2f)),
 
-            new GuideTopic("止める",
+            new GuideTopic(AbilityPrefix + "止める",
                 "攻撃が当たると、40%で相手を2秒間止める。止まっている間は歩くのも攻撃もできない。\n" +
                 "（デモでは毎回発動）",
                 DefaultLoop,
                 GuideAction.Spawn(0f, Enemy, FreezePenguin, 8f),
                 GuideAction.Spawn(0f, Ally, AxePenguin, 2f)),
 
-            new GuideTopic("遅くする",
+            new GuideTopic(AbilityPrefix + "遅くする",
                 "攻撃が当たると、50%で相手の歩く速さを3秒間半分にする。\n" +
                 "射程の長い味方が来るまでの時間かせぎに強い。（デモでは毎回発動）",
                 DefaultLoop,
@@ -210,7 +250,13 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Ally, Penguin, 2f),
                 GuideAction.Spawn(1.5f, Ally, Penguin, 2f)),
 
-            new GuideTopic("ふんばる",
+            new GuideTopic(AbilityPrefix + "城キラー",
+                "城へのダメージが3倍になる（ユニットへの攻撃はふつう）。\n" +
+                "ドリル・バイク・ロケット・せんしゃが持っている。城に着く前に止めよう。",
+                DefaultLoop,
+                GuideAction.Spawn(0f, Enemy, DrillPenguin, 6f)),
+
+            new GuideTopic(AbilityPrefix + "ふんばる",
                 "どんな攻撃でも後ろに飛ばされない（ペンギン砲でも飛ばない）。\n" +
                 "前のヘルメットペンギンはふんばる、後ろのペンギンは飛ばされる。",
                 DefaultLoop,
@@ -218,14 +264,8 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Ally, HelmetPenguin, 2.5f),
                 GuideAction.Spawn(0f, Ally, Penguin, 1.5f)),
 
-            new GuideTopic("城キラー",
-                "城へのダメージが3倍になる（ユニットへの攻撃はふつう）。\n" +
-                "ドリル・バイク・ロケット・せんしゃが持っている。城に着く前に止めよう。",
-                DefaultLoop,
-                GuideAction.Spawn(0f, Enemy, DrillPenguin, 6f)),
-
             // キラーのデモは、ふつうのキャラに差し替えると同じ時間で倒し切れない配置にしてある（効き目が分かるように）
-            new GuideTopic("大型キラー",
+            new GuideTopic(AbilityPrefix + "大型キラー",
                 "大型へのダメージが3倍（ほかの相手と城にはふつう）。おの・スナイパーが持っている。\n" +
                 "相手がキングやロボを出したら、見てから合わせよう。",
                 LargeKillerLoop,
@@ -237,7 +277,7 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(1f, Ally, AxePenguin, 3f),
                 GuideAction.Spawn(1.5f, Ally, AxePenguin, 3f)),
 
-            new GuideTopic("遠距離キラー",
+            new GuideTopic(AbilityPrefix + "遠距離キラー",
                 "遠距離へのダメージが3倍（ほかの相手と城にはふつう）。ながあし・ゆきなげが持っている。\n" +
                 "後ろから撃ってくるゆみやたいほうに、近づいてまとめて当てよう。",
                 DefaultLoop,
@@ -246,7 +286,7 @@ namespace MiniGame.PenguinWars
                 GuideAction.Spawn(0f, Ally, WallPenguin, 4f),
                 GuideAction.Spawn(0f, Ally, LongLegPenguin, 2f)),
 
-            new GuideTopic("妨害キラー",
+            new GuideTopic(AbilityPrefix + "妨害キラー",
                 "妨害へのダメージが3倍（ほかの相手と城にはふつう）。ハンマー・ブーメランが持っている。\n" +
                 "止める・遅くするで前線が動かなくなったら出そう。",
                 DefaultLoop,
