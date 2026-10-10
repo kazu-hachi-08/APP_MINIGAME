@@ -11,6 +11,8 @@ namespace MiniGame.PenguinWars
     public class FitContentScaler : MonoBehaviour
     {
         [SerializeField] private RectTransform _content;
+        // 横持ちの iPhone は SafeArea の上端が画面の端そのものなので、余白なしだと端のボタンが画面のふちに貼り付く
+        [SerializeField] private float _padding = 40f;
 
         private void OnEnable() => Apply();
 
@@ -21,7 +23,7 @@ namespace MiniGame.PenguinWars
         {
             if (_content == null) return;
 
-            Vector2 area = ((RectTransform)transform).rect.size;
+            Vector2 area = ((RectTransform)transform).rect.size - Vector2.one * (_padding * 2f);
             Vector2 design = _content.sizeDelta;
             if (design.x <= 0f || design.y <= 0f) return;
 

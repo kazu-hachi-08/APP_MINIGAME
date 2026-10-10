@@ -78,19 +78,21 @@ namespace MiniGame.PenguinWars.Editor
         {
             // raycastTarget を残し、ずかん中に下のタイトルのボタンが押せないようにする
             GameObject panelObj = CreateFullScreenPanel(parent, "ZukanPanel", ZukanBackColor);
+            // 背景は画面全体のまま、ボタンと一覧は内カメ（ノッチ）を避けた SafeArea の中に置く
+            Transform safeArea = CreateSafeArea(panelObj.transform);
 
-            Text title = CreateText(panelObj.transform, "Title", ZukanTitleFontSize, TopCenterAnchor, ZukanTitlePosition, ZukanTitleSize, MessageColor);
+            Text title = CreateText(safeArea, "Title", ZukanTitleFontSize, TopCenterAnchor, ZukanTitlePosition, ZukanTitleSize, MessageColor);
             title.text = "ずかん";
-            Button close = CreateAnchoredButton(panelObj.transform, "Btn_Close", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
+            Button close = CreateAnchoredButton(safeArea, "Btn_Close", "もどる", ZukanCloseSize, TopRightAnchor, ZukanClosePosition);
             // 文字は PenguinZukanPanel が開くたびに書き換えるので、ここでは仮の文字
-            Button order = CreateZukanHeaderButton(panelObj.transform, "Btn_Order", ZukanOrderButtonSize, TopLeftAnchor, ZukanOrderButtonPosition);
+            Button order = CreateZukanHeaderButton(safeArea, "Btn_Order", ZukanOrderButtonSize, TopLeftAnchor, ZukanOrderButtonPosition);
 
-            (ScrollRect scroll, Transform content) = CreateZukanScroll(panelObj.transform, ZukanTopMargin, ZukanColumns);
+            (ScrollRect scroll, Transform content) = CreateZukanScroll(safeArea, ZukanTopMargin, ZukanColumns);
             ZukanCell template = CreateZukanCellTemplate(content);
             // 開いた一覧がマスより手前に出るよう、スクロール領域より後に作る
-            Dropdown column = CreateZukanDropdown(panelObj.transform, "Dropdown_Column", ZukanColumnDropdownSize, TopLeftAnchor, ZukanColumnDropdownPosition);
-            Dropdown role = CreateZukanDropdown(panelObj.transform, "Dropdown_Role", ZukanRoleDropdownSize, TopLeftAnchor, ZukanRoleDropdownPosition);
-            Dropdown ability = CreateZukanDropdown(panelObj.transform, "Dropdown_Ability", ZukanAbilityDropdownSize, TopRightAnchor, ZukanAbilityDropdownPosition);
+            Dropdown column = CreateZukanDropdown(safeArea, "Dropdown_Column", ZukanColumnDropdownSize, TopLeftAnchor, ZukanColumnDropdownPosition);
+            Dropdown role = CreateZukanDropdown(safeArea, "Dropdown_Role", ZukanRoleDropdownSize, TopLeftAnchor, ZukanRoleDropdownPosition);
+            Dropdown ability = CreateZukanDropdown(safeArea, "Dropdown_Ability", ZukanAbilityDropdownSize, TopRightAnchor, ZukanAbilityDropdownPosition);
             ZukanDetailPanel detail = CreateZukanDetailPanel(panelObj.transform);
 
             var panel = panelObj.AddComponent<PenguinZukanPanel>();
