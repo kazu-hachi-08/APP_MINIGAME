@@ -41,6 +41,7 @@ namespace MiniGame.Common.Online
         private Action _onNpcSelected;
         private Action<bool> _onOnlineReady;
         private Action<int, int> _onMatchStarted;
+        private Action _onTitle;
         private int _maxPlayers = OnlineSession.DefaultMaxPlayers;
         private string _roomCode;
 
@@ -75,27 +76,30 @@ namespace MiniGame.Common.Online
 
         /// <param name="onNpcSelected">NPC戦を選んだ</param>
         /// <param name="onOnlineReady">相手と接続できた（引数は自分がホストか）</param>
-        public void Show(Action onNpcSelected, Action<bool> onOnlineReady)
+        /// <param name="onTitle">「タイトルへ」の戻り先。未指定ならミニゲーム集のタイトルへ</param>
+        public void Show(Action onNpcSelected, Action<bool> onOnlineReady, Action onTitle = null)
         {
             _onOnlineReady = onOnlineReady;
             _onMatchStarted = null;
-            Open(onNpcSelected, OnlineSession.DefaultMaxPlayers);
+            Open(onNpcSelected, OnlineSession.DefaultMaxPlayers, onTitle);
         }
 
         /// <summary>3人以上で遊べるミニゲーム用。ホストが開始を押すと全員に席番号が配られる</summary>
         /// <param name="onNpcSelected">NPC戦を選んだ</param>
         /// <param name="onMatchStarted">オンライン試合開始（引数は自分の席番号（ホスト=0）と総人数）</param>
         /// <param name="maxPlayers">部屋の定員</param>
-        public void Show(Action onNpcSelected, Action<int, int> onMatchStarted, int maxPlayers)
+        /// <param name="onTitle">「タイトルへ」の戻り先。未指定ならミニゲーム集のタイトルへ</param>
+        public void Show(Action onNpcSelected, Action<int, int> onMatchStarted, int maxPlayers, Action onTitle = null)
         {
             _onOnlineReady = null;
             _onMatchStarted = onMatchStarted;
-            Open(onNpcSelected, maxPlayers);
+            Open(onNpcSelected, maxPlayers, onTitle);
         }
 
-        private void Open(Action onNpcSelected, int maxPlayers)
+        private void Open(Action onNpcSelected, int maxPlayers, Action onTitle)
         {
             _onNpcSelected = onNpcSelected;
+            _onTitle = onTitle;
             _maxPlayers = maxPlayers;
             gameObject.SetActive(true);
             ShowMenu();
@@ -176,10 +180,18 @@ namespace MiniGame.Common.Online
 
         /// <summary>
         /// メニュー表示中はまだ接続していないので、セッションを切らずにそのまま戻ってよい。
-        /// 接続待ち中は「キャンセル」でメニューに戻ってから押してもらう
+        /// 接続待ち中は「キャンセル」でメニューに戻ってから押してもらう。
+        /// ゲーム固有のタイトル画面を持つミニゲームは、Sceneを読み直さずにそこへ戻れるよう戻り先を渡せる
         /// </summary>
         private void ReturnToTitle()
         {
+            if (_onTitle != null)
+            {
+                gameObject.SetActive(false);
+                _onTitle();
+                return;
+            }
+
             if (SceneLoader.HasInstance)
             {
                 SceneLoader.Instance.LoadTitleScene();
