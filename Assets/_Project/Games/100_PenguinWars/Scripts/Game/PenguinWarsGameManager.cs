@@ -91,7 +91,7 @@ namespace MiniGame.PenguinWars
         {
             Phase = PenguinWarsPhase.ModeSelect;
             if (_modeSelectPanel == null) ShowStageSelect();
-            else _modeSelectPanel.Show(ShowStageSelect, StartOnline);
+            else _modeSelectPanel.Show(ShowStageSelect, StartOnline, ShowTitle);
         }
 
         private void BeginIntro(float deckDuration)
