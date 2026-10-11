@@ -72,6 +72,9 @@ namespace MiniGame.TableTennis
         [Tooltip("得点表示で相手の得点に使う色")]
         [SerializeField] private Color _opponentPointColor = new Color(1f, 0.4f, 0.35f);
 
+        [Tooltip("試合後に勝った選手を見せる画面（未設定ならすぐリザルト）")]
+        [SerializeField] private VictoryScreen _victoryScreen;
+
         [Header("得点リアクション（未設定ならリアクションなし）")]
         [SerializeField] private CharacterView _playerCharacter;
         [SerializeField] private CharacterView _opponentCharacter;
@@ -106,7 +109,10 @@ namespace MiniGame.TableTennis
         private bool _localLoadoutReady;
         private bool _peerLoadoutReady;
 
-        /// <summary>オンラインで、両端末の選手がそろってから必殺技を設定するために持っておく</summary>
+        /// <summary>
+        /// 自分と相手の選手。オンラインでは両端末の選手がそろってから必殺技を設定するため、
+        /// 試合後は勝利画面で勝った選手を出すために持っておく
+        /// </summary>
         private CharacterData _localCharacter;
         private CharacterData _peerCharacter;
 
@@ -223,6 +229,8 @@ namespace MiniGame.TableTennis
             {
                 _loadoutApplier.ApplyPlayer(player);
                 _loadoutApplier.ApplyNpc(opponent);
+                _localCharacter = player.Character;
+                _peerCharacter = opponent.Character;
 
                 if (_special != null)
                 {
@@ -595,6 +603,12 @@ namespace MiniGame.TableTennis
                 _loadoutPanel.Hide();
             }
 
+            // 勝利画面の途中で切れた場合、勝敗と食い違う画面をリザルトの後ろに残さない
+            if (_victoryScreen != null)
+            {
+                _victoryScreen.Hide();
+            }
+
             HaltRally();
             SetMessage(string.Empty);
 
@@ -663,9 +677,20 @@ namespace MiniGame.TableTennis
 
             yield return new WaitForSeconds(_gameSetDuration);
             SetMessage(string.Empty);
+            yield return PlayVictoryScreen(isVictory);
 
             string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : $"{OpponentLabel}の勝ち";
             FinishGame(isVictory, ScoreSummary, resultMessage);
+        }
+
+        /// <summary>選手を選んでいない構成（テストシーンなど）では見せる選手がいないので、すぐリザルトへ進む</summary>
+        private IEnumerator PlayVictoryScreen(bool isVictory)
+        {
+            if (_victoryScreen == null || _localCharacter == null || _peerCharacter == null) yield break;
+
+            CharacterData winner = isVictory ? _localCharacter : _peerCharacter;
+            CharacterData loser = isVictory ? _peerCharacter : _localCharacter;
+            yield return _victoryScreen.Play(SideLabel(_score.Winner), winner, loser, isVictory);
         }
 
         // ---- 表示 ----

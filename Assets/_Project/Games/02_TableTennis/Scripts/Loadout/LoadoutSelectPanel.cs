@@ -32,6 +32,10 @@ namespace MiniGame.TableTennis
         [SerializeField] private ChoiceRow _opponentRacketRow;
         [SerializeField] private Button _decideButton;
 
+        [Header("選択中の中身を見せるカード（未設定なら出さない）")]
+        [SerializeField] private LoadoutPreview _playerPreview;
+        [SerializeField] private LoadoutPreview _opponentPreview;
+
         [Header("Colors")]
         [SerializeField] private Color _selectedColor = new Color(0.18f, 0.55f, 0.9f);
         [SerializeField] private Color _normalColor = new Color(0.3f, 0.33f, 0.4f);
@@ -94,6 +98,22 @@ namespace MiniGame.TableTennis
             {
                 row.Buttons[i].GetComponent<Image>().color = i == index ? _selectedColor : _normalColor;
             }
+
+            RefreshPreviews();
+        }
+
+        private void RefreshPreviews()
+        {
+            ShowPreview(_playerPreview, _playerCharacterRow, _playerRacketRow);
+            ShowPreview(_opponentPreview, _opponentCharacterRow, _opponentRacketRow);
+        }
+
+        private void ShowPreview(LoadoutPreview preview, ChoiceRow characterRow, ChoiceRow racketRow)
+        {
+            if (preview == null) return;
+
+            Loadout loadout = _catalog.Get(characterRow.Selected, racketRow.Selected);
+            preview.Show(loadout.Character, loadout.Racket);
         }
 
         private void Decide()

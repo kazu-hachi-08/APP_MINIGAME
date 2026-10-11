@@ -21,3 +21,5 @@ MonoBehaviour:
   SwingDurationMultiplier: 0.9
   WeakSpecial: {fileID: 11400000, guid: 4d6584624de089242af0932c72ec50c4, type: 2}
   StrongSpecial: {fileID: 11400000, guid: c9982621db8d32a44bc76ba47ef49e2b, type: 2}
+  WinQuote: "\u3054\u3063\u3064\u3041\u3093\u3067\u3059\uFF01"
+  LoseQuote: "\u307E\u3060\u7A3D\u53E4\u304C\u8DB3\u308A\u3093\u304B\u3063\u305F\u2026"

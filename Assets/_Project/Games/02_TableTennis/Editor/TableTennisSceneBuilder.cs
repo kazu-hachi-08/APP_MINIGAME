@@ -135,6 +135,39 @@ namespace MiniGame.TableTennis.Editor
         private const int DecideButtonFontSize = 30;
         private static readonly Color DecideButtonColor = new Color(0.2f, 0.65f, 0.35f);
 
+        // 選択画面の選手カード（絵・能力バー・必殺技）
+        private const float PreviewHeight = 170f;
+        private const float PreviewPortraitSize = 140f;
+        private const float PreviewPadding = 15f;
+        private const float PreviewTextLeft = PreviewPadding * 2f + PreviewPortraitSize;
+        private const float PreviewTextWidth = LoadoutLabelWidth - PreviewTextLeft - PreviewPadding;
+        private const int PreviewNameFontSize = 28;
+        private const float PreviewNameHeight = 40f;
+        private const int PreviewStatsFontSize = 22;
+        private const float PreviewStatsHeight = 110f;
+        private static readonly Vector2 LeftMiddleAnchor = new Vector2(0f, 0.5f);
+        private static readonly Vector2 TopLeftAnchor = new Vector2(0f, 1f);
+        private static readonly Color PreviewCardColor = new Color(0.18f, 0.2f, 0.26f);
+        private static readonly Color PreviewNameColor = new Color(1f, 0.85f, 0.2f);
+
+        // 勝利画面（縦画面の中央を基準に、上からタイトル・勝者・セリフ・敗者の順に並べる）
+        private static readonly Color VictoryOverlayColor = new Color(0f, 0f, 0f, 0.8f);
+        private const int VictoryTitleFontSize = 110;
+        private static readonly Vector2 VictoryTitlePosition = new Vector2(0f, 560f);
+        private static readonly Vector2 VictoryTitleSize = new Vector2(1000f, 160f);
+        private const float VictoryWinnerSize = 440f;
+        private static readonly Vector2 VictoryWinnerPosition = new Vector2(0f, 100f);
+        private const int VictoryWinnerQuoteFontSize = 52;
+        private static readonly Vector2 VictoryWinnerQuotePosition = new Vector2(0f, -190f);
+        private static readonly Vector2 VictoryQuoteSize = new Vector2(1000f, 90f);
+        private const float VictoryLoserSize = 200f;
+        // 敗者は足元を基準にして、縦に縮めたときに頭が下がって見えるようにする
+        private static readonly Vector2 VictoryLoserPosition = new Vector2(0f, -520f);
+        private static readonly Vector2 BottomPivot = new Vector2(0.5f, 0f);
+        private const int VictoryLoserQuoteFontSize = 34;
+        private static readonly Vector2 VictoryLoserQuotePosition = new Vector2(0f, -580f);
+        private static readonly Color VictoryLoserQuoteColor = new Color(0.7f, 0.72f, 0.8f);
+
         private struct BallParts
         {
             public BallMotion Motion;
@@ -233,6 +266,8 @@ namespace MiniGame.TableTennis.Editor
             PauseButton pauseButton = CreatePauseButton(canvas);
             GameObject weakButtonObj = CreateSpecialButton(canvas, "Btn_WeakSpecial", WeakSpecialButtonY);
             GameObject strongButtonObj = CreateSpecialButton(canvas, "Btn_StrongSpecial", StrongSpecialButtonY);
+            // リザルトの背景として残すので、共通ダイアログより奥に置く
+            VictoryScreen victoryScreen = CreateVictoryScreen(canvas);
 
             // 共通ダイアログ（PAUSE / リザルト）は最前面に置くため、ゲーム中のUIより後に生成する
             UIDialogBuilder.BuildDialogs(canvas, uiManager);
@@ -253,6 +288,7 @@ namespace MiniGame.TableTennis.Editor
             TableTennisGameManager gameManager = CreateGameManager(ball.Motion, player, opponent, tableTennisAudio,
                 hud, panels, loadoutCatalog, special, online);
             SetReference(pauseButton, "_gameManager", gameManager);
+            SetReference(gameManager, "_victoryScreen", victoryScreen);
 
             SaveScene(scene);
         }
@@ -593,6 +629,7 @@ namespace MiniGame.TableTennis.Editor
                 catalog.Characters.Length, CharacterButtonHeight);
             Button[] playerRacketButtons = CreateChoiceRow(boxObj.transform, "PlayerRacketRow",
                 catalog.Rackets.Length, RacketButtonHeight);
+            LoadoutPreview playerPreview = CreateLoadoutPreview(boxObj.transform, "PlayerPreview");
 
             // 相手の選択欄はNPC戦のときだけ出すので、実行時にまとめて隠せるよう1つのグループにする
             var opponentGroup = UIDialogBuilder.CreateUIObject("OpponentGroup", boxObj.transform);
@@ -602,6 +639,7 @@ namespace MiniGame.TableTennis.Editor
                 catalog.Characters.Length, CharacterButtonHeight);
             Button[] opponentRacketButtons = CreateChoiceRow(opponentGroup.transform, "OpponentRacketRow",
                 catalog.Rackets.Length, RacketButtonHeight);
+            LoadoutPreview opponentPreview = CreateLoadoutPreview(opponentGroup.transform, "OpponentPreview");
 
             var decideObj = UIDialogBuilder.CreateButton(boxObj.transform, "Btn_Decide", "決定",
                 DecideButtonWidth, DecideButtonHeight, DecideButtonColor);
@@ -617,10 +655,88 @@ namespace MiniGame.TableTennis.Editor
             SetButtonArray(so.FindProperty("_opponentRacketRow").FindPropertyRelative("Buttons"), opponentRacketButtons);
             so.FindProperty("_opponentGroup").objectReferenceValue = opponentGroup;
             so.FindProperty("_decideButton").objectReferenceValue = decideObj.GetComponent<Button>();
+            so.FindProperty("_playerPreview").objectReferenceValue = playerPreview;
+            so.FindProperty("_opponentPreview").objectReferenceValue = opponentPreview;
             so.ApplyModifiedProperties();
 
             panelObj.SetActive(false);
             return panel;
+        }
+
+        /// <summary>選択中の選手の絵を左、名前・能力バー・必殺技を右に並べたカード。中身は実行時に書き込む</summary>
+        private static LoadoutPreview CreateLoadoutPreview(Transform parent, string name)
+        {
+            var cardObj = UIDialogBuilder.CreateUIObject(name, parent);
+            cardObj.AddComponent<Image>().color = PreviewCardColor;
+            AddLayoutElement(cardObj, LoadoutLabelWidth, PreviewHeight);
+
+            Image portrait = CreatePortrait(cardObj.transform, "Portrait", LeftMiddleAnchor,
+                new Vector2(PreviewPadding, 0f), PreviewPortraitSize);
+
+            Text nameText = CreateText(cardObj.transform, "NameText", PreviewNameFontSize, TopLeftAnchor,
+                new Vector2(PreviewTextLeft, -PreviewPadding), new Vector2(PreviewTextWidth, PreviewNameHeight), PreviewNameColor);
+            nameText.alignment = TextAnchor.MiddleLeft;
+
+            Text statsText = CreateText(cardObj.transform, "StatsText", PreviewStatsFontSize, TopLeftAnchor,
+                new Vector2(PreviewTextLeft, -PreviewPadding - PreviewNameHeight), new Vector2(PreviewTextWidth, PreviewStatsHeight),
+                Color.white);
+            statsText.alignment = TextAnchor.UpperLeft;
+            statsText.fontStyle = FontStyle.Normal;
+
+            var preview = cardObj.AddComponent<LoadoutPreview>();
+            var so = new SerializedObject(preview);
+            so.FindProperty("_portrait").objectReferenceValue = portrait;
+            so.FindProperty("_nameText").objectReferenceValue = nameText;
+            so.FindProperty("_statsText").objectReferenceValue = statsText;
+            so.ApplyModifiedProperties();
+            return preview;
+        }
+
+        /// <summary>試合後に勝った選手を大きく見せる画面。紙吹雪は選手の手前に降らせるため最後に作る</summary>
+        private static VictoryScreen CreateVictoryScreen(Transform canvas)
+        {
+            var screenObj = CreatePanelOverlay(canvas, "VictoryScreen");
+            screenObj.GetComponent<Image>().color = VictoryOverlayColor;
+            Transform root = screenObj.transform;
+
+            Text title = CreateText(root, "TitleText", VictoryTitleFontSize, CenterAnchor, VictoryTitlePosition,
+                VictoryTitleSize, Color.white);
+            Image winner = CreatePortrait(root, "WinnerPortrait", CenterAnchor, VictoryWinnerPosition, VictoryWinnerSize);
+            Text winnerQuote = CreateText(root, "WinnerQuoteText", VictoryWinnerQuoteFontSize, CenterAnchor,
+                VictoryWinnerQuotePosition, VictoryQuoteSize, Color.white);
+            Image loser = CreatePortrait(root, "LoserPortrait", CenterAnchor, VictoryLoserPosition, VictoryLoserSize);
+            loser.rectTransform.pivot = BottomPivot;
+            Text loserQuote = CreateText(root, "LoserQuoteText", VictoryLoserQuoteFontSize, CenterAnchor,
+                VictoryLoserQuotePosition, VictoryQuoteSize, VictoryLoserQuoteColor);
+
+            var confettiObj = UIDialogBuilder.CreateUIObject("Confetti", root);
+            UIDialogBuilder.SetStretchAll(confettiObj.GetComponent<RectTransform>());
+            var confetti = confettiObj.AddComponent<ConfettiEffect>();
+
+            var screen = screenObj.AddComponent<VictoryScreen>();
+            var so = new SerializedObject(screen);
+            so.FindProperty("_titleText").objectReferenceValue = title;
+            so.FindProperty("_winnerPortrait").objectReferenceValue = winner;
+            so.FindProperty("_winnerQuoteText").objectReferenceValue = winnerQuote;
+            so.FindProperty("_loserPortrait").objectReferenceValue = loser;
+            so.FindProperty("_loserQuoteText").objectReferenceValue = loserQuote;
+            so.FindProperty("_confetti").objectReferenceValue = confetti;
+            so.ApplyModifiedProperties();
+
+            screenObj.SetActive(false);
+            return screen;
+        }
+
+        /// <summary>選手の絵を表示する Image。ドット絵が潰れないよう縦横比を保つ</summary>
+        private static Image CreatePortrait(Transform parent, string name, Vector2 anchor, Vector2 position, float size)
+        {
+            var obj = UIDialogBuilder.CreateUIObject(name, parent);
+            SetAnchoredRect(obj.GetComponent<RectTransform>(), anchor, position, new Vector2(size, size));
+
+            var image = obj.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
         }
 
         /// <summary>画面全体を暗くして、後ろのゲーム画面への入力を遮る</summary>
