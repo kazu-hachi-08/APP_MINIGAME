@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Stage_03_AvalancheValley
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinStageData
   _displayName: "\u306A\u3060\u308C\u306E\u8C37"
-  _fieldLength: 28
+  _fieldLength: 12
   _castleHp: 4500
-  _cannonRangeRatio: 0.6
+  _cannonRangeRatio: 0.4
   _tint: {r: 0.78, g: 0.8, b: 0.92, a: 1}
   _avalancheInterval: 60
   _avalancheWarningTime: 5
