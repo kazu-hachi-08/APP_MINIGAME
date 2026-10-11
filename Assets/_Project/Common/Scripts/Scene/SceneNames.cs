@@ -26,9 +26,6 @@ namespace MiniGame.Common.Scene
         /// <summary>第6弾: ペンギン大戦争</summary>
         public const string PenguinWars = "PenguinWarsScene";
 
-        /// <summary>カードゲーム（THE CHAOS Ⅱ）</summary>
-        public const string CardGame = "CardGameScene";
-
         /// <summary>
         /// 将来の追加ミニゲーム用プレースホルダー例
         /// </summary>

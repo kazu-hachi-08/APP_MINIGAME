@@ -30,7 +30,6 @@
 | 04 | 2Dゴルフ | [04_GOLF_SPEC.md](Docs/04_GOLF_SPEC.md) | `Assets/_Project/Games/04_Golf/` |
 | 05 | 2D人生ゲーム | [05_LIFE_GAME_SPEC.md](Docs/05_LIFE_GAME_SPEC.md) | `Assets/_Project/Games/05_LifeGame/` |
 | 100 | ペンギン大戦争 | [100_PENGUIN_WARS_SPEC.md](Docs/100_PENGUIN_WARS_SPEC.md) | `Assets/_Project/Games/100_PenguinWars/` |
-| 200 | デジタルカードゲーム（THE CHAOS Ⅱ） | [200_CARD_GAME_SPEC.md](Docs/200_CARD_GAME_SPEC.md) | `Assets/_Project/Games/200_CardGame/` |
 
 ### 番号ルール
 
