@@ -70,6 +70,10 @@ namespace MiniGame.TableTennis
         {
             if (_shadow == null) return;
 
+            // 得点後に台の外へ落ちていく球の影が、台の高さに浮いて見えないよう消しておく
+            _shadow.gameObject.SetActive(!_ball.IsDropping);
+            if (_ball.IsDropping) return;
+
             _shadow.position = _table.Project(new Vector3(court.x, 0f, court.z));
 
             float heightRatio = Mathf.Clamp01(court.y / Mathf.Max(0.01f, _shadowFadeHeight));

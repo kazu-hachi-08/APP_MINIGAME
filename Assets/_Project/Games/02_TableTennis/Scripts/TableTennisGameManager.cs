@@ -33,6 +33,9 @@ namespace MiniGame.TableTennis
 
         private const float NpcReturnHitStrength = 0.8f;
 
+        /// <summary>得点表示の理由の行は、主役の「○○ +1」より小さく添える（中央メッセージは96pt）</summary>
+        private const int PointReasonFontSize = 56;
+
         [Header("References")]
         [SerializeField] private BallMotion _ball;
         [SerializeField] private PlayerSwing _playerSwing;
@@ -62,6 +65,16 @@ namespace MiniGame.TableTennis
 
         [Tooltip("打球結果（タイミングと回転）をプレイヤーへ返すHUD")]
         [SerializeField] private HudText _shotInfoHud;
+
+        [Tooltip("得点表示で自分の得点に使う色。どちらの得点かを文字を読む前に色で伝える")]
+        [SerializeField] private Color _playerPointColor = new Color(0.3f, 0.75f, 1f);
+
+        [Tooltip("得点表示で相手の得点に使う色")]
+        [SerializeField] private Color _opponentPointColor = new Color(1f, 0.4f, 0.35f);
+
+        [Header("得点リアクション（未設定ならリアクションなし）")]
+        [SerializeField] private CharacterView _playerCharacter;
+        [SerializeField] private CharacterView _opponentCharacter;
 
         [Header("Rule")]
         [SerializeField] private int _pointsToWin = 11;
@@ -603,13 +616,17 @@ namespace MiniGame.TableTennis
 
         private void ApplyPoint(CourtSide scorer, PointReason reason)
         {
-            HaltRally();
+            // 得点した球はその場で止めず、どこへ落ちたかを見せる
+            _ball.Drop();
+            _phase = RallyPhase.PointBreak;
+            _referee.Stop();
 
             _score.AddPoint(scorer);
             UpdateScoreText();
 
             SetShotInfo(string.Empty, 0f);
-            SetMessage($"{ReasonLabel(reason)}\n{SideLabel(scorer)} POINT");
+            SetMessage(BuildPointMessage(scorer, reason));
+            PlayPointReactions(scorer);
 
             // 獲得の表示が打球欄に出るよう、打球欄を消した後に呼ぶ
             if (IsSpecialActive)
@@ -656,6 +673,31 @@ namespace MiniGame.TableTennis
         private string SideLabel(CourtSide side)
         {
             return side == CourtSide.Player ? PlayerLabel : OpponentLabel;
+        }
+
+        /// <summary>
+        /// 得点した側を主役にした大きい1行目と、失点した側の名前付きの理由を出す。
+        /// 「OUT / ○○ POINT」だと主語の違う2行が並び、どちらの点か一瞬で読めなかったため
+        /// </summary>
+        private string BuildPointMessage(CourtSide scorer, PointReason reason)
+        {
+            Color color = scorer == CourtSide.Player ? _playerPointColor : _opponentPointColor;
+            string colorCode = ColorUtility.ToHtmlStringRGB(color);
+            string loser = SideLabel(scorer.Opposite());
+            return $"<color=#{colorCode}>{SideLabel(scorer)} +1</color>\n<size={PointReasonFontSize}>{loser}{ReasonLabel(reason)}</size>";
+        }
+
+        private void PlayPointReactions(CourtSide scorer)
+        {
+            if (_playerCharacter != null)
+            {
+                _playerCharacter.PlayPointReaction(scorer == CourtSide.Player);
+            }
+
+            if (_opponentCharacter != null)
+            {
+                _opponentCharacter.PlayPointReaction(scorer == CourtSide.Opponent);
+            }
         }
 
         private void UpdateScoreText()
@@ -727,9 +769,9 @@ namespace MiniGame.TableTennis
         {
             switch (reason)
             {
-                case PointReason.Net: return "NET";
-                case PointReason.Out: return "OUT";
-                default: return "MISS";
+                case PointReason.Net: return "がネット";
+                case PointReason.Out: return "がアウト";
+                default: return "が返せなかった";
             }
         }
 

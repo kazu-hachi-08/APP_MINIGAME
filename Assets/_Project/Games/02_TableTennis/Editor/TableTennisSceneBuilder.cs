@@ -811,6 +811,8 @@ namespace MiniGame.TableTennis.Editor
             so.FindProperty("_scoreText").objectReferenceValue = hud.Score;
             so.FindProperty("_messageHud").objectReferenceValue = hud.Message;
             so.FindProperty("_shotInfoHud").objectReferenceValue = hud.ShotInfo;
+            so.FindProperty("_playerCharacter").objectReferenceValue = player.Character;
+            so.FindProperty("_opponentCharacter").objectReferenceValue = opponent.Character;
             so.FindProperty("_difficultyPanel").objectReferenceValue = panels.Difficulty;
             so.FindProperty("_loadoutPanel").objectReferenceValue = panels.Loadout;
             so.FindProperty("_loadoutApplier").objectReferenceValue = loadoutApplier;

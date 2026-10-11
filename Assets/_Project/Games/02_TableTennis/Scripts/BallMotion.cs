@@ -79,6 +79,14 @@ namespace MiniGame.TableTennis
         [Tooltip("この距離だけ台の端を越えたらラリー終了とみなす")]
         [SerializeField] private float _outMargin = 1.2f;
 
+        [Header("Dead Ball")]
+        [Tooltip("得点後に落ちていくボールが跳ねる床の高さ（台の天板が0）")]
+        [SerializeField] private float _floorHeight = -0.76f;
+
+        [Tooltip("床で跳ねたときに残る速さの割合")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _floorRestitution = 0.5f;
+
         /// <summary>x:左右 / y:高さ / z:奥行き</summary>
         public Vector3 CourtPosition { get; private set; }
 
@@ -88,6 +96,12 @@ namespace MiniGame.TableTennis
         public Vector2 Spin { get; private set; }
 
         public bool IsFlying { get; private set; }
+
+        /// <summary>
+        /// 得点が決まった後、ラリーとは無関係に落ちていく状態。
+        /// 判定やイベントは一切起こさず、どこへ落ちたかを見せるためだけに動かす
+        /// </summary>
+        public bool IsDropping { get; private set; }
 
         /// <summary>
         /// 次に「打った相手側のコート」でバウンドしたときの跳ね上がりの倍率（必殺技用）。
@@ -109,6 +123,9 @@ namespace MiniGame.TableTennis
         private Vector2 _serveSpin;
         private float _serveForwardSpeed;
 
+        /// <summary>ラリー終了時は Velocity を0にする（他の部品が止まった球として扱えるように）ため、落とす用に控えておく</summary>
+        private Vector3 _velocityAtRallyEnd;
+
         /// <summary>指定の位置・速度・回転でボールを発射する</summary>
         public void Launch(Vector3 courtPosition, Vector3 velocity, Vector2 spin)
         {
@@ -116,6 +133,7 @@ namespace MiniGame.TableTennis
             Velocity = velocity;
             Spin = spin;
             IsFlying = true;
+            IsDropping = false;
         }
 
         /// <summary>
@@ -150,8 +168,21 @@ namespace MiniGame.TableTennis
             Velocity = Vector3.zero;
             Spin = Vector2.zero;
             IsFlying = false;
+            IsDropping = false;
             _awaitingServeBounce = false;
             NextBounceHeightMultiplier = 1f;
+        }
+
+        /// <summary>
+        /// 得点が決まった球を、その場で止めずに勢いのまま落とす。
+        /// 空中で止まると「台の外に落ちた」「後ろへ抜けた」が見えず、バグのようにも見えるため
+        /// </summary>
+        public void Drop()
+        {
+            Vector3 velocity = IsFlying ? Velocity : _velocityAtRallyEnd;
+            Stop();
+            Velocity = velocity;
+            IsDropping = true;
         }
 
         /// <summary>
@@ -169,9 +200,41 @@ namespace MiniGame.TableTennis
 
         private void FixedUpdate()
         {
+            if (IsDropping)
+            {
+                StepDrop(Time.fixedDeltaTime);
+                return;
+            }
+
             if (!IsFlying) return;
 
             Step(Time.fixedDeltaTime);
+        }
+
+        /// <summary>見せるためだけの落下。回転は無視し、台と床で跳ねるだけにとどめる</summary>
+        private void StepDrop(float deltaTime)
+        {
+            Vector3 previous = CourtPosition;
+
+            Velocity += Vector3.down * _gravity * deltaTime;
+            Velocity *= Mathf.Max(0f, 1f - _airDrag * deltaTime);
+            CourtPosition += Velocity * deltaTime;
+
+            bool crossedTableTop = previous.y >= 0f && CourtPosition.y < 0f;
+            if (crossedTableTop && _table.IsOnTable(CourtPosition.x, CourtPosition.z))
+            {
+                BounceAt(0f, _bounceRestitution);
+            }
+            else if (CourtPosition.y < _floorHeight)
+            {
+                BounceAt(_floorHeight, _floorRestitution);
+            }
+        }
+
+        private void BounceAt(float height, float restitution)
+        {
+            CourtPosition = new Vector3(CourtPosition.x, height, CourtPosition.z);
+            Velocity = new Vector3(Velocity.x * _bounceFriction, -Velocity.y * restitution, Velocity.z * _bounceFriction);
         }
 
         private void Step(float deltaTime)
@@ -203,6 +266,9 @@ namespace MiniGame.TableTennis
             if (heightAtNet > _table.NetHeight || Mathf.Abs(xAtNet) > _table.NetHalfWidth) return false;
 
             CourtPosition = new Vector3(xAtNet, heightAtNet, 0f);
+
+            // ネットに当たった球は勢いを失い、その場で真下へ落ちる
+            Velocity = Vector3.zero;
             EndRally(RallyEndReason.Net);
             return true;
         }
@@ -318,6 +384,7 @@ namespace MiniGame.TableTennis
         private void EndRally(RallyEndReason reason)
         {
             IsFlying = false;
+            _velocityAtRallyEnd = Velocity;
             Velocity = Vector3.zero;
             OnRallyEnded?.Invoke(reason);
         }
