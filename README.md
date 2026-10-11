@@ -29,14 +29,16 @@
 | 03 | 2Dモルック | [03_MOLKKY_SPEC.md](Docs/03_MOLKKY_SPEC.md) | `Assets/_Project/Games/03_Molkky/` |
 | 04 | 2Dゴルフ | [04_GOLF_SPEC.md](Docs/04_GOLF_SPEC.md) | `Assets/_Project/Games/04_Golf/` |
 | 05 | 2D人生ゲーム | [05_LIFE_GAME_SPEC.md](Docs/05_LIFE_GAME_SPEC.md) | `Assets/_Project/Games/05_LifeGame/` |
-| 100 | ペンギン大戦争 | [100_PENGUIN_WARS_SPEC.md](Docs/100_PENGUIN_WARS_SPEC.md) | `Assets/_Project/Games/100_PenguinWars/` |
+
+* ペンギン大戦争は別アプリに移行した → [APP_PENGUIN_WARS](https://github.com/kazu-hachi-08/APP_PENGUIN_WARS)
 
 ### 番号ルール
 
 | 番号 | 対象 |
 | ---- | ---- |
 | 01〜99 | 週末で作る小さな2Dミニゲーム（連番） |
-| 100, 200, 300… | 長期で作り込む大型タイトル（100刻み） |
+
+* 長期で作り込む大型タイトルはミニゲーム集に入れず、別アプリ（別リポジトリ）で作る
 
 ---
 

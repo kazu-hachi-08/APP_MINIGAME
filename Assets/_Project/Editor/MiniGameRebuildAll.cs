@@ -1,7 +1,6 @@
 using MiniGame.Golf.Editor;
 using MiniGame.LifeGame.Editor;
 using MiniGame.Molkky.Editor;
-using MiniGame.PenguinWars.Editor;
 using MiniGame.Soccer.Editor;
 using MiniGame.TableTennis.Editor;
 using UnityEditor;
@@ -14,7 +13,7 @@ namespace MiniGame.Editor
     /// </summary>
     public static class MiniGameRebuildAll
     {
-        // 個別の Rebuild（1〜7）と区切り線で分けるため、優先度を11以上離す
+        // 個別の Rebuild（1〜6）と区切り線で分けるため、優先度を11以上離す
         private const int MenuPriority = 100;
 
         [MenuItem("Tools/MiniGame/Rebuild All", false, MenuPriority)]
@@ -32,7 +31,6 @@ namespace MiniGame.Editor
             MolkkySceneBuilder.RebuildMolkky();
             GolfSceneBuilder.RebuildGolf();
             LifeGameSceneBuilder.RebuildLifeGame();
-            PenguinWarsSceneBuilder.RebuildPenguinWars();
         }
     }
 }

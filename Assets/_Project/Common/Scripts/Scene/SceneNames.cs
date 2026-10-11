@@ -23,9 +23,6 @@ namespace MiniGame.Common.Scene
         /// <summary>第5弾: 2D人生ゲーム</summary>
         public const string LifeGame = "LifeGameScene";
 
-        /// <summary>第6弾: ペンギン大戦争</summary>
-        public const string PenguinWars = "PenguinWarsScene";
-
         /// <summary>
         /// 将来の追加ミニゲーム用プレースホルダー例
         /// </summary>
