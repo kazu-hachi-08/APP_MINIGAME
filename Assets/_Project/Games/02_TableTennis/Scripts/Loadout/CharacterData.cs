@@ -35,5 +35,9 @@ namespace MiniGame.TableTennis
 
         [Tooltip("黄色ボールのラリーを取ると獲得できる強必殺技")]
         public SpecialData StrongSpecial;
+
+        [Header("勝敗のセリフ（試合後の画面で、絵の色違いだけでは出ない個性を出す）")]
+        public string WinQuote;
+        public string LoseQuote;
     }
 }

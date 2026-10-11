@@ -19,8 +19,9 @@ namespace MiniGame.TableTennis.Editor
             var existing = AssetDatabase.LoadAssetAtPath<LoadoutCatalog>(CatalogPath);
             if (existing != null)
             {
-                // 必殺技より前に作られた選手データにも、後から技を割り当てる
+                // 必殺技・セリフより前に作られた選手データにも、後から割り当てる
                 EnsureSpecials(existing);
+                EnsureQuotes(existing);
                 return existing;
             }
 
@@ -49,8 +50,53 @@ namespace MiniGame.TableTennis.Editor
 
             AssetDatabase.CreateAsset(catalog, CatalogPath);
             EnsureSpecials(catalog);
+            EnsureQuotes(catalog);
             AssetDatabase.SaveAssets();
             return catalog;
+        }
+
+        /// <summary>
+        /// セリフが空の選手に、タイプに応じた勝敗のセリフを入れる。
+        /// 入力済みのセリフは触らない（Inspector で書き換えたセリフを消さないため）
+        /// </summary>
+        private static void EnsureQuotes(LoadoutCatalog catalog)
+        {
+            foreach (CharacterData character in catalog.Characters)
+            {
+                if (character == null) continue;
+                if (!string.IsNullOrEmpty(character.WinQuote) && !string.IsNullOrEmpty(character.LoseQuote)) continue;
+
+                ConfigureQuotes(character);
+                EditorUtility.SetDirty(character);
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void ConfigureQuotes(CharacterData character)
+        {
+            string win;
+            string lose;
+            switch (character.Style)
+            {
+                case PlayStyle.Technique:
+                    win = "すべて計算通りです";
+                    lose = "計算が…狂った…";
+                    break;
+
+                case PlayStyle.Power:
+                    win = "ごっつぁんです！";
+                    lose = "まだ稽古が足りんかった…";
+                    break;
+
+                default:
+                    win = "よっしゃ！もう1試合いこうぜ！";
+                    lose = "くっ…次は負けない！";
+                    break;
+            }
+
+            if (string.IsNullOrEmpty(character.WinQuote)) character.WinQuote = win;
+            if (string.IsNullOrEmpty(character.LoseQuote)) character.LoseQuote = lose;
         }
 
         /// <summary>

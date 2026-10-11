@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis
 {
     /// <summary>
-    /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取）。
+    /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取・デュースあり）。
     /// ルール判定は RallyReferee、得点とサーブ権は MatchScore、相手の打球は NpcController に任せ、
     /// ここは「今どの状態か」と「次に何をするか」だけを見る。
     /// </summary>
@@ -32,6 +32,9 @@ namespace MiniGame.TableTennis
         private const float FullHitStrength = 1f;
 
         private const float NpcReturnHitStrength = 0.8f;
+
+        /// <summary>得点表示の理由の行は、主役の「○○ +1」より小さく添える（中央メッセージは96pt）</summary>
+        private const int PointReasonFontSize = 56;
 
         [Header("References")]
         [SerializeField] private BallMotion _ball;
@@ -63,6 +66,19 @@ namespace MiniGame.TableTennis
         [Tooltip("打球結果（タイミングと回転）をプレイヤーへ返すHUD")]
         [SerializeField] private HudText _shotInfoHud;
 
+        [Tooltip("得点表示で自分の得点に使う色。どちらの得点かを文字を読む前に色で伝える")]
+        [SerializeField] private Color _playerPointColor = new Color(0.3f, 0.75f, 1f);
+
+        [Tooltip("得点表示で相手の得点に使う色")]
+        [SerializeField] private Color _opponentPointColor = new Color(1f, 0.4f, 0.35f);
+
+        [Tooltip("試合後に勝った選手を見せる画面（未設定ならすぐリザルト）")]
+        [SerializeField] private VictoryScreen _victoryScreen;
+
+        [Header("得点リアクション（未設定ならリアクションなし）")]
+        [SerializeField] private CharacterView _playerCharacter;
+        [SerializeField] private CharacterView _opponentCharacter;
+
         [Header("Rule")]
         [SerializeField] private int _pointsToWin = 11;
         [SerializeField] private int _serveChangeInterval = 2;
@@ -93,7 +109,10 @@ namespace MiniGame.TableTennis
         private bool _localLoadoutReady;
         private bool _peerLoadoutReady;
 
-        /// <summary>オンラインで、両端末の選手がそろってから必殺技を設定するために持っておく</summary>
+        /// <summary>
+        /// 自分と相手の選手。オンラインでは両端末の選手がそろってから必殺技を設定するため、
+        /// 試合後は勝利画面で勝った選手を出すために持っておく
+        /// </summary>
         private CharacterData _localCharacter;
         private CharacterData _peerCharacter;
 
@@ -210,6 +229,8 @@ namespace MiniGame.TableTennis
             {
                 _loadoutApplier.ApplyPlayer(player);
                 _loadoutApplier.ApplyNpc(opponent);
+                _localCharacter = player.Character;
+                _peerCharacter = opponent.Character;
 
                 if (_special != null)
                 {
@@ -582,6 +603,12 @@ namespace MiniGame.TableTennis
                 _loadoutPanel.Hide();
             }
 
+            // 勝利画面の途中で切れた場合、勝敗と食い違う画面をリザルトの後ろに残さない
+            if (_victoryScreen != null)
+            {
+                _victoryScreen.Hide();
+            }
+
             HaltRally();
             SetMessage(string.Empty);
 
@@ -603,13 +630,17 @@ namespace MiniGame.TableTennis
 
         private void ApplyPoint(CourtSide scorer, PointReason reason)
         {
-            HaltRally();
+            // 得点した球はその場で止めず、どこへ落ちたかを見せる
+            _ball.Drop();
+            _phase = RallyPhase.PointBreak;
+            _referee.Stop();
 
             _score.AddPoint(scorer);
             UpdateScoreText();
 
             SetShotInfo(string.Empty, 0f);
-            SetMessage($"{ReasonLabel(reason)}\n{SideLabel(scorer)} POINT");
+            SetMessage(BuildPointMessage(scorer, reason));
+            PlayPointReactions(scorer);
 
             // 獲得の表示が打球欄に出るよう、打球欄を消した後に呼ぶ
             if (IsSpecialActive)
@@ -646,9 +677,21 @@ namespace MiniGame.TableTennis
 
             yield return new WaitForSeconds(_gameSetDuration);
             SetMessage(string.Empty);
+            yield return PlayVictoryScreen(isVictory);
 
-            string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : $"{OpponentLabel}の勝ち";
+            string winLabel = _score.IsInDeuce ? "デュースを制した！" : $"{_pointsToWin}点先取！";
+            string resultMessage = isVictory ? winLabel : $"{OpponentLabel}の勝ち";
             FinishGame(isVictory, ScoreSummary, resultMessage);
+        }
+
+        /// <summary>選手を選んでいない構成（テストシーンなど）では見せる選手がいないので、すぐリザルトへ進む</summary>
+        private IEnumerator PlayVictoryScreen(bool isVictory)
+        {
+            if (_victoryScreen == null || _localCharacter == null || _peerCharacter == null) yield break;
+
+            CharacterData winner = isVictory ? _localCharacter : _peerCharacter;
+            CharacterData loser = isVictory ? _peerCharacter : _localCharacter;
+            yield return _victoryScreen.Play(SideLabel(_score.Winner), winner, loser, isVictory);
         }
 
         // ---- 表示 ----
@@ -656,6 +699,33 @@ namespace MiniGame.TableTennis
         private string SideLabel(CourtSide side)
         {
             return side == CourtSide.Player ? PlayerLabel : OpponentLabel;
+        }
+
+        /// <summary>
+        /// 得点した側を主役にした大きい1行目と、失点した側の名前付きの理由を出す。
+        /// 「OUT / ○○ POINT」だと主語の違う2行が並び、どちらの点か一瞬で読めなかったため
+        /// </summary>
+        private string BuildPointMessage(CourtSide scorer, PointReason reason)
+        {
+            Color color = scorer == CourtSide.Player ? _playerPointColor : _opponentPointColor;
+            string colorCode = ColorUtility.ToHtmlStringRGB(color);
+            string loser = SideLabel(scorer.Opposite());
+            // デュースに入ったことを伝えないと「11点取ったのに終わらない」とバグに見えるため
+            string deuceLabel = _score.IsDeuce ? "\nDEUCE" : string.Empty;
+            return $"<color=#{colorCode}>{SideLabel(scorer)} +1</color>\n<size={PointReasonFontSize}>{loser}{ReasonLabel(reason)}</size>{deuceLabel}";
+        }
+
+        private void PlayPointReactions(CourtSide scorer)
+        {
+            if (_playerCharacter != null)
+            {
+                _playerCharacter.PlayPointReaction(scorer == CourtSide.Player);
+            }
+
+            if (_opponentCharacter != null)
+            {
+                _opponentCharacter.PlayPointReaction(scorer == CourtSide.Opponent);
+            }
         }
 
         private void UpdateScoreText()
@@ -727,9 +797,9 @@ namespace MiniGame.TableTennis
         {
             switch (reason)
             {
-                case PointReason.Net: return "NET";
-                case PointReason.Out: return "OUT";
-                default: return "MISS";
+                case PointReason.Net: return "がネット";
+                case PointReason.Out: return "がアウト";
+                default: return "が返せなかった";
             }
         }
 
