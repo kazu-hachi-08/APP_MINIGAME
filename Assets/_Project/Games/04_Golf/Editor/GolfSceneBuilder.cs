@@ -48,16 +48,8 @@ namespace MiniGame.Golf.Editor
         private const int BallSortingOrder = 20;
         // プレイヤー色の縁取りは、ボール本体のすぐ下に描く
         private const int BallRingSortingOrder = BallSortingOrder - 1;
-        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている。
-        // 背中越しに見るので、腕は体の向こう側（下半身・上半身の下）、頭は一番手前に描く
-        private const int GolferArmSortingOrder = 21;
-        private const int GolferSleeveSortingOrder = 22;
-        private const int GolferLegsSortingOrder = 24;
+        // 背後視点ではゴルファーが一番手前に立つ。立ち位置をボールの横にずらして、ボールを隠さないようにしている
         private const int GolferSortingOrder = 25;
-        private const int GolferHeadSortingOrder = GolferSortingOrder + 1;
-        private const int GolferCapSortingOrder = GolferSortingOrder + 2;
-        // クラブは背中越しに見て体の向こう側にあり、構えたヘッドがボールの横に届くので、体とボール（リング含む）の下に描く
-        private const int GolferClubSortingOrder = BallSortingOrder - 2;
 
         private static readonly Color AimLineColor = new Color(1f, 1f, 1f, 0.7f);
         private static readonly Color LandingMarkerColor = new Color(1f, 1f, 1f, 0.45f);
@@ -329,33 +321,21 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 上半身（プレイヤー色）と下半身・頭を分けて、肩と腰を別々に回せるようにする。
-        /// クラブは手元（Hands）を回転の中心にするため、Hands の子に置く
+        /// 1コマを「色そのまま・シャツ・帽子・髪」の4枚に分けて重ね、白で描いた3枚にだけ色を掛ける。
+        /// 4枚はピクセルが重ならないので、同じ描画順でよい
         /// </summary>
         private static GolferView CreateGolfer(GolfBall ball, ShotInput input, AimGuideView aimGuide)
         {
             var golfer = new GameObject("Golfer").AddComponent<GolferView>();
-            var rig = golfer.gameObject.AddComponent<GolferRig>();
+            var sprite = golfer.gameObject.AddComponent<GolferSprite>();
             Transform root = golfer.transform;
 
-            var hands = new GameObject("Hands").transform;
-            hands.SetParent(root, false);
-            // 帽子は頭の子にして、頭の位置・大きさにそのまま付いていかせる
-            SpriteRenderer head = CreateSpriteChild("Head", root, GolferHeadSortingOrder);
-            SpriteRenderer cap = CreateSpriteChild("Cap", head.transform, GolferCapSortingOrder);
-
-            SetRefs(rig,
-                ("_legs", CreateSpriteChild("Legs", root, GolferLegsSortingOrder)),
-                ("_torso", CreateSpriteChild("Torso", root, GolferSortingOrder)),
-                ("_head", head),
-                ("_cap", cap),
-                ("_leftArm", CreateSpriteChild("LeftArm", root, GolferArmSortingOrder)),
-                ("_rightArm", CreateSpriteChild("RightArm", root, GolferArmSortingOrder)),
-                ("_leftSleeve", CreateSpriteChild("LeftSleeve", root, GolferSleeveSortingOrder)),
-                ("_rightSleeve", CreateSpriteChild("RightSleeve", root, GolferSleeveSortingOrder)),
-                ("_glove", CreateSpriteChild("Glove", root, GolferSleeveSortingOrder)),
-                ("_club", CreateSpriteChild("Club", hands, GolferClubSortingOrder)));
-            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_rig", rig));
+            SetRefs(sprite,
+                ("_base", CreateSpriteChild("Base", root, GolferSortingOrder)),
+                ("_shirt", CreateSpriteChild("Shirt", root, GolferSortingOrder)),
+                ("_cap", CreateSpriteChild("Cap", root, GolferSortingOrder)),
+                ("_hair", CreateSpriteChild("Hair", root, GolferSortingOrder)));
+            SetRefs(golfer, ("_ball", ball), ("_input", input), ("_aimGuide", aimGuide), ("_sprite", sprite));
             return golfer;
         }
 
