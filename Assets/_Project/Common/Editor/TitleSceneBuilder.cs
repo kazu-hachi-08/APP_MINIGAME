@@ -259,7 +259,6 @@ namespace MiniGame.Editor
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_Golf", "2D ゴルフ", SceneNames.Golf, true, new Color(0.95f, 0.8f, 0.25f));
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_LifeGame", "2D 人生ゲーム", SceneNames.LifeGame, true, new Color(0.95f, 0.45f, 0.6f));
             CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_PenguinWars", "ペンギン大戦争", SceneNames.PenguinWars, true, new Color(0.4f, 0.8f, 0.95f));
-            CreateGameSelectButton(menuContainerObj.transform, "Btn_Game_CardGame", "カードゲーム", SceneNames.CardGame, true, new Color(0.7f, 0.4f, 0.95f));
         }
 
         private static void BuildFooter(Transform parent, out Button settingsButton, out Button quitButton)
