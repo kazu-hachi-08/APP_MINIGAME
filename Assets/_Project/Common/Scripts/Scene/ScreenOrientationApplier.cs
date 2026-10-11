@@ -40,9 +40,7 @@ namespace MiniGame.Common.Scene
             switch (sceneName)
             {
                 // サッカーは横長フィールド＋横画面前提の仮想コントロール配置
-                // ペンギン大戦争は横スクロールの1本レーン
                 case SceneNames.Soccer:
-                case SceneNames.PenguinWars:
                     SetLandscape();
                     break;
 
