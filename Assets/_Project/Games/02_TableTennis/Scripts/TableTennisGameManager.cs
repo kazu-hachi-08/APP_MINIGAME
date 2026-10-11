@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace MiniGame.TableTennis
 {
     /// <summary>
-    /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取）。
+    /// 卓球ゲームの進行管理（サーブ → ラリー → 得点 → サーブ交代 → 11点先取・デュースあり）。
     /// ルール判定は RallyReferee、得点とサーブ権は MatchScore、相手の打球は NpcController に任せ、
     /// ここは「今どの状態か」と「次に何をするか」だけを見る。
     /// </summary>
@@ -679,7 +679,8 @@ namespace MiniGame.TableTennis
             SetMessage(string.Empty);
             yield return PlayVictoryScreen(isVictory);
 
-            string resultMessage = isVictory ? $"{_pointsToWin}点先取！" : $"{OpponentLabel}の勝ち";
+            string winLabel = _score.IsInDeuce ? "デュースを制した！" : $"{_pointsToWin}点先取！";
+            string resultMessage = isVictory ? winLabel : $"{OpponentLabel}の勝ち";
             FinishGame(isVictory, ScoreSummary, resultMessage);
         }
 
@@ -709,7 +710,9 @@ namespace MiniGame.TableTennis
             Color color = scorer == CourtSide.Player ? _playerPointColor : _opponentPointColor;
             string colorCode = ColorUtility.ToHtmlStringRGB(color);
             string loser = SideLabel(scorer.Opposite());
-            return $"<color=#{colorCode}>{SideLabel(scorer)} +1</color>\n<size={PointReasonFontSize}>{loser}{ReasonLabel(reason)}</size>";
+            // デュースに入ったことを伝えないと「11点取ったのに終わらない」とバグに見えるため
+            string deuceLabel = _score.IsDeuce ? "\nDEUCE" : string.Empty;
+            return $"<color=#{colorCode}>{SideLabel(scorer)} +1</color>\n<size={PointReasonFontSize}>{loser}{ReasonLabel(reason)}</size>{deuceLabel}";
         }
 
         private void PlayPointReactions(CourtSide scorer)
