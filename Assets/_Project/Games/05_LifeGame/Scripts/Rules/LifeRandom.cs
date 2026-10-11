@@ -5,7 +5,7 @@ namespace MiniGame.LifeGame
 {
     /// <summary>
     /// シード付きの決定論的乱数（xorshift64*）。
-    /// System.Random は実装がランタイムで変わり得るため使わない。オンラインで全端末が同じ盤面・出目を出すため（カードゲームと同じ理由）。
+    /// System.Random は実装がランタイムで変わり得るため使わない。オンラインで全端末が同じ盤面・出目を出すため。
     /// </summary>
     public sealed class LifeRandom
     {
