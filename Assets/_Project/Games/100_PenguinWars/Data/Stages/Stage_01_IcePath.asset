@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Stage_01_IcePath
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinStageData
   _displayName: "\u3053\u304A\u308A\u306E\u5C0F\u9053"
-  _fieldLength: 18
+  _fieldLength: 12
   _castleHp: 4000
-  _cannonRangeRatio: 0.6
+  _cannonRangeRatio: 0.4
   _tint: {r: 0.8, g: 0.93, b: 1, a: 1}
   _avalancheInterval: 0
   _avalancheWarningTime: 5

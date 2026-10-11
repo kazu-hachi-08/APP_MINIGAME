@@ -7,6 +7,10 @@ namespace MiniGame.PenguinWars.Editor
     public static partial class PenguinWarsSceneBuilder
     {
         private const string VersusStageDirectory = DataDirectory + "/Stages";
+        // 両方の城が1画面（BattleCamera の横幅16 − 左右の余白2×2）に収まる長さ。城が遠いと中央で押し合ったまま膠着するため
+        private const float VersusFieldLength = 12f;
+        // 戦場が短いと 60% では中央を越えて守りが強すぎるので、自陣側だけに届くようにする
+        private const float VersusCannonRangeRatio = 0.4f;
 
         private readonly struct VersusStageSpec
         {
@@ -34,12 +38,12 @@ namespace MiniGame.PenguinWars.Editor
         // 最初に作るときの値。作った後の調整はアセットの Inspector で行う
         private static readonly VersusStageSpec[] VersusStageSpecs =
         {
-            // 狭くて開始すぐ押し合いになる
-            new VersusStageSpec("Stage_01_IcePath", "こおりの小道", 18f, 4000, 0.6f, new Color(0.8f, 0.93f, 1f), 0f),
-            // 砲が届きにくく、守りの切り札が弱い
-            new VersusStageSpec("Stage_02_SnowMountain", "ゆきやま", 24f, 5000, 0.4f, Color.white, 0f),
+            // 城HPが低く、早く決着がつく
+            new VersusStageSpec("Stage_01_IcePath", "こおりの小道", VersusFieldLength, 4000, VersusCannonRangeRatio, new Color(0.8f, 0.93f, 1f), 0f),
+            // 城HPが高く、じっくり攻め合う
+            new VersusStageSpec("Stage_02_SnowMountain", "ゆきやま", VersusFieldLength, 5000, VersusCannonRangeRatio, Color.white, 0f),
             // 真ん中の押し合いを定期的になだれが崩す
-            new VersusStageSpec("Stage_03_AvalancheValley", "なだれの谷", 28f, 4500, 0.6f, new Color(0.78f, 0.8f, 0.92f), 60f),
+            new VersusStageSpec("Stage_03_AvalancheValley", "なだれの谷", VersusFieldLength, 4500, VersusCannonRangeRatio, new Color(0.78f, 0.8f, 0.92f), 60f),
         };
 
         /// <summary>遊びながら調整した数値を消さないよう、既にあるステージは作り直さない</summary>

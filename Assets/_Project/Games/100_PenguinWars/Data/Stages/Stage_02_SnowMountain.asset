@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stage_02_SnowMountain
   m_EditorClassIdentifier: Assembly-CSharp::MiniGame.PenguinWars.PenguinStageData
   _displayName: "\u3086\u304D\u3084\u307E"
-  _fieldLength: 24
+  _fieldLength: 12
   _castleHp: 5000
   _cannonRangeRatio: 0.4
   _tint: {r: 1, g: 1, b: 1, a: 1}
