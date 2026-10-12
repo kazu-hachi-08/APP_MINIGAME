@@ -51,43 +51,6 @@ namespace MiniGame.Golf
         private static readonly Color PennantColor = new Color(0.9f, 0.15f, 0.15f);
         private static readonly Color PennantShadeColor = new Color(0.68f, 0.08f, 0.1f);
 
-        // ゴルファーは背の高さ64ピクセルを1ユニットで描き、上半身・下半身・頭を別のスプライトにする。
-        // 上半身と下半身を分けるのは、肩と腰の回り方を変えて捻転を見せるため
-        private const float GolferPixelsPerUnit = 64f;
-        private const int GolferPartWidth = 32;
-        private static readonly Color GolferShadeColor = new Color(0.72f, 0.72f, 0.75f);
-
-        // 上半身（シャツ）：ピボットは腰。白で描いてプレイヤー色を掛ける。腰より肩を広くして逆三角形にする
-        private const int TorsoHeight = 30;
-        private const float TorsoWaistHalfWidth = 8f;
-        private const float TorsoShoulderHalfWidth = 12f;
-        private const float TorsoShoulderRadius = 6f;
-        // 腰から胸までで肩幅まで広がる（上半身の高さに対する割合）
-        private const float TorsoChestRatio = 0.6f;
-        private const int BeltHeight = 3;
-        private static readonly Color BeltColor = new Color(0.18f, 0.16f, 0.15f);
-
-        // 下半身（ズボン・靴）：ピボットは足元。プレイヤー色を掛けないので色をそのまま描く。
-        // 足を肩幅に開いた構えに見せるため、腰から足元へ向かって脚を外へ開く
-        private const int LegsHeight = 29;
-        private const int HipBottom = 22;
-        private const float HipHalfWidth = 8f;
-        private const float LegHipX = 4f;
-        private const float LegFootX = 7f;
-        private const float LegHalfWidth = 3f;
-        private const int ShoeHeight = 3;
-        private const float ShoeHalfWidth = 3.6f;
-        private static readonly Color PantsColor = new Color(0.32f, 0.32f, 0.36f);
-        private static readonly Color PantsShadeColor = new Color(0.22f, 0.22f, 0.25f);
-        private static readonly Color ShoeColor = new Color(0.95f, 0.95f, 0.95f);
-
-        // 頭（後ろ姿）：髪の丸の上に帽子を重ねる。帽子の後ろのアジャスターの穴から髪が見える。
-        // どちらも白で描き、キャラの帽子・髪の色を掛ける
-        private const float CapBottom = -0.1f;
-        private const float CapOpeningTop = 0.14f;
-        private const float CapOpeningHalfWidth = 0.18f;
-        private static readonly Color HeadShadeColor = new Color(0.6f, 0.6f, 0.62f);
-
         private static Sprite _circle;
         private static Sprite _square;
         private static Sprite _ball;
@@ -95,10 +58,6 @@ namespace MiniGame.Golf
         private static Sprite _cup;
         private static Sprite _flag;
         private static Sprite _tree;
-        private static Sprite _golferTorso;
-        private static Sprite _golferLegs;
-        private static Sprite _golferHead;
-        private static Sprite _golferCap;
 
         /// <summary>1ピクセルの白を1ユニットに引き伸ばした四角</summary>
         public static Sprite Square => Cached(ref _square, CreateWhitePixel);
@@ -124,20 +83,6 @@ namespace MiniGame.Golf
         /// <summary>ポールと三角の旗。ピボットはポールの根元</summary>
         public static Sprite Flag => Cached(ref _flag, () => CreateSprite(FlagWidth, FlagHeight, FlagPixel,
             new Vector2((PoleX + PoleWidth * 0.5f) / FlagWidth, 0f), FlagPixelsPerUnit));
-
-        /// <summary>背中から見たゴルファーの上半身（シャツとベルト）。ピボットは腰なので、前傾は腰から曲がる</summary>
-        public static Sprite GolferTorso => Cached(ref _golferTorso, () => CreateSprite(GolferPartWidth, TorsoHeight,
-            GolferTorsoPixel, new Vector2(0.5f, 0f), GolferPixelsPerUnit));
-
-        /// <summary>背中から見たゴルファーの下半身（ズボンと靴）。ピボットは足元</summary>
-        public static Sprite GolferLegs => Cached(ref _golferLegs, () => CreateSprite(GolferPartWidth, LegsHeight,
-            GolferLegsPixel, new Vector2(0.5f, 0f), GolferPixelsPerUnit));
-
-        /// <summary>後ろから見た頭（髪）。直径1ユニットで中心がピボット。白で描いて髪の色を掛ける</summary>
-        public static Sprite GolferHead => Cached(ref _golferHead, () => CreateRound(HeadShadePixel));
-
-        /// <summary>頭に重ねる帽子。頭と同じ大きさ・ピボットなので、頭の子に置けばそのまま重なる</summary>
-        public static Sprite GolferCap => Cached(ref _golferCap, () => CreateRound(GolferCapPixel));
 
         /// <summary>
         /// ??= だと破棄済み（再生終了で消えたテクスチャ）を null と見なさないため、Unity の == null で判定する
@@ -180,56 +125,10 @@ namespace MiniGame.Golf
             return EdgeAlpha(p.magnitude, radius, CircleResolution);
         }
 
-        private static Color GolferTorsoPixel(int x, int y)
-        {
-            float fromCenter = x + 0.5f - GolferPartWidth * 0.5f;
-            float chest = Mathf.Clamp01(y / (TorsoHeight * TorsoChestRatio));
-            float halfWidth = Mathf.Lerp(TorsoWaistHalfWidth, TorsoShoulderHalfWidth, chest);
-            if (Mathf.Abs(fromCenter) > halfWidth || !IsInsideShoulder(fromCenter, y)) return Color.clear;
-            if (y < BeltHeight) return BeltColor;
-
-            // 左上から光が当たる前提（ボール・木と揃える）で右側を暗くする
-            float shade = Mathf.InverseLerp(-halfWidth, halfWidth, fromCenter);
-            return Color.Lerp(Color.white, GolferShadeColor, shade);
-        }
-
-        /// <summary>肩の角を丸める。四角いままだと人に見えにくい</summary>
-        private static bool IsInsideShoulder(float fromCenter, int y)
-        {
-            float cornerX = Mathf.Abs(fromCenter) - (TorsoShoulderHalfWidth - TorsoShoulderRadius);
-            float cornerY = y + 0.5f - (TorsoHeight - TorsoShoulderRadius);
-            if (cornerX <= 0f || cornerY <= 0f) return true;
-            return cornerX * cornerX + cornerY * cornerY <= TorsoShoulderRadius * TorsoShoulderRadius;
-        }
-
-        private static Color GolferLegsPixel(int x, int y)
-        {
-            float fromCenter = x + 0.5f - GolferPartWidth * 0.5f;
-            float shade = Mathf.InverseLerp(-HipHalfWidth, HipHalfWidth, fromCenter);
-            Color pants = Color.Lerp(PantsColor, PantsShadeColor, shade);
-            if (y >= HipBottom) return Mathf.Abs(fromCenter) <= HipHalfWidth ? pants : Color.clear;
-
-            float legCenter = Mathf.Lerp(LegFootX, LegHipX, y / (float)HipBottom);
-            float fromLeg = Mathf.Abs(Mathf.Abs(fromCenter) - legCenter);
-            if (y < ShoeHeight) return fromLeg <= ShoeHalfWidth ? ShoeColor : Color.clear;
-            return fromLeg <= LegHalfWidth ? pants : Color.clear;
-        }
-
-        private static Color HeadShadePixel(Vector2 p)
-        {
-            return Color.Lerp(Color.white, HeadShadeColor, LightShade(p));
-        }
-
-        /// <summary>左上の光の中心から離れるほど 0→1 に増える陰の濃さ（ボール・頭で揃える）</summary>
+        /// <summary>左上の光の中心から離れるほど 0→1 に増える陰の濃さ</summary>
         private static float LightShade(Vector2 p)
         {
             return Mathf.Clamp01(Vector2.Distance(p, HighlightCenter) / ShadeFalloffDistance);
-        }
-
-        private static Color GolferCapPixel(Vector2 p)
-        {
-            bool isCap = p.y > CapBottom && !(p.y < CapOpeningTop && Mathf.Abs(p.x) < CapOpeningHalfWidth);
-            return isCap ? HeadShadePixel(p) : Color.clear;
         }
 
         private static Color FlagPixel(int x, int y)

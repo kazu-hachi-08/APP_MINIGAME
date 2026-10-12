@@ -111,7 +111,7 @@ namespace MiniGame.Golf.Editor
         }
 
         /// <summary>
-        /// 正面を向いたゴルファー。キャラの違いは帽子と髪の色だけで見せる（背後視点の GolferRig と揃えるため）。
+        /// 正面を向いたゴルファー。キャラの違いは帽子と髪の色だけで見せる（背後視点の GolferSwingSprites と揃えるため）。
         /// シャツは席の色にしたいので白っぽくしておき、選択画面側で色を掛けられるようにする
         /// </summary>
         private static Color32[] DrawFront(Color cap, Color hair)

@@ -7,7 +7,8 @@ namespace MiniGame.Golf
     /// 地面（XY 平面）に寝かさず Z 方向へ立て、打つ方向に正対させる。カメラへ向けるビルボードより、
     /// 背後視点のカメラと同じ向きに揃えた方が背中が歪まず安定して見える。
     /// 真上視点では立てたスプライトが線にしか見えないので、狙っている間とフォロースルーの間だけ表示する。
-    /// ここは立ち位置と「いつ・どの角度で振るか」を決め、体の部位の並べ方は GolferRig に任せる。
+    /// ここは立ち位置と「いつ・どの角度で振るか」を決め、その角度のコマを出すのは GolferSprite に任せる。
+    /// 角度で持つのは、ゲージに合わせた緩急（トップで止まる・振り下ろしで加速する）をコマ送りでもそのまま使うため。
     /// </summary>
     public class GolferView : MonoBehaviour
     {
@@ -17,7 +18,7 @@ namespace MiniGame.Golf
         [SerializeField] private GolfBall _ball;
         [SerializeField] private ShotInput _input;
         [SerializeField] private AimGuideView _aimGuide;
-        [SerializeField] private GolferRig _rig;
+        [SerializeField] private GolferSprite _sprite;
 
         [Tooltip("ボールから打つ方向の左へずらす距離（右打ちの立ち位置）。ボールが体に隠れないだけ離す")]
         [SerializeField] private float _sideOffset = 0.6f;
@@ -73,13 +74,13 @@ namespace MiniGame.Golf
         /// <summary>手番の人の色にする。ゴルファーは1人を使い回すので、手番が替わるたびに呼ぶ</summary>
         public void SetPlayerColor(Color color)
         {
-            _rig.SetPlayerColor(color);
+            _sprite.SetPlayerColor(color);
         }
 
         /// <summary>手番のキャラの帽子・髪の色にする。SetPlayerColor と同じく手番が替わるたびに呼ぶ</summary>
         public void SetCharacter(GolfCharacterData character)
         {
-            _rig.SetCharacterColors(character.CapColor, character.HairColor);
+            _sprite.SetCharacterColors(character.CapColor, character.HairColor);
         }
 
         /// <summary>オンライン相手の手番はゲージが届かないが、打った瞬間はここに来るので構え → フォロースルーは必ず見せられる</summary>
@@ -92,12 +93,12 @@ namespace MiniGame.Golf
         private void LateUpdate()
         {
             bool visible = IsShowing;
-            _rig.SetVisible(visible);
+            _sprite.SetVisible(visible);
             if (!visible) return;
 
             StandBesideBall(_input.Direction);
             _currentAngle = ClubAngle();
-            _rig.ApplyPose(_currentAngle, Mathf.InverseLerp(_addressAngle, _topAngle, _currentAngle),
+            _sprite.ApplyPose(Mathf.InverseLerp(_addressAngle, _topAngle, _currentAngle),
                 Mathf.InverseLerp(_addressAngle, _followThroughAngle, _currentAngle));
         }
 
