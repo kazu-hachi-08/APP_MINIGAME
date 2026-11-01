@@ -21,6 +21,7 @@ namespace MiniGame.Molkky
         [SerializeField] private Color _overColor = new Color(1f, 0.35f, 0.3f);
         [SerializeField] private Color _missColor = new Color(0.85f, 0.85f, 0.9f);
         [SerializeField] private Color _disqualifiedColor = new Color(0.7f, 0.5f, 0.9f);
+        [SerializeField] private Color _bombedColor = new Color(1f, 0.45f, 0.15f);
 
         [Header("Pop")]
         [SerializeField] private float _popDuration = 0.3f;
@@ -72,6 +73,7 @@ namespace MiniGame.Molkky
                 case ThrowOutcome.OverTo25: return _overColor;
                 case ThrowOutcome.Disqualified: return _disqualifiedColor;
                 case ThrowOutcome.Miss: return _missColor;
+                case ThrowOutcome.Bombed: return _bombedColor;
                 default: return _scoredColor;
             }
         }
@@ -89,11 +91,21 @@ namespace MiniGame.Molkky
                     return "失格…";
                 case ThrowOutcome.Miss:
                     return "ミス ×";
+                case ThrowOutcome.Bombed:
+                    return "ドカン！\n0点";
                 default:
-                    return result.SinglePinNumber > 0
-                        ? $"{(char)(CircledOne + result.SinglePinNumber - 1)}  +{result.Points}"
-                        : $"{result.FallenCount}本  +{result.Points}";
+                    return FormatScored(result);
             }
+        }
+
+        /// <summary>金のピンで2倍になったときは、2倍になったことが分かるよう1行添える</summary>
+        private static string FormatScored(ThrowResult result)
+        {
+            string text = result.SinglePinNumber > 0
+                ? $"{(char)(CircledOne + result.SinglePinNumber - 1)}  +{result.Points}"
+                : $"{result.FallenCount}本  +{result.Points}";
+
+            return result.IsGolden ? $"金ピン ×{MolkkyRules.GoldenMultiplier}!\n{text}" : text;
         }
     }
 }

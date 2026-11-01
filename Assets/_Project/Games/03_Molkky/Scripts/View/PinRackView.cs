@@ -26,6 +26,12 @@ namespace MiniGame.Molkky
         [SerializeField] private Color _fallenColor = new Color(1f, 0.6f, 0.5f);
         [SerializeField] private Color _labelColor = new Color(0.2f, 0.12f, 0.05f);
 
+        [Header("Special Pin（ゴールデン / 爆弾モード）")]
+        [SerializeField] private Color _goldenColor = new Color(1f, 0.82f, 0.15f);
+        // 爆弾は黒っぽい本体に赤い数字にして、遠目にも「触れてはいけない」と分かるようにする
+        [SerializeField] private Color _bombColor = new Color(0.3f, 0.3f, 0.35f);
+        [SerializeField] private Color _bombLabelColor = new Color(1f, 0.3f, 0.25f);
+
         [Header("Stand Up")]
         [Tooltip("立て直すときに、倒れた姿勢から起き上がるアニメーションの時間")]
         [SerializeField] private float _standUpDuration = 0.3f;
@@ -39,11 +45,32 @@ namespace MiniGame.Molkky
         public float StandUpDuration => _standUpDuration;
         public float PinHeight => _pinHeight;
         public float PinWidth => _settings.PinRadius * 2f;
-        public Color StandingColor => _standingColor;
-        public Color FallenColor => _fallenColor;
         public Color LabelColor => _labelColor;
         public int LabelFontSize => _labelFontSize;
         public float LabelCharacterSize => _labelCharacterSize;
+
+        /// <summary>
+        /// 本体の色。特殊ピンは倒れても特殊色のままにして、倒したのが金 / 爆弾だったと見て分かるようにする
+        /// </summary>
+        public Color BodyColorOf(Pin pin)
+        {
+            switch (SpecialKindOf(pin))
+            {
+                case MolkkyRuleMode.Golden: return _goldenColor;
+                case MolkkyRuleMode.Bomb: return _bombColor;
+                default: return pin.IsFallen ? _fallenColor : _standingColor;
+            }
+        }
+
+        public Color LabelColorOf(Pin pin)
+        {
+            return SpecialKindOf(pin) == MolkkyRuleMode.Bomb ? _bombLabelColor : _labelColor;
+        }
+
+        private MolkkyRuleMode SpecialKindOf(Pin pin)
+        {
+            return pin.Number == _pinRack.SpecialPinNumber ? _pinRack.SpecialRule : MolkkyRuleMode.Normal;
+        }
 
         private void Start()
         {

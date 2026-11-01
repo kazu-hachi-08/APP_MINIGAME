@@ -10,7 +10,8 @@ namespace MiniGame.Molkky
     /// 試合前のプレイヤー設定。人数（2〜4人）と、各プレイヤーの人間/NPC（難易度）を決める。
     /// 種別はボタンをタップするたびに 人間 → よわい → ふつう → つよい と切り替わる。
     /// 3人以上のときは「個人戦 / チーム戦」を切り替えられ、チーム戦では各席の A / B をタップで切り替える。
-    /// オンラインでは、ホストはチーム設定だけ（人数・人間/NPCは部屋で決まっているので出さない）、参加者は待機表示に使う。
+    /// ルール（ふつう / 金ピン / 爆弾ピン）もタップで切り替えられる。
+    /// オンラインでは、ホストはルールとチームの設定だけ（人数・人間/NPCは部屋で決まっているので出さない）、参加者は待機表示に使う。
     /// </summary>
     public class PlayerSetupPanel : MonoBehaviour
     {
@@ -25,8 +26,11 @@ namespace MiniGame.Molkky
         private static readonly string[] KindLabels = { "人間", "NPC よわい", "NPC ふつう", "NPC つよい" };
         private static readonly string[] TeamLabels = { "A", "B" };
 
+        // MolkkyRuleMode の並びと合わせる。ボタンだけでルールが伝わるよう効果も短く添える
+        private static readonly string[] RuleLabels = { "ルール: ふつう", "ルール: 金ピン×2", "ルール: 爆弾ピン" };
+
         private const string LocalTitle = "プレイヤー設定";
-        private const string OnlineHostTitle = "チーム設定";
+        private const string OnlineHostTitle = "試合設定";
         private const string WaitingTitle = "ホストが設定しています";
         private const string LocalSuffix = "（あなた）";
 
@@ -48,6 +52,12 @@ namespace MiniGame.Molkky
         [SerializeField] private Button[] _teamButtons;
         [SerializeField] private Text[] _teamTexts;
 
+        [Header("Rule")]
+        [Tooltip("「ふつう / 金ピン / 爆弾ピン」切り替えボタンを含む行。オンラインの参加者の待機中は隠す")]
+        [SerializeField] private GameObject _ruleRow;
+        [SerializeField] private Button _ruleButton;
+        [SerializeField] private Text _ruleText;
+
         [SerializeField] private Color _selectedColor = new Color(0.18f, 0.55f, 0.9f);
         [SerializeField] private Color _unselectedColor = new Color(0.3f, 0.33f, 0.4f);
 
@@ -61,6 +71,10 @@ namespace MiniGame.Molkky
         private bool _isTeamMatch;
         private bool _isOnline;
         private int _localSeat;
+        private MolkkyRuleMode _rule = MolkkyRuleMode.Normal;
+
+        public MolkkyRuleMode SelectedRule => _rule;
+
         private Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> _onConfirmed;
 
         private void Awake()
@@ -79,6 +93,7 @@ namespace MiniGame.Molkky
             }
 
             _modeButton.onClick.AddListener(ToggleMode);
+            _ruleButton.onClick.AddListener(CycleRule);
             _startButton.onClick.AddListener(Confirm);
         }
 
@@ -92,7 +107,7 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>
-        /// オンラインのホスト用：部屋の人数でチーム設定だけを行う。全員人間なので種別は全席 Human で返す
+        /// オンラインのホスト用：部屋の人数でルールとチームの設定だけを行う。2人のときはチーム戦の切り替えは出ない。全員人間なので種別は全席 Human で返す
         /// </summary>
         public void ShowOnlineHost(int playerCount, int localSeat,
             Action<IReadOnlyList<PlayerKind>, IReadOnlyList<int>> onConfirmed)
@@ -114,6 +129,7 @@ namespace MiniGame.Molkky
             _titleText.text = WaitingTitle;
             _countRow.SetActive(false);
             _modeRow.SetActive(false);
+            _ruleRow.SetActive(false);
             _startButton.gameObject.SetActive(false);
             foreach (GameObject row in _playerRows) row.SetActive(false);
         }
@@ -129,6 +145,7 @@ namespace MiniGame.Molkky
             gameObject.SetActive(true);
             _titleText.text = title;
             _countRow.SetActive(!_isOnline);
+            _ruleRow.SetActive(true);
             _startButton.gameObject.SetActive(true);
             Refresh();
         }
@@ -154,6 +171,12 @@ namespace MiniGame.Molkky
             Refresh();
         }
 
+        private void CycleRule()
+        {
+            _rule = (MolkkyRuleMode)(((int)_rule + 1) % RuleLabels.Length);
+            Refresh();
+        }
+
         private void ToggleTeam(int index)
         {
             _teams[index] = (_teams[index] + 1) % TeamCount;
@@ -164,6 +187,7 @@ namespace MiniGame.Molkky
         {
             RefreshCountButtons();
             RefreshModeRow();
+            RefreshRuleRow();
             RefreshPlayerRows();
 
             _startButton.interactable = CanStart();
@@ -182,6 +206,12 @@ namespace MiniGame.Molkky
             _modeRow.SetActive(_count >= MinTeamPlayers);
             _modeText.text = _isTeamMatch ? "チーム戦" : "個人戦";
             _modeButton.image.color = _isTeamMatch ? _selectedColor : _unselectedColor;
+        }
+
+        private void RefreshRuleRow()
+        {
+            _ruleText.text = RuleLabels[(int)_rule];
+            _ruleButton.image.color = _rule != MolkkyRuleMode.Normal ? _selectedColor : _unselectedColor;
         }
 
         private void RefreshPlayerRows()

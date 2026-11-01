@@ -545,10 +545,11 @@ namespace MiniGame.Molkky.Editor
             return banner;
         }
 
-        /// <summary>人数・個人戦/チーム戦・各プレイヤーの人間/NPCとチームを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
+        /// <summary>ルール・人数・個人戦/チーム戦・各プレイヤーの人間/NPCとチームを選ぶパネル。非表示の行は VerticalLayoutGroup で詰める</summary>
         private static PlayerSetupPanel CreatePlayerSetupPanel(Transform canvas)
         {
-            const float boxHeight = 1200f;
+            // ルール行を足した分だけ高くしている
+            const float boxHeight = 1340f;
             const float boxSpacing = 28f;
             const float rowHeight = 110f;
             const int titleFontSize = 60;
@@ -562,6 +563,7 @@ namespace MiniGame.Molkky.Editor
             const float kindButtonWidth = 480f;
             const float teamButtonWidth = 120f;
             const float modeButtonWidth = 480f;
+            const float ruleButtonWidth = 560f;
 
             GameObject panelObj = CreatePanelOverlay(canvas, "PlayerSetupPanel");
             GameObject boxObj = CreatePanelBox(panelObj.transform, boxHeight, boxSpacing);
@@ -569,6 +571,10 @@ namespace MiniGame.Molkky.Editor
             Text title = CreateText(boxObj.transform, "TitleText", titleFontSize,
                 CenterAnchor, Vector2.zero, new Vector2(PanelRowWidth, 100f), Color.white);
             title.text = "プレイヤー設定";
+
+            // 試合の前提になるので、人数より先に（一番上に）置く
+            Transform ruleRow = CreateRow(boxObj.transform, "RuleRow", PanelRowWidth, rowHeight);
+            Button ruleButton = CreateChoiceButton(ruleRow, "Btn_Rule", "", ruleButtonWidth, rowHeight, buttonFontSize);
 
             Transform countRow = CreateRow(boxObj.transform, "CountRow", PanelRowWidth, rowHeight);
             var countButtons = new Button[PlayerSetupPanel.MaxPlayers - PlayerSetupPanel.MinPlayers + 1];
@@ -619,7 +625,8 @@ namespace MiniGame.Molkky.Editor
             SetArray(panel, "_teamTexts", teamTexts);
             SetArray(panel, "_seatLabels", seatLabels);
             SetRefs(panel, ("_titleText", title), ("_countRow", countRow.gameObject), ("_startButton", startButton), ("_modeRow", modeRow.gameObject), ("_modeButton", modeButton),
-                ("_modeText", modeButton.GetComponentInChildren<Text>()));
+                ("_modeText", modeButton.GetComponentInChildren<Text>()),
+                ("_ruleRow", ruleRow.gameObject), ("_ruleButton", ruleButton), ("_ruleText", ruleButton.GetComponentInChildren<Text>()));
 
             panelObj.SetActive(false);
             return panel;
