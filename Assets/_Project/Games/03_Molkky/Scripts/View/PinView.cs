@@ -24,6 +24,7 @@ namespace MiniGame.Molkky
         private SpriteRenderer _bodyRenderer;
         private Transform _label;
         private MeshRenderer _labelRenderer;
+        private TextMesh _labelText;
 
         private bool _wasFallen;
         private float _standUpStartTime = float.NegativeInfinity;
@@ -64,6 +65,7 @@ namespace MiniGame.Molkky
             text.fontStyle = FontStyle.Bold;
             text.color = _style.LabelColor;
 
+            _labelText = text;
             _labelRenderer = labelObj.GetComponent<MeshRenderer>();
             _labelRenderer.sharedMaterial = font.material;
         }
@@ -83,6 +85,15 @@ namespace MiniGame.Molkky
             {
                 ShowStanding();
             }
+
+            ApplyColors();
+        }
+
+        /// <summary>特殊ピン（金 / 爆弾）は手番ごとに変わるので、毎フレーム色を決め直す</summary>
+        private void ApplyColors()
+        {
+            _bodyRenderer.color = _style.BodyColorOf(_pin);
+            _labelText.color = _style.LabelColorOf(_pin);
         }
 
         private void PlaceOnGround()
@@ -115,7 +126,6 @@ namespace MiniGame.Molkky
             _bodyRenderer.flipX = false;
             _body.localPosition = new Vector3(0f, height * 0.5f, 0f);
             SetSize(width, height);
-            _bodyRenderer.color = _style.StandingColor;
             _label.localPosition = new Vector3(0f, height * StandingLabelHeightRatio, 0f);
         }
 
@@ -132,7 +142,6 @@ namespace MiniGame.Molkky
             var center = new Vector3(side * length * FallenOffsetRatio, width * 0.5f, 0f);
             _body.localPosition = center;
             SetSize(length, width);
-            _bodyRenderer.color = _style.FallenColor;
             _label.localPosition = center;
         }
 

@@ -15,8 +15,9 @@ namespace MiniGame.Molkky
     /// それでも物理は端末ごとにずれうるので、得点は投げた側の端末のピン状態で決める。得点ルールは MolkkyRules が純粋関数なので、
     /// 同じピン状態を渡せば全端末で同じ点数になり、点数そのものは送らない。
     /// キャラ選択では「席番号＋キャラ番号」だけを送る。見た目・能力は各端末のカタログから引く。
-    /// チーム戦の設定（各席のチーム番号）はキャラ選択の前にホストから1回だけ送る。手番は全端末が MolkkyTurnOrder で
-    /// 同じように計算するので、手番そのものは送らない。
+    /// 試合設定（ルールモード・特殊ピンの乱数シード・各席のチーム番号）はキャラ選択の前にホストから1回だけ送る。
+    /// 手番は全端末が MolkkyTurnOrder で同じように計算するので、手番そのものは送らない。
+    /// 特殊ピンも同じシードの乱数で全端末が同じ順に選ぶので、手番ごとには送らない。
     /// 卓球と同じく NetworkObject を使わず名前付きメッセージだけで済ませる。
     ///
     /// NGOではクライアント同士が直接送れないため、2〜4人ともホスト中継にする。
@@ -45,8 +46,11 @@ namespace MiniGame.Molkky
         /// <summary>引数は席番号とキャラ番号</summary>
         public event Action<int, int> OnCharacterReceived;
 
-        /// <summary>引数は席ごとのチーム番号。個人戦は null。中身の検証は受け取り側で SanitizeTeams を通す</summary>
-        public event Action<int[]> OnTeamsReceived;
+        /// <summary>
+        /// 引数は席ごとのチーム番号（個人戦は null）・ルールモード・特殊ピンの乱数シード。
+        /// チームの検証は受け取り側で SanitizeTeams を通す
+        /// </summary>
+        public event Action<int[], MolkkyRuleMode, int> OnTeamsReceived;
 
         private readonly List<ulong> _recipients = new List<ulong>();
         private bool _active;
@@ -95,9 +99,15 @@ namespace MiniGame.Molkky
         }
 
         /// <summary>ホストだけが呼ぶ。seatTeams が null なら個人戦</summary>
-        public void SendTeams(IReadOnlyList<int> seatTeams)
+        public void SendTeams(IReadOnlyList<int> seatTeams, MolkkyRuleMode rule, int seed)
         {
-            SendTeams(seatTeams, Network.LocalClientId);
+            SendTeams(seatTeams, rule, seed, Network.LocalClientId);
+        }
+
+        /// <summary>範囲外のルール番号は通常ルールとして扱う。知らないモードで試合が止まらないようにするため</summary>
+        public static MolkkyRuleMode SanitizeRule(int rule)
+        {
+            return Enum.IsDefined(typeof(MolkkyRuleMode), rule) ? (MolkkyRuleMode)rule : MolkkyRuleMode.Normal;
         }
 
         /// <summary>
@@ -142,9 +152,15 @@ namespace MiniGame.Molkky
             Send(CharacterMessage, writer, originId);
         }
 
-        private void SendTeams(IReadOnlyList<int> seatTeams, ulong originId)
+        /// <summary>
+        /// ルールとシードはチームより先に書く。チームの席数が壊れていると ReadTeams は残りを読まずに返すので、
+        /// 後ろに置くと読み位置がずれるため
+        /// </summary>
+        private void SendTeams(IReadOnlyList<int> seatTeams, MolkkyRuleMode rule, int seed, ulong originId)
         {
             using var writer = new FastBufferWriter(MessageBufferSize, Allocator.Temp);
+            writer.WriteValueSafe((int)rule);
+            writer.WriteValueSafe(seed);
             WriteTeams(writer, seatTeams);
             Send(TeamsMessage, writer, originId);
         }
@@ -284,10 +300,13 @@ namespace MiniGame.Molkky
 
         private void ReceiveTeams(ulong senderId, FastBufferReader reader)
         {
+            reader.ReadValueSafe(out int rule);
+            reader.ReadValueSafe(out int seed);
             int[] seatTeams = ReadTeams(reader);
+            MolkkyRuleMode safeRule = SanitizeRule(rule);
 
-            if (Network.IsServer) SendTeams(seatTeams, senderId);
-            OnTeamsReceived?.Invoke(seatTeams);
+            if (Network.IsServer) SendTeams(seatTeams, safeRule, seed, senderId);
+            OnTeamsReceived?.Invoke(seatTeams, safeRule, seed);
         }
     }
 }

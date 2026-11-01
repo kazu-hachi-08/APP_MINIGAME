@@ -70,6 +70,15 @@ namespace MiniGame.Molkky
         private bool _isOnline;
         private int _localIndex;
 
+        /// <summary>試合のルール（ふつう / 金ピン / 爆弾ピン）。オンラインはホストが決めて全員へ送る</summary>
+        private MolkkyRuleMode _ruleMode = MolkkyRuleMode.Normal;
+
+        /// <summary>
+        /// 特殊ピンを選ぶ専用の乱数。UnityEngine.Random はパワーショットのブレなど投げた端末だけで引かれるので、
+        /// それと分けておかないとオンラインで端末ごとに違うピンが選ばれてしまう
+        /// </summary>
+        private System.Random _specialPinRandom = new System.Random();
+
         /// <summary>オンラインで各席が選んだキャラ番号。まだ届いていない席は NotSelected</summary>
         private int[] _onlineCharacters;
 
@@ -124,6 +133,8 @@ namespace MiniGame.Molkky
         private void HandlePlayersConfirmed(IReadOnlyList<PlayerKind> kinds, IReadOnlyList<int> seatTeams)
         {
             _seatTeams = seatTeams != null ? new List<int>(seatTeams).ToArray() : null;
+            _ruleMode = _setupPanel.SelectedRule;
+            _specialPinRandom = new System.Random();
             Phase = MolkkyPhase.CharacterSelect;
             _characterSelectPanel.Show(kinds, _seatTeams, characters => HandleCharactersConfirmed(kinds, characters),
                 ShowPlayerSetup);
@@ -159,12 +170,8 @@ namespace MiniGame.Molkky
             Phase = MolkkyPhase.PlayerSetup;
             _onlineLink.Begin();
 
-            // 2人のチーム戦は個人戦と同じなので、設定を飛ばしてすぐキャラ選択へ
-            if (playerCount < PlayerSetupPanel.MinTeamPlayers)
-            {
-                ShowOnlineCharacterSelect();
-            }
-            else if (_onlineSession.IsHost)
+            // ルールを選ぶため、2人のときもホストの試合設定を挟む（チーム戦の切り替えは3人以上のときだけ出る）
+            if (_onlineSession.IsHost)
             {
                 _setupPanel.ShowOnlineHost(playerCount, localSeat, (_, seatTeams) => HandleHostTeamsConfirmed(seatTeams));
             }
@@ -176,20 +183,25 @@ namespace MiniGame.Molkky
 
         private void HandleHostTeamsConfirmed(IReadOnlyList<int> seatTeams)
         {
-            _onlineLink.SendTeams(seatTeams);
-            ApplyOnlineTeams(seatTeams != null ? new List<int>(seatTeams).ToArray() : null);
+            MolkkyRuleMode rule = _setupPanel.SelectedRule;
+            // シードを全員へ送り、全端末が同じ順に特殊ピンを選べるようにする
+            int seed = Random.Range(int.MinValue, int.MaxValue);
+            _onlineLink.SendTeams(seatTeams, rule, seed);
+            ApplyOnlineTeams(seatTeams != null ? new List<int>(seatTeams).ToArray() : null, rule, seed);
         }
 
-        private void HandleRemoteTeams(int[] seatTeams)
+        private void HandleRemoteTeams(int[] seatTeams, MolkkyRuleMode rule, int seed)
         {
             if (!_isOnline || Phase != MolkkyPhase.PlayerSetup) return;
 
-            ApplyOnlineTeams(MolkkyOnlineLink.SanitizeTeams(seatTeams, _onlineCharacters.Length));
+            ApplyOnlineTeams(MolkkyOnlineLink.SanitizeTeams(seatTeams, _onlineCharacters.Length), rule, seed);
         }
 
-        private void ApplyOnlineTeams(int[] seatTeams)
+        private void ApplyOnlineTeams(int[] seatTeams, MolkkyRuleMode rule, int seed)
         {
             _seatTeams = seatTeams;
+            _ruleMode = rule;
+            _specialPinRandom = new System.Random(seed);
             _setupPanel.Hide();
             ShowOnlineCharacterSelect();
         }
@@ -335,6 +347,8 @@ namespace MiniGame.Molkky
             _input.SetStyle(ThrowStyle.Horizontal);
             _input.SetArc(ThrowArc.Low);
             _input.SetPowerShot(false);
+            // 手番の表示より先に選ぶ。バナーが閉じた時点で、どれが特殊ピンか分かる状態にしておくため
+            _pinRack.ChooseSpecialPin(_ruleMode, _specialPinRandom);
 
             yield return PlayTurnBanner();
 
@@ -511,7 +525,7 @@ namespace MiniGame.Molkky
             _pinRack.DisarmAll();
 
             List<int> fallen = _pinRack.CollectFallenNumbers();
-            ThrowResult result = MolkkyRules.ApplyThrow(CurrentTeam, fallen);
+            ThrowResult result = MolkkyRules.ApplyThrow(CurrentTeam, fallen, _ruleMode, _pinRack.SpecialPinNumber);
             LogThrow(fallen, result);
 
             ShowScoreBoard();
@@ -556,7 +570,8 @@ namespace MiniGame.Molkky
             _scorePopup.ShowResult(result);
             _audio.PlayResult(result.Outcome);
 
-            if (result.Outcome == ThrowOutcome.OverTo25 || result.Outcome == ThrowOutcome.Disqualified)
+            if (result.Outcome == ThrowOutcome.OverTo25 || result.Outcome == ThrowOutcome.Disqualified ||
+                result.Outcome == ThrowOutcome.Bombed)
             {
                 _scoreBoard.Shake(CurrentTeamIndex);
             }

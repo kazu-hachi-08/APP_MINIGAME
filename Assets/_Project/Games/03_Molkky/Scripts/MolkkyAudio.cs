@@ -131,6 +131,8 @@ namespace MiniGame.Molkky
                 case ThrowOutcome.OverTo25: return _overClip;
                 case ThrowOutcome.Disqualified: return _disqualifiedClip;
                 case ThrowOutcome.Miss: return _missClip;
+                // 爆弾は「やってしまった」感を出したいので、超過と同じ音程の下がる音を使う
+                case ThrowOutcome.Bombed: return _overClip;
                 default: return _scoreClip;
             }
         }

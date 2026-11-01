@@ -93,5 +93,85 @@ namespace MiniGame.Molkky.Tests
 
             Assert.AreEqual(-1, MolkkyRules.FindSoleSurvivor(teams));
         }
+
+        [Test]
+        public void 金のピンを含めて倒すと得点が2倍()
+        {
+            var team = new TeamScore();
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 7, 3, 5 }, MolkkyRuleMode.Golden, 7);
+
+            Assert.AreEqual(ThrowOutcome.Scored, result.Outcome);
+            Assert.IsTrue(result.IsGolden);
+            Assert.AreEqual(6, team.Score);
+        }
+
+        [Test]
+        public void 金のピンを倒さなければ通常の得点()
+        {
+            var team = new TeamScore();
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 9 }, MolkkyRuleMode.Golden, 7);
+
+            Assert.IsFalse(result.IsGolden);
+            Assert.AreEqual(9, team.Score);
+        }
+
+        [Test]
+        public void 金で2倍になって50点ちょうどなら勝ち()
+        {
+            var team = new TeamScore { Score = 26 };
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 12 }, MolkkyRuleMode.Golden, 12);
+
+            Assert.AreEqual(ThrowOutcome.Win, result.Outcome);
+        }
+
+        [Test]
+        public void 金で2倍になって超過すると25点に戻る()
+        {
+            var team = new TeamScore { Score = 40 };
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 6 }, MolkkyRuleMode.Golden, 6);
+
+            Assert.AreEqual(ThrowOutcome.OverTo25, result.Outcome);
+            Assert.AreEqual(MolkkyRules.OverResetScore, team.Score);
+        }
+
+        [Test]
+        public void 爆弾ピンを倒すと0点でミスに数える()
+        {
+            var team = new TeamScore { Score = 20 };
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 4, 8, 11 }, MolkkyRuleMode.Bomb, 8);
+
+            Assert.AreEqual(ThrowOutcome.Bombed, result.Outcome);
+            Assert.AreEqual(20, team.Score);
+            Assert.AreEqual(1, team.MissCount);
+        }
+
+        [Test]
+        public void 爆弾を含むミスが3回続くと失格()
+        {
+            var team = new TeamScore();
+
+            MolkkyRules.ApplyThrow(team, NoPins, MolkkyRuleMode.Bomb, 8);
+            MolkkyRules.ApplyThrow(team, new[] { 8 }, MolkkyRuleMode.Bomb, 8);
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 8, 1 }, MolkkyRuleMode.Bomb, 8);
+
+            Assert.AreEqual(ThrowOutcome.Disqualified, result.Outcome);
+            Assert.IsTrue(team.IsDisqualified);
+        }
+
+        [Test]
+        public void 爆弾ピンを避ければ通常の得点()
+        {
+            var team = new TeamScore();
+
+            ThrowResult result = MolkkyRules.ApplyThrow(team, new[] { 10 }, MolkkyRuleMode.Bomb, 8);
+
+            Assert.AreEqual(ThrowOutcome.Scored, result.Outcome);
+            Assert.AreEqual(10, team.Score);
+        }
     }
 }

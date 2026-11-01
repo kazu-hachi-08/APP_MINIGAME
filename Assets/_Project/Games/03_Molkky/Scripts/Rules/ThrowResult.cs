@@ -8,6 +8,9 @@ namespace MiniGame.Molkky
         Win,
         OverTo25,
         Disqualified,
+
+        /// <summary>爆弾モードで爆弾ピンを倒した（ミス扱い）</summary>
+        Bombed,
     }
 
     /// <summary>1投を MolkkyRules に通した結果</summary>
@@ -20,12 +23,16 @@ namespace MiniGame.Molkky
         /// <summary>1本だけ倒したときのピンの数字。それ以外は0</summary>
         public readonly int SinglePinNumber;
 
-        public ThrowResult(ThrowOutcome outcome, int points, int fallenCount, int singlePinNumber)
+        /// <summary>ゴールデンモードで金のピンを倒し、得点が2倍になった</summary>
+        public readonly bool IsGolden;
+
+        public ThrowResult(ThrowOutcome outcome, int points, int fallenCount, int singlePinNumber, bool isGolden = false)
         {
             Outcome = outcome;
             Points = points;
             FallenCount = fallenCount;
             SinglePinNumber = singlePinNumber;
+            IsGolden = isGolden;
         }
     }
 }

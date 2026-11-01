@@ -124,6 +124,15 @@ namespace MiniGame.Molkky.Tests
         }
 
         [Test]
+        public void 届いたルール番号は範囲外なら通常ルールとして扱う()
+        {
+            Assert.AreEqual(MolkkyRuleMode.Golden, MolkkyOnlineLink.SanitizeRule((int)MolkkyRuleMode.Golden));
+            Assert.AreEqual(MolkkyRuleMode.Bomb, MolkkyOnlineLink.SanitizeRule((int)MolkkyRuleMode.Bomb));
+            Assert.AreEqual(MolkkyRuleMode.Normal, MolkkyOnlineLink.SanitizeRule(99));
+            Assert.AreEqual(MolkkyRuleMode.Normal, MolkkyOnlineLink.SanitizeRule(-1));
+        }
+
+        [Test]
         public void 範囲外のキャラ番号が届いても先頭か末尾のキャラにクランプされる()
         {
             // 生成済みアセットの有無に左右されないよう、テスト用のカタログをその場で作る

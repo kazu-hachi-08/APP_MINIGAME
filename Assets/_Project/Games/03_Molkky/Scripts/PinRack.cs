@@ -31,6 +31,12 @@ namespace MiniGame.Molkky
 
         public IReadOnlyList<Pin> Pins => _pins;
 
+        /// <summary>この手番の特殊ピン（金 / 爆弾）の種類。Normal なら特殊ピンなし</summary>
+        public MolkkyRuleMode SpecialRule { get; private set; }
+
+        /// <summary>この手番の特殊ピンの数字。なければ MolkkyRules.NoSpecialPin</summary>
+        public int SpecialPinNumber { get; private set; } = MolkkyRules.NoSpecialPin;
+
         /// <summary>どれか1本が倒れた。音などの演出側が12本それぞれを購読しなくて済むようまとめて流す</summary>
         public event Action<Pin> PinFell;
 
@@ -81,6 +87,19 @@ namespace MiniGame.Molkky
                     pinIndex++;
                 }
             }
+        }
+
+        /// <summary>
+        /// 手番の開始時に特殊ピンを1本選び直す。毎手番変えるのは、同じピンが続くと狙い方が固定されて飽きるため。
+        /// 手番の開始時点では全ピンが立っているので、12本からそのまま選べる。
+        /// 乱数は呼び出し側から渡す。オンラインでは同じシードの乱数を全端末で同じ回数だけ引き、同じピンを選ぶため
+        /// </summary>
+        public void ChooseSpecialPin(MolkkyRuleMode rule, System.Random random)
+        {
+            SpecialRule = rule;
+            SpecialPinNumber = rule == MolkkyRuleMode.Normal
+                ? MolkkyRules.NoSpecialPin
+                : _pins[random.Next(_pins.Count)].Number;
         }
 
         public void ArmAll()
